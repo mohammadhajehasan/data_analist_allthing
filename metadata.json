@@ -1,0 +1,6 @@
+{
+  "name": "AI Data Analytics Platform",
+  "description": "منصة شاملة لتحليل البيانات والذكاء الاصطناعي مع استكشاف المجموعات، التوصيف الإحصائي، توليد الاستعلامات NL2SQL، بناء لوحات التحكم، والمساعد الذكي وتوليد التقارير وقصص البيانات.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
