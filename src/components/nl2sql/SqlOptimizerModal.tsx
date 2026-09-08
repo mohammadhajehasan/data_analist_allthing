@@ -12,6 +12,7 @@ import {
   X,
   Code2,
   ListChecks,
+  Download,
 } from 'lucide-react';
 
 interface SqlOptimizerModalProps {
@@ -50,6 +51,27 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
     navigator.clipboard.writeText(result.optimizedSql);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2000);
+  };
+
+  const handleExportOptimizedSql = () => {
+    if (!result?.optimizedSql) return;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `optimized_query_${timestamp}.sql`;
+    const headerComment = `-- =====================================================================
+-- IBM Carbon Analytics Studio - AI Optimized SQL Query
+-- Model: ${result.model || 'AI Optimizer Engine'}
+-- Estimated Speedup: ${result.estimatedSpeedup || 'N/A'}
+-- Generated At: ${new Date().toISOString()}
+-- =====================================================================\n\n`;
+    const blob = new Blob([`${headerComment}${result.optimizedSql.trim()}\n`], { type: 'application/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -170,25 +192,37 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                     </pre>
                   </div>
 
-                  {/* Optimized SQL */}
-                  <div className="bg-[#161616] border border-[#0f62fe] flex flex-col">
-                    <div className="p-2 bg-[#0f62fe]/10 border-b border-[#0f62fe] flex items-center justify-between">
-                      <span className="text-[11px] font-mono font-bold uppercase text-[#78a9ff] flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>{isAr ? 'الاستعلام المُحسّن' : 'Optimized Query'}</span>
-                      </span>
-                      <button
-                        onClick={handleCopyOptimizedSql}
-                        className="px-2 py-0.5 bg-[#393939] hover:bg-[#4c4c4c] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
-                      >
-                        {copiedSql ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedSql ? 'Copied' : 'Copy'}</span>
-                      </button>
+                    {/* Optimized SQL */}
+                    <div className="bg-[#161616] border border-[#0f62fe] flex flex-col">
+                      <div className="p-2 bg-[#0f62fe]/10 border-b border-[#0f62fe] flex items-center justify-between flex-wrap gap-1">
+                        <span className="text-[11px] font-mono font-bold uppercase text-[#78a9ff] flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{isAr ? 'الاستعلام المُحسّن' : 'Optimized Query'}</span>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={handleExportOptimizedSql}
+                            className="px-2 py-0.5 bg-[#24a148]/20 hover:bg-[#24a148]/30 border border-[#24a148]/50 text-[#42be65] text-[10px] font-mono flex items-center gap-1 transition-colors"
+                            title={isAr ? 'تصدير الاستعلام كملف .sql' : 'Export as .sql file'}
+                            id="optimizer-export-sql-btn"
+                          >
+                            <Download className="w-3 h-3 text-[#42be65]" />
+                            <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
+                          </button>
+                          <button
+                            onClick={handleCopyOptimizedSql}
+                            className="px-2 py-0.5 bg-[#393939] hover:bg-[#4c4c4c] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
+                            id="optimizer-copy-sql-btn"
+                          >
+                            {copiedSql ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedSql ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
+                      </div>
+                      <pre className="p-3 text-xs font-mono text-[#33b1ff] overflow-x-auto whitespace-pre-wrap leading-relaxed flex-1">
+                        {result.optimizedSql}
+                      </pre>
                     </div>
-                    <pre className="p-3 text-xs font-mono text-[#33b1ff] overflow-x-auto whitespace-pre-wrap leading-relaxed flex-1">
-                      {result.optimizedSql}
-                    </pre>
-                  </div>
                 </div>
               )}
 

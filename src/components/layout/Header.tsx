@@ -21,6 +21,9 @@ import {
   Sun,
   Moon,
   SlidersHorizontal,
+  HardDrive,
+  MessageSquare,
+  Radio,
 } from 'lucide-react';
 import { THEME_OPTIONS, DashboardLayoutModal } from '../dashboards/DashboardLayoutModal';
 import { LocalCsvImportModal } from '../datasets/LocalCsvImportModal';
@@ -37,10 +40,16 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
     setActiveDatasetId,
     language,
     setLanguage,
+    toggleLanguage,
     theme,
     setTheme,
     startTour,
     t,
+    comments,
+    setIsCommentsDrawerOpen,
+    setIsSnapshotModalOpen,
+    setIsRefreshModalOpen,
+    scheduledRefreshes,
   } = useApp();
 
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
@@ -288,12 +297,59 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
         </div>
       </div>
 
-      {/* Right Side: Quick Ingest, Tour, Settings, User */}
-      <div className="flex items-center gap-2">
+      {/* Right Side: Quick Ingest, Snapshot, Refresh, Comments, Tour, Settings, User */}
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Project Snapshot (Save/Load Workspace State) */}
+        <button
+          onClick={() => setIsSnapshotModalOpen(true)}
+          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
+          title={language === 'ar' ? 'لقطة حالة المشروع - تصدير واستعادة ملف JSON' : 'Project Snapshot (JSON Export & Import)'}
+          id="header-project-snapshot-btn"
+        >
+          <HardDrive className="w-4 h-4 text-[#0f62fe]" />
+          <span className="hidden xl:inline">
+            {language === 'ar' ? 'لقطة المشروع' : 'Snapshot'}
+          </span>
+        </button>
+
+        {/* Live Data Refresh & API Scheduling Indicator */}
+        <button
+          onClick={() => setIsRefreshModalOpen(true)}
+          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#009d9a] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors relative"
+          title={language === 'ar' ? 'نظام التحديث التلقائي وجدولة API' : 'Scheduled Data Refresh & Live API Feeds'}
+          id="header-data-refresh-btn"
+        >
+          <Radio className="w-4 h-4 text-[#009d9a]" />
+          {scheduledRefreshes.some(r => r.status === 'connected') && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          )}
+          <span className="hidden xl:inline">
+            {language === 'ar' ? 'التحديث الحي' : 'Live Sync'}
+          </span>
+        </button>
+
+        {/* Team Comments & Annotations Drawer Trigger */}
+        <button
+          onClick={() => setIsCommentsDrawerOpen(true)}
+          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-amber-400 rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors relative"
+          title={language === 'ar' ? 'التعليقات والملاحظات التعاونية للفريق' : 'Team Comments & Annotations'}
+          id="header-comments-drawer-btn"
+        >
+          <MessageSquare className="w-4 h-4 text-amber-400" />
+          {comments.filter(c => !c.resolved).length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-[#0f62fe] text-white text-[10px] font-bold font-mono">
+              {comments.filter(c => !c.resolved).length}
+            </span>
+          )}
+          <span className="hidden xl:inline">
+            {language === 'ar' ? 'المناقشات' : 'Comments'}
+          </span>
+        </button>
+
         {/* Quick CSV Local Ingestion Shortcut */}
         <button
           onClick={() => setShowCsvModal(true)}
-          className="h-9 flex items-center gap-1.5 px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
+          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
           title={language === 'ar' ? 'استيراد ومعالجة ملف CSV محلياً دون رفع للخادم' : 'Local In-Memory CSV Ingestion (Zero-Upload)'}
         >
           <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
@@ -334,12 +390,15 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
         {/* Language Switcher */}
         <button
-          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-          className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
-          title="Toggle Language (AR / EN)"
+          onClick={toggleLanguage}
+          className="h-9 px-3 rounded-lg flex items-center gap-1.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] text-xs font-semibold text-[var(--cds-text-01)] transition-colors cursor-pointer"
+          title={t.header.languageSwitch}
+          aria-label={t.header.languageSwitch}
         >
           <Globe className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-          <span>{language.toUpperCase()}</span>
+          <span className="font-mono font-bold tracking-wide">
+            {language === 'ar' ? 'English' : 'العربية'}
+          </span>
         </button>
 
         {/* User Profile Trigger */}

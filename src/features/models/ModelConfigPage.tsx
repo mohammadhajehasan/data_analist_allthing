@@ -38,6 +38,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
+import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
 
 // Interface for Token Consumption Tracking
 interface TokenUsageEntry {
@@ -82,7 +83,7 @@ export const ModelConfigPage: React.FC = () => {
   const isAr = language === 'ar';
 
   // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'providers' | 'sandbox' | 'tokens' | 'privacy' | 'docs'>('providers');
+  const [activeTab, setActiveTab] = useState<'providers' | 'sandbox' | 'tokens' | 'privacy' | 'docs' | 'jsonrpc'>('providers');
 
   // Provider config sub-selection
   const [selectedProviderId, setSelectedProviderId] = useState<AIProviderId>('ollama');
@@ -496,6 +497,21 @@ export const ModelConfigPage: React.FC = () => {
         >
           <Lock className="w-4 h-4 text-[#42be65]" />
           <span>{isAr ? 'سياسة الخصوصية' : 'Data Privacy'}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('jsonrpc')}
+          className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
+            activeTab === 'jsonrpc'
+              ? 'bg-[#0f62fe] text-white shadow-xs'
+              : 'text-[#a8a8a8] hover:text-[#f4f4f4] hover:bg-[#262626]'
+          }`}
+        >
+          <Server className="w-4 h-4 text-[#be95ff]" />
+          <span>{isAr ? 'بوابة JSON-RPC الخارجية' : 'JSON-RPC AI Gateway'}</span>
+          <span className="px-1.5 py-0.2 text-[9px] bg-purple-500/20 text-[#be95ff] border border-purple-500/40 rounded-xs font-mono">
+            RPC 2.0
+          </span>
         </button>
 
         <button
@@ -1580,6 +1596,13 @@ export const ModelConfigPage: React.FC = () => {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* TAB 6: EXTERNAL AI JSON-RPC 2.0 GATEWAY */}
+      {activeTab === 'jsonrpc' && (
+        <div className="space-y-4">
+          <JsonRpcGatewayPanel />
         </div>
       )}
 

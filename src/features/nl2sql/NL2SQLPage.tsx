@@ -43,6 +43,7 @@ import {
   HelpCircle,
   RotateCcw,
   AlignLeft,
+  Download,
 } from 'lucide-react';
 
 export const NL2SQLPage: React.FC = () => {
@@ -261,6 +262,59 @@ export const NL2SQLPage: React.FC = () => {
     setCopied(true);
     toast.info(isAr ? 'تم نسخ كود SQL' : 'SQL Copied', isAr ? 'تم حفظ الاستعلام في الحافظة.' : 'Copied SQL query to clipboard.');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportSqlFile = () => {
+    if (!sqlCode.trim()) {
+      toast.error(
+        isAr ? 'لا يوجد استعلام للتصدير' : 'No Query to Export',
+        isAr ? 'يرجى كتابة أو توليد استعلام أولاً.' : 'Please generate or write a SQL query first.'
+      );
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const safeDatasetName = activeDataset?.name?.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '_') || 'dataset';
+    const filename = `query_${safeDatasetName}_${timestamp}.sql`;
+
+    const headerComment = `-- =====================================================================
+-- IBM Carbon Analytics Studio - NL2SQL Synthesized Query
+-- Generated At: ${new Date().toISOString()} (${new Date().toLocaleString(isAr ? 'ar-EG' : 'en-US')})
+-- Target Dataset: ${activeDataset?.name || 'Unknown'}
+-- Prompt: ${question || 'N/A'}
+-- 9-Layer Security Risk: ${validationReport.estimatedCost.executionRisk}
+-- Overall Confidence Score: ${confidenceScore.overallScore}% (${confidenceScore.reliabilityVerdict})
+-- =====================================================================\n\n`;
+
+    const fullContent = `${headerComment}${sqlCode.trim()}\n`;
+    const blob = new Blob([fullContent], { type: 'application/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(
+      isAr ? 'تم تصدير ملف SQL بنجاح' : 'SQL File Exported',
+      isAr ? `تم تنزيل ${filename}` : `Saved as ${filename}`
+    );
+
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: 'EXPORT_SQL_FILE',
+      resourceType: 'QUERY',
+      resourceId: activeDataset.id,
+      details: {
+        filename,
+        sqlLength: sqlCode.length,
+        dataset: activeDataset.name,
+        question,
+      },
+    });
   };
 
   const applyCorrection = (fixedSql?: string) => {
@@ -561,15 +615,29 @@ export const NL2SQLPage: React.FC = () => {
                 disabled={!sqlCode.trim()}
                 className="px-2.5 py-1 bg-[#0f62fe]/20 hover:bg-[#0f62fe]/30 border border-[#0f62fe] text-[#78a9ff] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
                 title="Optimize Query with Gemini AI"
+                id="nl2sql-optimize-btn"
               >
                 <Zap className="w-3.5 h-3.5 fill-current text-[#78a9ff]" />
                 <span>{isAr ? 'تحسين الاستعلام (Gemini)' : 'Optimize Query'}</span>
+              </button>
+
+              {/* Export as .sql File Button */}
+              <button
+                onClick={handleExportSqlFile}
+                disabled={!sqlCode.trim()}
+                className="px-2.5 py-1 bg-[#24a148]/20 hover:bg-[#24a148]/30 border border-[#24a148] text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-40"
+                title={isAr ? 'تصدير وحفظ الاستعلام كملف .sql' : 'Export query as .sql file'}
+                id="nl2sql-export-sql-btn"
+              >
+                <Download className="w-3.5 h-3.5 text-[#42be65]" />
+                <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
               </button>
 
               <button
                 onClick={handleCopy}
                 className="px-2 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1 transition-colors"
                 title="Copy SQL"
+                id="nl2sql-copy-btn"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-[#42be65]" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -601,7 +669,7 @@ export const NL2SQLPage: React.FC = () => {
           </div>
 
           {/* Execution Bar */}
-          <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex items-center justify-between">
+          <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span
                 className={`text-[10px] font-mono font-bold px-2 py-0.5 uppercase ${
@@ -617,14 +685,28 @@ export const NL2SQLPage: React.FC = () => {
               </span>
             </div>
 
-            <button
-              onClick={handleExecuteSql}
-              disabled={!validationReport.canExecute || isExecuting}
-              className="carbon-btn-primary gap-2 text-xs font-mono font-bold uppercase disabled:opacity-30"
-            >
-              <Play className={`w-3.5 h-3.5 fill-current ${isExecuting ? 'animate-pulse' : ''}`} />
-              <span>{isExecuting ? 'Executing...' : t.nl2sql.executeBtn}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSqlFile}
+                disabled={!sqlCode.trim()}
+                className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-30"
+                title={isAr ? 'تصدير وحفظ كود SQL كملف .sql' : 'Export and save SQL as .sql file'}
+                id="nl2sql-bar-export-sql-btn"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
+              </button>
+
+              <button
+                onClick={handleExecuteSql}
+                disabled={!validationReport.canExecute || isExecuting}
+                className="carbon-btn-primary gap-2 text-xs font-mono font-bold uppercase disabled:opacity-30"
+                id="nl2sql-execute-btn"
+              >
+                <Play className={`w-3.5 h-3.5 fill-current ${isExecuting ? 'animate-pulse' : ''}`} />
+                <span>{isExecuting ? 'Executing...' : t.nl2sql.executeBtn}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -704,7 +786,7 @@ export const NL2SQLPage: React.FC = () => {
       {/* Query Execution Result */}
       {queryResult && (
         <div className="bg-[#262626] border border-[#393939] space-y-3 p-4">
-          <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+          <div className="flex items-center justify-between border-b border-[#393939] pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
                 Query Execution Result
@@ -714,13 +796,25 @@ export const NL2SQLPage: React.FC = () => {
               </span>
             </div>
 
-            <button
-              onClick={() => setShowChart(!showChart)}
-              className="px-3 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-[#0f62fe]" />
-              <span>{showChart ? 'Show Table' : 'Visualize Chart'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSqlFile}
+                className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
+                title={isAr ? 'تصدير وحفظ استعلام SQL كملف .sql' : 'Export and save SQL as .sql file'}
+                id="nl2sql-result-export-sql-btn"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowChart(!showChart)}
+                className="px-3 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-[#0f62fe]" />
+                <span>{showChart ? 'Show Table' : 'Visualize Chart'}</span>
+              </button>
+            </div>
           </div>
 
           {showChart ? (

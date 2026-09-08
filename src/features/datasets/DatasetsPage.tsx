@@ -10,6 +10,7 @@ import { SchemaCompareModal } from '../../components/datasets/SchemaCompareModal
 import { DataLineageView } from '../../components/datasets/DataLineageView';
 import { DataCleansingPanel } from './DataCleansingPanel';
 import { LiveConnectorsPanel } from './LiveConnectorsPanel';
+import { UrlAndFileImportModule } from '../../components/datasets/UrlAndFileImportModule';
 import * as XLSX from 'xlsx';
 import {
   UploadCloud,
@@ -149,8 +150,8 @@ export const DatasetsPage: React.FC = () => {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
 
-  // View Mode: 'catalog', 'lineage', 'cleansing' or 'connectors'
-  const [pageViewMode, setPageViewMode] = useState<'catalog' | 'lineage' | 'cleansing' | 'connectors'>('catalog');
+  // View Mode: 'catalog', 'lineage', 'cleansing', 'connectors' or 'import_hub'
+  const [pageViewMode, setPageViewMode] = useState<'catalog' | 'lineage' | 'cleansing' | 'connectors' | 'import_hub'>('catalog');
 
   // Ensure preview dataset exists
   const currentPreviewDataset = useMemo(() => {
@@ -491,6 +492,21 @@ export const DatasetsPage: React.FC = () => {
               LIVE
             </span>
           </button>
+
+          <button
+            onClick={() => setPageViewMode('import_hub')}
+            className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
+              pageViewMode === 'import_hub'
+                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
+                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+            }`}
+          >
+            <UploadCloud className="w-4 h-4 text-[#78a9ff]" />
+            <span>{isAr ? 'جلب واستيراد (URL / CSV Hub)' : 'URL & File Ingestion'}</span>
+            <span className="text-[10px] bg-[#0f62fe] text-white px-1.5 py-0.2 font-mono">
+              HUB
+            </span>
+          </button>
         </div>
 
         {pageViewMode === 'lineage' && currentPreviewDataset && (
@@ -500,6 +516,18 @@ export const DatasetsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* VIEW MODE 5: URL & DRAG-AND-DROP FILE INGESTION HUB */}
+      {pageViewMode === 'import_hub' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <UrlAndFileImportModule
+            onImportComplete={(newDs) => {
+              handleSelectDatasetForPreview(newDs.id);
+              setPageViewMode('catalog');
+            }}
+          />
+        </div>
+      )}
 
       {/* VIEW MODE 1: VISUAL DATA LINEAGE VIEW */}
       {pageViewMode === 'lineage' && (

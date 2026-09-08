@@ -6,6 +6,7 @@ import { MergedDataPreviewTable } from '../../components/datamodeling/MergedData
 import { ExportModelModal } from '../../components/datamodeling/ExportModelModal';
 import { SavedModelsDrawer, SavedModelItem } from '../../components/datamodeling/SavedModelsDrawer';
 import { ModelingStudio } from '../../components/ModelingStudio';
+import { ModelPerformanceComparison } from '../../components/datamodeling/ModelPerformanceComparison';
 import {
   Workflow,
   Table,
@@ -20,7 +21,8 @@ import {
   Layers,
   FileSpreadsheet,
   Plus,
-  Check
+  Check,
+  BarChart3
 } from 'lucide-react';
 
 const TABLE_ACCENTS = [
@@ -33,7 +35,7 @@ export const AdvancedModelingPage: React.FC = () => {
   const isAr = language === 'ar';
 
   const modelingRef = useRef<any>(null);
-  const [activeTab, setActiveTab] = useState<'relational' | 'statistical' | 'saved'>('relational');
+  const [activeTab, setActiveTab] = useState<'relational' | 'statistical' | 'benchmark' | 'saved'>('relational');
   const [status, setStatus] = useState<string | null>(null);
 
   // Core Data Modeling State
@@ -318,6 +320,18 @@ export const AdvancedModelingPage: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('benchmark')}
+          className={`px-4 py-2 text-xs font-mono font-bold rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
+            activeTab === 'benchmark'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-md'
+              : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-hover-ui)]'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-emerald-400" />
+          <span>{isAr ? 'مقارنة أداء النماذج (Benchmark Recharts)' : 'Model Performance Benchmark'}</span>
+        </button>
+
+        <button
           onClick={() => setIsSavedDrawerOpen(true)}
           className="px-4 py-2 text-xs font-mono font-bold rounded-lg text-[var(--cds-text-02)] hover:bg-[var(--cds-hover-ui)] transition-colors flex items-center gap-2 cursor-pointer ml-auto rtl:mr-auto rtl:ml-0"
         >
@@ -463,6 +477,13 @@ export const AdvancedModelingPage: React.FC = () => {
           </div>
 
           <ModelingStudio ref={modelingRef} />
+        </div>
+      )}
+
+      {/* Tab 3: Model Performance Benchmark Comparison with Recharts */}
+      {activeTab === 'benchmark' && (
+        <div className="space-y-4">
+          <ModelPerformanceComparison />
         </div>
       )}
 

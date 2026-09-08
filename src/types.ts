@@ -328,27 +328,58 @@ export interface Report {
   author: string;
 }
 
+export interface DataStoryChapter {
+  id: string;
+  chapterNumber?: number;
+  title: string;
+  titleAr: string;
+  narrative: string;
+  narrativeAr: string;
+  chartConfig?: WidgetConfig;
+  chartType?: 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'scatter';
+  chartData?: Array<Record<string, any>>;
+  xAxis?: string;
+  yAxis?: string;
+  categoryField?: string;
+  chartExplanation?: string;
+  chartExplanationAr?: string;
+  keyMetric?: {
+    label: string;
+    labelAr?: string;
+    value: string;
+    context?: string;
+    contextAr?: string;
+    trend?: 'up' | 'down' | 'neutral';
+    trendPercentage?: number;
+  };
+  insights?: string[];
+  insightsAr?: string[];
+  takeaway: string;
+  takeawayAr: string;
+}
+
 export interface DataStory {
   id: string;
   datasetId: string;
+  datasetName?: string;
   title: string;
   titleAr: string;
   subtitle: string;
   subtitleAr: string;
   executiveSummary: string;
   executiveSummaryAr: string;
-  chapters: {
-    id: string;
-    title: string;
-    titleAr: string;
-    narrative: string;
-    narrativeAr: string;
-    chartConfig?: WidgetConfig;
-    keyMetric?: { label: string; value: string; context: string };
-    takeaway: string;
-    takeawayAr: string;
-  }[];
+  focusAngle?: string;
+  tone?: string;
+  chapters: DataStoryChapter[];
+  sections?: DataStoryChapter[]; // alias for chapters
+  recommendations?: string[];
+  recommendationsAr?: string[];
   generatedAt: string;
+  author?: string;
+  providerUsed?: string;
+  modelUsed?: string;
+  durationMs?: number;
+  qualityScore?: number;
 }
 
 export interface AuditLogEntry {
@@ -595,6 +626,164 @@ export interface DataModelSchema {
   updatedAt: string;
   aiNotes?: string;
   aiNotesAr?: string;
+}
+
+// ----------------------------------------------------
+// Comments & Annotations Collaboration Types
+// ----------------------------------------------------
+export interface CommentReply {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: RoleType;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommentItem {
+  id: string;
+  targetType: 'dashboard_widget' | 'dashboard' | 'report_chapter' | 'report' | 'dataset';
+  targetId: string; // widgetId, chapterId, reportId, datasetId, etc.
+  targetTitle?: string;
+  authorId: string;
+  authorName: string;
+  authorRole: RoleType;
+  authorAvatar?: string;
+  content: string;
+  contentAr?: string;
+  createdAt: string;
+  updatedAt?: string;
+  resolved?: boolean;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  pinned?: boolean;
+  replies?: CommentReply[];
+  reactions?: Record<string, string[]>;
+  chartContext?: {
+    metricValue?: string | number;
+    pointLabel?: string;
+    anomalyFlag?: boolean;
+  };
+}
+
+// ----------------------------------------------------
+// Project Snapshot Types (Export / Import State)
+// ----------------------------------------------------
+export interface ProjectSnapshot {
+  version: '2.0';
+  snapshotId: string;
+  name: string;
+  nameAr?: string;
+  description?: string;
+  exportedAt: string;
+  exportedBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  workspace: Workspace;
+  datasets: Dataset[];
+  dashboards: Dashboard[];
+  dataStories: DataStory[];
+  comments: CommentItem[];
+  reports?: Report[];
+  scheduledRefreshes?: ScheduledDataRefresh[];
+  workflows?: any[];
+  aiSettings?: any;
+  layoutSettings?: LayoutSettings;
+  theme?: ThemeVariant;
+  featureFlags?: FeatureFlags;
+  auditLogs?: AuditLogEntry[];
+  summary: {
+    datasetCount: number;
+    rowCountTotal: number;
+    dashboardCount: number;
+    widgetCount: number;
+    dataStoryCount: number;
+    commentCount: number;
+    workflowCount?: number;
+  };
+}
+
+// ----------------------------------------------------
+// Data Refresh & Live Scheduling Types
+// ----------------------------------------------------
+export interface ScheduledDataRefresh {
+  id: string;
+  datasetId: string;
+  datasetName: string;
+  apiUrl?: string;
+  method?: 'GET' | 'POST';
+  headers?: Record<string, string>;
+  interval: '1m' | '5m' | '15m' | '30m' | '1h' | '6h' | '1d' | 'manual';
+  intervalMinutes: number;
+  enabled: boolean;
+  status: 'idle' | 'polling' | 'connected' | 'error' | 'syncing';
+  lastRefreshAt?: string;
+  nextRefreshAt?: string;
+  lastStatusCode?: number;
+  lastErrorMessage?: string;
+  lastDurationMs?: number;
+  rowCountAdded?: number;
+  autoImpute?: boolean;
+  notifyOnAnomaly?: boolean;
+}
+
+// ----------------------------------------------------
+// Explain Model & Copilot ML Interpretability Types
+// ----------------------------------------------------
+export interface ModelExplanationRequest {
+  modelId?: string;
+  modelName: string;
+  modelType: string;
+  targetColumn: string;
+  features: string[];
+  metrics: {
+    r2?: number;
+    rmse?: number;
+    mae?: number;
+    accuracy?: number;
+    f1?: number;
+  };
+  featureImportance?: Array<{ feature: string; importance: number }>;
+  coefficients?: Record<string, number>;
+  intercept?: number;
+  samplePredictions?: Array<{ actual: any; predicted: any; residuals?: number }>;
+  decisionContext?: string;
+  language?: 'ar' | 'en';
+}
+
+export interface ModelExplanationResult {
+  headline: string;
+  headlineAr: string;
+  plainLanguageSummary: string;
+  plainLanguageSummaryAr: string;
+  keyDriversExplanation: Array<{
+    feature: string;
+    impact: 'positive' | 'negative' | 'neutral';
+    strength: 'high' | 'medium' | 'low';
+    interpretation: string;
+    interpretationAr: string;
+  }>;
+  statisticalReliability: {
+    score: number; // 0 - 100
+    verdict: string;
+    verdictAr: string;
+    confidenceLevel: string;
+    confidenceLevelAr: string;
+    risksOrBiases: string[];
+    risksOrBiasesAr: string[];
+  };
+  actionableInsights: string[];
+  actionableInsightsAr: string[];
+  whatIfScenarios?: Array<{
+    change: string;
+    changeAr: string;
+    expectedEffect: string;
+    expectedEffectAr: string;
+  }>;
 }
 
 

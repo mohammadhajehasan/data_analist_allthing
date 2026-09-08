@@ -27,6 +27,7 @@ import {
   Lock,
   Pin,
   Star,
+  Download,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -297,6 +298,33 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
     toast.info(isAr ? 'تم نسخ استعلام SQL' : 'SQL Copied to Clipboard');
+  };
+
+  const exportSql = (sql: string, modelId: string) => {
+    if (!sql || !sql.trim()) {
+      toast.error(isAr ? 'لا يوجد استعلام للتصدير' : 'No query to export');
+      return;
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const safeModel = modelId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `query_${safeModel}_${timestamp}.sql`;
+    const headerComment = `-- =====================================================================
+-- IBM Carbon Analytics Studio - Multi-Model Benchmark Generated Query
+-- Model: ${modelId}
+-- Prompt: ${question}
+-- Dataset: ${activeDataset.name}
+-- Generated At: ${new Date().toISOString()}
+-- =====================================================================\n\n`;
+    const blob = new Blob([`${headerComment}${sql.trim()}\n`], { type: 'application/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(isAr ? 'تم تصدير ملف SQL بنجاح' : 'SQL File Exported', filename);
   };
 
   const handleVoteWinner = (modelId: string) => {
@@ -614,13 +642,23 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                         <span className="text-[11px] font-semibold text-[#c6c6c6] uppercase tracking-wider">
                           Generated SQL Query:
                         </span>
-                        <button
-                          onClick={() => copySql(res.sql || '', res.modelId)}
-                          className="px-2 py-1 bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] text-[11px] flex items-center gap-1 transition-colors"
-                        >
-                          {copiedId === res.modelId ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
-                          {copiedId === res.modelId ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ' : 'Copy')}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => exportSql(res.sql || '', res.modelId)}
+                            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            title={isAr ? 'تصدير الاستعلام كملف .sql' : 'Export query as .sql file'}
+                          >
+                            <Download className="w-3 h-3 text-[#42be65]" />
+                            <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
+                          </button>
+                          <button
+                            onClick={() => copySql(res.sql || '', res.modelId)}
+                            className="px-2 py-1 bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] text-[11px] flex items-center gap-1 transition-colors"
+                          >
+                            {copiedId === res.modelId ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
+                            {copiedId === res.modelId ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ' : 'Copy')}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="relative">

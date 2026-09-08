@@ -10,6 +10,7 @@ import {
   Send,
   Plus,
   Terminal,
+  BrainCircuit,
 } from 'lucide-react';
 
 export const AssistantPage: React.FC = () => {
@@ -28,7 +29,9 @@ export const AssistantPage: React.FC = () => {
     setActiveDashboardId,
     setActiveTab,
     activeTab,
-    activeDashboard
+    activeDashboard,
+    setIsExplainModalOpen,
+    setActiveExplainRequest,
   } = useApp();
 
   const [inputPrompt, setInputPrompt] = useState('');
@@ -228,6 +231,32 @@ export const AssistantPage: React.FC = () => {
         <div className="flex items-center gap-2">
           {/* Active Model Selector in Assistant Page */}
           <AIModelSelector compact />
+
+          {/* Explain Model Quick Trigger Button */}
+          <button
+            onClick={() => {
+              setActiveExplainRequest({
+                modelName: targetDataset ? `نموذج تنبؤ ${targetDataset.name}` : 'نموذج الانحدار الخطي متعدد الأبعاد',
+                modelType: 'Linear Regression & Feature Attribution',
+                targetColumn: targetDataset?.columns?.find(c => c.type === 'number')?.name || 'المبيعات الإجمالية',
+                features: targetDataset?.columns?.filter(c => c.type === 'number').map(c => c.name).slice(0, 4) || ['Marketing', 'Budget', 'Visitors'],
+                metrics: { r2: 0.914, rmse: 1240.2, mae: 890.1 },
+                coefficients: {
+                  'Marketing Budget': 4.25,
+                  'Customer Visits': 16.8,
+                  'Discount Rate': -240.5,
+                },
+                decisionContext: 'تفسير تأثير المتغيرات المستقلة على المتغير التابع وتحديد الأولويات الاستثمارية.',
+              });
+              setIsExplainModalOpen(true);
+            }}
+            className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0 border-[#8a3ffc]/50 text-[#be95ff] hover:bg-[#8a3ffc]/15"
+            title={language === 'ar' ? 'تفسير قرارات النموذج الإحصائي والذكائي' : 'Explain Statistical/AI Model'}
+            id="assistant-explain-model-btn"
+          >
+            <BrainCircuit className="w-3.5 h-3.5 text-[#8a3ffc]" />
+            <span>{language === 'ar' ? 'تفسير النموذج' : 'Explain Model'}</span>
+          </button>
 
           <button
             onClick={createNewChatSession}

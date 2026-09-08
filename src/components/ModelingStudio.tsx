@@ -31,7 +31,11 @@ import {
   Box,
   RotateCcw,
   Trash2,
-  Compass
+  Compass,
+  FileJson,
+  Download,
+  Upload,
+  FileDown
 } from 'lucide-react';
 import {
   createPolynomialFeatures,
@@ -43,10 +47,17 @@ import {
   analyzeFeatureCorrelations,
   calculateRidgeRegression,
   evaluateTrueFunction,
+  trainTestSplit,
   RegressionMetrics,
   CoefficientDetail,
   FeatureCorrelationInsight
 } from '../utils/mathUtils';
+import { GridSearchModal } from './GridSearchModal';
+import { PerformanceCurves } from './charts/PerformanceCurves';
+import { runKFoldCrossValidation, CrossValidationResult } from '../utils/crossValidationUtils';
+import { InfoTooltip } from './InfoTooltip';
+import { FeatureImportanceChart, FeatureImportanceItem } from './FeatureImportanceChart';
+import { exportSelectedModelToPdf } from '../utils/modelPdfExport';
 
 export interface DataPoint {
   index: number;
@@ -55,6 +66,23 @@ export interface DataPoint {
   z?: number;
   cluster?: number;
   features: number[];
+}
+
+export interface ModelSplitInfo {
+  enabled: boolean;
+  trainRatio: number; // e.g. 70
+  testRatio: number; // e.g. 30
+  trainCount: number;
+  testCount: number;
+  trainMetrics: RegressionMetrics;
+  testMetrics: RegressionMetrics;
+  generalizationGap: number; // train.r2 - test.r2
+  rmseInflationRatio: number; // test.rmse / train.rmse
+  verdict: 'excellent' | 'good' | 'overfitting' | 'underfitting';
+  verdictLabelAr: string;
+  verdictLabelEn: string;
+  isRetrainedOnFullData: boolean;
+  fullDataMetrics?: RegressionMetrics;
 }
 
 interface ModelingResult {
@@ -74,6 +102,9 @@ interface ModelingResult {
   featureNames: string[];
   targetName: string;
   predict: (features: number[]) => number;
+  splitInfo?: ModelSplitInfo;
+  cvInfo?: CrossValidationResult;
+  isCvPredicting?: boolean;
 }
 
 export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
@@ -309,6 +340,9 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   // Correlation threshold for auto-selection
   const [corrThreshold, setCorrThreshold] = useState<number>(0.3);
 
+  // Model PDF Export state
+  const [isExportingModelPdf, setIsExportingModelPdf] = useState<boolean>(false);
+
   const prepareData = (xAxisList: string[], yAxis: string): DataPoint[] => {
     if (xAxisList.length === 0 || !yAxis || rawJsonData.length === 0) return [];
     const xIndexes = xAxisList.map(x => headers.indexOf(x));
@@ -348,6 +382,165 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const { lastUpdated, forceSync } = useModelingContext();
+
+  // Train/Test Split & Out-of-Sample Model Evaluation State
+  const [enableTrainTestSplit, setEnableTrainTestSplit] = useState<boolean>(true);
+  const [trainSplitRatio, setTrainSplitRatio] = useState<number>(70); // Default 70% Train, 30% Test (المعيار الموصى به)
+  const [splitSeed, setSplitSeed] = useState<number>(42);
+  const [splitIndices, setSplitIndices] = useState<{ train: number[]; test: number[] } | null>(null);
+  const [isRetrainedOnFullData, setIsRetrainedOnFullData] = useState<boolean>(false);
+
+  // K-Fold Cross-Validation State (درجة التحقق التبادلي وتنبؤ بالمخرجات)
+  const [enableCrossValidation, setEnableCrossValidation] = useState<boolean>(false);
+  const [cvFolds, setCvFolds] = useState<number>(5);
+  const [useCvPredictions, setUseCvPredictions] = useState<boolean>(true);
+  const [cvResult, setCvResult] = useState<CrossValidationResult | null>(null);
+  const configFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Save Configuration (حفظ التكوين) to local JSON file
+  const handleSaveConfiguration = () => {
+    const configData = {
+      appName: 'IBM Cloud Pak Data Modeling & Grid Search',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      metadata: {
+        totalRows: data.length,
+        features: xAxisCols,
+        target: yAxisCol
+      },
+      modelSettings: {
+        modelType: selectedType,
+        degree,
+        alpha,
+        includeInteractions,
+        showTrueFunction,
+        trueFunctionFormula
+      },
+      dataSplit: {
+        enableTrainTestSplit,
+        trainSplitRatio,
+        splitSeed
+      },
+      crossValidation: {
+        enableCrossValidation,
+        cvFolds,
+        useCvPredictions
+      },
+      gridSearch: {
+        defaultKFolds: 5,
+        defaultScoringMetric: 'r2',
+        scope: 'all_models'
+      }
+    };
+
+    const jsonStr = JSON.stringify(configData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `modeling_config_${selectedType}_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: language === 'ar' ? 'تم حفظ التكوين بنجاح 💾' : 'Configuration Saved 💾',
+      description: language === 'ar' 
+        ? 'تم حفظ وتنزيل إعدادات تقسيم البيانات والمعاملات والبحث الشبكي كملف JSON محلي.'
+        : 'Data split, CV, and Grid Search settings exported to local JSON file.',
+      variant: 'success'
+    });
+    addLog(`[حفظ التكوين] تم تصدير ملف إعدادات التكوين بصيغة JSON بنجاح.`);
+  };
+
+  // Import / Load Configuration (استيراد التكوين) from JSON
+  const handleImportConfiguration = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string);
+        if (parsed.modelSettings) {
+          if (parsed.modelSettings.modelType) setSelectedType(parsed.modelSettings.modelType);
+          if (parsed.modelSettings.degree !== undefined) setDegree(parsed.modelSettings.degree);
+          if (parsed.modelSettings.alpha !== undefined) setAlpha(parsed.modelSettings.alpha);
+          if (parsed.modelSettings.includeInteractions !== undefined) setIncludeInteractions(parsed.modelSettings.includeInteractions);
+          if (parsed.modelSettings.showTrueFunction !== undefined) setShowTrueFunction(parsed.modelSettings.showTrueFunction);
+          if (parsed.modelSettings.trueFunctionFormula) setTrueFunctionFormula(parsed.modelSettings.trueFunctionFormula);
+        }
+        if (parsed.dataSplit) {
+          if (parsed.dataSplit.enableTrainTestSplit !== undefined) setEnableTrainTestSplit(parsed.dataSplit.enableTrainTestSplit);
+          if (parsed.dataSplit.trainSplitRatio !== undefined) setTrainSplitRatio(parsed.dataSplit.trainSplitRatio);
+          if (parsed.dataSplit.splitSeed !== undefined) setSplitSeed(parsed.dataSplit.splitSeed);
+        }
+        if (parsed.crossValidation) {
+          if (parsed.crossValidation.enableCrossValidation !== undefined) setEnableCrossValidation(parsed.crossValidation.enableCrossValidation);
+          if (parsed.crossValidation.cvFolds !== undefined) setCvFolds(parsed.crossValidation.cvFolds);
+          if (parsed.crossValidation.useCvPredictions !== undefined) setUseCvPredictions(parsed.crossValidation.useCvPredictions);
+        }
+
+        toast({
+          title: language === 'ar' ? 'تم استيراد التكوين بنجاح ✓' : 'Configuration Imported ✓',
+          description: language === 'ar' ? 'تمت استعادة كافة إعدادات تقسيم البيانات والـ Grid Search.' : 'Settings successfully restored from JSON.',
+          variant: 'success'
+        });
+        addLog(`[استيراد التكوين] تم تحميل الإعدادات بنجاح من ملف ${file.name}.`);
+      } catch (err: any) {
+        toast({
+          title: language === 'ar' ? 'فشل استيراد التكوين' : 'Configuration Import Failed',
+          description: err.message || 'Invalid JSON structure',
+          variant: 'error'
+        });
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // Dynamic preview counts for UI feedback
+  const splitPreview = useMemo(() => {
+    const total = data.length;
+    if (total === 0) return { trainCount: 0, testCount: 0, trainPct: trainSplitRatio, testPct: 100 - trainSplitRatio };
+    const trainCount = Math.max(1, Math.min(total - 1, Math.round(total * (trainSplitRatio / 100))));
+    const testCount = Math.max(0, total - trainCount);
+    return {
+      trainCount,
+      testCount,
+      trainPct: trainSplitRatio,
+      testPct: 100 - trainSplitRatio
+    };
+  }, [data.length, trainSplitRatio]);
+
+  // Grid Search Hyperparameter Tuning State
+  const [isGridSearchOpen, setIsGridSearchOpen] = useState<boolean>(false);
+
+  const handleApplyGridSearchParams = (params: {
+    modelType: 'linear' | 'polynomial' | 'ridge';
+    degree: number;
+    alpha: number;
+    includeInteractions: boolean;
+  }) => {
+    setSelectedType(params.modelType);
+    setDegree(params.degree);
+    setAlpha(params.alpha);
+    setIncludeInteractions(params.includeInteractions);
+
+    addLog(`Grid Search: applied optimal hyperparameters (${params.modelType}, degree=${params.degree}, alpha=${params.alpha}, interactions=${params.includeInteractions})`);
+    toast({
+      title: language === 'ar' ? 'تم تطبيق المعاملات الفائقة بنجاح' : 'Hyperparameters Applied',
+      description: language === 'ar'
+        ? `النموذج: ${params.modelType} | الدرجة: ${params.degree} | α: ${params.alpha}`
+        : `Model: ${params.modelType} | Deg: ${params.degree} | α: ${params.alpha}`,
+      variant: 'success'
+    });
+
+    setTimeout(() => {
+      calculateModel();
+    }, 150);
+  };
 
   useImperativeHandle(ref, () => ({
     calculateModel,
@@ -960,6 +1153,265 @@ print(f"Example prediction: {prediction[0]:.6f}")
     }
   };
 
+  /**
+   * Fits model parameters on a specified dataset (e.g. 70% Train or 100% Full)
+   */
+  const fitModelCore = (trainingData: DataPoint[]) => {
+    const isMultivariate = xAxisCols.length > 1;
+
+    if (selectedType === 'linear') {
+      if (!isMultivariate) {
+        // Simple Linear Regression (1 Feature)
+        const points = trainingData.map(p => [p.x, p.y]);
+        const reg = ss.linearRegression(points);
+        const line = ss.linearRegressionLine(reg);
+        const mFormatted = Number(reg.m.toFixed(4));
+        const bFormatted = Number(reg.b.toFixed(4));
+        const xLabel = xAxisCols[0] || 'x';
+        const sign = bFormatted >= 0 ? '+ ' : '- ';
+        const eq = `${yAxisCol || 'y'} = ${mFormatted} · ${xLabel} ${sign}${Math.abs(bFormatted)}`;
+
+        const pythonCode = `# Simple Linear Regression Model\n# ${yAxisCol} = f(${xLabel})\ndef predict_${yAxisCol || 'y'}(${xLabel}):\n    return ${mFormatted} * ${xLabel} + (${bFormatted})`;
+        const jsCode = `// Simple Linear Regression Model\nfunction predict${yAxisCol || 'Y'}(${xLabel}) {\n  return ${mFormatted} * ${xLabel} + (${bFormatted});\n}`;
+
+        return {
+          type: 'Linear' as const,
+          degree: 1,
+          isMultivariate: false,
+          equation: eq,
+          pythonCode,
+          jsCode,
+          intercept: reg.b,
+          coefficients: [reg.m],
+          coefficientDetails: [{
+            name: xLabel,
+            power: 1,
+            coefficient: reg.m,
+            formattedTerm: `${reg.m >= 0 ? '+' : '-'} ${Math.abs(reg.m).toFixed(4)} · ${xLabel}`,
+            importancePercent: 100
+          }],
+          featureNames: xAxisCols,
+          termsCount: 1,
+          predictFn: (features: number[]) => line(features[0])
+        };
+      } else {
+        // Multiple Linear Regression
+        const X = trainingData.map(p => p.features);
+        const Y = trainingData.map(p => [p.y]);
+        const reg = new MultivariateLinearRegression(X, Y, { intercept: true, statistics: true });
+        
+        const weights = reg.weights as number[][];
+        const intercept = weights[weights.length - 1][0];
+        const coefficients = weights.slice(0, weights.length - 1).map((w: number[]) => w[0]);
+
+        const equation = formatPolynomialEquation(intercept, coefficients, xAxisCols, yAxisCol || 'y');
+        const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, xAxisCols);
+
+        const pyTerms = coefficients.map((c, i) => `${c.toFixed(6)} * ${xAxisCols[i]}`).join(' +\n        ');
+        const pythonCode = `# Multiple Linear Regression Model\n# ${yAxisCol} = f(${xAxisCols.join(', ')})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
+
+        const jsTerms = coefficients.map((c, i) => `${c.toFixed(6)} * ${xAxisCols[i]}`).join(' +\n    ');
+        const jsCode = `// Multiple Linear Regression Model\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
+
+        return {
+          type: 'Linear' as const,
+          degree: 1,
+          isMultivariate: true,
+          equation,
+          pythonCode,
+          jsCode,
+          intercept,
+          coefficients,
+          coefficientDetails: coeffAnalysis.details,
+          featureNames: xAxisCols,
+          termsCount: xAxisCols.length,
+          predictFn: (features: number[]) => reg.predict(features)[0]
+        };
+      }
+    } else if (selectedType === 'polynomial') {
+      const X = trainingData.map(p => createPolynomialFeatures(p.features, degree, includeInteractions));
+      const Y = trainingData.map(p => p.y);
+      const featureNames = getPolynomialFeatureNames(xAxisCols, degree, includeInteractions);
+
+      let intercept = 0;
+      let coefficients: number[] = [];
+      let predictFn: (features: number[]) => number;
+
+      if (degree > 5) {
+        const ridgeAns = calculateRidgeRegression(X, Y, 1e-6);
+        intercept = ridgeAns.intercept;
+        coefficients = ridgeAns.coefficients;
+        predictFn = (features: number[]) => {
+          const polyX = createPolynomialFeatures(features, degree, includeInteractions);
+          return ridgeAns.predict(polyX);
+        };
+      } else {
+        try {
+          const reg = new MultivariateLinearRegression(X, Y.map(yVal => [yVal]), { intercept: true, statistics: true });
+          const weights = reg.weights as number[][];
+          intercept = weights[weights.length - 1][0];
+          coefficients = weights.slice(0, weights.length - 1).map((w: number[]) => w[0]);
+          predictFn = (features: number[]) => {
+            const polyX = createPolynomialFeatures(features, degree, includeInteractions);
+            return reg.predict(polyX)[0];
+          };
+        } catch (e) {
+          const ridgeAns = calculateRidgeRegression(X, Y, 1e-6);
+          intercept = ridgeAns.intercept;
+          coefficients = ridgeAns.coefficients;
+          predictFn = (features: number[]) => {
+            const polyX = createPolynomialFeatures(features, degree, includeInteractions);
+            return ridgeAns.predict(polyX);
+          };
+        }
+      }
+
+      const equation = formatPolynomialEquation(intercept, coefficients, featureNames, yAxisCol || 'y');
+      const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, featureNames);
+
+      const pyTerms = coefficients.map((c, i) => {
+        const rawName = featureNames[i] || `x${i+1}`;
+        let formattedName = rawName.replace(/\^(\d+)/g, '**$1').replace('·', '*');
+        return `${c.toFixed(6)} * (${formattedName})`;
+      }).join(' +\n        ');
+      const pythonCode = `# Multivariate Polynomial Regression (Degree ${degree}, Interactions: ${includeInteractions ? 'Yes' : 'No'})\n# ${yAxisCol} = f(${xAxisCols.join(', ')})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
+
+      const jsTerms = coefficients.map((c, i) => {
+        const name = featureNames[i] || `x${i+1}`;
+        if (name.includes('·')) {
+          const [f1, f2] = name.split('·').map(s => s.trim());
+          return `${c.toFixed(6)} * (${f1} * ${f2})`;
+        } else if (name.includes('^')) {
+          const [base, pow] = name.split('^').map(s => s.trim());
+          return `${c.toFixed(6)} * Math.pow(${base}, ${pow})`;
+        }
+        return `${c.toFixed(6)} * ${name}`;
+      }).join(' +\n    ');
+      const jsCode = `// Multivariate Polynomial Regression (Degree ${degree})\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
+
+      return {
+        type: 'Polynomial' as const,
+        degree,
+        includeInteractions,
+        isMultivariate,
+        equation,
+        pythonCode,
+        jsCode,
+        intercept,
+        coefficients,
+        coefficientDetails: coeffAnalysis.details,
+        featureNames: xAxisCols,
+        termsCount: featureNames.length,
+        predictFn
+      };
+    } else if (selectedType === 'ridge') {
+      const featureNames = degree > 1 
+        ? getPolynomialFeatureNames(xAxisCols, degree, includeInteractions)
+        : xAxisCols;
+
+      const X = trainingData.map(p => 
+        degree > 1 ? createPolynomialFeatures(p.features, degree, includeInteractions) : p.features
+      );
+      const y = trainingData.map(p => p.y);
+
+      const ridgeAns = calculateRidgeRegression(X, y, alpha);
+      const intercept = ridgeAns.intercept;
+      const coefficients = ridgeAns.coefficients;
+
+      const equation = formatPolynomialEquation(intercept, coefficients, featureNames, yAxisCol || 'y');
+      const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, featureNames);
+
+      const predictFn = (features: number[]) => {
+        const xFeats = degree > 1 ? createPolynomialFeatures(features, degree, includeInteractions) : features;
+        return ridgeAns.predict(xFeats);
+      };
+
+      const pyTerms = coefficients.map((c, i) => {
+        const rawName = featureNames[i] || `x${i+1}`;
+        let formattedName = rawName.replace(/\^(\d+)/g, '**$1').replace('·', '*');
+        return `${c.toFixed(6)} * (${formattedName})`;
+      }).join(' +\n        ');
+      const pythonCode = `# Ridge Regression (Alpha: ${alpha}, Degree: ${degree})\nfrom sklearn.linear_model import Ridge\n# model = Ridge(alpha=${alpha})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
+
+      const jsTerms = coefficients.map((c, i) => {
+        const name = featureNames[i] || `x${i+1}`;
+        return `${c.toFixed(6)} * ${name}`;
+      }).join(' +\n    ');
+      const jsCode = `// Ridge Regression Model (Alpha=${alpha}, Deg=${degree})\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
+
+      return {
+        type: 'Ridge' as const,
+        degree: degree > 1 ? degree : 1,
+        alpha,
+        l2Penalty: ridgeAns.l2Penalty,
+        includeInteractions,
+        isMultivariate,
+        equation,
+        pythonCode,
+        jsCode,
+        intercept,
+        coefficients,
+        coefficientDetails: coeffAnalysis.details,
+        featureNames: xAxisCols,
+        termsCount: featureNames.length,
+        predictFn
+      };
+    } else {
+      throw new Error('Invalid model type selected.');
+    }
+  };
+
+  /**
+   * Retrains the chosen model architecture on 100% of the dataset
+   * as requested: "وبعد ان ينتهي تدريب النموذج يجب ان نستخدم جميع البيانات لتدريب النموذج"
+   */
+  const retrainOnFullData = () => {
+    if (!result || selectedType === 'kmeans') return;
+    const validatedData = prepareData(xAxisCols, yAxisCol);
+    if (validatedData.length < 2) return;
+
+    try {
+      const fullFitted = fitModelCore(validatedData);
+      const actualsFull = validatedData.map(p => p.y);
+      const predsFull = validatedData.map(p => fullFitted.predictFn(p.features));
+      const fullMetrics = calculateRegressionMetrics(actualsFull, predsFull, fullFitted.termsCount);
+
+      setResult(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          equation: fullFitted.equation,
+          intercept: fullFitted.intercept,
+          coefficients: fullFitted.coefficients,
+          coefficientDetails: fullFitted.coefficientDetails,
+          pythonCode: fullFitted.pythonCode,
+          jsCode: fullFitted.jsCode,
+          predict: fullFitted.predictFn,
+          metrics: fullMetrics,
+          splitInfo: prev.splitInfo ? {
+            ...prev.splitInfo,
+            isRetrainedOnFullData: true,
+            fullDataMetrics: fullMetrics
+          } : undefined
+        };
+      });
+
+      setIsRetrainedOnFullData(true);
+      addLog(`✓ تم إعادة تدريب النموذج النهائي بنجاح على كامل البيانات (100% - ${validatedData.length} عينة). البارامترات الآن جاهزة للإنتاج والتنبؤ مع الاحتفاظ بتقييم الاختبار كمرجع معتمد.`);
+      if (toast) {
+        toast({
+          title: language === 'ar' ? 'تم التدريب النهائي بنجاح' : 'Full Retraining Complete',
+          description: language === 'ar' ? `تم تدريب النموذج على كامل الـ ${validatedData.length} نقطة بيانات للاستخدام الإنتاجي.` : `Trained on all ${validatedData.length} samples for production readiness.`,
+          variant: 'default'
+        });
+      }
+    } catch (err: any) {
+      const errorMsg = `Retraining error: ${err.message}`;
+      setStatusMessage(errorMsg);
+      addLog(errorMsg);
+    }
+  };
+
   const calculateModel = () => {
     setStatusMessage(null);
     const validatedData = prepareData(xAxisCols, yAxisCol);
@@ -1011,240 +1463,172 @@ print(f"Example prediction: {prediction[0]:.6f}")
           targetName: yAxisCol || 'y',
           predict: () => 0
         });
+        setSplitIndices(null);
+        setIsRetrainedOnFullData(false);
         addLog(`K-Means clustering completed with ${k} clusters on ${xAxisCols.length} features.`);
-      } else if (selectedType === 'linear') {
-        if (!isMultivariate) {
-          // Simple Linear Regression (1 Feature)
-          const points = validatedData.map(p => [p.x, p.y]);
-          const reg = ss.linearRegression(points);
-          const line = ss.linearRegressionLine(reg);
-          const predicted = validatedData.map(p => line(p.x));
-          const actuals = validatedData.map(p => p.y);
-          const metrics = calculateRegressionMetrics(actuals, predicted, 1);
-          
-          const mFormatted = Number(reg.m.toFixed(4));
-          const bFormatted = Number(reg.b.toFixed(4));
-          const xLabel = xAxisCols[0] || 'x';
-          const sign = bFormatted >= 0 ? '+ ' : '- ';
-          const eq = `${yAxisCol || 'y'} = ${mFormatted} · ${xLabel} ${sign}${Math.abs(bFormatted)}`;
-
-          const pythonCode = `# Simple Linear Regression Model\n# ${yAxisCol} = f(${xLabel})\ndef predict_${yAxisCol || 'y'}(${xLabel}):\n    return ${mFormatted} * ${xLabel} + (${bFormatted})`;
-          const jsCode = `// Simple Linear Regression Model\nfunction predict${yAxisCol || 'Y'}(${xLabel}) {\n  return ${mFormatted} * ${xLabel} + (${bFormatted});\n}`;
-
-          setResult({
-            type: 'Linear',
-            degree: 1,
-            isMultivariate: false,
-            equation: eq,
-            pythonCode,
-            jsCode,
-            intercept: reg.b,
-            coefficients: [reg.m],
-            coefficientDetails: [{
-              name: xLabel,
-              power: 1,
-              coefficient: reg.m,
-              formattedTerm: `${reg.m >= 0 ? '+' : '-'} ${Math.abs(reg.m).toFixed(4)} · ${xLabel}`,
-              importancePercent: 100
-            }],
-            metrics,
-            featureNames: xAxisCols,
-            targetName: yAxisCol || 'y',
-            predict: (features: number[]) => line(features[0])
-          });
-          addLog(`Simple linear regression calculated: ${eq} | R²: ${metrics.r2.toFixed(4)}`);
-        } else {
-          // Multiple Linear Regression (Multiple Features)
-          const X = validatedData.map(p => p.features);
-          const Y = validatedData.map(p => [p.y]);
-          const reg = new MultivariateLinearRegression(X, Y, { intercept: true, statistics: true });
-          
-          const weights = reg.weights as number[][];
-          const intercept = weights[weights.length - 1][0];
-          const coefficients = weights.slice(0, weights.length - 1).map((w: number[]) => w[0]);
-
-          const equation = formatPolynomialEquation(intercept, coefficients, xAxisCols, yAxisCol || 'y');
-          const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, xAxisCols);
-
-          const predicted = validatedData.map(p => reg.predict(p.features)[0]);
-          const actuals = validatedData.map(p => p.y);
-          const metrics = calculateRegressionMetrics(actuals, predicted, xAxisCols.length);
-
-          const pyTerms = coefficients.map((c, i) => `${c.toFixed(6)} * ${xAxisCols[i]}`).join(' +\n        ');
-          const pythonCode = `# Multiple Linear Regression Model\n# ${yAxisCol} = f(${xAxisCols.join(', ')})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
-
-          const jsTerms = coefficients.map((c, i) => `${c.toFixed(6)} * ${xAxisCols[i]}`).join(' +\n    ');
-          const jsCode = `// Multiple Linear Regression Model\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
-
-          setResult({
-            type: 'Linear',
-            degree: 1,
-            isMultivariate: true,
-            equation,
-            pythonCode,
-            jsCode,
-            intercept,
-            coefficients,
-            coefficientDetails: coeffAnalysis.details,
-            metrics,
-            featureNames: xAxisCols,
-            targetName: yAxisCol || 'y',
-            predict: (features: number[]) => reg.predict(features)[0]
-          });
-          addLog(`Multiple Linear Regression calculated with ${xAxisCols.length} features: ${equation} | R²: ${metrics.r2.toFixed(4)}`);
-        }
-      } else if (selectedType === 'polynomial') {
-        // True Multivariate / Univariate Polynomial Regression (Up to Degree 20)
-        const X = validatedData.map(p => createPolynomialFeatures(p.features, degree, includeInteractions));
-        const Y = validatedData.map(p => p.y);
-        const featureNames = getPolynomialFeatureNames(xAxisCols, degree, includeInteractions);
-
-        let intercept = 0;
-        let coefficients: number[] = [];
-        let predictFn: (features: number[]) => number;
-
-        if (degree > 5) {
-          // Stable Ridge solver with tiny penalty for high degrees (6-20) to prevent ill-conditioned matrix errors
-          const ridgeAns = calculateRidgeRegression(X, Y, 1e-6);
-          intercept = ridgeAns.intercept;
-          coefficients = ridgeAns.coefficients;
-          predictFn = (features: number[]) => {
-            const polyX = createPolynomialFeatures(features, degree, includeInteractions);
-            return ridgeAns.predict(polyX);
-          };
-        } else {
-          try {
-            const reg = new MultivariateLinearRegression(X, Y.map(yVal => [yVal]), { intercept: true, statistics: true });
-            const weights = reg.weights as number[][];
-            intercept = weights[weights.length - 1][0];
-            coefficients = weights.slice(0, weights.length - 1).map((w: number[]) => w[0]);
-            predictFn = (features: number[]) => {
-              const polyX = createPolynomialFeatures(features, degree, includeInteractions);
-              return reg.predict(polyX)[0];
-            };
-          } catch (e) {
-            const ridgeAns = calculateRidgeRegression(X, Y, 1e-6);
-            intercept = ridgeAns.intercept;
-            coefficients = ridgeAns.coefficients;
-            predictFn = (features: number[]) => {
-              const polyX = createPolynomialFeatures(features, degree, includeInteractions);
-              return ridgeAns.predict(polyX);
-            };
-          }
-        }
-
-        const equation = formatPolynomialEquation(intercept, coefficients, featureNames, yAxisCol || 'y');
-        const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, featureNames);
-
-        const predicted = validatedData.map(p => predictFn(p.features));
-        const actuals = Y;
-        const metrics = calculateRegressionMetrics(actuals, predicted, featureNames.length);
-
-        // Generate Code Snippets
-        const pyTerms = coefficients.map((c, i) => {
-          const rawName = featureNames[i] || `x${i+1}`;
-          let formattedName = rawName.replace(/\^(\d+)/g, '**$1').replace('·', '*');
-          return `${c.toFixed(6)} * (${formattedName})`;
-        }).join(' +\n        ');
-        const pythonCode = `# Multivariate Polynomial Regression (Degree ${degree}, Interactions: ${includeInteractions ? 'Yes' : 'No'})\n# ${yAxisCol} = f(${xAxisCols.join(', ')})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
-
-        const jsTerms = coefficients.map((c, i) => {
-          const name = featureNames[i] || `x${i+1}`;
-          if (name.includes('·')) {
-            const [f1, f2] = name.split('·').map(s => s.trim());
-            return `${c.toFixed(6)} * (${f1} * ${f2})`;
-          } else if (name.includes('^')) {
-            const [base, pow] = name.split('^').map(s => s.trim());
-            return `${c.toFixed(6)} * Math.pow(${base}, ${pow})`;
-          }
-          return `${c.toFixed(6)} * ${name}`;
-        }).join(' +\n    ');
-        const jsCode = `// Multivariate Polynomial Regression (Degree ${degree})\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
-
-        setResult({
-          type: 'Polynomial',
-          degree,
-          includeInteractions,
-          isMultivariate,
-          equation,
-          pythonCode,
-          jsCode,
-          intercept,
-          coefficients,
-          coefficientDetails: coeffAnalysis.details,
-          metrics,
-          featureNames: xAxisCols,
-          targetName: yAxisCol || 'y',
-          predict: predictFn
-        });
-        addLog(`Multivariate Polynomial regression (${xAxisCols.length} features, deg ${degree}, terms: ${featureNames.length}) calculated: ${equation} | R²: ${metrics.r2.toFixed(4)} | MSE: ${metrics.mse.toFixed(4)}`);
-      } else if (selectedType === 'ridge') {
-        // Ridge Regression (L2 Regularization) with degree expansion
-        const featureNames = degree > 1 
-          ? getPolynomialFeatureNames(xAxisCols, degree, includeInteractions)
-          : xAxisCols;
-
-        const X = validatedData.map(p => 
-          degree > 1 ? createPolynomialFeatures(p.features, degree, includeInteractions) : p.features
-        );
-        const y = validatedData.map(p => p.y);
-
-        const ridgeAns = calculateRidgeRegression(X, y, alpha);
-        const intercept = ridgeAns.intercept;
-        const coefficients = ridgeAns.coefficients;
-
-        const equation = formatPolynomialEquation(intercept, coefficients, featureNames, yAxisCol || 'y');
-        const coeffAnalysis = extractCoefficientDetails(intercept, coefficients, featureNames);
-
-        const predictFn = (features: number[]) => {
-          const xFeats = degree > 1 ? createPolynomialFeatures(features, degree, includeInteractions) : features;
-          return ridgeAns.predict(xFeats);
-        };
-
-        const predicted = validatedData.map(p => predictFn(p.features));
-        const actuals = y;
-        const metrics = calculateRegressionMetrics(actuals, predicted, featureNames.length);
-
-        const pyTerms = coefficients.map((c, i) => {
-          const rawName = featureNames[i] || `x${i+1}`;
-          let formattedName = rawName.replace(/\^(\d+)/g, '**$1').replace('·', '*');
-          return `${c.toFixed(6)} * (${formattedName})`;
-        }).join(' +\n        ');
-        const pythonCode = `# Ridge Regression (Alpha: ${alpha}, Degree: ${degree})\nfrom sklearn.linear_model import Ridge\n# model = Ridge(alpha=${alpha})\ndef predict_${yAxisCol || 'y'}(${xAxisCols.join(', ')}):\n    return (${intercept.toFixed(6)} +\n        ${pyTerms})`;
-
-        const jsTerms = coefficients.map((c, i) => {
-          const name = featureNames[i] || `x${i+1}`;
-          return `${c.toFixed(6)} * ${name}`;
-        }).join(' +\n    ');
-        const jsCode = `// Ridge Regression Model (Alpha=${alpha}, Deg=${degree})\nfunction predict${yAxisCol || 'Y'}(${xAxisCols.join(', ')}) {\n  return ${intercept.toFixed(6)} +\n    ${jsTerms};\n}`;
-
-        setResult({
-          type: 'Ridge',
-          degree: degree > 1 ? degree : 1,
-          alpha,
-          l2Penalty: ridgeAns.l2Penalty,
-          includeInteractions,
-          isMultivariate,
-          equation,
-          pythonCode,
-          jsCode,
-          intercept,
-          coefficients,
-          coefficientDetails: coeffAnalysis.details,
-          metrics,
-          featureNames: xAxisCols,
-          targetName: yAxisCol || 'y',
-          predict: predictFn
-        });
-        addLog(`Ridge Regression (Alpha=${alpha}, Deg ${degree}) calculated: ${equation} | R²: ${metrics.r2.toFixed(4)} | L2 Penalty: ${ridgeAns.l2Penalty.toFixed(4)}`);
       } else {
-        throw new Error('Invalid model type selected.');
+        // Supervised Regression with Train / Test Split Model Evaluation
+        const shouldUseSplit = enableTrainTestSplit && validatedData.length >= 4;
+
+        if (shouldUseSplit) {
+          // 1. Split into Training (e.g. 70%) and Testing (e.g. 30%)
+          const split = trainTestSplit(validatedData, trainSplitRatio / 100, true, splitSeed);
+          const trainData = split.train;
+          const testData = split.test;
+          setSplitIndices({ train: split.trainIndices, test: split.testIndices });
+
+          // 2. Fit model ONLY on Training Set (داخل العينة)
+          const fitted = fitModelCore(trainData);
+
+          // 3. Compute In-Sample Metrics (Training Performance)
+          const actualsTrain = trainData.map(p => p.y);
+          const predsTrain = trainData.map(p => fitted.predictFn(p.features));
+          const trainMetrics = calculateRegressionMetrics(actualsTrain, predsTrain, fitted.termsCount);
+
+          // 4. Compute Out-of-Sample Metrics (Testing Performance on Unseen Data)
+          const actualsTest = testData.map(p => p.y);
+          const predsTest = testData.map(p => fitted.predictFn(p.features));
+          const testMetrics = calculateRegressionMetrics(actualsTest, predsTest, fitted.termsCount);
+
+          // 5. Generalization Gap & Overfitting Analysis
+          const generalizationGap = trainMetrics.r2 - testMetrics.r2;
+          const rmseInflationRatio = trainMetrics.rmse > 0 ? testMetrics.rmse / trainMetrics.rmse : 1;
+
+          let verdict: ModelSplitInfo['verdict'] = 'good';
+          let verdictLabelAr = 'تعميم ملائم (Good Generalization)';
+          let verdictLabelEn = 'Good Generalization';
+
+          if (trainMetrics.r2 < 0.40 && testMetrics.r2 < 0.40) {
+            verdict = 'underfitting';
+            verdictLabelAr = 'ضعف ملاءمة (Underfitting)';
+            verdictLabelEn = 'Underfitting';
+          } else if (generalizationGap > 0.12 || (trainMetrics.r2 > 0.85 && testMetrics.r2 < 0.65) || rmseInflationRatio > 1.35) {
+            verdict = 'overfitting';
+            verdictLabelAr = 'خطر التوافق المفرط (Overfitting Risk)';
+            verdictLabelEn = 'Overfitting Risk';
+          } else if (generalizationGap <= 0.06 && testMetrics.r2 >= 0.70) {
+            verdict = 'excellent';
+            verdictLabelAr = 'تعميم ممتاز (Excellent Generalization)';
+            verdictLabelEn = 'Excellent Generalization';
+          }
+
+          setIsRetrainedOnFullData(false);
+
+          // Execute Cross-Validation if enabled (for smaller datasets or thorough multi-fold R² evaluation)
+          let computedCvResult: CrossValidationResult | null = null;
+          if (enableCrossValidation && validatedData.length >= cvFolds) {
+            try {
+              computedCvResult = runKFoldCrossValidation(
+                validatedData,
+                selectedType,
+                degree,
+                alpha,
+                includeInteractions,
+                cvFolds,
+                splitSeed
+              );
+              setCvResult(computedCvResult);
+              addLog(`[المصادقة التبادلية ${cvFolds}-Fold CV] درجة التحقق التبادلي: R² = ${computedCvResult.meanTestR2.toFixed(4)} (±${computedCvResult.stdTestR2.toFixed(4)}) | إجمالي تنبؤات المخرجات R²_OOF = ${computedCvResult.overallOofR2.toFixed(4)}`);
+            } catch (cvErr: any) {
+              console.warn('Cross-validation calculation error:', cvErr);
+            }
+          } else {
+            setCvResult(null);
+          }
+
+          setResult({
+            ...fitted,
+            metrics: testMetrics, // Primary metrics represent true out-of-sample capability
+            targetName: yAxisCol || 'y',
+            predict: fitted.predictFn,
+            cvInfo: computedCvResult || undefined,
+            isCvPredicting: enableCrossValidation && useCvPredictions && !!computedCvResult,
+            splitInfo: {
+              enabled: true,
+              trainRatio: trainSplitRatio,
+              testRatio: 100 - trainSplitRatio,
+              trainCount: trainData.length,
+              testCount: testData.length,
+              trainMetrics,
+              testMetrics,
+              generalizationGap,
+              rmseInflationRatio,
+              verdict,
+              verdictLabelAr,
+              verdictLabelEn,
+              isRetrainedOnFullData: false
+            }
+          });
+
+          addLog(`[تقسيم البيانات ${trainSplitRatio}/${100 - trainSplitRatio}] تم تدريب النموذج على ${trainData.length} نقطة (داخل العينة). R² للتدريب = ${trainMetrics.r2.toFixed(4)} | تم تقييم النموذج على ${testData.length} نقطة (خارج العينة). R² للاختبار = ${testMetrics.r2.toFixed(4)} | التشخيص: ${verdictLabelAr}`);
+          
+          toast.success(
+            language === 'ar' ? 'اكتمل تدريب وتقييم النموذج بنجاح!' : 'Model Training & Evaluation Completed!',
+            language === 'ar'
+              ? `تم تدريب النموذج بنجاح. R² للاختبار = ${testMetrics.r2.toFixed(4)} (${verdictLabelAr})`
+              : `Model successfully trained. Test R² = ${testMetrics.r2.toFixed(4)} (${verdictLabelEn})`
+          );
+        } else {
+          // Fit on all validated data directly
+          const fitted = fitModelCore(validatedData);
+          const actuals = validatedData.map(p => p.y);
+          const preds = validatedData.map(p => fitted.predictFn(p.features));
+          const metrics = calculateRegressionMetrics(actuals, preds, fitted.termsCount);
+
+          setSplitIndices(null);
+          setIsRetrainedOnFullData(true);
+
+          // Execute Cross-Validation if enabled (for smaller datasets or multi-fold R² evaluation)
+          let computedCvResult: CrossValidationResult | null = null;
+          if (enableCrossValidation && validatedData.length >= cvFolds) {
+            try {
+              computedCvResult = runKFoldCrossValidation(
+                validatedData,
+                selectedType,
+                degree,
+                alpha,
+                includeInteractions,
+                cvFolds,
+                splitSeed
+              );
+              setCvResult(computedCvResult);
+              addLog(`[المصادقة التبادلية ${cvFolds}-Fold CV] درجة التحقق التبادلي: R² = ${computedCvResult.meanTestR2.toFixed(4)} (±${computedCvResult.stdTestR2.toFixed(4)}) | إجمالي تنبؤات المخرجات R²_OOF = ${computedCvResult.overallOofR2.toFixed(4)}`);
+            } catch (cvErr: any) {
+              console.warn('Cross-validation calculation error:', cvErr);
+            }
+          } else {
+            setCvResult(null);
+          }
+
+          setResult({
+            ...fitted,
+            metrics,
+            targetName: yAxisCol || 'y',
+            predict: fitted.predictFn,
+            cvInfo: computedCvResult || undefined,
+            isCvPredicting: enableCrossValidation && useCvPredictions && !!computedCvResult,
+            splitInfo: undefined
+          });
+
+          addLog(`${fitted.type} regression calculated on full dataset (${validatedData.length} samples): ${fitted.equation} | R²: ${metrics.r2.toFixed(4)}`);
+
+          toast.success(
+            language === 'ar' ? 'اكتمل تدريب النموذج بنجاح!' : 'Model Training Completed!',
+            language === 'ar'
+              ? `تم تدريب نموذج ${fitted.type} على ${validatedData.length} عينة بدقة R² = ${metrics.r2.toFixed(4)}`
+              : `${fitted.type} model trained on ${validatedData.length} samples with R² = ${metrics.r2.toFixed(4)}`
+          );
+        }
       }
     } catch (error: any) {
       const errorMsg = `Modeling error: ${error.message}`;
       setStatusMessage(errorMsg);
       addLog(errorMsg);
       setResult(null);
+      toast.error(
+        language === 'ar' ? 'فشل تدريب النموذج' : 'Model Training Failed',
+        error.message || (language === 'ar' ? 'حدث خطأ أثناء حساب معاملات النموذج.' : 'An error occurred during model computation.')
+      );
     }
   };
 
@@ -1319,181 +1703,102 @@ print(f"Example prediction: {prediction[0]:.6f}")
     });
   };
 
-  const downloadModelReport = () => {
-    if (!result) return;
-    
-    const reportWindow = window.open('', '_blank');
-    if (!reportWindow) {
+  const handleExportModelPdf = async () => {
+    if (!result) {
       toast({
-        title: language === 'ar' ? 'فشل فتح نافذة التقرير' : 'Failed to Open Report Window',
-        description: language === 'ar' ? 'يرجى تفعيل النوافذ المنبثقة لتحميل التقرير.' : 'Please allow popups to download the report.',
+        title: language === 'ar' ? 'لا يوجد نموذج نشط' : 'No Active Model',
+        description: language === 'ar' ? 'يرجى تدريب النموذج أولاً قبل التصدير.' : 'Please train the model first before exporting.',
         variant: 'error'
       });
       return;
     }
-    
-    const coeffRows = result.coefficientDetails.map(det => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">${det.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${det.power}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: bold;">${det.coefficient.toFixed(6)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${det.importancePercent.toFixed(1)}%</td>
-      </tr>
-    `).join('');
 
-    const metricsTable = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-        <tr style="background: #f8fafc;">
-          <th style="padding: 10px; border: 1px solid #e2e8f0; text-align: left;">Metric</th>
-          <th style="padding: 10px; border: 1px solid #e2e8f0; text-align: right;">Value</th>
-        </tr>
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">R-squared (R²)</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: bold;">${result.metrics.r2.toFixed(5)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">Adjusted R-squared</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: bold;">${result.metrics.adjustedR2.toFixed(5)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">Mean Squared Error (MSE)</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-family: monospace;">${result.metrics.mse.toFixed(5)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">Root Mean Squared Error (RMSE)</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: bold;">${result.metrics.rmse.toFixed(5)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">Mean Absolute Error (MAE)</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-family: monospace;">${result.metrics.mae.toFixed(5)}</td>
-        </tr>
-      </table>
-    `;
+    setIsExportingModelPdf(true);
+    toast({
+      title: language === 'ar' ? 'جاري تجهيز تقرير النموذج...' : 'Generating Model PDF Report...',
+      description: language === 'ar' ? 'يتم تحويل المقاييس والإعدادات النهائية إلى وثيقة PDF.' : 'Compiling final hyperparameters and metrics into PDF.',
+      variant: 'info'
+    });
 
-    reportWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="${language === 'ar' ? 'rtl' : 'ltr'}">
-      <head>
-        <title>Regression Model Report - ${result.type}</title>
-        <style>
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1e293b;
-            line-height: 1.6;
-            padding: 40px;
-            max-width: 800px;
-            margin: 0 auto;
-          }
-          .header {
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .title {
-            font-size: 28px;
-            color: #1e3a8a;
-            margin: 0 0 10px 0;
-          }
-          .meta {
-            font-size: 13px;
-            color: #64748b;
-          }
-          .section-title {
-            font-size: 18px;
-            color: #0f172a;
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 8px;
-            margin-top: 30px;
-            margin-bottom: 15px;
-          }
-          .formula-box {
-            background-color: #f1f5f9;
-            border-left: 4px solid #10b981;
-            padding: 15px;
-            font-family: monospace;
-            font-size: 14px;
-            border-radius: 4px;
-            word-break: break-all;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-          th, td {
-            padding: 10px;
-            border-bottom: 1px solid #e2e8f0;
-            text-align: left;
-          }
-          th {
-            background-color: #f8fafc;
-            font-weight: bold;
-          }
-          .footer {
-            margin-top: 50px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 15px;
-            font-size: 11px;
-            color: #94a3b8;
-            text-align: center;
-          }
-          @media print {
-            body { padding: 20px; }
-            button { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div style="text-align: right; margin-bottom: 20px;">
-          <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            ${language === 'ar' ? 'طباعة التقرير / حفظ كـ PDF' : 'Print / Save as PDF'}
-          </button>
-        </div>
+    try {
+      await exportSelectedModelToPdf({
+        modelType: result.type,
+        modelLabel: result.type === 'linear' 
+          ? (language === 'ar' ? 'انحدار خطي (Linear Regression)' : 'Linear Regression')
+          : result.type === 'polynomial'
+          ? (language === 'ar' ? `كثير الحدود (Polynomial Degree ${result.degree})` : `Polynomial Regression (Degree ${result.degree})`)
+          : (language === 'ar' ? `انحدار الحافة (Ridge α=${result.alpha})` : `Ridge Regularization (α=${result.alpha})`),
+        targetName: yAxisCol || 'Target (Y)',
+        featureNames: xAxisCols,
+        totalSamples: data.length,
+        trainSamples: result.splitInfo?.trainCount,
+        testSamples: result.splitInfo?.testCount,
+        hyperparameters: {
+          degree: result.degree || degree,
+          alpha: result.alpha || alpha,
+          includeInteractions: includeInteractions,
+          trainSplitRatio: enableTrainTestSplit ? trainSplitRatio : undefined,
+          splitSeed: enableTrainTestSplit ? splitSeed : undefined,
+          kFolds: enableCrossValidation ? cvFolds : undefined
+        },
+        metrics: {
+          r2: result.metrics.r2,
+          adjustedR2: result.metrics.adjustedR2,
+          rmse: result.metrics.rmse,
+          mse: result.metrics.mse,
+          mae: result.metrics.mae,
+          aic: result.metrics.aic,
+          bic: result.metrics.bic
+        },
+        splitMetrics: result.splitInfo ? {
+          enabled: result.splitInfo.enabled,
+          trainR2: result.splitInfo.trainMetrics.r2,
+          testR2: result.splitInfo.testMetrics.r2,
+          trainRmse: result.splitInfo.trainMetrics.rmse,
+          testRmse: result.splitInfo.testMetrics.rmse,
+          generalizationGap: result.splitInfo.generalizationGap,
+          errorInflation: result.splitInfo.rmseInflationRatio,
+          diagnosis: language === 'ar' ? result.splitInfo.verdictLabelAr : result.splitInfo.verdictLabelEn
+        } : undefined,
+        cvMetrics: result.cvInfo ? {
+          enabled: true,
+          meanTestR2: result.cvInfo.meanTestR2,
+          stdTestR2: result.cvInfo.stdTestR2,
+          meanTestRmse: result.cvInfo.meanTestRmse,
+          overallOofR2: result.cvInfo.overallOofR2,
+          kFolds: result.cvInfo.kFolds,
+          isCvPredicting: useCvPredictions
+        } : undefined,
+        equation: result.equation,
+        coefficients: result.coefficientDetails || [],
+        featureImportance: featureImportanceItems.map(item => ({
+          name: item.name,
+          percentage: item.percentage,
+          beta: item.beta || 0,
+          direction: item.direction || 'positive'
+        })),
+        language: language
+      });
 
-        <div class="header">
-          <h1 class="title">${language === 'ar' ? 'تقرير النمذجة الإحصائية والتحليل' : 'Statistical Modeling & Analysis Report'}</h1>
-          <div class="meta">
-            <div><strong>${language === 'ar' ? 'نوع النموذج:' : 'Model Type:'}</strong> ${result.type} Regression</div>
-            <div><strong>${language === 'ar' ? 'تاريخ التقرير:' : 'Report Date:'}</strong> ${new Date().toLocaleString()}</div>
-            <div><strong>${language === 'ar' ? 'المتغير المستقل (X):' : 'Independent Variable (X):'}</strong> ${xAxisCols.join(', ')}</div>
-            <div><strong>${language === 'ar' ? 'المتغير التابع (Y):' : 'Dependent Variable (Y):'}</strong> ${yAxisCol}</div>
-            <div><strong>${language === 'ar' ? 'حجم البيانات:' : 'Dataset Size:'}</strong> ${data.length} ${language === 'ar' ? 'عينة' : 'samples'}</div>
-          </div>
-        </div>
+      toast({
+        title: language === 'ar' ? 'تم تنزيل تقرير النموذج بنجاح' : 'Model PDF Downloaded',
+        description: language === 'ar' ? 'تم حفظ التقرير الشامل للإعدادات والمعاملات النهائية بصيغة PDF.' : 'Full model specifications report saved as PDF successfully.',
+        variant: 'success'
+      });
+    } catch (err) {
+      console.error('Model PDF export error:', err);
+      toast({
+        title: language === 'ar' ? 'تعذر تصدير PDF' : 'PDF Export Failed',
+        description: language === 'ar' ? 'حدث خطأ أثناء إنشاء ملف PDF.' : 'An error occurred during PDF generation.',
+        variant: 'error'
+      });
+    } finally {
+      setIsExportingModelPdf(false);
+    }
+  };
 
-        <div class="section-title">${language === 'ar' ? 'التابع الإحصائي للنموذج (Model Formula)' : 'Model Formula'}</div>
-        <div class="formula-box">${result.equation}</div>
-
-        <div class="section-title">${language === 'ar' ? 'مقاييس جودة الأداء والتقييم' : 'Performance & Diagnostic Metrics'}</div>
-        ${metricsTable}
-
-        <div class="section-title">${language === 'ar' ? 'معاملات النموذج والأهمية النسبية' : 'Model Coefficients & Feature Importance'}</div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: #f8fafc;">
-              <th style="padding: 10px; text-align: left;">${language === 'ar' ? 'المتغير / الأس' : 'Term / Feature'}</th>
-              <th style="padding: 10px; text-align: center;">${language === 'ar' ? 'الدرجة' : 'Degree'}</th>
-              <th style="padding: 10px; text-align: right;">${language === 'ar' ? 'المعامل' : 'Coefficient'}</th>
-              <th style="padding: 10px; text-align: center;">${language === 'ar' ? 'الأهمية النسبية' : 'Relative Importance'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">Intercept (β₀)</td>
-              <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">0</td>
-              <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: bold;">${result.intercept.toFixed(6)}</td>
-              <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">-</td>
-            </tr>
-            ${coeffRows}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          Generated by Google AI Studio Modeling Suite. Advanced Diagnostic Report.
-        </div>
-      </body>
-      </html>
-    `);
-    reportWindow.document.close();
+  const downloadModelReport = () => {
+    handleExportModelPdf();
   };
 
   const regressionModelsComparison = useMemo(() => {
@@ -1567,22 +1872,43 @@ print(f"Example prediction: {prediction[0]:.6f}")
   // Detailed comparison data for table and residual plots
   const comparisonRows = useMemo(() => {
     if (!result || (selectedType !== 'linear' && selectedType !== 'polynomial' && selectedType !== 'ridge')) return [];
-    return data.map(d => {
-      const pred = result.predict(d.features);
-      const residual = d.y - pred;
+    
+    // Index map for Cross-Validation Out-Of-Fold predictions
+    const oofMap = new Map<number, { predicted: number; fold: number; error: number }>();
+    if (result.cvInfo?.outOfFoldPredictions) {
+      result.cvInfo.outOfFoldPredictions.forEach(p => {
+        oofMap.set(p.index, { predicted: p.predicted, fold: p.fold, error: p.error });
+      });
+    }
+
+    const isUsingCvPreds = Boolean(result.cvInfo && (useCvPredictions || result.isCvPredicting));
+
+    return data.map((d, idx) => {
+      const standardPred = result.predict(d.features);
+      const oofEntry = oofMap.get(d.index);
+      const effectivePred = (isUsingCvPreds && oofEntry) ? oofEntry.predicted : standardPred;
+      const residual = d.y - effectivePred;
       const absErrorPercent = d.y !== 0 ? Math.abs((residual / d.y) * 100) : 0;
+      const isTest = splitIndices ? splitIndices.test.includes(idx) : false;
+      const isTrain = splitIndices ? splitIndices.train.includes(idx) : true;
+
       return {
         index: d.index,
         x: d.x,
         z: d.z,
         features: d.features,
         actual: d.y,
-        predicted: pred,
+        predicted: effectivePred,
+        standardPredicted: standardPred,
+        isCvPrediction: Boolean(isUsingCvPreds && oofEntry),
+        cvFold: oofEntry?.fold,
         residual,
-        absErrorPercent
+        absErrorPercent,
+        isTest,
+        isTrain
       };
     });
-  }, [data, result, selectedType]);
+  }, [data, result, selectedType, splitIndices, useCvPredictions]);
 
   // Cross-Validation & Learning Curve Calculator
   const learningCurvePoints = useMemo(() => {
@@ -1670,6 +1996,75 @@ print(f"Example prediction: {prediction[0]:.6f}")
     
     return resultsList;
   }, [result, data, selectedType, degree, includeInteractions, alpha]);
+
+  // Standardized Feature Importance Items for Recharts Component & PDF Export
+  const featureImportanceItems = useMemo<FeatureImportanceItem[]>(() => {
+    if (!result || selectedType === 'kmeans' || data.length === 0) return [];
+    
+    const targetVals = data.map(d => d.y);
+    const sdY = getStdDev(targetVals);
+
+    const coeffDetails = result.coefficientDetails || [];
+    if (coeffDetails.length > 0) {
+      const computed = coeffDetails.map((det, idx) => {
+        let sdX = 1.0;
+        if (idx < result.featureNames.length) {
+          const featVals = data.map(d => d.features[idx] ?? d.x);
+          sdX = getStdDev(featVals);
+        }
+        const beta = sdY > 0 && sdX > 0 ? (det.coefficient * sdX) / sdY : det.coefficient;
+        const absBeta = Math.abs(beta);
+        return {
+          name: det.name,
+          beta: beta,
+          absBeta: absBeta,
+          rawCoefficient: det.coefficient,
+          direction: (det.coefficient >= 0 ? 'positive' : 'negative') as 'positive' | 'negative',
+          power: det.power,
+          fallbackPercent: det.importancePercent
+        };
+      });
+
+      const totalAbsBeta = computed.reduce((sum, item) => sum + item.absBeta, 0);
+
+      return computed.map(item => ({
+        name: item.name,
+        percentage: totalAbsBeta > 0 
+          ? (item.absBeta / totalAbsBeta) * 100 
+          : (item.fallbackPercent || (100 / computed.length)),
+        rawCoefficient: item.rawCoefficient,
+        beta: item.beta,
+        direction: item.direction,
+        power: item.power
+      })).sort((a, b) => b.percentage - a.percentage);
+    }
+
+    if (result.featureNames && result.coefficients) {
+      const computed = result.featureNames.map((name, idx) => {
+        const coef = result.coefficients[idx] ?? 0;
+        const featVals = data.map(d => d.features[idx] ?? d.x);
+        const sdX = getStdDev(featVals);
+        const beta = sdY > 0 && sdX > 0 ? (coef * sdX) / sdY : coef;
+        return {
+          name,
+          beta,
+          absBeta: Math.abs(beta),
+          rawCoefficient: coef,
+          direction: (coef >= 0 ? 'positive' : 'negative') as 'positive' | 'negative'
+        };
+      });
+      const totalAbsBeta = computed.reduce((sum, item) => sum + item.absBeta, 0);
+      return computed.map(item => ({
+        name: item.name,
+        percentage: totalAbsBeta > 0 ? (item.absBeta / totalAbsBeta) * 100 : 100 / computed.length,
+        rawCoefficient: item.rawCoefficient,
+        beta: item.beta,
+        direction: item.direction
+      })).sort((a, b) => b.percentage - a.percentage);
+    }
+
+    return [];
+  }, [result, data, selectedType]);
 
   // Dynamic plot builder
   const plotData = useMemo(() => {
@@ -2068,8 +2463,34 @@ print(f"Example prediction: {prediction[0]:.6f}")
         }
       }
 
+      let dataTraces: any[] = [];
+      if (result.splitInfo?.enabled && splitIndices) {
+        const trainPoints = data.filter((_, idx) => splitIndices.train.includes(idx));
+        const testPoints = data.filter((_, idx) => splitIndices.test.includes(idx));
+
+        dataTraces.push({
+          x: trainPoints.map(d => d.x),
+          y: trainPoints.map(d => d.y),
+          mode: 'markers' as const,
+          type: 'scatter' as const,
+          name: language === 'ar' ? `بيانات التدريب داخل العينة (${trainPoints.length})` : `Train Set: In-Sample (${trainPoints.length})`,
+          marker: { size: 8, color: '#2563eb', symbol: 'circle', opacity: 0.85 }
+        });
+
+        dataTraces.push({
+          x: testPoints.map(d => d.x),
+          y: testPoints.map(d => d.y),
+          mode: 'markers' as const,
+          type: 'scatter' as const,
+          name: language === 'ar' ? `بيانات الاختبار خارج العينة (${testPoints.length})` : `Test Set: Out-of-Sample (${testPoints.length})`,
+          marker: { size: 9, color: '#10b981', symbol: 'diamond', opacity: 0.95, line: { color: '#047857', width: 1.5 } }
+        });
+      } else {
+        dataTraces.push(baseData);
+      }
+
       const traces: any[] = [
-        baseData,
+        ...dataTraces,
         {
           x: curveX,
           y: curveY,
@@ -2489,9 +2910,22 @@ print(f"Example prediction: {prediction[0]:.6f}")
 
                 {/* Hyperparameters Configurations */}
                 <div className="lg:col-span-8 flex flex-col justify-center">
-                  <label className="text-xs font-bold text-[var(--cds-text-03)] uppercase tracking-wider block mb-2">
-                    {language === 'ar' ? '2. المعالملات والضبط الفائق (Hyperparameters):' : '2. Hyperparameter Settings:'}
-                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <label className="text-xs font-bold text-[var(--cds-text-03)] uppercase tracking-wider block">
+                      {language === 'ar' ? '2. المعاملات والضبط الفائق (Hyperparameters):' : '2. Hyperparameter Settings:'}
+                    </label>
+                    {selectedType !== 'kmeans' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsGridSearchOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        title={language === 'ar' ? 'البحث الشبكي الآلي لتحديد أفضل درجة ومعامل جزاء بدقة عبر التحقق المتقاطع' : 'Grid Search Hyperparameter Tuning via Cross-Validation'}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                        <span>{language === 'ar' ? 'البحث الشبكي (Grid Search CV)' : 'Grid Search CV'}</span>
+                      </button>
+                    )}
+                  </div>
                   
                   {/* Polynomial or Ridge Configuration */}
                   {(selectedType === 'polynomial' || selectedType === 'ridge') && (
@@ -2615,6 +3049,260 @@ print(f"Example prediction: {prediction[0]:.6f}")
                 </div>
               </div>
 
+              {/* Train / Test Data Split & Out-of-Sample Evaluation Settings */}
+              {selectedType !== 'kmeans' && (
+                <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[var(--cds-text-01)]">
+                            {language === 'ar' ? 'تقسيم البيانات وتقييم النموذج (Train / Test Split):' : 'Data Splitting & Model Evaluation:'}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            {enableTrainTestSplit ? `${trainSplitRatio}% ${language === 'ar' ? 'تدريب' : 'Train'} / ${100 - trainSplitRatio}% ${language === 'ar' ? 'اختبار' : 'Test'}` : (language === 'ar' ? 'معطّل (100% تدريب)' : 'Disabled')}
+                          </span>
+                          <InfoTooltip
+                            title={language === 'ar' ? 'تقسيم البيانات (Train/Test Split)' : 'Data Splitting'}
+                            content={
+                              language === 'ar'
+                                ? 'فصل البيانات إلى عينة تدريب داخلية لضبط معاملات النموذج وعينة اختبار مستقلة لتقييم دقة التنبؤ خارج العينة واكتشاف فرط التخصيص (Overfitting).'
+                                : 'Partitions dataset into training samples to fit coefficients and an unseen testing subset to benchmark real-world generalization and overfitting.'
+                            }
+                            recommended={language === 'ar' ? '70% تدريب / 30% اختبار' : '70% Train / 30% Test'}
+                            language={language}
+                          />
+                        </div>
+                        <p className="text-[11px] text-[var(--cds-text-03)]">
+                          {language === 'ar'
+                            ? 'فصل البيانات إلى عينة تدريب (داخل العينة لبناء النموذج) وعينة اختبار (خارج العينة لتقييم قوة التنبؤ بالواقع ورصد التوافق المفرط).'
+                            : 'Split data into training (in-sample) and testing (out-of-sample) to evaluate real-world predictive power.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={enableTrainTestSplit} 
+                          onChange={(e) => setEnableTrainTestSplit(e.target.checked)} 
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <span className="ms-2 text-xs font-semibold text-[var(--cds-text-02)]">
+                          {enableTrainTestSplit ? (language === 'ar' ? 'مُفعّل' : 'Active') : (language === 'ar' ? 'معطّل' : 'Disabled')}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {enableTrainTestSplit && (
+                    <div className="space-y-3 pt-2 border-t border-[var(--cds-border-subtle)]/60">
+                      {/* Ratio Slider and Presets */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        <div className="md:col-span-7 space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400">
+                              <span>{language === 'ar' ? `بيانات التدريب (داخل العينة): ${trainSplitRatio}%` : `Train Set (In-Sample): ${trainSplitRatio}%`}</span>
+                              <InfoTooltip
+                                title={language === 'ar' ? 'نسبة عينة التدريب' : 'Training Ratio'}
+                                content={
+                                  language === 'ar'
+                                    ? 'النسبة المئوية المخصصة لتدريب النموذج وضبط الأوزان. نسبة 70% أو 80% تعتبر مثالية لمنح النموذج دقة مناسبة مع الاحتفاظ بعينة اختبار كافية للتأكد من عدم وجود فرط تخصيص.'
+                                    : 'Percentage of data used to train the model. 70% or 80% offers optimal learning capacity while leaving sufficient holdout test data.'
+                                }
+                                recommended="70%"
+                                language={language}
+                              />
+                            </div>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              {language === 'ar' ? `بيانات الاختبار (خارج العينة): ${100 - trainSplitRatio}%` : `Test Set (Out-of-Sample): ${100 - trainSplitRatio}%`}
+                            </span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min={50} 
+                            max={90} 
+                            step={5} 
+                            value={trainSplitRatio} 
+                            onChange={(e) => setTrainSplitRatio(Number(e.target.value))} 
+                            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                          />
+                        </div>
+
+                        <div className="md:col-span-5 flex flex-wrap items-center justify-end gap-1.5">
+                          {[
+                            { r: 70, label: '70% / 30% (الموصى به)', enLabel: '70/30 (Recommended)' },
+                            { r: 80, label: '80% / 20%', enLabel: '80/20' },
+                            { r: 75, label: '75% / 25%', enLabel: '75/25' },
+                            { r: 60, label: '60% / 40%', enLabel: '60/40' }
+                          ].map(preset => (
+                            <button
+                              key={preset.r}
+                              type="button"
+                              onClick={() => setTrainSplitRatio(preset.r)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${trainSplitRatio === preset.r ? 'bg-indigo-600 text-white shadow-xs' : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)]'}`}
+                            >
+                              {language === 'ar' ? preset.label : preset.enLabel}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Visual Partition Bar */}
+                      <div className="space-y-1">
+                        <div className="w-full h-3 rounded-full overflow-hidden flex bg-gray-200 dark:bg-gray-800 border border-[var(--cds-border-subtle)]">
+                          <div 
+                            style={{ width: `${trainSplitRatio}%` }} 
+                            className="bg-blue-600 h-full flex items-center justify-center text-[9px] text-white font-bold tracking-tight transition-all duration-300"
+                            title={`Train Set: ${splitPreview.trainCount} samples`}
+                          />
+                          <div 
+                            style={{ width: `${100 - trainSplitRatio}%` }} 
+                            className="bg-emerald-500 h-full flex items-center justify-center text-[9px] text-white font-bold tracking-tight transition-all duration-300"
+                            title={`Test Set: ${splitPreview.testCount} samples`}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-[var(--cds-text-03)] font-mono">
+                          <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
+                            {language === 'ar' ? `مجموعة التدريب: ${splitPreview.trainCount} نقطة (${splitPreview.trainPct}%)` : `Training Set: ${splitPreview.trainCount} samples (${splitPreview.trainPct}%)`}
+                          </span>
+                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                            {language === 'ar' ? `مجموعة الاختبار: ${splitPreview.testCount} نقطة (${splitPreview.testPct}%)` : `Testing Set: ${splitPreview.testCount} samples (${splitPreview.testPct}%)`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* K-Fold Cross-Validation Section (المصادقة التبادلية في حال عدم وجود بيانات كافية) */}
+                  <div className="pt-3 border-t border-[var(--cds-border-subtle)]/70 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                          <Network className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[var(--cds-text-01)]">
+                              {language === 'ar' ? 'المصادقة التبادلية (K-Fold Cross-Validation):' : 'K-Fold Cross-Validation:'}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                              {enableCrossValidation ? `${cvFolds} ${language === 'ar' ? 'طيات فرعية (Folds)' : 'Folds'}` : (language === 'ar' ? 'معطّلة' : 'Disabled')}
+                            </span>
+                            <InfoTooltip
+                              title={language === 'ar' ? 'المصادقة التبادلية (Cross-Validation)' : 'K-Fold Cross-Validation'}
+                              content={
+                                language === 'ar'
+                                  ? 'تعتبر المصادقة التبادلية ميزة حاسمة في حال عدم وجود بيانات كافية؛ حيث يتم تجزئة البيانات إلى K مجموعات وتدريب النموذج على K-1 مجموعة واختباره على المجموعة المتبقية بالتناوب حتى يتم اختبار جميع العينات بدون هدر.'
+                                  : 'Crucial when sample size is small or scarce. Partitions data into K folds and iteratively rotates the holdout validation fold so every observation is tested fairly.'
+                              }
+                              recommended="5 Folds"
+                              language={language}
+                            />
+                          </div>
+                          <p className="text-[11px] text-[var(--cds-text-03)]">
+                            {language === 'ar'
+                              ? 'في حال عدم وجود بيانات كافية، يمكن اللجوء إلى المصادقة التبادلية؛ حيث يتم تجزئة البيانات إلى عدة مجموعات فرعية للتدريب والاختبار عدة مرات لتقدير درجة التحقق التبادلي R² وتوليد تنبؤ موثوق بالمخرجات.'
+                              : 'When dataset size is limited, Cross-Validation evaluates the model over K randomized test folds to measure robust R² without wasting valuable samples.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={enableCrossValidation} 
+                            onChange={(e) => setEnableCrossValidation(e.target.checked)} 
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                          <span className="ms-2 text-xs font-semibold text-[var(--cds-text-02)]">
+                            {enableCrossValidation ? (language === 'ar' ? 'مُفعّلة' : 'Active') : (language === 'ar' ? 'معطّلة' : 'Disabled')}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {enableCrossValidation && (
+                      <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[var(--cds-text-01)]">
+                              {language === 'ar' ? 'عدد طيات التحقق التبادلي (K Folds):' : 'Number of CV Folds (K):'}
+                            </span>
+                            <InfoTooltip
+                              title={language === 'ar' ? 'اختيار عدد الطيات (K Folds)' : 'Number of Folds (K)'}
+                              content={
+                                language === 'ar'
+                                  ? '5 طيات هو المعيار الذهبي لتحقيق توازن ممتاز بين التباين والانحياز الحسابي. 10 طيات تناسب مجموعات البيانات الصغيرة لتقليل الانحياز، بينما 3 طيات أسرع للبيانات الضخمة.'
+                                  : '5 folds balances bias and variance. 10 folds reduces bias for smaller datasets, while 3 folds is fast for large sets.'
+                              }
+                              recommended="5 Folds"
+                              language={language}
+                            />
+                            <div className="inline-flex rounded-lg border border-[var(--cds-border-subtle)] p-0.5 bg-[var(--cds-layer-01)]">
+                              {[3, 5, 10].map(folds => (
+                                <button
+                                  key={folds}
+                                  type="button"
+                                  onClick={() => setCvFolds(folds)}
+                                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${cvFolds === folds ? 'bg-teal-600 text-white shadow-xs' : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)]'}`}
+                                >
+                                  {folds} {language === 'ar' ? 'طيات' : 'Folds'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] text-[var(--cds-text-03)] font-mono">
+                            {language === 'ar' 
+                              ? `تجزئة ${data.length} عينة إلى ${cvFolds} مجموعات فرعية (~${Math.max(1, Math.floor(data.length / cvFolds))} عينة اختبار في كل دورة)` 
+                              : `Partitioning ${data.length} points into ${cvFolds} test folds (~${Math.max(1, Math.floor(data.length / cvFolds))} samples per fold)`}
+                          </div>
+                        </div>
+
+                        {/* CV Predictions for Outputs */}
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--cds-border-subtle)]/60 text-xs">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={useCvPredictions}
+                              onChange={(e) => setUseCvPredictions(e.target.checked)}
+                              className="rounded border-[var(--cds-border-subtle)] text-teal-600 focus:ring-teal-500 w-4 h-4 cursor-pointer"
+                            />
+                            <span className="text-[var(--cds-text-01)] font-semibold">
+                              {language === 'ar'
+                                ? 'استخدام نموذج المصادقة التبادلية لإنشاء تنبؤ بالمخرجات (Cross-Validation Out-of-Fold Predictions)'
+                                : 'Use Cross-Validation Out-of-Fold predictions for output table and residual analysis'}
+                            </span>
+                            <InfoTooltip
+                              title={language === 'ar' ? 'تنبؤات خارج العينة (Out-of-Fold)' : 'Out-of-Fold Predictions'}
+                              content={
+                                language === 'ar'
+                                  ? 'توليد القيم المتوقعة Ŷ لكل عينة فقط عبر النماذج الفرعية التي لم تشاهدها في التدريب، مما يحقق تنبؤات واقعية غير متحيزة لجميع نقاط البيانات.'
+                                  : 'Calculates predicted values Ŷ for each sample strictly from the sub-models that did not train on it, providing realistic, unbiased validation.'
+                              }
+                              language={language}
+                            />
+                          </label>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                            {language === 'ar' ? 'تنبؤ غير متحيز لجميع العينات' : 'Unbiased All-Sample Predictions'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Step 3: Action Toolbar - Solid Row with Unified Height Buttons */}
               <div className="p-4 bg-[var(--cds-layer-02)] flex flex-wrap gap-3 items-center justify-between border-t border-[var(--cds-border-subtle)]">
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -2625,6 +3313,68 @@ print(f"Example prediction: {prediction[0]:.6f}")
                     <Zap className="w-4 h-4" />
                     <span>{language === 'ar' ? 'تدريب وحساب النموذج' : 'Compute Model'}</span>
                   </button>
+
+                  {selectedType !== 'kmeans' && (
+                    <button
+                      type="button"
+                      onClick={() => setIsGridSearchOpen(true)}
+                      className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                      title={language === 'ar' ? 'فتح لوحة البحث الشبكي لضبط واختيار النموذج الأمثل عبر التحقق المتقاطع' : 'Open Grid Search CV Studio'}
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                      <span>{language === 'ar' ? 'البحث الشبكي (Grid Search)' : 'Grid Search CV'}</span>
+                    </button>
+                  )}
+
+                  {/* Hidden Input for Importing Config JSON */}
+                  <input
+                    type="file"
+                    ref={configFileInputRef}
+                    accept=".json"
+                    onChange={handleImportConfiguration}
+                    className="hidden"
+                  />
+
+                  {/* Save Configuration Button (حفظ التكوين) */}
+                  <button
+                    type="button"
+                    onClick={handleSaveConfiguration}
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    title={language === 'ar' ? 'حفظ إعدادات تقسيم البيانات والـ Grid Search المختارة كملف JSON محلي' : 'Save current data split and Grid Search config as JSON'}
+                  >
+                    <FileJson className="w-4 h-4 text-emerald-500" />
+                    <span>{language === 'ar' ? 'حفظ التكوين' : 'Save Config'}</span>
+                  </button>
+
+                  {/* Import Configuration Button (استيراد التكوين) */}
+                  <button
+                    type="button"
+                    onClick={() => configFileInputRef.current?.click()}
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] h-10 px-3.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    title={language === 'ar' ? 'استيراد إعدادات النموذج والتقسيم من ملف JSON سابق' : 'Load config from JSON file'}
+                  >
+                    <Upload className="w-4 h-4 text-[var(--cds-text-03)]" />
+                    <span>{language === 'ar' ? 'استيراد التكوين' : 'Load Config'}</span>
+                  </button>
+
+                  {result && selectedType !== 'kmeans' && result.splitInfo?.enabled && (
+                    <button
+                      onClick={retrainOnFullData}
+                      title={language === 'ar' ? 'تدريب النموذج النهائي على كامل البيانات (100%) للاستخدام والتنبؤ مع بقاء تقييم الاختبار كمرجع' : 'Train the final model on 100% of all data for production readiness'}
+                      className={`flex items-center gap-2 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer border ${
+                        result.splitInfo.isRetrainedOnFullData
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 shadow-xs'
+                          : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-95 shadow-md shadow-emerald-500/20'
+                      }`}
+                    >
+                      <CheckCircle2 className={`w-4 h-4 ${result.splitInfo.isRetrainedOnFullData ? 'text-emerald-500' : 'text-white'}`} />
+                      <span>
+                        {result.splitInfo.isRetrainedOnFullData
+                          ? (language === 'ar' ? '✓ تم التدريب النهائي على كامل البيانات (100%)' : '✓ Trained on 100% Full Data')
+                          : (language === 'ar' ? 'إعادة التدريب النهائي على كامل البيانات (100%)' : 'Retrain Final Model on Full Data (100%)')}
+                      </span>
+                    </button>
+                  )}
 
                   {result && selectedType !== 'kmeans' && (
                     <button
@@ -2670,11 +3420,17 @@ print(f"Example prediction: {prediction[0]:.6f}")
 
                 {result && (
                   <button 
-                    onClick={downloadModelReport} 
-                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 active:scale-95 text-white h-10 px-4 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 border border-emerald-600/10 transition-all cursor-pointer"
+                    onClick={handleExportModelPdf}
+                    disabled={isExportingModelPdf}
+                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-60 active:scale-95 text-white h-10 px-4 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 border border-emerald-600/10 transition-all cursor-pointer"
+                    title={language === 'ar' ? 'تصدير النموذج المختار وتنزيل تفاصيل الإعدادات النهائية (Hyperparameters) بصيغة PDF لسهولة التوثيق والمشاركة' : 'Export selected model hyperparameters and metrics as PDF'}
                   >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>{language === 'ar' ? 'تحميل تقرير PDF كامل' : 'Download PDF Report'}</span>
+                    <FileDown className="w-4 h-4" />
+                    <span>
+                      {isExportingModelPdf
+                        ? (language === 'ar' ? 'جاري إنشاء PDF...' : 'Generating PDF...')
+                        : (language === 'ar' ? 'تصدير النموذج المختار (PDF)' : 'Export Selected Model (PDF)')}
+                    </span>
                   </button>
                 )}
               </div>
@@ -2733,6 +3489,340 @@ print(f"Example prediction: {prediction[0]:.6f}")
             <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs rounded-lg flex items-center gap-2">
               <Info className="w-4 h-4 text-red-500 shrink-0" />
               <span>{statusMessage}</span>
+            </div>
+          )}
+
+          {/* Train/Test Split & Out-of-Sample Evaluation Scorecard */}
+          {result && selectedType !== 'kmeans' && result.splitInfo?.enabled && (
+            <div className="bg-[var(--cds-layer-01)] rounded-2xl border border-[var(--cds-border-subtle)] p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+                        {language === 'ar' ? 'تقييم أداء وقوة تنبؤ النموذج (Train / Test Evaluation)' : 'Model Out-of-Sample Evaluation'}
+                      </h3>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                        result.splitInfo.verdict === 'excellent'
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                          : result.splitInfo.verdict === 'good'
+                          ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30'
+                          : result.splitInfo.verdict === 'overfitting'
+                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                          : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                      }`}>
+                        {language === 'ar' ? result.splitInfo.verdictLabelAr : result.splitInfo.verdictLabelEn}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--cds-text-03)]">
+                      {language === 'ar'
+                        ? 'مقارنة دقيقة بين أداء النموذج على بيانات التدريب (داخل العينة 70%) وبيانات الاختبار غير المرئية (خارج العينة 30%).'
+                        : 'Comparison between model performance on in-sample training data and unseen out-of-sample test data.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Retrain Action Button */}
+                <div>
+                  {!result.splitInfo.isRetrainedOnFullData ? (
+                    <button
+                      onClick={retrainOnFullData}
+                      className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{language === 'ar' ? 'إعادة التدريب النهائي على كامل البيانات (100%)' : 'Retrain Final Model on Full Data (100%)'}</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>{language === 'ar' ? '✓ تم تدريب النموذج النهائي على 100% من البيانات' : 'Model Retrained on 100% Full Data'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Metric Comparison Grid: Train vs Test */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Train Set (In-Sample) */}
+                <div className="p-4 bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/20 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                        {language === 'ar' ? 'مجموعة التدريب (داخل العينة)' : 'Train Set (In-Sample)'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {result.splitInfo.trainRatio}% ({result.splitInfo.trainCount} {language === 'ar' ? 'عينة' : 'pts'})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-lg border border-blue-500/10">
+                      <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">R² (Train)</div>
+                      <div className="text-base font-mono font-bold text-blue-600 dark:text-blue-400">
+                        {result.splitInfo.trainMetrics.r2.toFixed(4)}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-lg border border-blue-500/10">
+                      <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">RMSE (Train)</div>
+                      <div className="text-base font-mono font-bold text-blue-700 dark:text-blue-300">
+                        {result.splitInfo.trainMetrics.rmse.toFixed(4)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-[var(--cds-text-03)]">
+                    {language === 'ar' ? 'يقيس مدى ملاءمة وتطابق النموذج مع البيانات التي تم تدريبه عليها مباشرة.' : 'Measures how closely the model fits the samples it was directly trained on.'}
+                  </div>
+                </div>
+
+                {/* Test Set (Out-of-Sample) */}
+                <div className="p-4 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                        {language === 'ar' ? 'مجموعة الاختبار (خارج العينة)' : 'Test Set (Out-of-Sample)'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {result.splitInfo.testRatio}% ({result.splitInfo.testCount} {language === 'ar' ? 'عينة' : 'pts'})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-lg border border-emerald-500/10">
+                      <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">R² (Test)</div>
+                      <div className="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {result.splitInfo.testMetrics.r2.toFixed(4)}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-lg border border-emerald-500/10">
+                      <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">RMSE (Test)</div>
+                      <div className="text-base font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                        {result.splitInfo.testMetrics.rmse.toFixed(4)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-[var(--cds-text-03)]">
+                    {language === 'ar' ? 'يقيس القدرة الحقيقية للنموذج على التنبؤ ببيانات جديدة في العالم الواقعي.' : 'Measures true real-world predictive ability on never-before-seen samples.'}
+                  </div>
+                </div>
+
+                {/* Generalization Diagnosis */}
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl space-y-3 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[var(--cds-text-01)]">
+                        {language === 'ar' ? 'مؤشرات التعميم والخطأ:' : 'Generalization Indicators:'}
+                      </span>
+                      <InfoTooltip
+                        title={language === 'ar' ? 'فجوة التعميم ونسبة التضخم' : 'Generalization Indicators'}
+                        content={
+                          language === 'ar'
+                            ? 'فجوة التعميم تقيس الفارق بين دقة التدريب ودقة الاختبار. إذا كانت فجوة R² أكبر من 0.15 أو تضخم خطأ RMSE أعلى من 1.35x، فإن النموذج يعاني من فرط تخصيص (Overfitting) ولن يتنبأ بدقة في الواقع.'
+                            : 'Evaluates the performance drop from training to testing data. Gaps exceeding 0.15 R² or 1.35x RMSE inflation indicate severe overfitting.'
+                        }
+                        recommended={language === 'ar' ? 'فجوة < 0.10' : 'Gap < 0.10'}
+                        language={language}
+                      />
+                    </div>
+                    <span className="text-[10px] text-[var(--cds-text-03)] font-mono">
+                      Δ R²: {result.splitInfo.generalizationGap >= 0 ? `+${result.splitInfo.generalizationGap.toFixed(4)}` : result.splitInfo.generalizationGap.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[var(--cds-text-02)]">{language === 'ar' ? 'فجوة التعميم (Train - Test R²):' : 'Generalization Gap:'}</span>
+                      <span className={`font-mono font-bold ${result.splitInfo.generalizationGap > 0.12 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {result.splitInfo.generalizationGap.toFixed(4)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[var(--cds-text-02)]">{language === 'ar' ? 'نسبة تضخم الخطأ (Test/Train RMSE):' : 'Error Inflation Ratio:'}</span>
+                      <span className={`font-mono font-bold ${result.splitInfo.rmseInflationRatio > 1.35 ? 'text-rose-600' : 'text-blue-600'}`}>
+                        {result.splitInfo.rmseInflationRatio.toFixed(2)}x
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2 bg-[var(--cds-layer-01)] rounded-lg text-[11px] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
+                    {result.splitInfo.verdict === 'overfitting' && (
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold">
+                        {language === 'ar' ? '⚠️ تنبيه: النموذج يتطابق بشكل زائد مع بيانات التدريب ويفقد الدقة على بيانات الاختبار. يُنصح بخفض الدرجة أو استخدام انحدار الحافة (Ridge).' : 'Warning: Potential overfitting detected. Consider regularizing or lowering degree.'}
+                      </span>
+                    )}
+                    {result.splitInfo.verdict === 'underfitting' && (
+                      <span className="text-rose-700 dark:text-rose-300 font-semibold">
+                        {language === 'ar' ? '⚠️ تنبيه: النموذج بسيط للغاية ولا يستوعب العلاقات الأساسية. جرّب إضافة متغيرات أو رفع درجة كثير الحدود.' : 'Warning: Underfitting. Model may need more features or polynomial terms.'}
+                      </span>
+                    )}
+                    {(result.splitInfo.verdict === 'excellent' || result.splitInfo.verdict === 'good') && (
+                      <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                        {language === 'ar' ? '✓ النموذج يتمتع بقدرة تعميم ممتازة؛ أداء الاختبار متقارب جداً مع التدريب مما يؤكد موثوقية التنبؤ.' : 'Model shows excellent generalization across both in-sample and out-of-sample data.'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Production Readiness Status Callout */}
+              <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <span className="text-[var(--cds-text-02)]">
+                    {result.splitInfo.isRetrainedOnFullData
+                      ? (language === 'ar'
+                          ? `✓ تم تدريب النموذج النهائي على كامل البيانات (100% - ${result.metrics.n} عينة). المعادلة والبارامترات الحالية محسوبة بأعلى دقة لجميع البيانات وجاهزة للإنتاج مع توثيق نتائج الاختبار.`
+                          : `Final model has been retrained on all ${result.metrics.n} samples. Ready for production.`)
+                      : (language === 'ar'
+                          ? 'النموذج الحالي مُدرّب على عينة التدريب (70%) لأغراض تقييم الأداء. اضغط "إعادة التدريب النهائي على كامل البيانات (100%)" لتدريب النموذج النهائي على كل البيانات للتنبؤ في العالم الحقيقي.'
+                          : 'Current model parameters fit the 70% train split. Click Retrain to use 100% of samples for final deployment.')}
+                  </span>
+                </div>
+                {!result.splitInfo.isRetrainedOnFullData && (
+                  <button
+                    onClick={retrainOnFullData}
+                    className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                  >
+                    {language === 'ar' ? 'إعادة التدريب الآن ←' : 'Retrain Now →'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* K-Fold Cross-Validation Scorecard (درجة التحقق التبادلي وتنبؤ بالمخرجات) */}
+          {result && selectedType !== 'kmeans' && result.cvInfo && (
+            <div className="bg-[var(--cds-layer-01)] border border-teal-500/30 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                    <Network className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+                        {language === 'ar' ? 'درجة التحقق التبادلي (K-Fold Cross-Validation Score)' : 'K-Fold Cross-Validation Scorecard'}
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/25">
+                        {result.cvInfo.kFolds}-Fold CV
+                      </span>
+                      {result.isCvPredicting && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25">
+                          {language === 'ar' ? 'تنبؤ المخرجات: OOF نشط' : 'Output: OOF Active'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[var(--cds-text-03)]">
+                      {language === 'ar'
+                        ? 'في حال عدم وجود بيانات كافية، يوفر التحقق التبادلي تقديراً دقيقاً وغير متحيز لمدى قوة النموذج في التنبؤ ببيانات جديدة دون تسريب بيانات التدريب.'
+                        : 'Evaluates model generalization across subsets of data, providing reliable R² estimates and unbiased out-of-fold predictions.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-[11px] font-semibold text-[var(--cds-text-03)]">
+                    {language === 'ar' ? 'درجة الدقة الإجمالية' : 'Overall Assessment'}
+                  </div>
+                  <div className="text-sm font-bold text-teal-600 dark:text-teal-400">
+                    R² = {result.cvInfo.meanTestR2.toFixed(4)}
+                  </div>
+                </div>
+              </div>
+
+              {/* CV Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* Mean Test R2 */}
+                <div className="p-3.5 bg-teal-500/5 dark:bg-teal-950/20 rounded-xl border border-teal-500/20">
+                  <div className="text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                    {language === 'ar' ? 'متوسط درجة التحقق التبادلي (CV R²)' : 'Mean CV R² Score'}
+                  </div>
+                  <div className="text-2xl font-mono font-black text-teal-600 dark:text-teal-400 mt-1">
+                    {result.cvInfo.meanTestR2.toFixed(4)}
+                  </div>
+                  <div className="text-[10px] text-[var(--cds-text-03)] mt-0.5">
+                    ± {result.cvInfo.stdTestR2.toFixed(4)} ({language === 'ar' ? 'الانحراف المعياري' : 'Std Dev'})
+                  </div>
+                </div>
+
+                {/* Overall OOF R2 */}
+                <div className="p-3.5 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-xl border border-indigo-500/20">
+                  <div className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
+                    {language === 'ar' ? 'دقة التنبؤ خارج العينة (OOF R²)' : 'Out-of-Fold R² Score'}
+                  </div>
+                  <div className="text-2xl font-mono font-black text-indigo-600 dark:text-indigo-400 mt-1">
+                    {result.cvInfo.overallOofR2.toFixed(4)}
+                  </div>
+                  <div className="text-[10px] text-[var(--cds-text-03)] mt-0.5">
+                    {language === 'ar' ? 'محسوب على كامل العينات عبر الطيات' : 'Across all out-of-fold test samples'}
+                  </div>
+                </div>
+
+                {/* Mean Test RMSE */}
+                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)]">
+                  <div className="text-[11px] font-semibold text-[var(--cds-text-02)]">
+                    {language === 'ar' ? 'متوسط خطأ الاختبار (CV RMSE)' : 'Mean CV Test RMSE'}
+                  </div>
+                  <div className="text-2xl font-mono font-black text-[var(--cds-text-01)] mt-1">
+                    {result.cvInfo.meanTestRmse.toFixed(4)}
+                  </div>
+                  <div className="text-[10px] text-[var(--cds-text-03)] mt-0.5">
+                    ± {result.cvInfo.stdTestRmse.toFixed(4)}
+                  </div>
+                </div>
+
+                {/* Stability / Diagnosis */}
+                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex flex-col justify-between">
+                  <div className="text-[11px] font-semibold text-[var(--cds-text-02)]">
+                    {language === 'ar' ? 'استقرار النموذج عبر الطيات' : 'Model Fold Stability'}
+                  </div>
+                  <div className="mt-1">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg inline-block ${
+                      result.cvInfo.stdTestR2 <= 0.08
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                        : result.cvInfo.stdTestR2 <= 0.18
+                        ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                    }`}>
+                      {result.cvInfo.stdTestR2 <= 0.08
+                        ? (language === 'ar' ? 'استقرار عالي جداً ✓' : 'Highly Stable ✓')
+                        : result.cvInfo.stdTestR2 <= 0.18
+                        ? (language === 'ar' ? 'استقرار معتدل' : 'Moderate Variance')
+                        : (language === 'ar' ? 'تباين مرتفع بين الطيات ⚠️' : 'High Fold Variance ⚠️')}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[var(--cds-text-03)] mt-1">
+                    {language === 'ar' ? 'يوضح مدى حساسية التنبؤ عند اختلاف عينات التدريب' : 'Measures prediction sensitivity to training subsets'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fold Breakdown Mini Table */}
+              <div className="overflow-x-auto pt-1">
+                <div className="text-xs font-bold text-[var(--cds-text-02)] mb-1.5 flex items-center justify-between">
+                  <span>{language === 'ar' ? 'تفاصيل نتائج الطيات المنفردة (Folds Breakdown):' : 'Individual Folds Performance:'}</span>
+                  <span className="text-[10px] text-[var(--cds-text-03)]">
+                    {language === 'ar' ? `إجمالي ${result.cvInfo.kFolds} طيات مصادقة` : `Total ${result.cvInfo.kFolds} folds evaluated`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-2">
+                  {result.cvInfo.folds.map((f) => (
+                    <div key={f.foldIndex} className="p-2 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] text-center text-xs">
+                      <div className="font-bold text-[var(--cds-text-03)] text-[10px]">
+                        {language === 'ar' ? `طية #${f.foldIndex}` : `Fold #${f.foldIndex}`}
+                      </div>
+                      <div className="font-mono font-bold text-teal-600 dark:text-teal-400 mt-0.5 text-xs">
+                        R² {f.testR2.toFixed(3)}
+                      </div>
+                      <div className="text-[9px] font-mono text-[var(--cds-text-03)]">
+                        RMSE {f.testRmse.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -3298,8 +4388,8 @@ print(f"Example prediction: {prediction[0]:.6f}")
                     </p>
                   </div>
                 )
-              ) : activeVizTab !== 'table' && activeVizTab !== 'comparator' ? (
-                (activeVizTab === 'importance' || activeVizTab === 'learningCurve') && (!result || selectedType === 'kmeans') ? (
+              ) : activeVizTab === 'learningCurve' ? (
+                !result || selectedType === 'kmeans' ? (
                   <div className="text-center p-12 text-[var(--cds-text-03)] flex flex-col items-center justify-center">
                     <Sparkles className="w-10 h-10 mb-2 opacity-50 text-blue-500" />
                     <p className="font-semibold text-sm">
@@ -3307,25 +4397,63 @@ print(f"Example prediction: {prediction[0]:.6f}")
                     </p>
                   </div>
                 ) : (
-                  <div className="w-full h-[430px]">
-                    <Plot
-                      key={JSON.stringify(data.length) + selectedType + activeVizTab + (result ? result.equation : '') + (isDark ? 'dark' : 'light')}
-                      data={plotData as any}
-                      layout={plotLayout as any}
-                      config={{ responsive: true, displayModeBar: true }}
-                      style={{ width: '100%', height: '100%' }}
+                  <div className="w-full">
+                    <PerformanceCurves
+                      data={data.map((d, i) => ({ index: i, x: d.x, y: d.y, features: d.features }))}
+                      modelType={selectedType as 'linear' | 'polynomial' | 'ridge'}
+                      currentDegree={degree}
+                      currentAlpha={alpha}
+                      includeInteractions={includeInteractions}
+                      language={language}
+                      isDark={isDark}
                     />
                   </div>
                 )
+              ) : activeVizTab === 'importance' ? (
+                !result || selectedType === 'kmeans' ? (
+                  <div className="text-center p-12 text-[var(--cds-text-03)] flex flex-col items-center justify-center">
+                    <Sparkles className="w-10 h-10 mb-2 opacity-50 text-blue-500" />
+                    <p className="font-semibold text-sm">
+                      {language === 'ar' ? 'هذه الميزة التقييمية متوفرة لنماذج الانحدار النشطة فقط. يرجى ملاءمة النموذج أولاً.' : 'Feature importance analysis is only available for active regression models. Please fit a model first.'}
+                    </p>
+                  </div>
+                ) : (
+                  <FeatureImportanceChart
+                    features={featureImportanceItems}
+                    language={language}
+                    isDark={isDark}
+                    targetName={yAxisCol || 'Target'}
+                  />
+                )
+              ) : activeVizTab !== 'table' && activeVizTab !== 'comparator' ? (
+                <div className="w-full h-[430px]">
+                  <Plot
+                    key={JSON.stringify(data.length) + selectedType + activeVizTab + (result ? result.equation : '') + (isDark ? 'dark' : 'light')}
+                    data={plotData as any}
+                    layout={plotLayout as any}
+                    config={{ responsive: true, displayModeBar: true }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
               ) : activeVizTab === 'table' ? (
                 <div className="max-h-[430px] overflow-y-auto">
                   <table className="w-full text-xs text-right font-mono border-collapse">
                     <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] font-sans sticky top-0 border-b border-[var(--cds-border-subtle)]">
                       <tr>
                         <th className="p-2.5 text-center">#</th>
+                        {result?.splitInfo?.enabled && (
+                          <th className="p-2.5 text-center text-indigo-600">{language === 'ar' ? 'المجموعة' : 'Split Group'}</th>
+                        )}
+                        {result?.cvInfo && (
+                          <th className="p-2.5 text-center text-teal-600">{language === 'ar' ? 'طية التحقق (CV Fold)' : 'CV Fold'}</th>
+                        )}
                         <th className="p-2.5">{language === 'ar' ? `المتغيرات المستقلة X (${xAxisCols.join(', ')})` : `Features X (${xAxisCols.join(', ')})`}</th>
                         <th className="p-2.5 text-blue-600">{language === 'ar' ? `القيمة الحقيقية Y (${yAxisCol || 'Actual'})` : `Actual Y (${yAxisCol || 'Actual'})`}</th>
-                        <th className="p-2.5 text-emerald-600">{language === 'ar' ? 'القيمة المتوقعة Ŷ (Predicted)' : 'Predicted Ŷ'}</th>
+                        <th className="p-2.5 text-emerald-600">
+                          {result?.cvInfo && (useCvPredictions || result?.isCvPredicting)
+                            ? (language === 'ar' ? 'تنبؤ المصادقة التبادلية Ŷ (CV OOF)' : 'CV OOF Predicted Ŷ')
+                            : (language === 'ar' ? 'القيمة المتوقعة Ŷ (Predicted)' : 'Predicted Ŷ')}
+                        </th>
                         <th className="p-2.5 text-purple-600">{language === 'ar' ? 'الباقي (Residual = Y - Ŷ)' : 'Residual (Y - Ŷ)'}</th>
                         <th className="p-2.5 text-rose-600">{language === 'ar' ? 'نسبة الخطأ المطلق (% Error)' : 'Abs % Error'}</th>
                       </tr>
@@ -3334,9 +4462,32 @@ print(f"Example prediction: {prediction[0]:.6f}")
                       {comparisonRows.map((row) => (
                         <tr key={row.index} className="hover:bg-[var(--cds-layer-02)] transition-colors">
                           <td className="p-2 text-center text-[var(--cds-text-03)] font-sans">{row.index}</td>
+                          {result?.splitInfo?.enabled && (
+                            <td className="p-2 text-center font-sans">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${row.isTest ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30'}`}>
+                                {row.isTest ? (language === 'ar' ? 'اختبار (خارج العينة)' : 'Test') : (language === 'ar' ? 'تدريب (داخل العينة)' : 'Train')}
+                              </span>
+                            </td>
+                          )}
+                          {result?.cvInfo && (
+                            <td className="p-2 text-center font-sans">
+                              {row.isCvPrediction && row.cvFold !== undefined ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30" title="Out-of-Fold Cross-Validation Prediction">
+                                  {language === 'ar' ? `طية #${row.cvFold}` : `Fold #${row.cvFold}`}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[var(--cds-text-03)] font-mono">-</span>
+                              )}
+                            </td>
+                          )}
                           <td className="p-2 font-medium text-[var(--cds-text-01)]">{row.features.map(f => f.toFixed(2)).join(', ')}</td>
                           <td className="p-2 text-blue-600 font-bold">{row.actual.toFixed(4)}</td>
-                          <td className="p-2 text-emerald-600 font-bold">{row.predicted.toFixed(4)}</td>
+                          <td className="p-2 text-emerald-600 font-bold flex items-center gap-1.5 justify-end">
+                            {row.isCvPrediction && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" title="OOF Prediction" />
+                            )}
+                            <span>{row.predicted.toFixed(4)}</span>
+                          </td>
                           <td className={`p-2 font-semibold ${row.residual >= 0 ? 'text-green-600' : 'text-rose-600'}`}>
                             {row.residual >= 0 ? '+' : ''}{row.residual.toFixed(4)}
                           </td>
@@ -3347,7 +4498,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
                       ))}
                       {comparisonRows.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="text-center p-8 text-[var(--cds-text-03)] font-sans">
+                          <td colSpan={(result?.splitInfo?.enabled ? 1 : 0) + (result?.cvInfo ? 1 : 0) + 6} className="text-center p-8 text-[var(--cds-text-03)] font-sans">
                             {language === 'ar' ? 'يرجى تدريب النموذج أولاً لعرض المقارنة التفصيلية.' : 'Please calculate a model first to view detailed row comparisons.'}
                           </td>
                         </tr>
@@ -4315,6 +5466,21 @@ print(f"Example prediction: {prediction[0]:.6f}")
         {logs.map((log, i) => <div key={i} className="leading-5 text-[var(--cds-text-02)]">{log}</div>)}
         {logs.length === 0 && <div className="text-[var(--cds-text-03)]">{language === 'ar' ? 'في انتظار تحميل البيانات أو بدء التدريب...' : 'Awaiting data upload or model computation...'}</div>}
       </div>
+
+      {/* Grid Search Hyperparameter Tuning Modal */}
+      <GridSearchModal
+        isOpen={isGridSearchOpen}
+        onClose={() => setIsGridSearchOpen(false)}
+        data={data}
+        currentModelType={selectedType}
+        currentDegree={degree}
+        currentAlpha={alpha}
+        currentInteractions={includeInteractions}
+        hasMultipleFeatures={xAxisCols.length > 1}
+        language={language}
+        isDark={isDark}
+        onApplyHyperparameters={handleApplyGridSearchParams}
+      />
     </div>
   );
 });

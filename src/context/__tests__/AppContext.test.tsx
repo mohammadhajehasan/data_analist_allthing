@@ -160,4 +160,49 @@ describe('AppContext & AI Provider State Management Integration Tests', () => {
     expect(capturedContext.aiSettings.providers.openrouter.apiKey).toBe('sk-or-new-test-token');
     expect(capturedContext.aiSettings.providers.openrouter.enabled).toBe(true);
   });
+
+  it('supports dynamic language switching and localization utilities', async () => {
+    let capturedContext: any = null;
+
+    const TestComponent = () => {
+      const context = useApp();
+      capturedContext = context;
+      return null;
+    };
+
+    await act(async () => {
+      root.render(
+        <AppProvider>
+          <TestComponent />
+        </AppProvider>
+      );
+    });
+
+    // Default language is 'ar'
+    expect(capturedContext.language).toBe('ar');
+    expect(capturedContext.isRTL).toBe(true);
+    expect(capturedContext.dir).toBe('rtl');
+    expect(capturedContext.t.nav.landing).toBe('نظرة عامة');
+    expect(capturedContext.translate('common.save')).toBe('حفظ');
+
+    // Switch to English dynamically via toggleLanguage
+    await act(async () => {
+      capturedContext.toggleLanguage();
+    });
+
+    expect(capturedContext.language).toBe('en');
+    expect(capturedContext.isRTL).toBe(false);
+    expect(capturedContext.dir).toBe('ltr');
+    expect(capturedContext.t.nav.landing).toBe('Overview');
+    expect(capturedContext.translate('common.save')).toBe('Save');
+
+    // Switch explicitly via setLanguage
+    await act(async () => {
+      capturedContext.setLanguage('ar');
+    });
+
+    expect(capturedContext.language).toBe('ar');
+    expect(capturedContext.isRTL).toBe(true);
+    expect(capturedContext.dir).toBe('rtl');
+  });
 });

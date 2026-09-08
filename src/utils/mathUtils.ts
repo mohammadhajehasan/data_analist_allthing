@@ -541,3 +541,52 @@ export function analyzeFeatureCorrelations(
     highMulticollinearityPairs
   };
 }
+
+export interface SplitResult<T> {
+  train: T[];
+  test: T[];
+  trainIndices: number[];
+  testIndices: number[];
+}
+
+/**
+ * Deterministic seeded train-test splitter
+ * Splits data into training (e.g. 70%) and testing (e.g. 30%)
+ */
+export function trainTestSplit<T>(
+  data: T[],
+  trainRatio: number = 0.7,
+  shuffle: boolean = true,
+  seed: number = 42
+): SplitResult<T> {
+  const n = data.length;
+  if (n <= 1) {
+    return { train: [...data], test: [], trainIndices: n === 1 ? [0] : [], testIndices: [] };
+  }
+
+  const indices = Array.from({ length: n }, (_, i) => i);
+
+  if (shuffle) {
+    let currentSeed = seed;
+    const lcg = () => {
+      currentSeed = (currentSeed * 1664525 + 1013904223) % 4294967296;
+      return currentSeed / 4294967296;
+    };
+
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(lcg() * (i + 1));
+      const temp = indices[i];
+      indices[i] = indices[j];
+      indices[j] = temp;
+    }
+  }
+
+  const trainSize = Math.max(1, Math.min(n - 1, Math.round(n * trainRatio)));
+  const trainIndices = indices.slice(0, trainSize);
+  const testIndices = indices.slice(trainSize);
+
+  const train = trainIndices.map(i => data[i]);
+  const test = testIndices.map(i => data[i]);
+
+  return { train, test, trainIndices, testIndices };
+}

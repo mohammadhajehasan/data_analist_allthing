@@ -57,30 +57,6 @@ export async function aiFetchProxy(input: RequestInfo | URL, init?: RequestInit)
       // Fallback defaults if parsing fails
     }
 
-    // For localhost, try direct client-side fetch first to utilize user's OLLAMA_ORIGINS="*" setup!
-    const isLocalhost = endpointUrl.includes('localhost') || endpointUrl.includes('127.0.0.1');
-    if (isLocalhost) {
-      try {
-        const directUrl = `${endpointUrl}${path}`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5s quick timeout
-
-        const directRes = await fetch(directUrl, {
-          method: init?.method || 'GET',
-          headers: init?.headers,
-          body: init?.body,
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (directRes.ok) {
-          return directRes;
-        }
-      } catch (e) {
-        console.warn('Direct client-side fetch in aiFetchProxy failed or CORS disabled, falling back to server proxy:', e);
-      }
-    }
-
     // Proxy request through backend endpoint to bypass browser CORS constraints
     return fetch('/api/proxy/ollama', {
       method: 'POST',
