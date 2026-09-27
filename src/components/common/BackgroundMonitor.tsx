@@ -4,7 +4,7 @@ import { AlertTriangle, Activity, Database, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const BackgroundMonitor: React.FC = () => {
-  const { activeDataset, addAuditLog, language } = useApp();
+  const { activeDataset, addAuditLog, language, user, workspace } = useApp();
   const [alerts, setAlerts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -25,11 +25,15 @@ export const BackgroundMonitor: React.FC = () => {
         setAlerts(prev => [...prev, newAlert]);
         
         addAuditLog({
+          userId: user.id,
+          userName: user.name,
+          workspaceId: workspace.id,
           action: 'SCHEMA_DRIFT_DETECTED',
-          resourceType: 'background_agent',
-          status: 'WARNING',
+          resourceType: 'assistant_tool',
+          status: 'SUCCESS',
           durationMs: 15,
-          payloadSummary: newAlert.message
+          payloadSummary: newAlert.message,
+          riskLevel: 'LOW',
         });
 
         // Auto dismiss after 15 seconds

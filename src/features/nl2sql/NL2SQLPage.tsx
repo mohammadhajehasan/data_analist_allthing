@@ -141,7 +141,6 @@ export const NL2SQLPage: React.FC = () => {
   const handleGenerateSql = async () => {
     if (!question.trim() || !activeDataset) return;
     setIsGenerating(true);
-    setExecutionError(null);
     try {
       const res = await fetch('/api/nl2sql/generate', {
         method: 'POST',
@@ -153,9 +152,18 @@ export const NL2SQLPage: React.FC = () => {
             columns: activeDataset.columns,
           },
           language,
+          provider: activeAIModelDef.provider,
+          model: activeAIModelDef.id,
+          endpointUrl: aiSettings.providers[activeAIModelDef.provider]?.endpointUrl,
+          apiKey: aiSettings.providers[activeAIModelDef.provider]?.apiKey,
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        const errMsg = typeof data?.error === 'string' ? data.error : (isAr ? 'فشل توليد الاستعلام' : 'Generation Failed');
+        toast.error(isAr ? 'فشل توليد الاستعلام' : 'Generation Failed', errMsg);
+        return;
+      }
       if (data.sql) {
         setSqlCode(data.sql);
         toast.success(
@@ -165,6 +173,12 @@ export const NL2SQLPage: React.FC = () => {
       }
       if (data.explanation) {
         setGeneratedExplanation(data.explanation);
+      } else {
+        setGeneratedExplanation(
+          language === 'ar'
+            ? 'تم توليد استعلام SQL محسوب وفق معايير المخطط بدقة.'
+            : 'SQL query generated per schema specifications.'
+        );
       }
       if (data.model) {
         setEngineModel(data.model);
@@ -238,15 +252,14 @@ export const NL2SQLPage: React.FC = () => {
         addAuditLog({
           userId: user.id,
           userName: user.name,
+          workspaceId: workspace.id,
           action: 'SQL_EXECUTE',
-          resourceType: 'QUERY',
+          resourceType: 'sql_query',
           resourceId: activeDataset.id,
-          details: {
-            sql: sqlCode,
-            executionTimeMs: result.executionTimeMs,
-            rowsReturned: result.totalCount,
-            risk: validationReport.estimatedCost.executionRisk,
-          },
+          status: 'SUCCESS',
+          durationMs: result.executionTimeMs,
+          payloadSummary: `Executed SQL query returning ${result.totalCount} rows in ${result.executionTimeMs}ms with ${validationReport.estimatedCost.executionRisk} risk`,
+          riskLevel: validationReport.estimatedCost.executionRisk,
         });
       } catch (err: any) {
         setIsExecuting(false);
@@ -302,19 +315,18 @@ export const NL2SQLPage: React.FC = () => {
       isAr ? `تم تنزيل ${filename}` : `Saved as ${filename}`
     );
 
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: 'EXPORT_SQL_FILE',
-      resourceType: 'QUERY',
-      resourceId: activeDataset.id,
-      details: {
-        filename,
-        sqlLength: sqlCode.length,
-        dataset: activeDataset.name,
-        question,
-      },
-    });
+addAuditLog({
+          userId: user.id,
+          userName: user.name,
+          workspaceId: workspace.id,
+          action: 'EXPORT_SQL_FILE',
+          resourceType: 'sql_query',
+          resourceId: activeDataset.id,
+          status: 'SUCCESS',
+          durationMs: 0,
+          payloadSummary: `Exported ${filename} with SQL length ${sqlCode.length} for dataset ${activeDataset.name}`,
+          riskLevel: 'LOW',
+        });
   };
 
   const applyCorrection = (fixedSql?: string) => {
@@ -715,9 +727,9 @@ export const NL2SQLPage: React.FC = () => {
           <div className="flex items-center justify-between border-b border-[#393939] pb-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#42be65]" />
-              <h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
-                {t.nl2sql.securitySandbox}
-              </h3>
+<h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
+  {t.nl2sql.safetyReport}
+</h3>
             </div>
             <span className="text-[10px] font-mono text-[#8d8d8d]">
               {validationReport.layers.filter(l => l.status === 'passed').length}/9 Layers Passed

@@ -157,7 +157,12 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
         adjustedR2: 0.812,
         mse: 24.15,
         rmse: 4.91,
-        mae: 3.85
+        mae: 3.85,
+        n: 100,
+        p: 1,
+        aic: 210.4,
+        bic: 215.2,
+        accuracyGrade: 'ممتاز (Excellent)'
       }
     },
     {
@@ -178,7 +183,12 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
         adjustedR2: 0.931,
         mse: 11.30,
         rmse: 3.36,
-        mae: 2.54
+        mae: 2.54,
+        n: 100,
+        p: 2,
+        aic: 180.2,
+        bic: 187.6,
+        accuracyGrade: 'ممتاز (Excellent)'
       }
     },
     {
@@ -199,7 +209,12 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
         adjustedR2: 0.875,
         mse: 18.20,
         rmse: 4.27,
-        mae: 3.21
+        mae: 3.21,
+        n: 100,
+        p: 2,
+        aic: 198.5,
+        bic: 205.3,
+        accuracyGrade: 'ممتاز (Excellent)'
       }
     },
     {
@@ -220,7 +235,12 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
         adjustedR2: 0.951,
         mse: 9.40,
         rmse: 3.07,
-        mae: 2.15
+        mae: 2.15,
+        n: 100,
+        p: 6,
+        aic: 165.8,
+        bic: 180.2,
+        accuracyGrade: 'ممتاز (Excellent)'
       }
     }
   ]);
@@ -920,7 +940,12 @@ print(f"Example prediction: {prediction[0]:.6f}")
           adjustedR2: 0.7980,
           mse: 22.4500,
           rmse: 4.7381,
-          mae: 3.6500
+          mae: 3.6500,
+          n: 100,
+          p: 1,
+          aic: 205.6,
+          bic: 210.4,
+          accuracyGrade: 'ممتاز (Excellent)'
         }
       },
       {
@@ -943,7 +968,12 @@ print(f"Example prediction: {prediction[0]:.6f}")
           adjustedR2: 0.9250,
           mse: 11.2300,
           rmse: 3.3511,
-          mae: 2.4500
+          mae: 2.4500,
+          n: 100,
+          p: 2,
+          aic: 178.4,
+          bic: 185.8,
+          accuracyGrade: 'ممتاز (Excellent)'
         }
       },
       {
@@ -966,7 +996,12 @@ print(f"Example prediction: {prediction[0]:.6f}")
           adjustedR2: 0.8610,
           mse: 16.8200,
           rmse: 4.1012,
-          mae: 3.1200
+          mae: 3.1200,
+          n: 100,
+          p: 2,
+          aic: 195.3,
+          bic: 202.1,
+          accuracyGrade: 'ممتاز (Excellent)'
         }
       },
       {
@@ -989,11 +1024,16 @@ print(f"Example prediction: {prediction[0]:.6f}")
           adjustedR2: 0.9540,
           mse: 8.9400,
           rmse: 2.9900,
-          mae: 2.0500
+          mae: 2.0500,
+          n: 100,
+          p: 6,
+          aic: 162.4,
+          bic: 176.8,
+          accuracyGrade: 'ممتاز (Excellent)'
         }
       }
     ];
-    setSavedModels(sampleModels);
+    setSavedModels(sampleModels as typeof savedModels);
     addLog('Loaded Benchmark Regression Suite (4 Models) for Radar Comparison.');
   };
 
@@ -1402,7 +1442,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
         toast({
           title: language === 'ar' ? 'تم التدريب النهائي بنجاح' : 'Full Retraining Complete',
           description: language === 'ar' ? `تم تدريب النموذج على كامل الـ ${validatedData.length} نقطة بيانات للاستخدام الإنتاجي.` : `Trained on all ${validatedData.length} samples for production readiness.`,
-          variant: 'default'
+          variant: 'success'
         });
       }
     } catch (err: any) {
@@ -1457,7 +1497,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
             p: xAxisCols.length,
             aic: 0,
             bic: 0,
-            accuracyGrade: 'ممتاز (Excellent)'
+accuracyGrade: 'ضعيف (Poor)'
           },
           featureNames: xAxisCols,
           targetName: yAxisCol || 'y',
@@ -1723,9 +1763,9 @@ print(f"Example prediction: {prediction[0]:.6f}")
     try {
       await exportSelectedModelToPdf({
         modelType: result.type,
-        modelLabel: result.type === 'linear' 
+        modelLabel: result.type === 'Linear' 
           ? (language === 'ar' ? 'انحدار خطي (Linear Regression)' : 'Linear Regression')
-          : result.type === 'polynomial'
+          : result.type === 'Polynomial'
           ? (language === 'ar' ? `كثير الحدود (Polynomial Degree ${result.degree})` : `Polynomial Regression (Degree ${result.degree})`)
           : (language === 'ar' ? `انحدار الحافة (Ridge α=${result.alpha})` : `Ridge Regularization (α=${result.alpha})`),
         targetName: yAxisCol || 'Target (Y)',
@@ -1741,15 +1781,18 @@ print(f"Example prediction: {prediction[0]:.6f}")
           splitSeed: enableTrainTestSplit ? splitSeed : undefined,
           kFolds: enableCrossValidation ? cvFolds : undefined
         },
-        metrics: {
-          r2: result.metrics.r2,
-          adjustedR2: result.metrics.adjustedR2,
-          rmse: result.metrics.rmse,
-          mse: result.metrics.mse,
-          mae: result.metrics.mae,
-          aic: result.metrics.aic,
-          bic: result.metrics.bic
-        },
+metrics: {
+           r2: result.metrics.r2,
+           adjustedR2: result.metrics.adjustedR2,
+           rmse: result.metrics.rmse,
+           mse: result.metrics.mse,
+           mae: result.metrics.mae,
+           n: result.metrics.n,
+           p: result.metrics.p,
+           aic: result.metrics.aic,
+           bic: result.metrics.bic,
+           accuracyGrade: result.metrics.accuracyGrade
+         },
         splitMetrics: result.splitInfo ? {
           enabled: result.splitInfo.enabled,
           trainR2: result.splitInfo.trainMetrics.r2,
@@ -3068,12 +3111,11 @@ print(f"Example prediction: {prediction[0]:.6f}")
                           <InfoTooltip
                             title={language === 'ar' ? 'تقسيم البيانات (Train/Test Split)' : 'Data Splitting'}
                             content={
-                              language === 'ar'
-                                ? 'فصل البيانات إلى عينة تدريب داخلية لضبط معاملات النموذج وعينة اختبار مستقلة لتقييم دقة التنبؤ خارج العينة واكتشاف فرط التخصيص (Overfitting).'
-                                : 'Partitions dataset into training samples to fit coefficients and an unseen testing subset to benchmark real-world generalization and overfitting.'
-                            }
-                            recommended={language === 'ar' ? '70% تدريب / 30% اختبار' : '70% Train / 30% Test'}
-                            language={language}
+language === 'ar'
+                              ? 'فصل البيانات إلى عينة Training/Test Split البيانات إلى'
+                              : 'Partitions dataset into training samples to fit coefficients and an unseen testing subset to benchmark real-world generalization and overfitting.'
+                        }
+                        recommended={language === 'ar' ? '70% Training / 30% Test' : '70% Train / 30% Test'}
                           />
                         </div>
                         <p className="text-[11px] text-[var(--cds-text-03)]">
@@ -3115,8 +3157,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
                                     ? 'النسبة المئوية المخصصة لتدريب النموذج وضبط الأوزان. نسبة 70% أو 80% تعتبر مثالية لمنح النموذج دقة مناسبة مع الاحتفاظ بعينة اختبار كافية للتأكد من عدم وجود فرط تخصيص.'
                                     : 'Percentage of data used to train the model. 70% or 80% offers optimal learning capacity while leaving sufficient holdout test data.'
                                 }
-                                recommended="70%"
-                                language={language}
+recommended="70%"
                               />
                             </div>
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -3204,7 +3245,6 @@ print(f"Example prediction: {prediction[0]:.6f}")
                                   : 'Crucial when sample size is small or scarce. Partitions data into K folds and iteratively rotates the holdout validation fold so every observation is tested fairly.'
                               }
                               recommended="5 Folds"
-                              language={language}
                             />
                           </div>
                           <p className="text-[11px] text-[var(--cds-text-03)]">
@@ -3246,7 +3286,6 @@ print(f"Example prediction: {prediction[0]:.6f}")
                                   : '5 folds balances bias and variance. 10 folds reduces bias for smaller datasets, while 3 folds is fast for large sets.'
                               }
                               recommended="5 Folds"
-                              language={language}
                             />
                             <div className="inline-flex rounded-lg border border-[var(--cds-border-subtle)] p-0.5 bg-[var(--cds-layer-01)]">
                               {[3, 5, 10].map(folds => (
@@ -3286,12 +3325,11 @@ print(f"Example prediction: {prediction[0]:.6f}")
                             <InfoTooltip
                               title={language === 'ar' ? 'تنبؤات خارج العينة (Out-of-Fold)' : 'Out-of-Fold Predictions'}
                               content={
-                                language === 'ar'
-                                  ? 'توليد القيم المتوقعة Ŷ لكل عينة فقط عبر النماذج الفرعية التي لم تشاهدها في التدريب، مما يحقق تنبؤات واقعية غير متحيزة لجميع نقاط البيانات.'
-                                  : 'Calculates predicted values Ŷ for each sample strictly from the sub-models that did not train on it, providing realistic, unbiased validation.'
-                              }
-                              language={language}
-                            />
+language === 'ar'
+                                   ? 'توليد القيم المتوقعة Ŷ لكل عينة فقط عبر النماذج الفرعية التي لم تشاهدها في التدريب، مما يحقق تنبؤات واقعية غير متحيزة لجميع نقاط البيانات.'
+                                   : 'Calculates predicted values Ŷ for each sample strictly from the sub-models that did not train on it, providing realistic, unbiased validation.'
+                               }
+                             />
                           </label>
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-teal-500/10 text-teal-600 dark:text-teal-400">
                             {language === 'ar' ? 'تنبؤ غير متحيز لجميع العينات' : 'Unbiased All-Sample Predictions'}
@@ -3624,9 +3662,8 @@ print(f"Example prediction: {prediction[0]:.6f}")
                             ? 'فجوة التعميم تقيس الفارق بين دقة التدريب ودقة الاختبار. إذا كانت فجوة R² أكبر من 0.15 أو تضخم خطأ RMSE أعلى من 1.35x، فإن النموذج يعاني من فرط تخصيص (Overfitting) ولن يتنبأ بدقة في الواقع.'
                             : 'Evaluates the performance drop from training to testing data. Gaps exceeding 0.15 R² or 1.35x RMSE inflation indicate severe overfitting.'
                         }
-                        recommended={language === 'ar' ? 'فجوة < 0.10' : 'Gap < 0.10'}
-                        language={language}
-                      />
+                         recommended={language === 'ar' ? 'فجوة < 0.10' : 'Gap < 0.10'}
+                       />
                     </div>
                     <span className="text-[10px] text-[var(--cds-text-03)] font-mono">
                       Δ R²: {result.splitInfo.generalizationGap >= 0 ? `+${result.splitInfo.generalizationGap.toFixed(4)}` : result.splitInfo.generalizationGap.toFixed(4)}
@@ -3808,10 +3845,10 @@ print(f"Example prediction: {prediction[0]:.6f}")
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-2">
-                  {result.cvInfo.folds.map((f) => (
-                    <div key={f.foldIndex} className="p-2 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] text-center text-xs">
+                  {result.cvInfo.foldMetrics.map((f) => (
+                    <div key={f.fold} className="p-2 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] text-center text-xs">
                       <div className="font-bold text-[var(--cds-text-03)] text-[10px]">
-                        {language === 'ar' ? `طية #${f.foldIndex}` : `Fold #${f.foldIndex}`}
+                        {language === 'ar' ? `طية #${f.fold}` : `Fold #${f.fold}`}
                       </div>
                       <div className="font-mono font-bold text-teal-600 dark:text-teal-400 mt-0.5 text-xs">
                         R² {f.testR2.toFixed(3)}
@@ -4420,6 +4457,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
                 ) : (
                   <FeatureImportanceChart
                     features={featureImportanceItems}
+                    modelType={selectedType as 'linear' | 'polynomial' | 'ridge'}
                     language={language}
                     isDark={isDark}
                     targetName={yAxisCol || 'Target'}

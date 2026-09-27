@@ -76,7 +76,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
   // Custom grid parameters state
   const [customDegrees, setCustomDegrees] = useState<number[]>([1, 2, 3, 4]);
   const [customAlphas, setCustomAlphas] = useState<number[]>([0.01, 0.1, 1.0, 10.0]);
-  const [customInteractions, setCustomInteractions] = useState<boolean>([false, true]);
+  const [customInteractions, setCustomInteractions] = useState<boolean[]>([false, true]);
 
   // Execution state
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -101,7 +101,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
         : ['Feature 1 (X)'];
 
       await exportSelectedModelToPdf({
-        modelType: bestModel.candidate.type,
+        modelType: bestModel.candidate.modelType,
         modelLabel: language === 'ar' ? bestModel.candidate.labelAr : bestModel.candidate.labelEn,
         targetName: 'Target (Y)',
         featureNames: featNames,
@@ -123,7 +123,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
           trainR2: bestModel.meanTrainR2,
           testR2: bestModel.meanValR2,
           generalizationGap: bestModel.generalizationGap,
-          diagnosis: bestModel.status === 'optimal' 
+          diagnosis: bestModel.status === 'best' 
             ? (language === 'ar' ? 'نموذج مثالي ومتوازن' : 'Optimal Balance')
             : bestModel.status === 'overfitting'
             ? (language === 'ar' ? 'خطر فرط التخصيص' : 'Overfitting Risk')
@@ -137,7 +137,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
           overallOofR2: bestModel.meanValR2,
           kFolds: kFolds,
         },
-        equation: `Y = f(${featNames.join(', ')}) [Grid Search Champion: ${bestModel.candidate.type.toUpperCase()}${bestModel.candidate.degree ? `, Degree=${bestModel.candidate.degree}` : ''}${bestModel.candidate.alpha ? `, Alpha=${bestModel.candidate.alpha}` : ''}]`,
+        equation: `Y = f(${featNames.join(', ')}) [Grid Search Champion: ${bestModel.candidate.modelType.toUpperCase()}${bestModel.candidate.degree ? `, Degree=${bestModel.candidate.degree}` : ''}${bestModel.candidate.alpha ? `, Alpha=${bestModel.candidate.alpha}` : ''}]`,
         coefficients: [],
         language: language,
       });
@@ -374,9 +374,8 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
                         ? 'يحدد مجموعة الفرضيات والنماذج المراد استكشافها. يتيح لك فحص شامل لمختلف أنواع النماذج، أو التركيز على تحسين معاملات انحدار الحافة Ridge أو كثير الحدود.'
                         : 'Defines the parameter space to explore. Allows evaluating all model architectures or focusing on Ridge/Polynomial tuning.'
                     }
-                    recommended={language === 'ar' ? 'مقارنة شاملة لجميع النماذج' : 'All Models Champion'}
-                    language={language}
-                  />
+recommended={language === 'ar' ? 'مقارنة شاملة لجميع النماذج' : 'All Models Champion'}
+                   />
                 </div>
                 <select
                   value={scope}
@@ -412,9 +411,8 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
                         ? 'تقسيم البيانات إلى K طيات؛ حيث يتم التدريب على (K-1) أجزاء والتقييم على الجزء المتبقي بالتناوب لضمان قياس غير متحيز لقدرة النموذج على التعميم على بيانات غير مرئية.'
                         : 'Splits data into K folds; trains on K-1 and evaluates on the remaining fold iteratively to calculate an unbiased generalization score.'
                     }
-                    recommended="5-Fold CV"
-                    language={language}
-                  />
+recommended="5-Fold CV"
+                   />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[3, 5, 10].map(kVal => (
@@ -448,9 +446,8 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
                         ? 'المعيار الإحصائي لتحديد النموذج الفائز: معامل التحديد R² (الأعلى هو الأفضل) يفضل التباين المفسر، بينما جذر متوسط الخطأ RMSE يقيس بعد التنبؤات عن الواقع.'
                         : 'The statistical metric used to rank candidates. Higher R² maximizes explained variance; lower RMSE minimizes forecast deviations.'
                     }
-                    recommended="R² (Validation)"
-                    language={language}
-                  />
+recommended="R² (Validation)"
+                   />
                 </div>
                 <select
                   value={scoringMetric}
@@ -1039,7 +1036,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
 
                   <PerformanceCurves
                     data={data.map((d, i) => ({ index: i, x: d.x, y: d.y, features: d.features }))}
-                    modelType={(bestModel?.candidate.type || (currentModelType === 'kmeans' ? 'linear' : currentModelType))}
+                    modelType={(bestModel?.candidate.modelType || (currentModelType === 'kmeans' ? 'linear' : currentModelType))}
                     currentDegree={bestModel?.candidate.degree || currentDegree}
                     currentAlpha={bestModel?.candidate.alpha || currentAlpha}
                     includeInteractions={bestModel?.candidate.includeInteractions ?? currentInteractions}

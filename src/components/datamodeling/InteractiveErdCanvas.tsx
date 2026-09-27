@@ -569,7 +569,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                             </button>
                           )}
 
-                          {isFk && <LinkIcon className="w-3 h-3 text-[#78a9ff]" title="Foreign Key (FK)" />}
+                          {isFk && <span title="Foreign Key (FK)"><LinkIcon className="w-3 h-3 text-[#78a9ff]" /></span>}
 
                           <span className={`truncate ${isPk ? 'font-bold text-[#f1c21b]' : 'text-[#f4f4f4]'}`}>
                             {col.name}

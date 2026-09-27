@@ -10,6 +10,7 @@ import {
   Check,
   Settings,
   Search,
+  RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AIProviderId } from '../../types';
@@ -33,6 +34,8 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
     activeAIModelDef,
     setActiveAIModel,
     toast,
+    updateProviderConfig,
+    refreshCloudModels,
   } = useApp();
 
   const isAr = language === 'ar';
@@ -40,7 +43,30 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [isRefreshingModels, setIsRefreshingModels] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleRefreshCloudModels = async (provider: AIProviderId) => {
+    const config = aiSettings.providers[provider];
+    if (!config?.apiKey) {
+      toast.error(isAr ? 'المزود يحتاج مفتاح API' : 'Provider requires API key');
+      return;
+    }
+    
+    setIsRefreshingModels(provider);
+    try {
+      const models = await refreshCloudModels(provider, config.apiKey, config.endpointUrl);
+      if (models.length > 0) {
+        toast.success(isAr ? 'تم تحديث النماذج' : 'Models refreshed');
+      } else {
+        toast.info(isAr ? 'لم يتم العثور على نماذج جديدة' : 'No new models found');
+      }
+    } catch (err: any) {
+      toast.error(isAr ? 'فشل تحديث النماذج' : 'Failed to refresh models', err?.message);
+    } finally {
+      setIsRefreshingModels(null);
+    }
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -130,17 +156,30 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
         {/* Dropdown Menu */}
         {isOpen && (
           <div className="absolute top-full mt-1.5 end-0 z-50 w-84 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-2xl p-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
-            {/* Search Input */}
-            <div className="relative mb-2">
-              <Search className="w-3.5 h-3.5 absolute top-2.5 start-2.5 text-[var(--cds-text-03)]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isAr ? 'بحث في النماذج (Ollama, Qwen, DeepSeek)...' : 'Search models...'}
-                className="w-full ps-8 pe-2.5 py-1.5 text-xs rounded-lg bg-[var(--cds-input-bg)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
-              />
-            </div>
+{/* Search Input */}
+                <div className="relative mb-2">
+                  <Search className="w-3.5 h-3.5 absolute top-2.5 start-2.5 text-[var(--cds-text-03)]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={isAr ? 'بحث في النماذج (Ollama, Qwen, DeepSeek)...' : 'Search models...'}
+                    className="w-full ps-8 pe-2.5 py-1.5 text-xs rounded-lg bg-[var(--cds-input-bg)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
+                  />
+                </div>
+                {/* Cloud Models Refresh Button */}
+                {!aiSettings.providers.gemini.isLocalOnly && (
+                  <button
+                    onClick={() => handleRefreshCloudModels('gemini')}
+                    disabled={isRefreshingModels === 'gemini'}
+                    className="flex items-center gap-1.5 text-[10px] text-[var(--cds-interactive-01)] hover:text-[var(--cds-interactive-01)] mb-2"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRefreshingModels === 'gemini' ? 'animate-spin' : ''}`} />
+                    {isRefreshingModels === 'gemini'
+                      ? isAr ? 'جاري...' : 'Refreshing...'
+                      : isAr ? 'تحديث نماذج Gemini' : 'Refresh Gemini Models'}
+                  </button>
+                )}
 
             {/* Quick Filters */}
             <div className="flex items-center gap-1 mb-2 pb-2 border-b border-[var(--cds-border-subtle)] overflow-x-auto text-[10px]">

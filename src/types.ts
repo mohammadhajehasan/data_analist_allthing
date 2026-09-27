@@ -426,6 +426,7 @@ export interface ExecutionPlanNode {
 export interface SqlOptimizationResult {
   originalSql: string;
   optimizedSql: string;
+  model?: string;
   estimatedSpeedup: string;
   summaryEn: string;
   summaryAr: string;

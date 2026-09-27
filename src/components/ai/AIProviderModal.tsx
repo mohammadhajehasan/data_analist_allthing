@@ -501,7 +501,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                   )}
 
                   {/* API Key Input (if not local Ollama) */}
-                  {!currentProvider.isLocalOnly && currentProvider.providerId !== 'gemini' && (
+                  {!currentProvider.isLocalOnly && (
                     <div>
                       <label className="block text-xs font-medium text-[#c6c6c6] mb-1 flex items-center justify-between">
                         <span>{isAr ? 'مفتاح الـ API (API Key):' : 'API Key:'}</span>

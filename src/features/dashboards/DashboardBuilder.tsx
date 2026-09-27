@@ -125,7 +125,7 @@ export const DashboardBuilder: React.FC = () => {
   const [kpiManualValue, setKpiManualValue] = useState('');
   const [kpiLabel, setKpiLabel] = useState('');
   const [kpiTrendPercent, setKpiTrendPercent] = useState<number>(12.5);
-  const [kpiTrendDirection, setKpiTrendDirection] = useState<'up' | 'down'>('up');
+  const [kpiTrendDirection, setKpiTrendDirection] = useState<'up' | 'down' | 'neutral'>('up');
 
   // Auto-refresh animation state
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -505,10 +505,10 @@ export const DashboardBuilder: React.FC = () => {
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-[#ffffff] tracking-tight mt-1">
-            {isAr ? activeDashboard.nameAr || activeDashboard.name : activeDashboard.name}
+            {isAr ? activeDashboard.nameAr || activeDashboard.name || 'Untitled' : activeDashboard.name || 'Untitled'}
           </h2>
           <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">
-            {isAr ? activeDashboard.descriptionAr || activeDashboard.description : activeDashboard.description}
+            {isAr ? activeDashboard.descriptionAr || activeDashboard.description || '' : activeDashboard.description || ''}
           </p>
         </div>
 
@@ -1492,9 +1492,9 @@ export const DashboardBuilder: React.FC = () => {
       <ExportModal
         isOpen={showCentralizedExportModal}
         onClose={() => setShowCentralizedExportModal(false)}
-        title={activeDashboard ? (isAr ? `تصدير لوحة القيادة: ${activeDashboard.nameAr || activeDashboard.name}` : `Export Dashboard: ${activeDashboard.name}`) : undefined}
+        title={activeDashboard ? (isAr ? `تصدير لوحة القيادة: ${activeDashboard.nameAr || activeDashboard.name || 'اللوحة'}` : `Export Dashboard: ${activeDashboard.name || 'dashboard'}`) : undefined}
         data={activeDataset?.data || datasets[0]?.data || []}
-        defaultFilename={activeDashboard ? activeDashboard.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_') : 'dashboard_report'}
+        defaultFilename={activeDashboard?.name ? activeDashboard.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_') : 'dashboard_report'}
         language={language}
       />
     </div>

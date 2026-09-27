@@ -265,6 +265,10 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        const errMsg = typeof data?.error === 'string' ? data.error : (isAr ? 'تعذر تشغيل مقارنة النماذج' : 'Failed to run model comparison');
+        throw new Error(errMsg);
+      }
       if (data && Array.isArray(data.results)) {
         const newSession: MultiModelComparisonSession = {
           id: `comp-${Date.now()}`,

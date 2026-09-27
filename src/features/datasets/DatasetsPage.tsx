@@ -1059,7 +1059,7 @@ export const DatasetsPage: React.FC = () => {
                 ) : (
                   <>
                     <UploadCloud className="w-10 h-10 text-[#0f62fe] mx-auto mb-3" />
-                    <p className="text-sm font-bold text-[#f4f4f4]">{t.datasets.dragDropText}</p>
+                    <p className="text-sm font-bold text-[#f4f4f4]">{t.datasets.dragDrop}</p>
                     <p className="text-xs text-[#8d8d8d] mt-1">
                       {isAr
                         ? 'يدعم ملفات: Excel (.xlsx, .xls), CSV (.csv, .tsv), JSON (.json, .jsonl), SQL (.sql), SQLite (.db, .sqlite)'
@@ -1067,7 +1067,7 @@ export const DatasetsPage: React.FC = () => {
                     </p>
 
                     <label className="mt-4 inline-block px-4 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all">
-                      <span>{t.datasets.browseFiles}</span>
+                      <span>{t.datasets.uploadNew}</span>
                       <input
                         type="file"
                         accept=".csv,.tsv,.json,.jsonl,.xlsx,.xls,.xlsm,.sql,.db,.sqlite,.sqlite3"

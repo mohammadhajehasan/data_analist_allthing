@@ -14,9 +14,10 @@ interface WorkflowExecutorOptions {
     warning: (title: string, message?: string) => string;
     error: (title: string, message?: string) => string;
     info: (title: string, message?: string) => string;
-  };
-  addAuditLog?: (entry: any) => void;
-  onNodeStatusChange: (
+  };    addAuditLog?: (entry: any) => void;
+    /** Active AI provider configuration from AppContext — keeps workflows provider-independent */
+    aiProviderConfig?: { provider: string; model: string; endpointUrl?: string; apiKey?: string };
+    onNodeStatusChange: (
     nodeId: string, 
     status: 'idle' | 'running' | 'success' | 'failed' | 'skipped', 
     executionTimeMs?: number, 
@@ -40,6 +41,7 @@ export async function executeWorkflowPipeline(options: WorkflowExecutorOptions):
     saveReport,
     toast,
     addAuditLog,
+    aiProviderConfig,
     onNodeStatusChange,
     onLog,
     isAr = true,
@@ -508,7 +510,15 @@ export async function executeWorkflowPipeline(options: WorkflowExecutorOptions):
           let sumVal = 0;
           let countVal = pipelineDataRows.length;
           const numCols = currentDataset.columns.filter((c) => c.type === 'integer' || c.type === 'float');
-          const primaryNumCol = numCols[0]?.name;
+          // Prefer an explicitly configured metric column, otherwise fall back to the first numeric column
+          // that is not an obvious identifier (id, *_id, *_no, *_number).
+          const isIdentifierCol = (name: string) =>
+            /^id$/i.test(name) || /_id$/i.test(name) || /(^|_)(no|number|num|seq)$/i.test(name);
+          const fallbackNumCol = numCols.find((c) => !isIdentifierCol(c.name))?.name;
+          const primaryNumCol =
+            (config.metricColumn && currentDataset.columns.some((c) => c.name === config.metricColumn)
+              ? config.metricColumn
+              : undefined) || fallbackNumCol;
 
           if (primaryNumCol) {
             for (const r of pipelineDataRows) {
@@ -562,7 +572,10 @@ export async function executeWorkflowPipeline(options: WorkflowExecutorOptions):
         case 'ai_forecast': {
           // Linear trend forecast
           const numCols = currentDataset.columns.filter((c) => c.type === 'integer' || c.type === 'float');
-          const targetCol = numCols[0]?.name || 'amount';
+          const targetCol =
+            (config.metricColumn && currentDataset.columns.some((c) => c.name === config.metricColumn)
+              ? config.metricColumn
+              : undefined) || numCols.find((c) => !(/id$/i.test(c.name) || /(^|_)(no|number|num|seq)$/i.test(c.name)))?.name || numCols[0]?.name || 'amount';
           const periods = config.periods || 3;
 
           let baselineSum = 0;
@@ -623,8 +636,10 @@ export async function executeWorkflowPipeline(options: WorkflowExecutorOptions):
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 message: aiPrompt,
-                provider: 'gemini',
-                model: config.model || 'gemini-3.8-flash',
+                provider: aiProviderConfig?.provider || 'gemini',
+                model: config.model || aiProviderConfig?.model || 'gemini-3.8-flash',
+                endpointUrl: aiProviderConfig?.endpointUrl,
+                apiKey: aiProviderConfig?.apiKey,
                 language: isAr ? 'ar' : 'en',
               }),
             });

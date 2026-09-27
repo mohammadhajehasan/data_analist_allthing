@@ -39,7 +39,7 @@ interface JsonRpcResponse {
 }
 
 export const JsonRpcGatewayPanel: React.FC = () => {
-  const { language, toast } = useApp();
+  const { language, toast, aiSettings } = useApp();
   const isAr = language === 'ar';
 
   // Gateway Configuration State
@@ -180,7 +180,14 @@ export const JsonRpcGatewayPanel: React.FC = () => {
           endpointUrl,
           authToken: authToken.trim() || undefined,
           customHeaders: customHeaders.trim() ? JSON.parse(customHeaders) : undefined,
-          payload: rpcPayload,
+          payload: {
+            ...rpcPayload,
+            params: {
+              ...(typeof rpcPayload.params === 'object' && rpcPayload.params !== null && !Array.isArray(rpcPayload.params) ? rpcPayload.params : {}),
+              provider: (typeof rpcPayload.params === 'object' && rpcPayload.params !== null && !Array.isArray(rpcPayload.params) ? (rpcPayload.params as Record<string, any>).provider : undefined) ?? aiSettings.activeProvider,
+              model: (typeof rpcPayload.params === 'object' && rpcPayload.params !== null && !Array.isArray(rpcPayload.params) ? (rpcPayload.params as Record<string, any>).model : undefined) ?? aiSettings.activeModel,
+            },
+          },
           timeoutMs,
         }),
       });

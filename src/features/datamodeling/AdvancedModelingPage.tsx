@@ -31,7 +31,7 @@ const TABLE_ACCENTS = [
 ];
 
 export const AdvancedModelingPage: React.FC = () => {
-  const { language, datasets, addDataset, updateDataset, setActiveTab: setAppTab } = useApp();
+  const { language, datasets, addDataset, updateDataset, setActiveTab: setAppTab, workspace } = useApp();
   const isAr = language === 'ar';
 
   const modelingRef = useRef<any>(null);
@@ -129,13 +129,13 @@ export const AdvancedModelingPage: React.FC = () => {
       addDataset({
         id: joinedDsId,
         name: joinedDsName,
-        nameAr: `مجموعة_مدمجة_${validationSummary.sourceTable}_${validationSummary.targetTable}`,
         description: `Persisted relational join dataset (${validationSummary.sourceTable} ⋈ ${validationSummary.targetTable})`,
         format: 'csv',
         rowCount: validationSummary.rowCount,
         columnCount: validationSummary.columnCount,
         sizeBytes: validationSummary.rowCount * 250,
         columns: cols,
+        workspaceId: workspace.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         version: 1,

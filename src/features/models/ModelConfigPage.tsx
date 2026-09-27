@@ -865,6 +865,36 @@ export const ModelConfigPage: React.FC = () => {
                   </div>
                 )}
 
+                {!currentProvider.isLocalOnly && currentProvider.providerId === 'gemini' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-[#f4f4f4]">
+                        {isAr ? 'مفتاح Google Gemini API (GEMINI_API_KEY):' : 'Google Gemini API Key:'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowKeys(p => ({ ...p, gemini: !p.gemini }))}
+                        className="text-[11px] text-[#78a9ff] flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        {showKeys.gemini ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        {showKeys.gemini ? (isAr ? 'إخفاء' : 'Hide') : (isAr ? 'إظهار' : 'Show')}
+                      </button>
+                    </div>
+                    <input
+                      type={showKeys.gemini ? 'text' : 'password'}
+                      value={currentProvider.apiKey || ''}
+                      onChange={(e) => updateProviderConfig('gemini', { apiKey: e.target.value })}
+                      placeholder="AIza... (من https://aistudio.google.com/apikey)"
+                      className="w-full h-9 px-3 text-xs bg-[#161616] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs"
+                    />
+                    <p className="text-[11px] text-[#8d8d8d] mt-1">
+                      {isAr
+                        ? 'يُحفظ المفتاح في متصفحك فقط ويُستخدم لطلبات Gemini عبر الخادم. اتركه فارغاً لاستخدام GEMINI_API_KEY من إعدادات الخادم (.env).'
+                        : 'Stored only in your browser and used for server-proxied Gemini calls. Leave empty to fall back to the server-side GEMINI_API_KEY (.env).'}
+                    </p>
+                  </div>
+                )}
+
                 {!currentProvider.isLocalOnly && currentProvider.providerId !== 'gemini' && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">

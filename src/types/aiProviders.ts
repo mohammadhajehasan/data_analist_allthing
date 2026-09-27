@@ -31,6 +31,14 @@ export interface AIProviderConfig {
   lastPingMs?: number;
   errorMessage?: string;
   installedLocalModels?: string[];
+  discoveredModels?: Array<{
+    id: string;
+    name: string;
+    isFree: boolean;
+    costPer1kTokens?: number;
+    contextWindow?: number;
+    capabilities?: string[];
+  }>;
   isLocalOnly: boolean;
   description: string;
   descriptionAr: string;
@@ -417,5 +425,28 @@ export const INITIAL_AI_SETTINGS: AISettings = {
       badge: 'Custom Gateway',
       badgeAr: 'خادم مخصص',
     },
-  },
-};
+},
+  };
+
+// Type for dynamically fetched cloud provider models
+export interface DynamicCloudModel {
+  id: string;
+  name: string;
+  provider: AIProviderId;
+  description: string;
+  descriptionAr: string;
+  contextWindow?: number;
+  isLocal: false;
+  isFree: boolean;
+  costPer1kTokens?: number;
+  capabilities: AIModelCapability[];
+  recommendedFor: string;
+  recommendedForAr: string;
+  parameterSize?: string;
+}
+
+// Result from model discovery endpoint
+export interface ModelDiscoveryResult {
+  models: DynamicCloudModel[];
+  refreshedAt: string;
+}

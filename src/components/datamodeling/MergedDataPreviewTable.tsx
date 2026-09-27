@@ -41,7 +41,7 @@ export const MergedDataPreviewTable: React.FC<MergedDataPreviewTableProps> = ({
   language = 'ar',
 }) => {
   const isAr = language === 'ar';
-  const { addDataset, toast } = useApp();
+  const { addDataset, workspace, toast } = useApp();
 
   // Global Search Filter
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -269,14 +269,19 @@ export const MergedDataPreviewTable: React.FC<MergedDataPreviewTableProps> = ({
     addDataset({
       id: newDatasetId,
       name: datasetName,
-      nameAr: `مجموعة_بيانات_مدمجة_${activeBaseTable?.name || 'نموذج'}`,
       description: `Merged dataset generated from relationship model on base table ${activeBaseTable?.name}`,
-      descriptionAr: `مجموعة بيانات مدمجة ناتجة عن ربط الجداول بناءً على ${activeBaseTable?.name}`,
       rowCount: datasetData.length,
       columns,
       data: datasetData,
-      fileType: 'csv',
+      format: 'csv',
+      status: 'ready',
+      version: 1.0,
+      workspaceId: workspace?.id || '',
+      columnCount: columns.length,
+      tags: [],
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      sizeBytes: 0,
     });
 
     toast.success(

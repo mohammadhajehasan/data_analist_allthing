@@ -45,11 +45,11 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
         name: t.name,
         rowCount: t.rowCount,
         primaryKey: t.primaryKey || [],
-        columns: t.columns.map(c => ({
-          name: c.name,
-          type: c.type,
-          isNullable: c.isNullable ?? true,
-        })),
+          columns: t.columns.map(c => ({
+            name: c.name,
+            type: c.type,
+            nullable: c.nullable ?? true,
+          })),
       })),
       relationships: relationships.map(r => ({
         id: r.id,
@@ -77,7 +77,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
       const colLines = t.columns.map(c => {
         let typeStr = 'VARCHAR(255)';
         if (c.type === 'integer') typeStr = sqlDialect === 'postgres' ? 'INTEGER' : 'INT';
-        else if (c.type === 'float' || c.type === 'number') typeStr = 'NUMERIC(15,2)';
+        else if (c.type === 'float') typeStr = 'NUMERIC(15,2)';
         else if (c.type === 'date') typeStr = 'TIMESTAMP';
         else if (c.type === 'boolean') typeStr = 'BOOLEAN';
 

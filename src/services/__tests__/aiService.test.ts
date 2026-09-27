@@ -91,6 +91,7 @@ describe('AI Service Layer Unit Tests', () => {
   describe('optimizeSqlQuery custom configurations', () => {
     it('should use custom parameters for local Ollama providers', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
         json: async () => ({ optimizedSql: 'SELECT 1;' }),
       });
       global.fetch = mockFetch;
@@ -113,6 +114,7 @@ describe('AI Service Layer Unit Tests', () => {
 
     it('should use default parameters for Gemini provider', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
         json: async () => ({ optimizedSql: 'SELECT 1;' }),
       });
       global.fetch = mockFetch;

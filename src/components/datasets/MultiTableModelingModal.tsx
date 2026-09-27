@@ -59,7 +59,7 @@ export const MultiTableModelingModal: React.FC<MultiTableModelingModalProps> = (
   onDatasetSaved,
 }) => {
   const allTables = propAllTables || initialTables || [];
-  const { addDataset, setActiveDatasetId, toast, language, addAuditLog } = useApp();
+  const { addDataset, setActiveDatasetId, toast, language, addAuditLog, user, workspace } = useApp();
   const isAr = language === 'ar';
 
   // Mode: 'single' (select one sheet) or 'modeling' (relational joins & ERD)
@@ -317,12 +317,19 @@ export const MultiTableModelingModal: React.FC<MultiTableModelingModalProps> = (
     addDataset(newDataset);
     setActiveDatasetId(newDataset.id);
 
-    addAuditLog({
+addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      workspaceId: 'ws-main',
       action: 'create',
-      entity: 'dataset',
-      details: isAr
-        ? `تم إنشاء مجموعة بيانات منمذجة جديدة (${cleanName}) عبر دمج ${allTables.length} شيتات بنجاح.`
+      resourceType: 'dataset',
+      resourceId: newDsId,
+      status: 'SUCCESS',
+      durationMs: 100,
+      payloadSummary: isAr
+        ? `تم إنشاء مجموعة البيانات المنمذجة جديدة (${cleanName}) عبر دمج ${allTables.length} شيتات بنجاح.`
         : `Created new modeled dataset "${cleanName}" by joining ${allTables.length} worksheets.`,
+      riskLevel: 'LOW',
     });
 
     toast.success(
@@ -370,12 +377,19 @@ export const MultiTableModelingModal: React.FC<MultiTableModelingModalProps> = (
     addDataset(newDataset);
     setActiveDatasetId(newDataset.id);
 
-    addAuditLog({
+addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      workspaceId: 'ws-main',
       action: 'create',
-      entity: 'dataset',
-      details: isAr
+      resourceType: 'dataset',
+      resourceId: newDsId,
+      status: 'SUCCESS',
+      durationMs: 100,
+      payloadSummary: isAr
         ? `تم استيراد ورقة العمل (${tbl.tableName}) كمجموعة بيانات مستقلة.`
         : `Imported worksheet "${tbl.tableName}" as standalone dataset.`,
+      riskLevel: 'LOW',
     });
 
     toast.success(

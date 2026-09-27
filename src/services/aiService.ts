@@ -9,7 +9,7 @@ import { fetchOllamaTags } from './OllamaProxy';
  */
 
 export interface OllamaHealthResult {
-  status: 'online' | 'offline' | 'pinging';
+  status: 'online' | 'offline' | 'pinging' | 'idle';
   engineReady: boolean;
   modelCount: number;
   installedModels: string[];
@@ -204,6 +204,10 @@ export async function optimizeSqlQuery(req: OptimizeQueryRequest) {
     }),
   });
 
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || 'Optimization request failed');
+  }
+  return data;
 }
 

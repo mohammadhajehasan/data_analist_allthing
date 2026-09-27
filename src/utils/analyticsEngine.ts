@@ -425,8 +425,9 @@ export function executeSqlOnDataset(dataset: Dataset, sql: string, startTime: nu
 
 // Helper to evaluate a WHERE clause on a single record
 function evaluateWhereClause(row: Record<string, any>, whereStr: string): boolean {
-  // Support AND combinations
-  const andParts = whereStr.split(/\s+AND\s+/i);
+  // Split on top-level ANDs (parenthesis- and quote-aware), then evaluate each part.
+  // Each part may contain OR combinations at its own top level.
+  const andParts = splitTopLevelAnd(whereStr);
   return andParts.every(part => {
     // If contains OR
     const orParts = part.split(/\s+OR\s+/i);
@@ -434,8 +435,64 @@ function evaluateWhereClause(row: Record<string, any>, whereStr: string): boolea
   });
 }
 
+// Split a WHERE clause into top-level AND parts, respecting parentheses and IN (...) lists
+// so that "a IN ('x, y')" or "(a = 1 AND b = 2) AND c = 3" are not broken incorrectly.
+function splitTopLevelAnd(whereStr: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let current = '';
+  const upper = whereStr.toUpperCase();
+  for (let i = 0; i < whereStr.length; i++) {
+    const ch = whereStr[i];
+    if (quote) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    // Detect the AND keyword at depth 0 (word boundaries)
+    if (depth === 0 && upper.startsWith(' AND', i) && (i === 0 || !/[A-Z0-9_]/.test(upper[i - 1])) && !/[A-Z0-9_]/.test(upper[i + 4] || '')) {
+      parts.push(current.trim());
+      current = '';
+      i += 3; // skip 'AND'
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
 function evaluateSingleCondition(row: Record<string, any>, cond: string): boolean {
-  const cleanCond = cond.replace(/^\(+|\)+$/g, '').trim();
+  // Strip only unbalanced leading/trailing parens: repeatedly remove an outer paren pair
+  // but never strip a trailing ')' that belongs to an IN (...) / function call inside.
+  let cleanCond = cond.trim();
+  while (cleanCond.startsWith('(') && cleanCond.endsWith(')')) {
+    // Only strip when the closing paren actually matches the opening one
+    let depth = 0;
+    let matches = true;
+    for (let i = 0; i < cleanCond.length; i++) {
+      if (cleanCond[i] === '(') depth++;
+      else if (cleanCond[i] === ')') { depth--; if (depth === 0 && i < cleanCond.length - 1) { matches = false; break; } }
+    }
+    if (!matches) break;
+    cleanCond = cleanCond.slice(1, -1).trim();
+  }
+  // Strip a lone leading '(' or trailing ')' when unbalanced
+  const openCount = (cleanCond.match(/\(/g) || []).length;
+  const closeCount = (cleanCond.match(/\)/g) || []).length;
+  if (openCount < closeCount && cleanCond.endsWith(')')) {
+    cleanCond = cleanCond.slice(0, -1).trim();
+  } else if (closeCount < openCount && cleanCond.startsWith('(')) {
+    cleanCond = cleanCond.slice(1).trim();
+  }
 
   // IS NULL / IS NOT NULL
   const isNullMatch = cleanCond.match(/^([a-zA-Z0-9_`"']+)\s+IS\s+(NOT\s+)?NULL$/i);

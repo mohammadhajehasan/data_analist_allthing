@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   User,
   Workspace,
@@ -19,6 +19,7 @@ import {
   AIPrivacyMode,
   AIProviderConfig,
   AIModelDefinition,
+  AIModelCapability,
   AVAILABLE_AI_MODELS,
   INITIAL_AI_SETTINGS,
   CommentItem,
@@ -43,112 +44,116 @@ export type ToastMethods = {
 };
 
 interface AppContextType {
-  user: User;
-  setUser: (u: User) => void;
-  usersList: User[];
-  setUsersList: React.Dispatch<React.SetStateAction<User[]>>;
-  workspace: Workspace;
-  setWorkspace: (w: Workspace) => void;
+   user: User;
+   setUser: (u: User) => void;
+   usersList: User[];
+   setUsersList: React.Dispatch<React.SetStateAction<User[]>>;
+   workspace: Workspace;
+   setWorkspace: (w: Workspace) => void;
   datasets: Dataset[];
   activeDataset: Dataset;
   setActiveDatasetId: (id: string) => void;
+  setActiveDataset: (dataset: Dataset) => void;
   addDataset: (dataset: Omit<Dataset, 'profile'>) => void;
-  updateDataset: (dataset: Dataset) => void;
-  deleteDataset: (id: string) => void;
-  deleteDatasets: (ids: string[]) => void;
-  dashboards: Dashboard[];
-  activeDashboard: Dashboard | null;
-  setActiveDashboardId: (id: string) => void;
-  saveDashboard: (dashboard: Dashboard) => void;
-  addWidgetToDashboard: (dashboardId: string, widget: WidgetConfig) => void;
-  updateWidgetInDashboard: (dashboardId: string, widget: WidgetConfig) => void;
-  deleteWidgetFromDashboard: (dashboardId: string, widgetId: string) => void;
-  chatSessions: ChatSession[];
-  activeChatSession: ChatSession;
-  addChatMessage: (sessionId: string, message: any) => void;
-  createNewChatSession: () => void;
-  reports: Report[];
-  saveReport: (report: Report) => void;
-  dataStories: DataStory[];
-  saveDataStory: (story: DataStory) => void;
-  auditLogs: AuditLogEntry[];
-  addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
-  featureFlags: FeatureFlags;
-  updateFeatureFlags: (flags: Partial<FeatureFlags>) => void;
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  toggleLanguage: () => void;
-  isRTL: boolean;
-  dir: 'rtl' | 'ltr';
-  t: typeof translations.ar;
-  translate: (keyPath: string, fallback?: string) => string;
-  formatNumber: (val: number, options?: Intl.NumberFormatOptions) => string;
-  formatDate: (date: string | Date | number, options?: Intl.DateTimeFormatOptions) => string;
-  formatCurrency: (val: number, currency?: string) => string;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  isCopilotOpen: boolean;
-  setIsCopilotOpen: (open: boolean) => void;
-  theme: ThemeVariant;
-  setTheme: (theme: ThemeVariant) => void;
-  layoutSettings: LayoutSettings;
-  updateLayoutSettings: (settings: Partial<LayoutSettings>) => void;
-  resetLayoutSettings: () => void;
-  // Toast notifications
-  toasts: ToastNotification[];
-  addToast: (toast: Omit<ToastNotification, 'id' | 'timestamp'>) => string;
-  removeToast: (id: string) => void;
-  clearToasts: () => void;
-  toast: ToastMethods;
-  // Onboarding Tour
-  isTourOpen: boolean;
-  setIsTourOpen: (open: boolean) => void;
-  startTour: () => void;
-  completeTour: () => void;
-  // Event Bridge
-  subscribeToEvent: (eventName: string, handler: (data?: any) => void) => () => void;
-  publishEvent: (eventName: string, data?: any) => void;
-  // Modeling Result
-  modelingResult: any | null;
-  setModelingResult: (result: any | null) => void;
-  // AI Settings & Multi-Provider Engine (Ollama, Gemini, DeepSeek, Qwen, OpenRouter)
-  aiSettings: AISettings;
-  availableAIModels: AIModelDefinition[];
-  activeAIModelDef: AIModelDefinition;
-  setActiveAIProvider: (providerId: AIProviderId) => void;
-  setActiveAIModel: (modelId: string) => void;
-  setAIPrivacyMode: (mode: AIPrivacyMode) => void;
-  updateProviderConfig: (providerId: AIProviderId, updates: Partial<AIProviderConfig>) => void;
-  // Comments & Annotations Collaboration
-  comments: CommentItem[];
-  addComment: (comment: Omit<CommentItem, 'id' | 'createdAt'>) => CommentItem;
-  addCommentReply: (commentId: string, reply: Omit<CommentReply, 'id' | 'createdAt'>) => void;
-  toggleCommentResolved: (commentId: string) => void;
-  deleteComment: (commentId: string) => void;
-  getCommentsForTarget: (targetType: string, targetId: string) => CommentItem[];
-  activeCommentTarget: { type: string; id: string; title?: string } | null;
-  setActiveCommentTarget: (target: { type: string; id: string; title?: string } | null) => void;
-  isCommentsDrawerOpen: boolean;
-  setIsCommentsDrawerOpen: (open: boolean) => void;
-  // Project Snapshot Management
-  exportProjectSnapshot: (customName?: string, customDesc?: string) => ProjectSnapshot;
-  restoreProjectSnapshot: (snapshot: ProjectSnapshot) => { success: boolean; message: string };
-  isSnapshotModalOpen: boolean;
-  setIsSnapshotModalOpen: (open: boolean) => void;
-  // Data Refresh & Live Scheduling
-  scheduledRefreshes: ScheduledDataRefresh[];
-  saveScheduledRefresh: (refresh: ScheduledDataRefresh) => void;
-  deleteScheduledRefresh: (id: string) => void;
-  executeDataRefresh: (datasetId: string) => Promise<{ success: boolean; addedRows: number; durationMs: number; message?: string }>;
-  isRefreshModalOpen: boolean;
-  setIsRefreshModalOpen: (open: boolean) => void;
-  // Model Explanation Engine
-  explainModel: (request: ModelExplanationRequest) => Promise<ModelExplanationResult>;
-  isExplainModalOpen: boolean;
-  setIsExplainModalOpen: (open: boolean) => void;
-  activeExplainRequest: ModelExplanationRequest | null;
-  setActiveExplainRequest: (req: ModelExplanationRequest | null) => void;
-}
+   updateDataset: (dataset: Dataset) => void;
+   deleteDataset: (id: string) => void;
+   deleteDatasets: (ids: string[]) => void;
+   dashboards: Dashboard[];
+   activeDashboard: Dashboard | null;
+   setActiveDashboardId: (id: string) => void;
+   saveDashboard: (dashboard: Dashboard) => void;
+   addWidgetToDashboard: (dashboardId: string, widget: WidgetConfig) => void;
+   updateWidgetInDashboard: (dashboardId: string, widget: WidgetConfig) => void;
+   deleteWidgetFromDashboard: (dashboardId: string, widgetId: string) => void;
+   chatSessions: ChatSession[];
+   activeChatSession: ChatSession;
+   addChatMessage: (sessionId: string, message: any) => void;
+   createNewChatSession: () => void;
+   reports: Report[];
+   saveReport: (report: Report) => void;
+   dataStories: DataStory[];
+   saveDataStory: (story: DataStory) => void;
+   auditLogs: AuditLogEntry[];
+   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+   featureFlags: FeatureFlags;
+   updateFeatureFlags: (flags: Partial<FeatureFlags>) => void;
+   language: Language;
+   setLanguage: (lang: Language) => void;
+   toggleLanguage: () => void;
+   isRTL: boolean;
+   dir: 'rtl' | 'ltr';
+   t: typeof translations.ar;
+   translate: (keyPath: string, fallback?: string) => string;
+   formatNumber: (val: number, options?: Intl.NumberFormatOptions) => string;
+   formatDate: (date: string | Date | number, options?: Intl.DateTimeFormatOptions) => string;
+   formatCurrency: (val: number, currency?: string) => string;
+   activeTab: string;
+   setActiveTab: (tab: string) => void;
+   isCopilotOpen: boolean;
+   setIsCopilotOpen: (open: boolean) => void;
+   theme: ThemeVariant;
+   setTheme: (theme: ThemeVariant) => void;
+   layoutSettings: LayoutSettings;
+   updateLayoutSettings: (settings: Partial<LayoutSettings>) => void;
+   resetLayoutSettings: () => void;
+   // Toast notifications
+   toasts: ToastNotification[];
+   addToast: (toast: Omit<ToastNotification, 'id' | 'timestamp'>) => string;
+   removeToast: (id: string) => void;
+   clearToasts: () => void;
+   toast: ToastMethods;
+   // Onboarding Tour
+   isTourOpen: boolean;
+   setIsTourOpen: (open: boolean) => void;
+   startTour: () => void;
+   completeTour: () => void;
+   // Event Bridge
+   subscribeToEvent: (eventName: string, handler: (data?: any) => void) => () => void;
+   publishEvent: (eventName: string, data?: any) => void;
+   // Modeling Result
+   modelingResult: any | null;
+   setModelingResult: (result: any | null) => void;
+   // AI Settings & Multi-Provider Engine (Ollama, Gemini, DeepSeek, Qwen, OpenRouter)
+   aiSettings: AISettings;
+   availableAIModels: AIModelDefinition[];
+   activeAIModelDef: AIModelDefinition;
+   setActiveAIProvider: (providerId: AIProviderId) => void;
+   setActiveAIModel: (modelId: string) => void;
+   setAIPrivacyMode: (mode: AIPrivacyMode) => void;
+   updateProviderConfig: (providerId: AIProviderId, updates: Partial<AIProviderConfig>) => void;
+   testProviderConnection: (providerId: AIProviderId) => Promise<{ status: 'connected' | 'error'; message: string; latencyMs?: number }>;
+    refreshOllamaModels: () => Promise<string[]>;
+    refreshCloudModels: (providerId: AIProviderId, apiKey: string, endpointUrl?: string) => Promise<any[]>;
+    // Comments & Annotations Collaboration
+   comments: CommentItem[];
+   addComment: (comment: Omit<CommentItem, 'id' | 'createdAt'>) => CommentItem;
+   addCommentReply: (commentId: string, reply: Omit<CommentReply, 'id' | 'createdAt'>) => void;
+   toggleCommentResolved: (commentId: string) => void;
+   deleteComment: (commentId: string) => void;
+   getCommentsForTarget: (targetType: string, targetId: string) => CommentItem[];
+   activeCommentTarget: { type: string; id: string; title?: string } | null;
+   setActiveCommentTarget: (target: { type: string; id: string; title?: string } | null) => void;
+   isCommentsDrawerOpen: boolean;
+   setIsCommentsDrawerOpen: (open: boolean) => void;
+   // Project Snapshot Management
+   exportProjectSnapshot: (customName?: string, customDesc?: string) => ProjectSnapshot;
+   restoreProjectSnapshot: (snapshot: ProjectSnapshot) => { success: boolean; message: string };
+   isSnapshotModalOpen: boolean;
+   setIsSnapshotModalOpen: (open: boolean) => void;
+   // Data Refresh & Live Scheduling
+   scheduledRefreshes: ScheduledDataRefresh[];
+   saveScheduledRefresh: (refresh: ScheduledDataRefresh) => void;
+   deleteScheduledRefresh: (id: string) => void;
+   executeDataRefresh: (datasetId: string) => Promise<{ success: boolean; addedRows: number; durationMs: number; message?: string }>;
+   isRefreshModalOpen: boolean;
+   setIsRefreshModalOpen: (open: boolean) => void;
+   // Model Explanation Engine
+   explainModel: (request: ModelExplanationRequest) => Promise<ModelExplanationResult>;
+   isExplainModalOpen: boolean;
+   setIsExplainModalOpen: (open: boolean) => void;
+   activeExplainRequest: ModelExplanationRequest | null;
+   setActiveExplainRequest: (req: ModelExplanationRequest | null) => void;
+ }
 
 const ACCENT_COLOR_MAP: Record<string, { primary: string; hover: string; active: string }> = {
   blue: { primary: '#0f62fe', hover: '#0353e9', active: '#002d9c' },
@@ -580,11 +585,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Derive active model definition
-  const activeAIModelDef = AVAILABLE_AI_MODELS.find(m => m.id === aiSettings.activeModel) || AVAILABLE_AI_MODELS[0];
+// Derive active model definition
+  const installedOllamaModels = aiSettings.providers.ollama.installedLocalModels || [];
+  const availableAIModels = useMemo(() => {
+    const existingIds = new Set(AVAILABLE_AI_MODELS.map((model) => model.id));
+    const installedIds = new Set(installedOllamaModels);
+    const dynamicModels: AIModelDefinition[] = installedOllamaModels
+      .filter((modelId) => !existingIds.has(modelId))
+      .map((modelId) => {
+        const displayName = modelId.replace(/^ollama\//, '');
+        const parameterSize = displayName.includes(':') ? displayName.split(':').slice(-1)[0] : '';
+        return {
+          id: modelId,
+          name: `Ollama: ${displayName}`,
+          provider: 'ollama' as AIProviderId,
+          providerName: 'Ollama (Local Privacy)',
+          description: 'Installed local Ollama model exposed by the running engine.',
+          descriptionAr: 'نموذج أولاما المحلي المثبّت والمكشوف بواسطة محرك أولاما.',
+          contextWindow: 32768,
+          isLocal: true,
+          isPrivacyFirst: true,
+          capabilities: ['nl2sql', 'reasoning', 'privacy', 'code'],
+          parameterSize: parameterSize || undefined,
+          recommendedFor: 'Local AI generation and analytics',
+          recommendedForAr: 'التوليد والتحليلات المحلية',
+        };
+      });
+
+    // Merge discovered cloud models from each provider config
+    const discoveredCloudModels: AIModelDefinition[] = [];
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
+    for (const providerId of cloudProviders) {
+      const discovered = aiSettings.providers[providerId].discoveredModels || [];
+      for (const m of discovered) {
+        if (existingIds.has(m.id) || dynamicModels.some(d => d.id === m.id)) continue;
+        const providerConfig = aiSettings.providers[providerId];
+        discoveredCloudModels.push({
+          id: m.id,
+          name: m.name,
+          provider: providerId,
+          providerName: providerConfig.name,
+          description: `Discovered from ${providerConfig.name} API`,
+          descriptionAr: `مُكتشف من ${providerConfig.nameAr || providerConfig.name} API`,
+          contextWindow: m.contextWindow,
+          isLocal: false,
+          isPrivacyFirst: false,
+          capabilities: (m.capabilities as AIModelCapability[]) || ['nl2sql', 'reasoning'],
+          recommendedFor: `Cloud model from ${providerConfig.name}`,
+          recommendedForAr: `نمودج سحابي من ${providerConfig.nameAr || providerConfig.name}`,
+        });
+      }
+    }
+
+    return [...AVAILABLE_AI_MODELS, ...dynamicModels, ...discoveredCloudModels];
+  }, [installedOllamaModels, aiSettings.providers.gemini.discoveredModels, aiSettings.providers.qwen.discoveredModels, aiSettings.providers.deepseek.discoveredModels, aiSettings.providers.openrouter.discoveredModels, aiSettings.providers.custom_openai.discoveredModels]);
+  const activeAIModelDef = availableAIModels.find((model) => model.id === aiSettings.activeModel) || availableAIModels[0];
+
+  const getDefaultModelForProvider = (providerId: AIProviderId): string => {
+    if (providerId === 'ollama') {
+      const configuredModel = aiSettings.providers.ollama.defaultModelId;
+      return installedOllamaModels.find((modelId) => modelId === configuredModel) || installedOllamaModels[0] || configuredModel;
+    }
+    return sanitizeStoredModel(aiSettings.providers[providerId]?.defaultModelId || 'gemini-3.8-flash');
+  };
 
   const setActiveAIProvider = (providerId: AIProviderId) => {
-    const defaultModel = sanitizeStoredModel(aiSettings.providers[providerId]?.defaultModelId || (providerId === 'gemini' ? 'gemini-3.8-flash' : 'gemini-3.8-flash'));
+    const defaultModel = getDefaultModelForProvider(providerId);
     setAiSettings(prev => ({
       ...prev,
       activeProvider: providerId,
@@ -593,7 +659,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setActiveAIModel = (modelId: string) => {
-    const modelDef = AVAILABLE_AI_MODELS.find(m => m.id === modelId);
+    const modelDef = availableAIModels.find((model) => model.id === modelId);
     setAiSettings(prev => ({
       ...prev,
       activeModel: modelId,
@@ -607,7 +673,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let activeModel = prev.activeModel;
       if (mode === 'strict_local') {
         activeProvider = 'ollama';
-        activeModel = 'ollama/qwen2.5-coder:7b';
+        activeModel = getDefaultModelForProvider('ollama');
       }
       return {
         ...prev,
@@ -670,22 +736,104 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const refreshOllamaModels = async (): Promise<string[]> => {
-    try {
-      const endpoint = aiSettings.providers.ollama.endpointUrl || 'http://localhost:11434';
-      const health = await checkOllamaEngineHealth(endpoint);
-      if (health.engineReady && health.installedModels.length > 0) {
-        updateProviderConfig('ollama', {
-          status: 'connected',
-          installedLocalModels: health.installedModels,
-        });
-        return health.installedModels;
-      }
-    } catch (e) {}
-    return [];
-  };
+const refreshOllamaModels = async (): Promise<string[]> => {
+     try {
+       const endpoint = aiSettings.providers.ollama.endpointUrl || 'http://localhost:11434';
+       const health = await checkOllamaEngineHealth(endpoint);
+       if (health.engineReady && health.installedModels.length > 0) {
+         updateProviderConfig('ollama', {
+           status: 'connected',
+           installedLocalModels: health.installedModels,
+         });
+         return health.installedModels;
+       }
+       updateProviderConfig('ollama', {
+         status: 'disconnected',
+         installedLocalModels: [],
+       });
+     } catch (e) {
+       updateProviderConfig('ollama', {
+         status: 'disconnected',
+         installedLocalModels: [],
+       });
+     }
+     return [];
+    };
 
-  // ----------------------------------------------------
+  // Auto-discover cloud models when API key is added/changed
+  useEffect(() => {
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
+    
+    for (const providerId of cloudProviders) {
+      const config = aiSettings.providers[providerId];
+      const hasKey = config.apiKey && config.apiKey.trim().length > 0;
+      const needsDiscovery = hasKey && (!config.discoveredModels || config.discoveredModels.length === 0);
+      
+      if (needsDiscovery) {
+        const timeoutId = setTimeout(() => {
+          refreshCloudModels(providerId, config.apiKey!, config.endpointUrl);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [
+    aiSettings.providers.gemini.apiKey,
+    aiSettings.providers.qwen.apiKey,
+    aiSettings.providers.deepseek.apiKey,
+    aiSettings.providers.openrouter.apiKey,
+    aiSettings.providers.custom_openai.apiKey,
+  ]);
+
+  // Dynamic Model Discovery for Cloud Providers
+    const refreshCloudModels = async (providerId: AIProviderId, apiKey: string, endpointUrl?: string): Promise<Array<{id: string; name: string; isFree: boolean; costPer1kTokens?: number; contextWindow?: number; capabilities?: string[]}>> => {
+      try {
+        const res = await fetch('/api/ai/fetch-models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: providerId, apiKey, endpointUrl }),
+        });
+        const data = await res.json();
+        if (data.models) {
+          // Persist discovered models to provider config so they appear in availableAIModels
+          updateProviderConfig(providerId, {
+            discoveredModels: data.models,
+            status: 'connected',
+            errorMessage: undefined,
+          });
+          return data.models;
+        }
+      } catch (err) {
+        console.error('Failed to fetch cloud models:', err);
+      }
+      return [];
+};
+
+   // Auto-discover cloud models when API key is added/changed
+   useEffect(() => {
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
+    
+    for (const providerId of cloudProviders) {
+      const config = aiSettings.providers[providerId];
+      const hasKey = config.apiKey && config.apiKey.trim().length > 0;
+      const needsDiscovery = hasKey && (!config.discoveredModels || config.discoveredModels.length === 0);
+      
+      if (needsDiscovery) {
+        // Debounce to avoid multiple rapid calls
+        const timeoutId = setTimeout(() => {
+          refreshCloudModels(providerId, config.apiKey!, config.endpointUrl);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [
+    aiSettings.providers.gemini.apiKey,
+    aiSettings.providers.qwen.apiKey,
+    aiSettings.providers.deepseek.apiKey,
+    aiSettings.providers.openrouter.apiKey,
+    aiSettings.providers.custom_openai.apiKey,
+  ]);
+
+   // ----------------------------------------------------
   // Collaboration & Comments Methods
   // ----------------------------------------------------
   const addComment = (commentData: Omit<CommentItem, 'id' | 'createdAt'>): CommentItem => {
@@ -1014,6 +1162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ----------------------------------------------------
   const explainModel = async (request: ModelExplanationRequest): Promise<ModelExplanationResult> => {
     try {
+      const activeProviderConf = aiSettings.providers[aiSettings.activeProvider];
       const res = await fetch('/api/models/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1022,6 +1171,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           language,
           provider: aiSettings.activeProvider,
           model: aiSettings.activeModel,
+          endpointUrl: activeProviderConf?.endpointUrl,
+          apiKey: activeProviderConf?.apiKey,
         }),
       });
 
@@ -1214,30 +1365,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeDashboard = dashboards.find(d => d.id === activeDashboardId) || dashboards[0] || null;
   const activeChatSession = chatSessions.find(s => s.id === activeSessionId) || chatSessions[0];
 
-  const addDataset = (newDsData: Omit<Dataset, 'profile'>) => {
-    const profiled: Dataset = {
-      ...newDsData,
-      profile: generateProfile(newDsData),
-    };
-    setDatasets(prev => [profiled, ...prev]);
-    setActiveDatasetId(profiled.id);
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      workspaceId: workspace.id,
-      action: 'DATASET_CREATE',
-      resourceType: 'dataset',
-      resourceId: profiled.id,
-      status: 'SUCCESS',
-      durationMs: 35,
-      payloadSummary: `Created dataset "${profiled.name}" with ${profiled.rowCount} records.`,
-      riskLevel: 'LOW',
-    });
-  };
+   const setActiveDataset = (dataset: Dataset) => {
+     setDatasets(prev => prev.map(d => d.id === dataset.id ? dataset : d));
+     setActiveDatasetId(dataset.id);
+   };
 
-  const updateDataset = (updated: Dataset) => {
-    setDatasets(prev => prev.map(d => d.id === updated.id ? updated : d));
-  };
+   const addDataset = (newDsData: Omit<Dataset, 'profile'>) => {
+     const profiled: Dataset = {
+       ...newDsData,
+       profile: generateProfile(newDsData),
+     };
+     setDatasets(prev => [profiled, ...prev]);
+     setActiveDatasetId(profiled.id);
+     addAuditLog({
+       userId: user.id,
+       userName: user.name,
+       workspaceId: workspace.id,
+       action: 'DATASET_CREATE',
+       resourceType: 'dataset',
+       resourceId: profiled.id,
+       status: 'SUCCESS',
+       durationMs: 35,
+       payloadSummary: `Created dataset "${profiled.name}" with ${profiled.rowCount} records.`,
+       riskLevel: 'LOW',
+     });
+   };
+
+   const updateDataset = (updated: Dataset) => {
+     setDatasets(prev => prev.map(d => d.id === updated.id ? updated : d));
+   };
 
   const deleteDataset = (id: string) => {
     setDatasets(prev => prev.filter(d => d.id !== id));
@@ -1490,6 +1646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         datasets,
         activeDataset,
         setActiveDatasetId,
+        setActiveDataset,
         addDataset,
         updateDataset,
         deleteDataset,
@@ -1546,7 +1703,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         subscribeToEvent,
         publishEvent,
         aiSettings,
-        availableAIModels: AVAILABLE_AI_MODELS,
+        availableAIModels: availableAIModels,
         activeAIModelDef,
         setActiveAIProvider,
         setActiveAIModel,
@@ -1554,6 +1711,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProviderConfig,
         testProviderConnection,
         refreshOllamaModels,
+        refreshCloudModels,
         comments,
         addComment,
         addCommentReply,

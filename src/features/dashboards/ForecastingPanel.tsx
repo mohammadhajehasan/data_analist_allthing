@@ -183,8 +183,8 @@ export const ForecastingPanel: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                  <XAxis dataKey="label" stroke="#8d8d8d" fontSize={10} fontClassName="font-mono" />
-                  <YAxis stroke="#8d8d8d" fontSize={10} fontClassName="font-mono" />
+                  <XAxis dataKey="label" stroke="#8d8d8d" fontSize={10} className="font-mono" />
+                  <YAxis stroke="#8d8d8d" fontSize={10} className="font-mono" />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1f1f1f', borderColor: '#393939', fontSize: 11, fontFamily: 'monospace' }}
                     labelStyle={{ color: '#fff', fontWeight: 'bold' }}

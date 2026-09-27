@@ -17,15 +17,18 @@ export interface ModelPdfExportData {
     splitSeed?: number;
     kFolds?: number;
   };
-  metrics: {
-    r2: number;
-    adjustedR2: number;
-    rmse: number;
-    mse: number;
-    mae?: number;
-    aic?: number;
-    bic?: number;
-  };
+metrics: {
+     r2: number;
+     adjustedR2: number;
+     rmse: number;
+     mse: number;
+     mae?: number;
+     n?: number;
+     p?: number;
+     aic?: number;
+      bic?: number;
+      accuracyGrade?: string;
+   };
   splitMetrics?: {
     enabled: boolean;
     trainR2?: number;

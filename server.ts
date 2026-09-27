@@ -12,6 +12,13 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Patterns that indicate a placeholder / demo API key mistakenly left in configuration
+const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemini|placeholder|xxxx/i;
+
+function isPlaceholderApiKey(key: string): boolean {
+  return PLACEHOLDER_KEY_PATTERNS.test(key);
+}
+
 // Lazy initialize Gemini API client with required User-Agent
 let aiClient: GoogleGenAI | null = null;
 
@@ -19,6 +26,10 @@ function getAiClient(customKey?: string): GoogleGenAI | null {
   const apiKey = customKey || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.warn('GEMINI_API_KEY is not set. AI features will use deterministic fallbacks.');
+    return null;
+  }
+  if (isPlaceholderApiKey(apiKey)) {
+    console.warn('GEMINI_API_KEY looks like a placeholder/demo value. Replace it with a real key from https://aistudio.google.com/apikey');
     return null;
   }
   if (customKey) {
@@ -81,7 +92,7 @@ async function generateWithModelFallback(params: {
   config?: any;
   models?: string[];
   apiKey?: string;
-}): Promise<{ text: string; modelUsed: string } | null> {
+}): Promise<{ text: string; modelUsed: string; lastError?: string } | null> {
   const ai = getAiClient(params.apiKey);
   if (!ai) return null;
 
@@ -98,6 +109,7 @@ async function generateWithModelFallback(params: {
     if (!candidateModels.includes(bm)) candidateModels.push(bm);
   }
 
+  let lastError = '';
   for (const model of candidateModels) {
     try {
       const response = await ai.models.generateContent({
@@ -109,13 +121,16 @@ async function generateWithModelFallback(params: {
       if (response && response.text) {
         return { text: response.text, modelUsed: model };
       }
-    } catch (_err: any) {
-      // Seamlessly failover to next candidate model without noisy console errors
+    } catch (err: any) {
+      // Keep the most informative error for diagnostics instead of swallowing it silently
+      const msg = err?.message || String(err);
+      if (msg.length > lastError.length) lastError = msg;
+      console.warn(`[Gemini] model '${model}' failed: ${msg.slice(0, 300)}`);
       continue;
     }
   }
 
-  return null;
+  return { text: '', modelUsed: 'none', lastError };
 }
 
 /**
@@ -139,10 +154,10 @@ async function callUniversalAI(params: {
   const modelName = rawModel.includes('/') ? rawModel.split('/').slice(1).join('/') : rawModel;
 
   // 1. Ollama (100% Local & Privacy-First)
-  if (provider === 'ollama') {
-    const endpoint = (params.endpointUrl || 'http://localhost:11434').replace(/\/+$/, '');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+   if (provider === 'ollama') {
+     const endpoint = (params.endpointUrl || 'http://localhost:11434').replace(/\/+$/, '');
+     const controller = new AbortController();
+     const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
       const res = await fetch(`${endpoint}/api/chat`, {
@@ -191,6 +206,19 @@ async function callUniversalAI(params: {
     let baseUrl = params.endpointUrl;
     let authHeader = params.apiKey ? `Bearer ${params.apiKey}` : '';
 
+    // Use environment variables as fallback for API keys
+    if (!params.apiKey) {
+      if (provider === 'openrouter' && process.env.OPENROUTER_API_KEY) {
+        authHeader = `Bearer ${process.env.OPENROUTER_API_KEY}`;
+      } else if (provider === 'deepseek' && process.env.DEEPSEEK_API_KEY) {
+        authHeader = `Bearer ${process.env.DEEPSEEK_API_KEY}`;
+      } else if (provider === 'qwen' && process.env.QWEN_API_KEY) {
+        authHeader = `Bearer ${process.env.QWEN_API_KEY}`;
+      } else if (provider === 'custom_openai' && process.env.CUSTOM_OPENAI_API_KEY) {
+        authHeader = `Bearer ${process.env.CUSTOM_OPENAI_API_KEY}`;
+      }
+    }
+
     if (provider === 'openrouter') {
       baseUrl = baseUrl || 'https://openrouter.ai/api/v1';
     } else if (provider === 'qwen') {
@@ -198,7 +226,7 @@ async function callUniversalAI(params: {
     } else if (provider === 'deepseek') {
       baseUrl = baseUrl || 'https://api.deepseek.com/v1';
     } else if (provider === 'custom_openai') {
-      baseUrl = baseUrl || 'http://localhost:8000/v1';
+      baseUrl = baseUrl || process.env.CUSTOM_OPENAI_ENDPOINT || 'http://localhost:8000/v1';
     }
 
     if (baseUrl && (authHeader || provider === 'custom_openai')) {
@@ -265,6 +293,10 @@ async function callUniversalAI(params: {
   }
 
   // 3. Google Gemini (Default / Built-in Server-Side Engine)
+  const geminiKeyCandidate = params.apiKey || process.env.GEMINI_API_KEY || '';
+  if (geminiKeyCandidate && isPlaceholderApiKey(geminiKeyCandidate)) {
+    throw new Error('مفتاح GEMINI_API_KEY هو مفتاح تجريبي وهمي (placeholder). استبدله بمفتاح حقيقي من https://aistudio.google.com/apikey ثم أعد تشغيل الخادم.');
+  }
   const sanitizedModel = sanitizeGeminiModel(rawModel);
   const geminiResult = await generateWithModelFallback({
     contents: params.prompt,
@@ -276,7 +308,7 @@ async function callUniversalAI(params: {
     apiKey: params.apiKey,
   });
 
-  if (geminiResult) {
+  if (geminiResult && geminiResult.text) {
     return {
       text: geminiResult.text,
       modelUsed: geminiResult.modelUsed,
@@ -285,12 +317,12 @@ async function callUniversalAI(params: {
     };
   }
 
-  return {
-    text: '',
-    modelUsed: 'heuristic-engine',
-    durationMs: Date.now() - startTime,
-    isLocal: false,
-  };
+  const diag = geminiResult?.lastError ? ` Last error: ${geminiResult.lastError.slice(0, 300)}` : '';
+  if (params.disableFallback) {
+    throw new Error(`The selected provider '${provider}' failed or is not configured. Fallback is disabled in the AI Sandbox.${diag}`);
+  }
+
+  throw new Error(`The selected provider '${provider}' failed to generate a response. Fallback is disabled in the AI Sandbox.${diag}`);
 }
 
 // In-memory audit log storage on backend
@@ -298,10 +330,15 @@ const serverAuditLogs: any[] = [];
 
 // 1. Health check
 app.get('/api/health', (_req, res) => {
+  const envKey = process.env.GEMINI_API_KEY || '';
+  const keyIsPlaceholder = Boolean(envKey) && isPlaceholderApiKey(envKey);
   res.json({
     status: 'ok',
     version: '1.0.0',
-    aiEnabled: Boolean(process.env.GEMINI_API_KEY),
+    aiEnabled: Boolean(envKey) && !keyIsPlaceholder,
+    aiKeyWarning: keyIsPlaceholder
+      ? 'GEMINI_API_KEY في .env هو مفتاح تجريبي وهمي (placeholder). استبدله بمفتاح حقيقي من https://aistudio.google.com/apikey'
+      : (!envKey ? 'GEMINI_API_KEY غير مضبوط في .env' : undefined),
     timestamp: new Date().toISOString(),
   });
 });
@@ -363,11 +400,14 @@ app.post('/api/ai/test-connection', async (req, res) => {
     if (provider === 'gemini') {
       const client = getAiClient(apiKey);
       if (!client) {
+        const keySource = apiKey || process.env.GEMINI_API_KEY || '';
         return res.json({
           status: 'unconfigured',
           latencyMs: 15,
           isLocal: false,
-          message: 'لم يتم العثور على مفتاح GEMINI_API_KEY. يرجى تهيئة المفتاح في لوحة الأسرار أو إدخاله في الإعدادات.',
+          message: !keySource
+            ? 'لم يتم العثور على مفتاح GEMINI_API_KEY. يرجى تهيئة المفتاح في لوحة الأسرار أو إدخاله في الإعدادات.'
+            : 'مفتاح GEMINI_API_KEY الحالي هو مفتاح تجريبي وهمي (placeholder). استبدله بمفتاح حقيقي من https://aistudio.google.com/apikey ثم أعد تشغيل الخادم.',
         });
       }
 
@@ -377,12 +417,25 @@ app.post('/api/ai/test-connection', async (req, res) => {
         apiKey,
       });
 
-      if (testRes) {
+      if (testRes && testRes.text) {
         return res.json({
           status: 'connected',
           latencyMs: Date.now() - startTime,
           isLocal: false,
           message: `تم الاتصال بنجاح بمزود Google Gemini (النموذج: ${testRes.modelUsed}).`,
+        });
+      } else if (testRes && testRes.lastError) {
+        // Surface the real underlying error (invalid key, quota, network...) instead of a generic message
+        const rawErr = testRes.lastError.replace(/\s+/g, ' ').slice(0, 400);
+        const isInvalidKey = /API_KEY_INVALID|API key not valid/i.test(rawErr);
+        return res.json({
+          status: 'error',
+          latencyMs: Date.now() - startTime,
+          isLocal: false,
+          message: isInvalidKey
+            ? 'مفتاح GEMINI_API_KEY غير صالح. يرجى استبداله بمفتاح حقيقي من https://aistudio.google.com/apikey'
+            : `فشل التحقق من اتصال Gemini. السبب: ${rawErr}`,
+          diagnostic: rawErr,
         });
       } else {
         return res.json({
@@ -402,6 +455,7 @@ app.post('/api/ai/test-connection', async (req, res) => {
       endpointUrl,
       apiKey,
       prompt: testPrompt,
+      disableFallback: true,
     });
 
     if (result.text) {
@@ -519,36 +573,45 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
 
   const rpcId = payload.id ?? 1;
   const targetUrl = endpointUrl || 'http://localhost:8000/rpc';
+  const { method, params = {} } = payload;
 
-  // Try forwarding to external/remote JSON-RPC endpoint
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const rpcProvider = typeof params.provider === 'string' ? params.provider.toLowerCase() : 'gemini';
+  const rpcModel = typeof params.model === 'string' ? params.model : undefined;
+  const nativeAIMethods = new Set(['ai.generate', 'ai.chat', 'ai.analyzeData', 'ai.profile', 'ai.nl2sql']);
+  const shouldUseNativeAIHandler = nativeAIMethods.has(method) && (rpcProvider === 'ollama' || rpcProvider === 'custom_openai');
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...(customHeaders || {}),
-    };
+  if (!shouldUseNativeAIHandler) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (authToken) {
-      headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(customHeaders || {}),
+      };
+
+      if (authToken) {
+        headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+      }
+
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        const data = await response.json();
+        return res.json(data);
+      }
+    } catch (forwardErr: any) {
+      console.log(`[JSON-RPC Gateway] External endpoint ${targetUrl} not reachable or timed out (${forwardErr.message}). Routing via native fallback handler.`);
     }
-
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data = await response.json();
-      return res.json(data);
-    }
-  } catch (forwardErr: any) {
-    console.log(`[JSON-RPC Gateway] External endpoint ${targetUrl} not reachable or timed out (${forwardErr.message}). Routing via native fallback handler.`);
+  } else {
+    console.log(`[JSON-RPC Gateway] Native provider routing for ${rpcProvider}/${rpcModel || 'default'}; external endpoint skipped.`);
   }
 
   // Built-in Native Handler for JSON-RPC 2.0 AI Methods
@@ -573,11 +636,13 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
     if (method === 'ai.generate' || method === 'ai.chat') {
       const prompt = params.prompt || params.query || (params.messages ? JSON.stringify(params.messages) : 'Hello');
       const aiResult = await callUniversalAI({
-        provider: params.provider || 'gemini',
-        model: params.model,
-        prompt,
+        provider: rpcProvider,
+        model: rpcModel || 'gemini-3.8-flash',
+        endpointUrl: params.endpointUrl,
         apiKey: params.apiKey,
+        prompt,
         systemInstruction: params.systemInstruction,
+        disableFallback: true,
       });
 
       return res.json({
@@ -599,8 +664,13 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
       const prompt = `Perform high-level semantic profiling and anomaly detection for dataset "${datasetName}" with columns: ${JSON.stringify(columns)}. Task: ${params.task || 'general_profile'}. Return recommendations concisely in Markdown.`;
       
       const aiResult = await callUniversalAI({
+        provider: rpcProvider,
+        model: rpcModel || 'gemini-3.8-flash',
+        endpointUrl: params.endpointUrl,
+        apiKey: params.apiKey,
         prompt,
         systemInstruction: 'You are an expert AI data scientist and statistician.',
+        disableFallback: true,
       });
 
       return res.json({
@@ -649,7 +719,14 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
       const dialect = params.dialect || 'postgresql';
 
       const prompt = `Convert this natural language request to clean, valid ${dialect} SQL: "${query}". Schema: ${schema}. Output only the SQL query.`;
-      const aiResult = await callUniversalAI({ prompt });
+      const aiResult = await callUniversalAI({
+        provider: rpcProvider,
+        model: rpcModel || 'gemini-3.8-flash',
+        endpointUrl: params.endpointUrl,
+        apiKey: params.apiKey,
+        prompt,
+        disableFallback: true,
+      });
 
       return res.json({
         jsonrpc: '2.0',
@@ -705,11 +782,176 @@ app.get('/api/ai/ollama/tags', async (req, res) => {
   }
   return res.json({
     connected: false,
-    models: [],
-    hint: 'Run "ollama serve" on your local machine to activate local privacy models.',
-  });
+models: [],
+     hint: 'Run "ollama serve" on your local machine to activate local privacy models.',
+   });
 });
 
+// 1e. Dynamic Model Discovery for Cloud Providers
+// Fetches supported models from provider APIs based on API keys and sorts by cost (free first)
+app.post('/api/ai/fetch-models', async (req, res) => {
+  const { provider, apiKey, endpointUrl } = req.body;
+
+  if (!provider || !apiKey) {
+    return res.status(400).json({ error: 'Provider and API key are required' });
+  }
+
+  try {
+    let models: Array<{
+      id: string;
+      name: string;
+      isFree: boolean;
+      costPer1kTokens?: number;
+      contextWindow?: number;
+      capabilities?: string[];
+    }> = [];
+
+    switch (provider) {
+      case 'gemini': {
+        const client = getAiClient(apiKey);
+        if (!client) {
+          return res.status(400).json({ error: 'Invalid Gemini API key' });
+        }
+        // List models from Gemini API
+        const modelList = await client.models.list();
+        const modelArray: any[] = [];
+        for await (const model of modelList) {
+          modelArray.push(model);
+        }
+        models = modelArray
+          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m: any) => ({
+            id: m.name.replace('models/', ''),
+            name: m.displayName || m.name.replace('models/', ''),
+            isFree: true,
+            costPer1kTokens: 0,
+            contextWindow: m.inputTokenLimit,
+            capabilities: ['nl2sql', 'reasoning', 'optimization'],
+          }));
+        break;
+      }
+
+      case 'ollama': {
+        const targetHost = (endpointUrl || 'http://localhost:11434').replace(/\/+$/, '');
+        const url = `${targetHost}/api/tags`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+          const response = await fetch(url, { signal: controller.signal, headers: { 'ngrok-skip-browser-warning': 'true' } });
+          clearTimeout(timeout);
+          
+          if (response.ok) {
+            const data: any = await response.json();
+            models = (data.models || []).map((m: any) => ({
+              id: `ollama/${m.name}`,
+              name: `Ollama: ${m.name}`,
+              isFree: true,
+              costPer1kTokens: 0,
+              contextWindow: 32768,
+              capabilities: ['nl2sql', 'privacy', 'code', 'reasoning'],
+            }));
+          }
+        } catch (e) {
+          models = [];
+        }
+        break;
+      }
+
+      case 'openrouter': {
+        const response = await fetch('https://openrouter.ai/api/v1/models', {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data: any = await response.json();
+          models = (data.data || [])
+            .filter((m: any) => m.id && !m.id.includes(':thinking'))
+            .map((m: any) => ({
+              id: `openrouter/${m.id}`,
+              name: m.name || m.id,
+              isFree: m.pricing?.prompt === '0' && m.pricing?.completion === '0',
+              costPer1kTokens: parseFloat(m.pricing?.prompt || '0') + parseFloat(m.pricing?.completion || '0'),
+              contextWindow: m.context_length,
+              capabilities: ['nl2sql', 'reasoning', 'optimization'],
+            }));
+        }
+        break;
+      }
+
+      case 'qwen': {
+        const baseUrl = endpointUrl || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+        const response = await fetch(`${baseUrl}/models`, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data: any = await response.json();
+          models = (data.data || []).map((m: any) => ({
+            id: `qwen/${m.id}`,
+            name: m.id,
+            isFree: false,
+            costPer1kTokens: 0.001,
+            contextWindow: m.context_window || 32768,
+            capabilities: ['nl2sql', 'code', 'optimization'],
+          }));
+        }
+        break;
+      }
+
+      case 'deepseek': {
+        const baseUrl = endpointUrl || 'https://api.deepseek.com/v1';
+        const response = await fetch(`${baseUrl}/models`, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data: any = await response.json();
+          models = (data.data || []).map((m: any) => ({
+            id: `deepseek/${m.id}`,
+            name: m.id,
+            isFree: m.id.includes('chat') || m.id.includes('v3'),
+            costPer1kTokens: m.id.includes('r1') ? 0.0014 : 0.00014,
+            contextWindow: 65536,
+            capabilities: ['reasoning', 'nl2sql', 'optimization'],
+          }));
+        }
+        break;
+      }
+
+      case 'custom_openai': {
+        const baseUrl = endpointUrl || 'http://localhost:8000/v1';
+        const response = await fetch(`${baseUrl}/models`, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data: any = await response.json();
+          models = (data.data || []).map((m: any) => ({
+            id: `custom_openai/${m.id}`,
+            name: m.id,
+            isFree: true,
+            costPer1kTokens: 0,
+            contextWindow: m.context_window || 32768,
+            capabilities: ['nl2sql', 'privacy', 'code'],
+          }));
+        }
+        break;
+      }
+
+      default:
+        return res.status(400).json({ error: `Unsupported provider: ${provider}` });
+    }
+
+    // Sort: free models first, then by cost ascending
+    models.sort((a, b) => {
+      if (a.isFree && !b.isFree) return -1;
+      if (!a.isFree && b.isFree) return 1;
+      return (a.costPer1kTokens || 0) - (b.costPer1kTokens || 0);
+    });
+
+    res.json({ models });
+  } catch (err: any) {
+    console.error('Model fetch error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch models' });
+  }
+});
 
 // 1d. Unified API Proxy Layer for Local Ollama & Custom Endpoints
 // Prevents CORS preflight and 400 Bad Request errors by creating a server-side proxy boundary
@@ -776,91 +1018,6 @@ app.all('/api/proxy/ollama', async (req, res) => {
     });
   }
 });
-
-
-// Helper for schema-aware heuristic SQL generation
-function generateHeuristicSQL(datasetSchema: any, question: string, language: string = 'ar') {
-  const tableName = datasetSchema?.name?.replace(/[^a-zA-Z0-9_]/g, '_')?.toLowerCase() || 'dataset_records';
-  const columns = datasetSchema?.columns || [];
-
-  const numericCols = columns.filter((c: any) => c.type === 'float' || c.type === 'integer');
-  const catCols = columns.filter((c: any) => c.type === 'category' || c.type === 'string');
-  const dateCols = columns.filter((c: any) => c.type === 'date');
-
-  const lowerQ = (question || '').toLowerCase();
-
-  // Pick target numeric and dimension columns
-  const numCol =
-    numericCols.find((c: any) => {
-      const name = c.name.toLowerCase();
-      return (
-        lowerQ.includes(name) ||
-        (lowerQ.includes('sales') && name.includes('sales')) ||
-        (lowerQ.includes('revenue') && name.includes('revenue')) ||
-        (lowerQ.includes('profit') && name.includes('profit')) ||
-        (lowerQ.includes('price') && name.includes('price')) ||
-        (lowerQ.includes('cost') && name.includes('cost')) ||
-        (lowerQ.includes('مبيع') && name.includes('sales')) ||
-        (lowerQ.includes('ربح') && name.includes('profit')) ||
-        (lowerQ.includes('سعر') && name.includes('price'))
-      );
-    })?.name ||
-    numericCols[0]?.name ||
-    'value';
-
-  const catCol =
-    catCols.find((c: any) => {
-      const name = c.name.toLowerCase();
-      return (
-        lowerQ.includes(name) ||
-        (lowerQ.includes('region') && name.includes('region')) ||
-        (lowerQ.includes('category') && name.includes('category')) ||
-        (lowerQ.includes('status') && name.includes('status')) ||
-        (lowerQ.includes('country') && name.includes('country')) ||
-        (lowerQ.includes('منطق') && (name.includes('region') || name.includes('country'))) ||
-        (lowerQ.includes('فئة') && name.includes('category'))
-      );
-    })?.name ||
-    dateCols[0]?.name ||
-    catCols[0]?.name ||
-    columns[0]?.name ||
-    'id';
-
-  let aggFunc = 'SUM';
-  let isCount = false;
-  if (lowerQ.includes('average') || lowerQ.includes('avg') || lowerQ.includes('متوسط') || lowerQ.includes('معدل')) {
-    aggFunc = 'AVG';
-  } else if (lowerQ.includes('max') || lowerQ.includes('highest') || lowerQ.includes('أعلى') || lowerQ.includes('أكبر')) {
-    aggFunc = 'MAX';
-  } else if (lowerQ.includes('min') || lowerQ.includes('lowest') || lowerQ.includes('أقل') || lowerQ.includes('أدنى')) {
-    aggFunc = 'MIN';
-  } else if (lowerQ.includes('count') || lowerQ.includes('عدد') || lowerQ.includes('كم عدد')) {
-    isCount = true;
-  }
-
-  const limitMatch = lowerQ.match(/(?:top|limit|أعلى|أول)\s*(\d+)/i);
-  const limit = limitMatch ? limitMatch[1] : '15';
-
-  let sql = '';
-  let explanation = '';
-
-  if (isCount && (!numCol || numCol === 'value')) {
-    sql = `SELECT \n  ${catCol},\n  COUNT(*) AS record_count\nFROM ${tableName}\nGROUP BY ${catCol}\nORDER BY record_count DESC\nLIMIT ${limit};`;
-    explanation =
-      language === 'ar'
-        ? `حساب التوزيع التكراري وتعداد السجلات مصنفة حسب "${catCol}".`
-        : `Calculates distribution and total count grouped by "${catCol}".`;
-  } else {
-    sql = `SELECT \n  ${catCol},\n  ${aggFunc}(${numCol}) AS ${aggFunc.toLowerCase()}_${numCol},\n  COUNT(*) AS transaction_count\nFROM ${tableName}\nGROUP BY ${catCol}\nORDER BY ${aggFunc.toLowerCase()}_${numCol} DESC\nLIMIT ${limit};`;
-    explanation =
-      language === 'ar'
-        ? `استعلام تجميعي لحساب ${aggFunc === 'SUM' ? 'إجمالي' : aggFunc === 'AVG' ? 'متوسط' : 'أعلى قيم'} "${numCol}" مصنفة حسب "${catCol}".`
-        : `Aggregated query calculating ${aggFunc}(${numCol}) grouped by "${catCol}" sorted in descending order.`;
-  }
-
-  return { sql, explanation };
-}
-
 // Helper to evaluate and benchmark SQL generated by different models
 function evaluateModelSqlOutput(sql: string, datasetSchema: any): {
   isValid: boolean;
@@ -948,13 +1105,14 @@ SELECT ...
 \`\`\`
 EXPLANATION: [Brief explanation]`;
 
-    const aiResult = await callUniversalAI({
+const aiResult = await callUniversalAI({
       provider,
       model,
       endpointUrl,
       apiKey,
       prompt,
-      systemInstruction: 'You are an ultra-precise SQL & Data Analytics engine. Generate safe, high-performance analytical SQL only.',
+      jsonMode: true,
+      disableFallback: true,
     });
 
     if (aiResult && aiResult.text) {
@@ -985,18 +1143,12 @@ EXPLANATION: [Brief explanation]`;
     }
   } catch (err: any) {
     console.warn('NL2SQL generation notice:', err?.message || err);
+    return res.status(500).json({
+      error: err?.message || 'NL2SQL generation failed',
+      model: `${provider}:${model}`,
+      isLocal: provider === 'ollama',
+    });
   }
-
-  // Schema-aware heuristic fallback engine
-  const { sql: fallbackSql, explanation: fallbackExpl } = generateHeuristicSQL(datasetSchema, question, language);
-
-  return res.json({
-    sql: fallbackSql,
-    explanation: fallbackExpl,
-    durationMs: Date.now() - startTime,
-    model: 'heuristic-engine-v2',
-    isLocal: true,
-  });
 });
 
 // 2b. Multi-Model Side-by-Side Comparison Arena Endpoint
@@ -1036,6 +1188,7 @@ EXPLANATION: [1-sentence explanation in ${language === 'ar' ? 'Arabic' : 'Englis
         apiKey: m.apiKey,
         prompt,
         systemInstruction: 'You are an ultra-precise SQL & Data Analytics engine. Generate safe, high-performance analytical SQL only.',
+        disableFallback: true,
       });
 
       let sql = '';
@@ -1048,9 +1201,19 @@ EXPLANATION: [1-sentence explanation in ${language === 'ar' ? 'Arabic' : 'Englis
         const explMatch = text.match(/EXPLANATION:\s*([\s\S]+)/i);
         explanation = explMatch ? explMatch[1].trim() : (language === 'ar' ? 'تم توليد الاستعلام وفق المخطط.' : 'SQL generated according to schema.');
       } else {
-        const fallback = generateHeuristicSQL(datasetSchema, question, language);
-        sql = fallback.sql;
-        explanation = fallback.explanation;
+        return {
+          modelId: m.id || m.modelId,
+          modelName: m.name || m.id,
+          providerId: m.provider,
+          providerName: m.providerName || m.provider,
+          isLocal: m.provider === 'ollama' || Boolean(m.isLocal),
+          isPrivacyFirst: m.provider === 'ollama' || Boolean(m.isPrivacyFirst),
+          durationMs: Date.now() - modelStartTime,
+          status: 'error',
+          error: 'The selected model did not produce a response.',
+          sql: '',
+          explanation: '',
+        };
       }
 
       const evalResult = evaluateModelSqlOutput(sql, datasetSchema);
@@ -1082,8 +1245,6 @@ EXPLANATION: [1-sentence explanation in ${language === 'ar' ? 'Arabic' : 'Englis
         ],
       };
     } catch (err: any) {
-      const fallback = generateHeuristicSQL(datasetSchema, question, language);
-      const evalResult = evaluateModelSqlOutput(fallback.sql, datasetSchema);
       return {
         modelId: m.id || m.modelId,
         modelName: m.name || m.id,
@@ -1092,18 +1253,19 @@ EXPLANATION: [1-sentence explanation in ${language === 'ar' ? 'Arabic' : 'Englis
         isLocal: m.provider === 'ollama',
         isPrivacyFirst: m.provider === 'ollama',
         durationMs: Date.now() - modelStartTime,
-        status: 'success',
-        sql: fallback.sql,
-        explanation: fallback.explanation,
+        status: 'error',
+        error: err?.message || 'The selected model failed or is not configured.',
+        sql: '',
+        explanation: '',
         validationReport: {
-          isValid: evalResult.isValid,
-          canExecute: evalResult.canExecute,
-          layerScore: evalResult.layerScore,
-          securityViolations: evalResult.securityViolations,
-          complexityScore: evalResult.complexityScore,
+          isValid: false,
+          canExecute: false,
+          layerScore: 0,
+          securityViolations: [],
+          complexityScore: 0,
         },
-        score: evalResult.score,
-        insights: [language === 'ar' ? 'تم استخدام محرك احتياطي ذكي' : 'Fallback heuristic engine used'],
+        score: { accuracy: 0, safety: 0, efficiency: 0, overallScore: 0 },
+        insights: [language === 'ar' ? 'فشل استدعاء المحرك المحدد' : 'Selected model engine failed to respond'],
       };
     }
   });
@@ -1244,14 +1406,14 @@ Respond in valid JSON format matching this schema:
   }
 
   try {
-    const aiResult = await callUniversalAI({
+const aiResult = await callUniversalAI({
       provider,
       model,
       endpointUrl,
       apiKey,
       prompt,
-      systemInstruction,
       jsonMode: true,
+      disableFallback: true,
     });
 
     if (aiResult && aiResult.text) {
@@ -1295,67 +1457,10 @@ Respond in valid JSON format matching this schema:
     }
   } catch (err: any) {
     console.warn('Query optimization notice:', err?.message || err);
+    return res.status(500).json({ error: err?.message || 'Query optimization failed', model: `${provider}:${model}`, isLocal: provider === 'ollama' });
   }
 
-  // Intelligent heuristic optimization fallback
-  const columns = datasetSchema?.columns || [];
-  const catCol = columns.find((c: any) => c.type === 'category' || c.type === 'string')?.name || 'category';
-  const numCol = columns.find((c: any) => c.type === 'float' || c.type === 'integer')?.name || 'revenue';
-
-  const optimizedSql = sql.includes('LIMIT')
-    ? sql
-    : `${sql.trim().replace(/;+$/, '')}\nLIMIT 100;`;
-
-  return res.json({
-    originalSql: sql,
-    optimizedSql,
-    estimatedSpeedup: '~45% faster execution',
-    summaryEn: 'Applied memory bounding limits and columnar predicate pushdown.',
-    summaryAr: 'تم تطبيق تقييد حدود الذاكرة وتمرير شروط التصفية إلى محرك المسح المباشر.',
-    indexingRecommendations: [
-      {
-        column: catCol,
-        table: tableName,
-        indexType: 'BTREE',
-        ddl: `CREATE INDEX idx_${tableName}_${catCol} ON ${tableName} (${catCol});`,
-        reasonEn: `Accelerates GROUP BY and equality filters on "${catCol}" by enabling index range scans.`,
-        reasonAr: `يسرّع عمليات التجميع والتصفية على العمود "${catCol}" عبر تفعيل مسح الفهارس المتوازي.`,
-      },
-      {
-        column: numCol,
-        table: tableName,
-        indexType: 'BTREE',
-        ddl: `CREATE INDEX idx_${tableName}_${numCol}_desc ON ${tableName} (${numCol} DESC);`,
-        reasonEn: `Eliminates in-memory sorting overhead for ORDER BY ${numCol} DESC.`,
-        reasonAr: `يلغي أعباء الفرز بالذاكرة عند الترتيب التنازلي على "${numCol}".`,
-      },
-    ],
-    refactoringNotes: [
-      {
-        category: 'Predicate Pushdown',
-        categoryAr: 'تمرير شروط التصفية مبكراً',
-        noteEn: 'Filtered records directly at the storage scan layer before materializing aggregate structures.',
-        noteAr: 'تصفية السجلات مباشرة على مستوى طبقة المسح قبل بناء هياكل التجميع.',
-      },
-      {
-        category: 'Memory Bounding',
-        categoryAr: 'ضبط حدود استهلاك الذاكرة',
-        noteEn: 'Added bounded LIMIT clause to prevent unbounded result buffering and pipeline stalls.',
-        noteAr: 'إضافة حد LIMIT لمنع تضخم الذاكرة وتأخير تدفق النتائج.',
-      },
-    ],
-    antiPatternsDetected: [
-      {
-        pattern: 'Unindexed Categorical Grouping',
-        patternAr: 'تجميع تصنيفي غير مفهرس',
-        severity: 'medium',
-        fix: `Create composite B-Tree index on (${catCol}, ${numCol})`,
-        fixAr: `إنشاء فهرس B-Tree مركب على (${catCol}, ${numCol})`,
-      },
-    ],
-    durationMs: Date.now() - startTime,
-    model: 'heuristic-optimizer-engine',
-  });
+  return res.status(500).json({ error: `The selected provider '${provider}' failed or is not configured. Optimization requires a live AI engine.`, isLocal: provider === 'ollama' });
 });
 
 
@@ -1421,33 +1526,18 @@ Respond strictly in raw valid JSON matching this exact JSON schema:
   "summaryAr": "تم تحليل العلاقات التلقائية بنجاح بين جميع الشيتات والأنماط."
 }`;
 
-    let aiResult: { text: string; modelUsed: string; durationMs?: number; isLocal?: boolean } | null = null;
-
-    if (provider === 'gemini' || !provider) {
-      const geminiRes = await generateWithModelFallback({
-        contents: prompt,
-        config: { responseMimeType: 'application/json' },
-        models: [model, 'gemini-3.8-flash', 'gemini-3.1-flash-lite'],
-      });
-      if (geminiRes) {
-        aiResult = {
-          text: geminiRes.text,
-          modelUsed: geminiRes.modelUsed,
-          durationMs: Date.now() - startTime,
-          isLocal: false,
-        };
-      }
-    } else {
-      aiResult = await callUniversalAI({
-        provider,
-        model,
-        endpointUrl,
-        apiKey,
-        prompt,
-        systemInstruction: 'You are a Senior Data Architect. Return raw JSON only.',
-        jsonMode: true,
-      });
-    }
+    // Unified multi-provider path: every provider (gemini, ollama, openrouter, qwen, deepseek, custom_openai)
+    // goes through the same caller with the user-selected provider/model/credentials.
+    const aiResult = await callUniversalAI({
+      provider,
+      model,
+      endpointUrl,
+      apiKey,
+      prompt,
+      systemInstruction: 'You are a Senior Data Architect. Return raw JSON only.',
+      jsonMode: true,
+      disableFallback: true,
+    });
 
     if (aiResult && aiResult.text) {
       let rawText = aiResult.text.trim();
@@ -1487,67 +1577,10 @@ Respond strictly in raw valid JSON matching this exact JSON schema:
     }
   } catch (err: any) {
     console.warn('AI Data Modeling auto-detection notice:', err?.message || err);
+    return res.status(500).json({ error: err?.message || 'AI relationship detection failed', model: `${provider}:${model}`, isLocal: provider === 'ollama' });
   }
 
-  // Fallback Heuristic Relationship Detection Engine
-  const detectedRelationships: any[] = [];
-  const primaryKeySuggestions: Record<string, string[]> = {};
 
-  for (const t of tables) {
-    // Find candidate PK (columns with 'id', 'code', 'key' or unique)
-    const pkCol = t.columns?.find((c: any) =>
-      /^(id|code|key|uuid|pk|[^_]+_id)$/i.test(c.name) || c.name.toLowerCase().endsWith('id')
-    )?.name || t.columns?.[0]?.name;
-    if (pkCol) {
-      primaryKeySuggestions[t.name] = [pkCol];
-    }
-  }
-
-  // Cross-match foreign key names
-  for (let i = 0; i < tables.length; i++) {
-    const src = tables[i];
-    for (let j = 0; j < tables.length; j++) {
-      if (i === j) continue;
-      const tgt = tables[j];
-      const targetPk = primaryKeySuggestions[tgt.name]?.[0] || 'id';
-
-      // Look for candidate FK in source table matching target table name or target PK name
-      const candidateFk = src.columns?.find((c: any) => {
-        const cLower = c.name.toLowerCase();
-        const tgtNameLower = tgt.name.toLowerCase().replace(/s$/, ''); // singularize
-        return (
-          cLower === `${tgtNameLower}_id` ||
-          cLower === `${tgtNameLower}id` ||
-          cLower === `${tgtNameLower}_code` ||
-          cLower === `${tgtNameLower}_key` ||
-          (cLower === targetPk.toLowerCase() && src.name !== tgt.name)
-        );
-      });
-
-      if (candidateFk) {
-        detectedRelationships.push({
-          sourceTable: src.name,
-          sourceColumn: candidateFk.name,
-          targetTable: tgt.name,
-          targetColumn: targetPk,
-          relationshipType: '1:M',
-          confidence: 88,
-          description: `Linked ${src.name}.${candidateFk.name} to ${tgt.name}.${targetPk} (1:${tgt.name} to Many ${src.name})`,
-          descriptionAr: `ربط تلقائي بين ${src.name}.${candidateFk.name} و ${tgt.name}.${targetPk} (علاقة 1:${tgt.name} إلى متعدد ${src.name})`,
-        });
-      }
-    }
-  }
-
-  return res.json({
-    detectedRelationships,
-    primaryKeySuggestions,
-    summaryEn: `Heuristic engine linked ${detectedRelationships.length} relationships across ${tables.length} sheets.`,
-    summaryAr: `المحرك التحليلي ربط تلقائياً ${detectedRelationships.length} علاقات بين ${tables.length} شيتات.`,
-    durationMs: Date.now() - startTime,
-    model: 'heuristic-modeling-engine',
-    isLocal: true,
-  });
 });
 
 
@@ -1620,6 +1653,7 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
       apiKey,
       prompt: fullPrompt,
       systemInstruction,
+      disableFallback: true,
     });
 
     if (aiResult && aiResult.text) {
@@ -1651,32 +1685,17 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
         isLocal: aiResult.isLocal,
       });
     }
-  } catch (err: any) {
-    console.warn('AI Assistant notice:', err?.message || err);
+   } catch (err: any) {
+    console.error('AI Assistant execution failed:', err?.message || err);
+    return res.status(500).json({
+      error: {
+        code: -32603,
+        message: err?.message || 'AI Assistant execution failed',
+      },
+      model: null,
+      isLocal: false,
+    });
   }
-
-
-  // Fallback intelligent response
-  const isArabic = language === 'ar';
-  const reply = isArabic
-    ? `بناءً على تحليل مجموعة البيانات **${targetDataset?.name || 'الحالية'}** (التي تضم ${targetDataset?.rowCount || 0} سجلاً):
-- تم فحص الأنماط وتوزيع المتغيرات الرئيسية مع استقرار معدلات الجودة.
-- يمكنك استعراض التوصيف الإحصائي للأعمدة في تبويب "التوصيف الإحصائي" لكشف القيم الشاذة، أو تنفيذ استعلامات مخصصة عبر "مختبر NL2SQL".`
-    : `Based on active dataset **${targetDataset?.name || 'Active'}** (${targetDataset?.rowCount || 0} rows):
-- Core metrics show stable distribution across key categorical dimensions.
-- You can inspect deep statistical profiling or execute precision queries in the NL2SQL Studio.`;
-
-  return res.json({
-    reply,
-    content: reply,
-    insights: isArabic
-      ? ['اكتمال الفحص الإحصائي بدقة 98%', 'مؤشرات الأداء تظهر نمواً متزناً']
-      : ['Profile scan completed with 98% confidence', 'Key indicators reflect balanced distribution'],
-    suggestions: isArabic
-      ? ['تحليل اتجاهات الأرباح', 'كشف القيم الشاذة في البيانات', 'توليد لوحة تحكم سريعة']
-      : ['Analyze profit trends', 'Detect dataset anomalies', 'Generate quick dashboard'],
-    model: 'heuristic-copilot',
-  });
 });
 
 // 4. Data Story & Executive Narrative Generator (serves both /api/reports/generate and /api/datastory/generate)
@@ -1922,208 +1941,54 @@ Respond STRICTLY in valid JSON matching this schema:
     }
   } catch (err: any) {
     console.warn('AI Data Story generation notice:', err?.message || err);
+    return res.status(500).json({
+      error: language === 'ar'
+        ? `تعذر إنشاء قصة البيانات، يرجى توفير مفتاح API صالح.`
+        : 'Failed to generate data story. Please provide a valid API key.',
+      details: err?.message || 'AI Data Story generation failed',
+    });
   }
-
-  // Robust Heuristic Fallback Engine with Real Illustrative Charts
-  const durationMs = Date.now() - startTime;
-  const fallbackChapters = [
-    {
-      id: 'chap-1',
-      chapterNumber: 1,
-      title: isAr ? 'الفصل الأول: توزيع الإيرادات ومحركات النمو' : 'Chapter 1: Revenue Dynamics & Growth Drivers',
-      titleAr: 'الفصل الأول: توزيع الإيرادات ومحركات النمو',
-      narrative: isAr
-        ? `أظهر فحص بيانات "${dataset?.name || 'الحالية'}" تركّزاً رئيسياً في أعلى الفئات والتصنيفات بنسبة تفوق 52% من حجم العمليات الإجمالي، مع متوسط عائد قدره ${avgPrimaryVal.toFixed(1)} لكل سجل. يعكس هذا الاستقرار تماسكاً في دورات المبيعات واستجابة سريعة للطلب.`
-        : `Analysis of dataset "${dataset?.name || 'Active'}" reveals that primary revenue is anchored in leading segments, contributing over 52% of aggregate volume with an average value of ${avgPrimaryVal.toFixed(1)} per record.`,
-      narrativeAr: `أظهر فحص بيانات "${dataset?.name || 'الحالية'}" تركّزاً رئيسياً في أعلى الفئات والتصنيفات بنسبة تفوق 52% من حجم العمليات الإجمالي، مع متوسط عائد قدره ${avgPrimaryVal.toFixed(1)} لكل سجل. يعكس هذا الاستقرار تماسكاً في دورات المبيعات واستجابة سريعة للطلب.`,
-      chartType: 'bar' as const,
-      chartData: chart1Data.length > 0 ? chart1Data : [{ name: 'Technology', value: 4500 }, { name: 'Electronics', value: 3800 }, { name: 'Furniture', value: 2900 }, { name: 'Apparel', value: 2100 }],
-      xAxis: primaryCatCol,
-      yAxis: primaryNumCol,
-      chartExplanation: isAr ? `مقارنة الحجم الإجمالي لـ (${primaryNumCol}) حسب (${primaryCatCol})` : `Distribution of ${primaryNumCol} aggregated by ${primaryCatCol}`,
-      chartExplanationAr: `مقارنة الحجم الإجمالي لـ (${primaryNumCol}) حسب (${primaryCatCol})`,
-      keyMetric: {
-        label: isAr ? 'إجمالي الحجم المحقق' : 'Gross Volume',
-        labelAr: 'إجمالي الحجم المحقق',
-        value: totalPrimaryVal ? `$${Math.round(totalPrimaryVal).toLocaleString()}` : '$124,500',
-        context: isAr ? 'معدل نمو إيجابي سنوي' : 'Strong YoY trajectory',
-        contextAr: 'معدل نمو إيجابي سنوي',
-        trend: 'up' as const,
-        trendPercentage: 18.5,
-      },
-      insights: isAr
-        ? ['تركّز أكثر من نصف العوائد في أعلى 3 قطاعات إنتاجية', 'استقرار متوسط قيمة المعاملة الواحدة']
-        : ['Over 50% of revenue concentrated in top 3 product lines', 'Average transaction size remains highly consistent'],
-      insightsAr: ['تركّز أكثر من نصف العوائد في أعلى 3 قطاعات إنتاجية', 'استقرار متوسط قيمة المعاملة الواحدة'],
-      takeaway: isAr ? 'مضاعفة الاستثمار التسويقي في الفئات الأكثر طلباً لتحقيق قفزة نوعية في الربحية.' : 'Accelerate resource allocation to top product lines to compound margin efficiency.',
-      takeawayAr: 'مضاعفة الاستثمار التسويقي في الفئات الأكثر طلباً لتحقيق قفزة نوعية في الربحية.',
-    },
-    {
-      id: 'chap-2',
-      chapterNumber: 2,
-      title: isAr ? 'الفصل الثاني: التوزيع الجغرافي والحصص الإقليمية' : 'Chapter 2: Regional Market Share & Dispersion',
-      titleAr: 'الفصل الثاني: التوزيع الجغرافي والحصص الإقليمية',
-      narrative: isAr
-        ? `تبيّن البيانات توزيعاً جغرافياً متوازناً عبر الأسواق المستهدفة، حيث تتصدر المناطق الحضرية الرئيسية معدلات الشراء السريعة مع مؤشرات ولاء مرتفعة للعملاء.`
-        : `Cross-regional breakdown indicates well-balanced market penetration across key geographic hubs, led by urban centers showing strong customer retention.`,
-      narrativeAr: `تبيّن البيانات توزيعاً جغرافياً متوازناً عبر الأسواق المستهدفة، حيث تتصدر المناطق الحضرية الرئيسية معدلات الشراء السريعة مع مؤشرات ولاء مرتفعة للعملاء.`,
-      chartType: 'pie' as const,
-      chartData: chart2Data.length > 0 ? chart2Data : [{ name: 'North America', value: 4200 }, { name: 'Europe', value: 3100 }, { name: 'Middle East', value: 2800 }, { name: 'Asia Pacific', value: 1900 }],
-      xAxis: secondaryCatCol,
-      yAxis: secondaryNumCol,
-      chartExplanation: isAr ? `الحصص النسبية حسب (${secondaryCatCol})` : `Relative market share distribution across ${secondaryCatCol}`,
-      chartExplanationAr: `الحصص النسبية حسب (${secondaryCatCol})`,
-      keyMetric: {
-        label: isAr ? 'الحصة السوقية الإقليمية' : 'Regional Share',
-        labelAr: 'الحصة السوقية الإقليمية',
-        value: '38.2%',
-        context: isAr ? 'أعلى إقليم مبيعاً' : 'Leading territorial hub',
-        contextAr: 'أعلى إقليم مبيعاً',
-        trend: 'up' as const,
-        trendPercentage: 12.4,
-      },
-      insights: isAr
-        ? ['توسع ملحوظ في الأسواق الناشئة بنسبة 14%', 'انخفاض زمن الاستجابة والتوصيل بنسبة 8%']
-        : ['14% expansion velocity in emerging territories', '8% improvement in average fulfillment latency'],
-      insightsAr: ['توسع ملحوظ في الأسواق الناشئة بنسبة 14%', 'انخفاض زمن الاستجابة والتوصيل بنسبة 8%'],
-      takeaway: isAr ? 'توسيع مراكز التوزيع المحلية لتقليل أوقات التسليم وتعميق الحصة السوقية.' : 'Scale regional fulfillment centers to compress delivery windows.',
-      takeawayAr: 'توسيع مراكز التوزيع المحلية لتقليل أوقات التسليم وتعميق الحصة السوقية.',
-    },
-    {
-      id: 'chap-3',
-      chapterNumber: 3,
-      title: isAr ? 'الفصل الثالث: كشف المخاطر والأنماط الاستثنائية' : 'Chapter 3: Anomaly & Operational Risk Audit',
-      titleAr: 'الفصل الثالث: كشف المخاطر والأنماط الاستثنائية',
-      narrative: isAr
-        ? `من خلال تطبيق خوارزميات IQR و Z-Score الإحصائية، تم رصد استقرار ممتاز لجودة البيانات (${dataset?.profile?.quality?.overallScore || 96}%) مع وجود انحرافات محدودة في تكاليف الشحن لا تتجاوز 2.4% من إجمالي السجلات.`
-        : `Statistical outlier scans using IQR and Z-Score algorithms demonstrate robust data governance (${dataset?.profile?.quality?.overallScore || 96}% health score) with minor shipping variance under 2.4%.`,
-      narrativeAr: `من خلال تطبيق خوارزميات IQR و Z-Score الإحصائية، تم رصد استقرار ممتاز لجودة البيانات (${dataset?.profile?.quality?.overallScore || 96}%) مع وجود انحرافات محدودة في تكاليف الشحن لا تتجاوز 2.4% من إجمالي السجلات.`,
-      chartType: 'line' as const,
-      chartData: trendPoints.length > 0 ? trendPoints : chart1Data,
-      xAxis: 'name',
-      yAxis: primaryNumCol,
-      chartExplanation: isAr ? 'تتبع مسار الأداء واستقرار المؤشرات' : 'Longitudinal trend stability & anomaly envelope',
-      chartExplanationAr: 'تتبع مسار الأداء واستقرار المؤشرات',
-      keyMetric: {
-        label: isAr ? 'مؤشر جودة البيانات' : 'Health Score',
-        labelAr: 'مؤشر جودة البيانات',
-        value: `${dataset?.profile?.quality?.overallScore || 96}%`,
-        context: isAr ? 'ضمن النطاق الموثوق' : 'Optimal governance band',
-        contextAr: 'ضمن النطاق الموثوق',
-        trend: 'up' as const,
-      },
-      insights: isAr
-        ? ['انعدام القيم المفقودة الحرجة في الأعمدة الرقمية', 'التحكم بنجاح في التقلبات المفاجئة']
-        : ['Zero critical null values in primary financial fields', 'Effective containment of operational variance'],
-      insightsAr: ['انعدام القيم المفقودة الحرجة في الأعمدة الرقمية', 'التحكم بنجاح في التقلبات المفاجئة'],
-      takeaway: isAr ? 'الحفاظ على سياسات التحقق التلقائي لضمان استمرارية الجودة الفائقة.' : 'Maintain continuous automated profiling rules for ongoing data integrity.',
-      takeawayAr: 'الحفاظ على سياسات التحقق التلقائي لضمان استمرارية الجودة الفائقة.',
-    },
-    {
-      id: 'chap-4',
-      chapterNumber: 4,
-      title: isAr ? 'الفصل الرابع: خارطة الطريق والتوصيات المستقبلية' : 'Chapter 4: Strategic Optimization & Roadmap',
-      titleAr: 'الفصل الرابع: خارطة الطريق والتوصيات المستقبلية',
-      narrative: isAr
-        ? `بناءً على التقاطعات الإحصائية والنماذج التنبؤية، يمكن رفع صافي العائد بنسبة تقديرية تتراوح بين 15% إلى 22% عبر تركيز الحملات المباشرة على الفئات عالية الهامش الربحي وأتمتة مسارات التوريد.`
-        : `Synthesizing historical correlations and forward modeling indicates potential net uplift of 15-22% through margin-focused product promotion and automated supply chain routing.`,
-      narrativeAr: `بناءً على التقاطعات الإحصائية والنماذج التنبؤية، يمكن رفع صافي العائد بنسبة تقديرية تتراوح بين 15% إلى 22% عبر تركيز الحملات المباشرة على الفئات عالية الهامش الربحي وأتمتة مسارات التوريد.`,
-      chartType: 'area' as const,
-      chartData: chart1Data,
-      xAxis: primaryCatCol,
-      yAxis: primaryNumCol,
-      chartExplanation: isAr ? 'النمو التراكمي المتوقع بعد تطبيق التحسينات' : 'Projected cumulative growth post-optimization',
-      chartExplanationAr: 'النمو التراكمي المتوقع بعد تطبيق التحسينات',
-      keyMetric: {
-        label: isAr ? 'العائد المتوقع للتحسين' : 'Projected Uplift',
-        labelAr: 'العائد المتوقع للتحسين',
-        value: '+18.2%',
-        context: isAr ? 'خلال الربعين القادمين' : 'Across next 2 quarters',
-        contextAr: 'خلال الربعين القادمين',
-        trend: 'up' as const,
-        trendPercentage: 18.2,
-      },
-      insights: isAr
-        ? ['فرصة خفض التكاليف التشغيلية بنسبة 9.5%', 'رفع معدل دوران المخزون للأصناف الرائدة']
-        : ['9.5% operational cost reduction opportunity', 'Faster inventory turnover in high-margin categories'],
-      insightsAr: ['فرصة خفض التكاليف التشغيلية بنسبة 9.5%', 'رفع معدل دوران المخزون للأصناف الرائدة'],
-      takeaway: isAr ? 'البدء الفوري في تطبيق حزم الخصومات الديناميكية على المنتجات المصنفة عالية الربحية.' : 'Implement dynamic pricing and inventory prioritization on high-yield SKUs.',
-      takeawayAr: 'البدء الفوري في تطبيق حزم الخصومات الديناميكية على المنتجات المصنفة عالية الربحية.',
-    },
-  ];
-
-  const fallbackStory = {
-    id: `story-${Date.now()}`,
-    datasetId: dataset?.id || 'dataset-1',
-    datasetName: dataset?.name || 'Active Dataset',
-    title: isAr ? `قصة البيانات التنفيذية: ${dataset?.name || 'التحليل الاستراتيجي'}` : `Executive Data Story: ${dataset?.name || 'Strategic Analytics'}`,
-    titleAr: `قصة البيانات التنفيذية: ${dataset?.name || 'التحليل الاستراتيجي'}`,
-    subtitle: isAr ? 'تقرير سردي متكامل مدعوم برؤى إحصائية ورسوم بيانية توضيحية' : 'Comprehensive narrative analytics supported by interactive illustrative charts',
-    subtitleAr: 'تقرير سردي متكامل مدعوم برؤى إحصائية ورسوم بيانية توضيحية',
-    executiveSummary: isAr
-      ? `تحتوي مجموعة البيانات على ${dataset?.rowCount || rows.length} سجلاً موزعاً عبر ${columns.length} أعمدة بمستوى جودة فائق (${dataset?.profile?.quality?.overallScore || 96}%). تسلط القصة الضوء على محركات النمو الرئيسية، الحصص الإقليمية، وخطة تحسين الأداء الاستراتيجي.`
-      : `The active dataset comprises ${dataset?.rowCount || rows.length} records across ${columns.length} attributes with ${dataset?.profile?.quality?.overallScore || 96}% health score. This executive narrative unpacks primary growth vectors, regional performance, and risk mitigations.`,
-    executiveSummaryAr: `تحتوي مجموعة البيانات على ${dataset?.rowCount || rows.length} سجلاً موزعاً عبر ${columns.length} أعمدة بمستوى جودة فائق (${dataset?.profile?.quality?.overallScore || 96}%). تسلط القصة الضوء على محركات النمو الرئيسية، الحصص الإقليمية، وخطة تحسين الأداء الاستراتيجي.`,
-    focusAngle,
-    tone,
-    chapters: fallbackChapters,
-    sections: fallbackChapters,
-    recommendations: isAr
-      ? [
-          'تكثيف الدعم التسويقي واللوجستي للفئات والأسواق ذات الهامش الربحي الأعلى.',
-          'استحداث نظام تنبيهات آلي للرصد المبكر لأي تراجع في مؤشرات الأداء الإقليمية.',
-          'أتمتة الفحوصات الإحصائية الدورية لضمان استمرار دقة وموثوقية البيانات.',
-        ]
-      : [
-          'Concentrate marketing and supply allocations on highest margin product lines.',
-          'Deploy automated early-warning telemetry on regional delivery latency spikes.',
-          'Institute scheduled statistical audits to safeguard continuous governance.',
-        ],
-    recommendationsAr: [
-      'تكثيف الدعم التسويقي واللوجستي للفئات والأسواق ذات الهامش الربحي الأعلى.',
-      'استحداث نظام تنبيهات آلي للرصد المبكر لأي تراجع في مؤشرات الأداء الإقليمية.',
-      'أتمتة الفحوصات الإحصائية الدورية لضمان استمرار دقة وموثوقية البيانات.',
-    ],
-    generatedAt: new Date().toISOString(),
-    author: `${model} (${provider.toUpperCase()})`,
-    providerUsed: provider,
-    modelUsed: model,
-    durationMs,
-    qualityScore: dataset?.profile?.quality?.overallScore || 96,
-  };
-
-  return res.json({ story: fallbackStory, ...fallbackStory });
 }
 
 app.post('/api/reports/generate', handleStoryGeneration);
 app.post('/api/datastory/generate', handleStoryGeneration);
 
-// 5. Profiling AI Summary Generator
+// 5. Profiling AI Summary Generator (Multi-Provider Aware — works with any provider the user selects)
 app.post('/api/profiling/summarize', async (req, res) => {
-  const { dataset, language = 'ar' } = req.body;
+  const { dataset, language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey } = req.body;
 
   try {
     const prompt = `Provide a concise 2-3 sentence executive statistical summary of this dataset's profiling:
 Name: ${dataset?.name}, Rows: ${dataset?.rowCount}, Columns: ${dataset?.columnCount || dataset?.columns?.length}, Quality: ${dataset?.profile?.quality?.overallScore || 95}%.
 Language: ${language}`;
 
-    const aiResult = await generateWithModelFallback({
-      contents: prompt,
-      models: ['gemini-3.8-flash', 'gemini-3.1-flash-lite'],
+    const aiResult = await callUniversalAI({
+      provider,
+      model,
+      endpointUrl,
+      apiKey,
+      prompt,
+      systemInstruction: 'You are a concise executive statistical analyst.',
+      disableFallback: true,
     });
 
-    if (aiResult) {
-      return res.json({ summary: aiResult.text, model: aiResult.modelUsed });
+    if (aiResult && aiResult.text) {
+      return res.json({ summary: aiResult.text, model: aiResult.modelUsed, isLocal: aiResult.isLocal });
     }
   } catch (err: any) {
     console.warn('Profile summary notice:', err?.message || err);
+    return res.status(500).json({
+      error: err?.message || 'Profile summarization failed',
+      model: `${provider}:${model}`,
+      isLocal: provider === 'ollama',
+    });
   }
 
-  return res.json({
-    summary: language === 'ar'
-      ? `تحتوي مجموعة البيانات على ${dataset?.rowCount || 0} سجلاً مع جودة إجمالية قدرها ${dataset?.profile?.quality?.overallScore || 95}%. كافة التوزيعات الإحصائية متوازنة وتلبي متطلبات التحليل المتقدم.`
-      : `Dataset contains ${dataset?.rowCount || 0} records with an overall health score of ${dataset?.profile?.quality?.overallScore || 95}%. All statistical distributions are verified for high-fidelity modeling.`,
-    model: 'heuristic-profiler',
+  return res.status(500).json({
+    error: language === 'ar'
+      ? `تعذر توليد التلخيص الإحصائي عبر المزود المختار (${provider}). تأكد من تهيئة المزود ومفتاح API.`
+      : `Failed to generate statistical summary via the selected provider (${provider}). Check provider configuration and API key.`,
+    isLocal: provider === 'ollama',
   });
 });
 
@@ -2140,6 +2005,8 @@ app.post('/api/models/explain', async (req, res) => {
     language = 'ar',
     provider = 'gemini',
     model = 'gemini-3.8-flash',
+    endpointUrl,
+    apiKey,
   } = req.body;
 
   const prompt = `You are an expert Chief Data Scientist and Statistical Interpreter.
@@ -2200,8 +2067,11 @@ Return ONLY a valid JSON object matching this schema:
     const aiResult = await callUniversalAI({
       provider: provider as any,
       model,
+      endpointUrl: endpointUrl,
+      apiKey: apiKey,
       prompt,
       systemInstruction: 'You are a Senior Machine Learning Interpreter. Return ONLY valid JSON, no markdown fences.',
+      disableFallback: true,
     });
 
     if (aiResult && aiResult.text) {
@@ -2214,57 +2084,10 @@ Return ONLY a valid JSON object matching this schema:
     }
   } catch (err: any) {
     console.warn('Explain model fallback invoked in server:', err?.message || err);
+    return res.status(500).json({ error: err?.message || 'Model explanation failed', model: `${provider}:${model}`, isLocal: provider === 'ollama' });
   }
 
-  // High-fidelity fallback
-  const r2 = metrics.r2 ?? 0.88;
-  const primaryFeat = (features && features[0]) || 'المتغير الأول';
-  const explanation = {
-    headline: `Statistical Explanation: ${modelName || 'Predictive Model'}`,
-    headlineAr: `التفسير الإحصائي والتحليلي: ${modelName || 'النموذج التنبؤي'}`,
-    plainLanguageSummary: `The model accurately estimates ${targetColumn} with a determination coefficient of ${(r2 * 100).toFixed(1)}%. Primary influence stems from ${primaryFeat}.`,
-    plainLanguageSummaryAr: `يقوم النموذج بالتنبؤ بمتغير (${targetColumn}) بدقة إحصائية $R^2$ تبلغ ${(r2 * 100).toFixed(1)}%. تشير النتائج إلى أن التباين يرجع بصورة رئيسية إلى (${primaryFeat}).`,
-    keyDriversExplanation: (features || ['المبيعات', 'العملاء']).map((f: string, idx: number) => ({
-      feature: f,
-      impact: idx % 2 === 0 ? 'positive' : 'negative',
-      strength: idx === 0 ? 'high' : idx === 1 ? 'medium' : 'low',
-      interpretation: `Direct statistical covariance observed with ${targetColumn}.`,
-      interpretationAr: `وجود علاقة ارتباطية موجبة ومعنوية إحصائياً مع متغير (${targetColumn}).`,
-    })),
-    statisticalReliability: {
-      score: Math.round(r2 * 100),
-      verdict: r2 >= 0.8 ? 'High Predictive Fidelity' : 'Moderate Fit',
-      verdictAr: r2 >= 0.8 ? 'موثوقية تنبؤية ممتازة' : 'ملاءمة إحصائية متوسطة',
-      confidenceLevel: '95% Confidence Interval (p < 0.001)',
-      confidenceLevelAr: 'فترة ثقة 95% (دلالة إحصائية مؤكدة)',
-      risksOrBiases: [
-        'احتمالية وجود حساسية طفيفة للتذبذبات الموسمية.',
-        'ينصح بإعادة ضبط الأوزان عند تجاوز حجم العينات 100,000 سجل.',
-      ],
-      risksOrBiasesAr: [
-        'احتمالية وجود حساسية طفيفة للتذبذبات الموسمية.',
-        'ينصح بإعادة ضبط الأوزان عند تجاوز حجم العينات 100,000 سجل.',
-      ],
-    },
-    actionableInsights: [
-      `التركيز على تعزيز مدخلات (${primaryFeat}) لرفع معدلات التحويل التنبؤية.`,
-      `أتمتة خط أنابيب المراقبة للكشف الاستباقي عن انحراف النموذج (Model Drift).`,
-    ],
-    actionableInsightsAr: [
-      `التركيز على تعزيز مدخلات (${primaryFeat}) لرفع معدلات التحويل التنبؤية.`,
-      `أتمتة خط أنابيب المراقبة للكشف الاستباقي عن انحراف النموذج (Model Drift).`,
-    ],
-    whatIfScenarios: [
-      {
-        change: `زيادة (${primaryFeat}) بنسبة +10%`,
-        changeAr: `زيادة (${primaryFeat}) بنسبة +10%`,
-        expectedEffect: `ارتفاع متوقع في (${targetColumn}) بنسبة +7.8%`,
-        expectedEffectAr: `ارتفاع متوقع في (${targetColumn}) بنسبة +7.8%`,
-      },
-    ],
-  };
-
-  return res.json({ explanation, modelUsed: 'deterministic-explainer' });
+  return res.status(500).json({ error: `The selected provider '${provider}' failed or is not configured. Model explanation requires a live AI engine.`, isLocal: provider === 'ollama' });
 });
 
 // 5c. Data Stream Ingestion & Scheduled Refresh API

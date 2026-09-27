@@ -66,6 +66,15 @@ const PROVIDER_OPTIONS = [
     ],
   },
   {
+    id: 'qwen',
+    name: 'Qwen AI (Alibaba Cloud)',
+    models: [
+      { id: 'qwen/qwen-2.5-coder-32b', name: 'Qwen 2.5 Coder 32B' },
+      { id: 'qwen/qwen-max', name: 'Qwen Max (Flagship)' },
+      { id: 'qwen/qwen-plus', name: 'Qwen Plus' },
+    ],
+  },
+  {
     id: 'deepseek',
     name: 'DeepSeek AI (Cloud)',
     models: [
@@ -82,13 +91,6 @@ const PROVIDER_OPTIONS = [
       { id: 'openrouter/openai/gpt-4o', name: 'OpenAI GPT-4o' },
     ],
   },
-  {
-    id: 'local_heuristic',
-    name: 'Local Analytical Heuristic (Instant Offline)',
-    models: [
-      { id: 'heuristic-copilot', name: 'Rule-Based Deterministic Statistical Synth' },
-    ],
-  },
 ];
 
 export const ReportsPage: React.FC = () => {
@@ -96,7 +98,8 @@ export const ReportsPage: React.FC = () => {
     datasets,
     activeDataset,
     setActiveDataset,
-    aiSettings,
+    setActiveDatasetId,
+     aiSettings,
     user,
     workspace,
     dataStories,
@@ -215,6 +218,10 @@ export const ReportsPage: React.FC = () => {
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        const errMsg = typeof data?.error === 'string' ? data.error : (isAr ? 'تعذر توليد قصة البيانات' : 'Could not generate data story');
+        throw new Error(errMsg);
+      }
       if (data.story) {
         saveDataStory(data.story);
         setActiveStory(data.story);
@@ -496,7 +503,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   value={activeDataset.id}
                   onChange={e => {
                     const found = datasets.find(d => d.id === e.target.value);
-                    if (found) setActiveDataset(found.id);
+                    if (found) setActiveDataset(found);
                   }}
                   className="bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
                 >

@@ -19,7 +19,8 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { CARBON_PALETTE } from '../../components/charts/ChartFactory';
 
 export const ProfilingPage: React.FC = () => {
-  const { activeDataset, language, t } = useApp();
+  const { activeDataset, language, t, aiSettings } = useApp();
+  const activeProviderConf = aiSettings.providers[aiSettings.activeProvider];
   const [selectedColumn, setSelectedColumn] = useState<string | null>(
     activeDataset?.columns?.[0]?.name || null
   );
@@ -46,9 +47,19 @@ export const ProfilingPage: React.FC = () => {
       const res = await fetch('/api/profiling/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataset: activeDataset, language }),
+        body: JSON.stringify({
+          dataset: activeDataset,
+          language,
+          provider: aiSettings.activeProvider,
+          model: aiSettings.activeModel,
+          endpointUrl: activeProviderConf?.endpointUrl,
+          apiKey: activeProviderConf?.apiKey,
+        }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to summarize profiling');
+      }
       if (data.summary) {
         setAiSummaryText(data.summary);
       }
@@ -149,7 +160,7 @@ export const ProfilingPage: React.FC = () => {
             {Object.values(profile.columnStats).reduce((acc: number, c: any) => acc + (c?.nullCount || 0), 0)}
           </div>
           <p className="text-[11px] text-[#8d8d8d] font-mono">
-            Consistency score: {profile.quality.consistencyScore}%
+            Consistency score: {profile.quality.validityScore}%
           </p>
         </div>
 
@@ -194,7 +205,7 @@ export const ProfilingPage: React.FC = () => {
                   <div className="truncate">
                     <div className="truncate">{col.name}</div>
                     <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-[#8d8d8d]'}`}>
-                      {col.type} • {stats?.distinctCount ?? 0} distinct
+                      {col.type} • {stats?.uniqueCount ?? 0} distinct
                     </div>
                   </div>
                   {stats && stats.nullCount > 0 && (
@@ -225,7 +236,7 @@ export const ProfilingPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs font-mono text-[#c6c6c6]">
-                  <span>Distinct: <strong>{activeColStats.distinctCount}</strong></span>
+                  <span>Distinct: <strong>{activeColStats.uniqueCount}</strong></span>
                   <span>Nulls: <strong>{activeColStats.nullCount} ({activeColStats.nullPercentage}%)</strong></span>
                 </div>
               </div>
@@ -253,14 +264,14 @@ export const ProfilingPage: React.FC = () => {
               )}
 
               {/* Histogram / Distribution Chart */}
-              {activeColStats.distribution && activeColStats.distribution.length > 0 && (
+              {activeColStats.histogram && activeColStats.histogram.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-xs font-mono text-[#c6c6c6] uppercase">
                     Distribution Histogram (توزيع التكرار)
                   </div>
                   <div className="h-56 bg-[#161616] border border-[#393939] p-3">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={activeColStats.distribution}>
+                      <BarChart data={activeColStats.histogram}>
                         <XAxis
                           dataKey="bin"
                           stroke="#8d8d8d"
@@ -285,7 +296,7 @@ export const ProfilingPage: React.FC = () => {
                           }}
                         />
                         <Bar dataKey="count" fill="#0f62fe" radius={0}>
-                          {activeColStats.distribution.map((_, idx) => (
+                          {activeColStats.histogram.map((_, idx) => (
                             <Cell key={`bin-${idx}`} fill={CARBON_PALETTE[idx % CARBON_PALETTE.length]} />
                           ))}
                         </Bar>
@@ -296,13 +307,13 @@ export const ProfilingPage: React.FC = () => {
               )}
 
               {/* Top Frequent Values */}
-              {activeColStats.frequentValues && activeColStats.frequentValues.length > 0 && (
+              {activeColStats.topValues && activeColStats.topValues.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-xs font-mono text-[#c6c6c6] uppercase">
                     Top Frequent Values (القيم الأكثر تكراراً)
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
-                    {activeColStats.frequentValues.map((fv, idx) => (
+                    {activeColStats.topValues.map((fv, idx) => (
                       <div
                         key={idx}
                         className="p-2 bg-[#161616] border border-[#393939] flex items-center justify-between"

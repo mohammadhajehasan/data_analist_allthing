@@ -33,7 +33,7 @@ interface UrlAndFileImportModuleProps {
 export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
   onImportComplete,
 }) => {
-  const { language, addDataset, setActiveDatasetId, currentWorkspace, toast } = useApp();
+  const { language, addDataset, setActiveDatasetId, workspace, toast } = useApp();
   const isAr = language === 'ar';
 
   const [activeMode, setActiveMode] = useState<'url' | 'drag_drop'>('url');
@@ -244,7 +244,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
             const inferred = inferColumns(rows);
             setPreviewData(rows);
             setDetectedColumns(inferred);
-            setDatasetFormat(ext === 'tsv' ? 'tsv' : 'csv');
+            setDatasetFormat(ext === 'tsv' ? 'csv' : 'csv');
             setSourceOrigin('file');
             setDatasetName(fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '));
             setDatasetDesc(`Uploaded file (${(file.size / 1024).toFixed(1)} KB)`);
@@ -270,7 +270,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
         const inferred = inferColumns(rows);
         setPreviewData(rows);
         setDetectedColumns(inferred);
-        setDatasetFormat('xlsx');
+        setDatasetFormat('excel');
         setSourceOrigin('file');
         setDatasetName(fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '));
         setDatasetDesc(`Excel Sheet: ${firstSheetName} (${(file.size / 1024).toFixed(1)} KB)`);
@@ -340,7 +340,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
 
     const newDataset: Dataset = {
       id: newId,
-      workspaceId: currentWorkspace?.id || 'ws-default',
+      workspaceId: workspace?.id || 'ws-default',
       name,
       description: datasetDesc || 'Imported via URL & Drag-Drop Module',
       format: datasetFormat,
@@ -607,7 +607,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
                 >
                   <span className="text-[var(--cds-text-01)] font-bold">{col.name}</span>
                   <span className={`text-[9px] px-1 py-0.2 rounded uppercase ${
-                    col.type === 'number'
+                    col.type === 'float' || col.type === 'integer'
                       ? 'bg-blue-500/20 text-blue-400'
                       : col.type === 'date'
                       ? 'bg-purple-500/20 text-purple-400'

@@ -274,9 +274,19 @@ const WorkflowStudioContent: React.FC = () => {
     addDataset, 
     saveReport, 
     toast, 
-    addAuditLog 
+    addAuditLog,
+    aiSettings,
+    user,
+    workspace
   } = useApp();
   const isAr = language === 'ar';
+  const activeProviderConf = aiSettings.providers[aiSettings.activeProvider];
+  const aiProviderConfig = {
+    provider: aiSettings.activeProvider,
+    model: aiSettings.activeModel,
+    endpointUrl: activeProviderConf?.endpointUrl,
+    apiKey: activeProviderConf?.apiKey,
+  };
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -621,11 +631,18 @@ const WorkflowStudioContent: React.FC = () => {
     saveVersionsToStorage([autoSnapshot, ...versions]);
 
     addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      workspaceId: workspace.id,
       action: 'update',
-      entity: 'workflow',
-      details: isAr 
+      resourceType: 'assistant_tool',
+      resourceId: activeWorkflow.id,
+      status: 'SUCCESS',
+      durationMs: 100,
+      payloadSummary: isAr 
         ? `تم حفظ سير العمل وتوثيق نقطة الإصدار v${nextVer}.0 (${activeWorkflow.nameAr || activeWorkflow.name}).`
         : `Saved workflow "${activeWorkflow.name}" and created version snapshot v${nextVer}.0.`,
+      riskLevel: 'LOW',
     });
 
     toast.success(
@@ -660,11 +677,18 @@ const WorkflowStudioContent: React.FC = () => {
     saveVersionsToStorage(updated);
 
     addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      workspaceId: workspace.id,
       action: 'create',
-      entity: 'workflow',
-      details: isAr 
+      resourceType: 'assistant_tool',
+      resourceId: activeWorkflow.id,
+      status: 'SUCCESS',
+      durationMs: 100,
+      payloadSummary: isAr 
         ? `تم إنشاء وتوثيق نسخة سير العمل (${name}) - الإصدار v${nextVer}.0.`
         : `Created workflow snapshot "${name}" (v${nextVer}.0).`,
+      riskLevel: 'LOW',
     });
 
     toast.success(
@@ -700,11 +724,18 @@ const WorkflowStudioContent: React.FC = () => {
     saveCurrentWorkflows(updatedWorkflows);
 
     addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      workspaceId: workspace.id,
       action: 'update',
-      entity: 'workflow',
-      details: isAr
+      resourceType: 'assistant_tool',
+      resourceId: activeWorkflow.id,
+      status: 'SUCCESS',
+      durationMs: 100,
+      payloadSummary: isAr
         ? `تمت استعادة سير العمل إلى النسخة (${version.name} - v${version.versionNumber}).`
         : `Reverted workflow to version "${version.name}" (v${version.versionNumber}).`,
+      riskLevel: 'LOW',
     });
 
     toast.success(
@@ -814,6 +845,7 @@ const WorkflowStudioContent: React.FC = () => {
         saveReport,
         toast,
         addAuditLog,
+        aiProviderConfig,
         isAr,
         onNodeStatusChange: (nodeId, status, duration, output, error, outputData) => {
           setNodes((nds) =>
@@ -894,6 +926,7 @@ const WorkflowStudioContent: React.FC = () => {
         saveReport,
         toast,
         addAuditLog,
+        aiProviderConfig,
         isAr,
         onNodeStatusChange: (nodeId, status, duration, output, error) => {
           handleUpdateNodeData(nodeId, {
