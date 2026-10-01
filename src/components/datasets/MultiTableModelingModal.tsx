@@ -508,10 +508,10 @@ addAuditLog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in overflow-y-auto">
-      <div className="bg-[#1f1f1f] border border-[#393939] w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-[#262626] border-b border-[#393939] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-[#0f62fe]/20 border border-[#0f62fe] text-[#78a9ff] rounded-none">
               <Workflow className="w-5 h-5" />
@@ -521,26 +521,26 @@ addAuditLog({
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
                   MULTI-TABLE INGESTION & MODELING
                 </span>
-                <span className="px-2 py-0.5 bg-[#161616] text-[#c6c6c6] text-[10px] font-mono border border-[#393939]">
+                <span className="px-2 py-0.5 bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] text-[10px] font-mono border border-[var(--cds-border-subtle)]">
                   {allTables.length} {isAr ? 'شيتات مكتشفة' : 'Sheets Found'}
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2 mt-0.5">
                 <span>{isAr ? 'نمذجة ودمج شيتات البيانات المرفوعة' : 'Multi-Sheet Modeling & Data Ingestion'}</span>
-                <span className="text-xs font-mono font-normal text-[#8d8d8d] hidden sm:inline">({fileName})</span>
+                <span className="text-xs font-mono font-normal text-[var(--cds-text-03)] hidden sm:inline">({fileName})</span>
               </h2>
             </div>
           </div>
 
           {/* Mode Switcher Tabs */}
           <div className="flex items-center gap-2">
-            <div className="flex bg-[#161616] p-1 border border-[#393939]">
+            <div className="flex bg-[var(--cds-layer-01)] p-1 border border-[var(--cds-border-subtle)]">
               <button
                 onClick={() => setActiveMode('modeling')}
                 className={`px-3 py-1.5 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors ${
                   activeMode === 'modeling'
                     ? 'bg-[#0f62fe] text-white'
-                    : 'text-[#c6c6c6] hover:text-white'
+                    : 'text-[var(--cds-text-02)] hover:text-white'
                 }`}
               >
                 <Link className="w-3.5 h-3.5" />
@@ -551,7 +551,7 @@ addAuditLog({
                 className={`px-3 py-1.5 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors ${
                   activeMode === 'single'
                     ? 'bg-[#0f62fe] text-white'
-                    : 'text-[#c6c6c6] hover:text-white'
+                    : 'text-[var(--cds-text-02)] hover:text-white'
                 }`}
               >
                 <Table className="w-3.5 h-3.5" />
@@ -561,7 +561,7 @@ addAuditLog({
 
             <button
               onClick={onClose}
-              className="p-1.5 text-[#8d8d8d] hover:text-white hover:bg-[#393939] transition-colors"
+              className="p-1.5 text-[var(--cds-text-03)] hover:text-white hover:bg-[var(--cds-layer-03)] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -580,11 +580,11 @@ addAuditLog({
               {/* Top Overview: Available Sheets Cards */}
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <h3 className="text-xs font-mono font-bold uppercase text-[#c6c6c6] flex items-center gap-2">
+                  <h3 className="text-xs font-mono font-bold uppercase text-[var(--cds-text-02)] flex items-center gap-2">
                     <Layers className="w-4 h-4 text-[#78a9ff]" />
                     <span>{isAr ? 'الشيتات والجداول المتاحة للنمذجة في الملف' : 'Available Sheets in Workbook'}</span>
                   </h3>
-                  <span className="text-[11px] text-[#8d8d8d] font-mono">
+                  <span className="text-[11px] text-[var(--cds-text-03)] font-mono">
                     {allTables.reduce((acc, t) => acc + t.totalRows, 0).toLocaleString()} {isAr ? 'إجمالي الصفوف' : 'total raw rows'}
                   </span>
                 </div>
@@ -597,12 +597,12 @@ addAuditLog({
                     return (
                       <div
                         key={tbl.tableName}
-                        className={`p-3.5 bg-[#161616] border transition-all ${
+                        className={`p-3.5 bg-[var(--cds-layer-01)] border transition-all ${
                           isBase
                             ? 'border-[#0f62fe] bg-[#0f62fe]/5'
                             : isJoined
                             ? 'border-[#8a3ffc] bg-[#8a3ffc]/5'
-                            : 'border-[#393939]'
+                            : 'border-[var(--cds-border-subtle)]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2 mb-2">
@@ -624,7 +624,7 @@ addAuditLog({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 text-[11px] font-mono text-[#8d8d8d] mb-2">
+                        <div className="flex items-center gap-3 text-[11px] font-mono text-[var(--cds-text-03)] mb-2">
                           <span><strong>{tbl.totalRows.toLocaleString()}</strong> rows</span>
                           <span>•</span>
                           <span><strong>{tbl.columns.length}</strong> cols</span>
@@ -635,14 +635,14 @@ addAuditLog({
                           {tbl.columns.slice(0, 6).map(col => (
                             <span
                               key={col.name}
-                              className="px-1.5 py-0.5 bg-[#262626] text-[#c6c6c6] text-[10px] font-mono border border-[#393939]"
+                              className="px-1.5 py-0.5 bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] text-[10px] font-mono border border-[var(--cds-border-subtle)]"
                               title={`${col.name} (${col.type})`}
                             >
                               {col.name}
                             </span>
                           ))}
                           {tbl.columns.length > 6 && (
-                            <span className="px-1.5 py-0.5 bg-[#1f1f1f] text-[#8d8d8d] text-[10px] font-mono">
+                            <span className="px-1.5 py-0.5 bg-[var(--cds-layer-01)] text-[var(--cds-text-03)] text-[10px] font-mono">
                               +{tbl.columns.length - 6}
                             </span>
                           )}
@@ -654,8 +654,8 @@ addAuditLog({
               </div>
 
               {/* Modeling Pipeline & Join Steps Builder */}
-              <div className="p-4 bg-[#161616] border border-[#393939] space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#393939] pb-3">
+              <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-[#8a3ffc]/20 text-[#be95ff] border border-[#8a3ffc]/50">
                       <GitBranch className="w-4 h-4" />
@@ -664,7 +664,7 @@ addAuditLog({
                       <h4 className="text-xs font-mono font-bold uppercase text-white">
                         {isAr ? 'هيكلية الربط والعلاقات (Join Pipeline)' : 'Join & Relationship Pipeline'}
                       </h4>
-                      <p className="text-[11px] text-[#8d8d8d]">
+                      <p className="text-[11px] text-[var(--cds-text-03)]">
                         {isAr
                           ? 'حدد الجدول الرئيسي والشيتات المرتبطة مع اختيار نوع الربط والأعمدة المطابقة والـ Cardinality'
                           : 'Configure base table and join conditions with relationship cardinalities.'}
@@ -681,7 +681,7 @@ addAuditLog({
                             toast.info(isAr ? 'تم كشف وتطبيق المفاتيح المقترحة تلقائياً' : 'Auto-detected join keys applied');
                           }
                         }}
-                        className="px-2.5 py-1 bg-[#262626] hover:bg-[#393939] text-[#78a9ff] border border-[#393939] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                        className="px-2.5 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[var(--cds-border-subtle)] text-xs font-mono flex items-center gap-1.5 transition-colors"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>{isAr ? 'كشف العلاقات تلقائياً' : 'AI Auto-Detect'}</span>
@@ -701,8 +701,8 @@ addAuditLog({
                 </div>
 
                 {/* Base Table Selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center bg-[#1f1f1f] p-3 border border-[#393939]">
-                  <label className="text-xs font-mono font-bold text-[#c6c6c6]">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)]">
+                  <label className="text-xs font-mono font-bold text-[var(--cds-text-02)]">
                     {isAr ? '١. الجدول الأساسي (Base / Driving Table):' : '1. Base Driving Table:'}
                   </label>
                   <select
@@ -716,7 +716,7 @@ addAuditLog({
                         if (target) autoSuggestJoin(e.target.value, target);
                       }
                     }}
-                    className="sm:col-span-2 bg-[#161616] border border-[#525252] text-white px-3 py-1.5 text-xs font-mono focus:border-[#0f62fe] outline-none"
+                    className="sm:col-span-2 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-white px-3 py-1.5 text-xs font-mono focus:border-[#0f62fe] outline-none"
                   >
                     {allTables.map(t => (
                       <option key={t.tableName} value={t.tableName}>
@@ -729,8 +729,8 @@ addAuditLog({
                 {/* Join Steps List */}
                 <div className="space-y-3">
                   {joinSteps.length === 0 ? (
-                    <div className="p-6 bg-[#1f1f1f] border border-dashed border-[#393939] text-center space-y-2">
-                      <p className="text-xs text-[#8d8d8d] font-mono">
+                    <div className="p-6 bg-[var(--cds-layer-01)] border border-dashed border-[var(--cds-border-subtle)] text-center space-y-2">
+                      <p className="text-xs text-[var(--cds-text-03)] font-mono">
                         {isAr
                           ? 'لم تتم إضافة أي علاقات ربط بعد. اضغط على "إضافة علاقة ربط" للدمج مع شيتات أخرى.'
                           : 'No joins added yet. Click "Add Join" to connect another sheet.'}
@@ -751,14 +751,14 @@ addAuditLog({
                       return (
                         <div
                           key={step.id}
-                          className="p-3.5 bg-[#1f1f1f] border border-[#393939] space-y-3 relative group"
+                          className="p-3.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-3 relative group"
                         >
-                          <div className="flex items-center justify-between border-b border-[#393939] pb-2">
+                          <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
                             <div className="flex items-center gap-2">
                               <span className="w-5 h-5 bg-[#8a3ffc] text-white text-[11px] font-mono font-bold flex items-center justify-center">
                                 {idx + 1}
                               </span>
-                              <span className="text-xs font-mono font-bold text-[#f4f4f4]">
+                              <span className="text-xs font-mono font-bold text-[var(--cds-text-01)]">
                                 {isAr ? 'ربط مع الشيت:' : 'Join with Sheet:'}
                               </span>
                               <select
@@ -773,7 +773,7 @@ addAuditLog({
                                     cardinality: candidate.cardinality,
                                   });
                                 }}
-                                className="bg-[#161616] border border-[#525252] text-[#78a9ff] font-bold px-2.5 py-1 text-xs font-mono outline-none"
+                                className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[#78a9ff] font-bold px-2.5 py-1 text-xs font-mono outline-none"
                               >
                                 {allTables
                                   .filter(t => t.tableName !== baseTable)
@@ -787,7 +787,7 @@ addAuditLog({
 
                             <button
                               onClick={() => handleRemoveJoinStep(step.id)}
-                              className="text-[#8d8d8d] hover:text-[#da1e28] p-1 transition-colors"
+                              className="text-[var(--cds-text-03)] hover:text-[#da1e28] p-1 transition-colors"
                               title={isAr ? 'حذف هذا الربط' : 'Remove this join'}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -798,13 +798,13 @@ addAuditLog({
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
                             {/* Join Type */}
                             <div>
-                              <label className="block text-[10px] text-[#8d8d8d] uppercase mb-1">
+                              <label className="block text-[10px] text-[var(--cds-text-03)] uppercase mb-1">
                                 {isAr ? 'نوع الدمج (Join Type)' : 'Join Type'}
                               </label>
                               <select
                                 value={step.joinType}
                                 onChange={e => handleUpdateJoinStep(step.id, { joinType: e.target.value as any })}
-                                className="w-full bg-[#161616] border border-[#393939] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
+                                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
                               >
                                 <option value="left">LEFT JOIN (كل صفوف الأساسي)</option>
                                 <option value="inner">INNER JOIN (المتطابق فقط)</option>
@@ -815,13 +815,13 @@ addAuditLog({
 
                             {/* Left Column */}
                             <div>
-                              <label className="block text-[10px] text-[#8d8d8d] uppercase mb-1 truncate">
+                              <label className="block text-[10px] text-[var(--cds-text-03)] uppercase mb-1 truncate">
                                 {isAr ? `حقل ${baseTable} (Left Key)` : `${baseTable} Key`}
                               </label>
                               <select
                                 value={step.leftColumn}
                                 onChange={e => handleUpdateJoinStep(step.id, { leftColumn: e.target.value })}
-                                className="w-full bg-[#161616] border border-[#393939] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
+                                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
                               >
                                 {baseTblObj?.columns.map(c => (
                                   <option key={c.name} value={c.name}>
@@ -833,13 +833,13 @@ addAuditLog({
 
                             {/* Right Column */}
                             <div>
-                              <label className="block text-[10px] text-[#8d8d8d] uppercase mb-1 truncate">
+                              <label className="block text-[10px] text-[var(--cds-text-03)] uppercase mb-1 truncate">
                                 {isAr ? `حقل ${step.targetTable} (Right Key)` : `${step.targetTable} Key`}
                               </label>
                               <select
                                 value={step.rightColumn}
                                 onChange={e => handleUpdateJoinStep(step.id, { rightColumn: e.target.value })}
-                                className="w-full bg-[#161616] border border-[#393939] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
+                                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-white px-2.5 py-1.5 outline-none focus:border-[#0f62fe]"
                               >
                                 {targetTblObj?.columns.map(c => (
                                   <option key={c.name} value={c.name}>
@@ -851,13 +851,13 @@ addAuditLog({
 
                             {/* Cardinality (1:1, 1:M, M:1, M:M) */}
                             <div>
-                              <label className="block text-[10px] text-[#8d8d8d] uppercase mb-1">
+                              <label className="block text-[10px] text-[var(--cds-text-03)] uppercase mb-1">
                                 {isAr ? 'العلاقة (Cardinality)' : 'Relationship'}
                               </label>
                               <select
                                 value={step.cardinality}
                                 onChange={e => handleUpdateJoinStep(step.id, { cardinality: e.target.value as any })}
-                                className="w-full bg-[#161616] border border-[#393939] text-[#be95ff] font-bold px-2.5 py-1.5 outline-none focus:border-[#8a3ffc]"
+                                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[#be95ff] font-bold px-2.5 py-1.5 outline-none focus:border-[#8a3ffc]"
                               >
                                 <option value="1:1">1:1 (واحد لواحد / One-to-One)</option>
                                 <option value="1:M">1:M (واحد لمتعدد / One-to-Many)</option>
@@ -875,26 +875,26 @@ addAuditLog({
 
               {/* Modeled Dataset Summary Metrics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 bg-[#161616] border border-[#393939]">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block">{isAr ? 'الصفوف الناتجة' : 'Result Rows'}</span>
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block">{isAr ? 'الصفوف الناتجة' : 'Result Rows'}</span>
                   <span className="text-lg font-mono font-bold text-[#42be65]">
                     {modeledExecutionResult.records.length.toLocaleString()}
                   </span>
                 </div>
-                <div className="p-3 bg-[#161616] border border-[#393939]">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block">{isAr ? 'إجمالي الحقول' : 'Result Columns'}</span>
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block">{isAr ? 'إجمالي الحقول' : 'Result Columns'}</span>
                   <span className="text-lg font-mono font-bold text-[#78a9ff]">
                     {modeledExecutionResult.columns.length}
                   </span>
                 </div>
-                <div className="p-3 bg-[#161616] border border-[#393939]">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block">{isAr ? 'السجلات المتطابقة' : 'Matched Keys'}</span>
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block">{isAr ? 'السجلات المتطابقة' : 'Matched Keys'}</span>
                   <span className="text-lg font-mono font-bold text-[#be95ff]">
                     {modeledExecutionResult.totalMatched.toLocaleString()}
                   </span>
                 </div>
-                <div className="p-3 bg-[#161616] border border-[#393939]">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block">{isAr ? 'سجلات بدون مطابقة' : 'Unmatched Keys'}</span>
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block">{isAr ? 'سجلات بدون مطابقة' : 'Unmatched Keys'}</span>
                   <span className="text-lg font-mono font-bold text-[#f1c21b]">
                     {modeledExecutionResult.totalUnmatched.toLocaleString()}
                   </span>
@@ -902,55 +902,55 @@ addAuditLog({
               </div>
 
               {/* Metadata Inputs (Dataset Name & Description) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#161616] border border-[#393939]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'اسم مجموعة البيانات الناتجة:' : 'Output Modeled Dataset Name:'}
                   </label>
                   <input
                     type="text"
                     value={modeledName}
                     onChange={e => setModeledName(e.target.value)}
-                    className="w-full bg-[#1f1f1f] border border-[#525252] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
                     placeholder="Modeled_Dataset_Name"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'الوصف وملاحظات العلاقات:' : 'Description / Notes:'}
                   </label>
                   <input
                     type="text"
                     value={modeledDescription}
                     onChange={e => setModeledDescription(e.target.value)}
-                    className="w-full bg-[#1f1f1f] border border-[#525252] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
                     placeholder="Describe modeled output..."
                   />
                 </div>
               </div>
 
               {/* Live Modeled Preview Table */}
-              <div className="border border-[#393939] bg-[#161616]">
-                <div className="p-3 bg-[#262626] border-b border-[#393939] flex flex-wrap items-center justify-between gap-3">
+              <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+                <div className="p-3 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Table className="w-4 h-4 text-[#78a9ff]" />
                     <span className="text-xs font-mono font-bold text-white uppercase">
                       {isAr ? 'معاينة مباشرة للبيانات المدمجة والمنمذجة' : 'Live Modeled Dataset Preview'}
                     </span>
-                    <span className="text-[10px] font-mono text-[#8d8d8d]">
+                    <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
                       (15 {isAr ? 'عينة من إجمالي' : 'sample of'} {modeledExecutionResult.records.length.toLocaleString()})
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-[#8d8d8d] absolute start-2 top-2" />
+                      <Search className="w-3.5 h-3.5 text-[var(--cds-text-03)] absolute start-2 top-2" />
                       <input
                         type="text"
                         placeholder={isAr ? 'بحث في العينة...' : 'Search preview...'}
                         value={searchPreviewQuery}
                         onChange={e => setSearchPreviewQuery(e.target.value)}
-                        className="ps-7 pe-2.5 py-1 bg-[#161616] border border-[#393939] text-xs font-mono text-white outline-none focus:border-[#0f62fe]"
+                        className="ps-7 pe-2.5 py-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-white outline-none focus:border-[#0f62fe]"
                       />
                     </div>
                   </div>
@@ -958,29 +958,29 @@ addAuditLog({
 
                 <div className="overflow-x-auto max-h-60 overflow-y-auto">
                   {previewRows.length === 0 ? (
-                    <div className="p-8 text-center text-xs font-mono text-[#8d8d8d]">
+                    <div className="p-8 text-center text-xs font-mono text-[var(--cds-text-03)]">
                       {isAr ? 'لا توجد سجلات تطابق شروط الدمج أو البحث.' : 'No records match the join conditions or search filter.'}
                     </div>
                   ) : (
                     <table className="w-full text-start text-xs font-mono">
-                      <thead className="bg-[#1f1f1f] text-[#c6c6c6] border-b border-[#393939] sticky top-0">
+                      <thead className="bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-b border-[var(--cds-border-subtle)] sticky top-0">
                         <tr>
                           {modeledExecutionResult.columns.map(col => (
-                            <th key={col.name} className="px-3 py-2 text-start whitespace-nowrap bg-[#1f1f1f]">
+                            <th key={col.name} className="px-3 py-2 text-start whitespace-nowrap bg-[var(--cds-layer-01)]">
                               <div className="text-white">{col.name}</div>
                               <span className="text-[9px] text-[#78a9ff] font-normal uppercase">{col.type}</span>
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#393939] text-[#c6c6c6]">
+                      <tbody className="divide-y divide-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
                         {previewRows.map((row, rIdx) => (
-                          <tr key={rIdx} className="hover:bg-[#262626]">
+                          <tr key={rIdx} className="hover:bg-[var(--cds-layer-02)]">
                             {modeledExecutionResult.columns.map(col => (
                               <td key={col.name} className="px-3 py-1.5 whitespace-nowrap">
                                 {row[col.name] !== null && row[col.name] !== undefined
                                   ? String(row[col.name])
-                                  : <span className="text-[#6f6f6f] italic">NULL</span>}
+                                  : <span className="text-[var(--cds-text-03)] italic">NULL</span>}
                               </td>
                             ))}
                           </tr>
@@ -997,7 +997,7 @@ addAuditLog({
             /* MODE 2: SINGLE SHEET INGESTION                            */
             /* ========================================================= */
             <div className="space-y-5">
-              <div className="p-4 bg-[#161616] border border-[#393939] space-y-4">
+              <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-4">
                 <label className="block text-xs font-mono font-bold text-white uppercase">
                   {isAr ? 'اختر ورقة العمل (Worksheet) المراد استيرادها:' : 'Select Target Worksheet to Ingest:'}
                 </label>
@@ -1015,14 +1015,14 @@ addAuditLog({
                         className={`p-3.5 text-start border transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#0f62fe]/15 border-[#0f62fe] shadow-[0_0_12px_rgba(15,98,254,0.2)]'
-                            : 'bg-[#1f1f1f] border-[#393939] hover:border-[#525252]'
+                            : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2 mb-1.5">
                           <span className="font-mono font-bold text-sm text-white truncate">{tbl.tableName}</span>
                           {isSelected && <CheckCircle2 className="w-4 h-4 text-[#0f62fe] shrink-0" />}
                         </div>
-                        <div className="flex items-center gap-3 text-[11px] font-mono text-[#8d8d8d]">
+                        <div className="flex items-center gap-3 text-[11px] font-mono text-[var(--cds-text-03)]">
                           <span>{tbl.totalRows.toLocaleString()} rows</span>
                           <span>•</span>
                           <span>{tbl.columns.length} columns</span>
@@ -1034,18 +1034,18 @@ addAuditLog({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <div>
-                    <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                    <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                       {isAr ? 'اسم مجموعة البيانات:' : 'Dataset Name:'}
                     </label>
                     <input
                       type="text"
                       value={singleDatasetName}
                       onChange={e => setSingleDatasetName(e.target.value)}
-                      className="w-full bg-[#1f1f1f] border border-[#525252] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                    <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                       {isAr ? 'الوصف:' : 'Description:'}
                     </label>
                     <input
@@ -1053,7 +1053,7 @@ addAuditLog({
                       value={singleDescription}
                       onChange={e => setSingleDescription(e.target.value)}
                       placeholder="Optional notes..."
-                      className="w-full bg-[#1f1f1f] border border-[#525252] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#0f62fe]"
                     />
                   </div>
                 </div>
@@ -1065,26 +1065,26 @@ addAuditLog({
                 if (!curTbl) return null;
 
                 return (
-                  <div className="border border-[#393939] bg-[#161616]">
-                    <div className="p-3 bg-[#262626] border-b border-[#393939] flex items-center justify-between text-xs font-mono">
+                  <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+                    <div className="p-3 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between text-xs font-mono">
                       <span className="font-bold text-white">{curTbl.tableName} - Preview</span>
-                      <span className="text-[#8d8d8d]">{curTbl.totalRows} records</span>
+                      <span className="text-[var(--cds-text-03)]">{curTbl.totalRows} records</span>
                     </div>
                     <div className="overflow-x-auto max-h-56 overflow-y-auto">
                       <table className="w-full text-start text-xs font-mono">
-                        <thead className="bg-[#1f1f1f] text-[#c6c6c6] border-b border-[#393939] sticky top-0">
+                        <thead className="bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-b border-[var(--cds-border-subtle)] sticky top-0">
                           <tr>
                             {curTbl.columns.map(c => (
-                              <th key={c.name} className="px-3 py-2 text-start whitespace-nowrap bg-[#1f1f1f]">
+                              <th key={c.name} className="px-3 py-2 text-start whitespace-nowrap bg-[var(--cds-layer-01)]">
                                 <div className="text-white">{c.name}</div>
                                 <span className="text-[9px] text-[#78a9ff] font-normal uppercase">{c.type}</span>
                               </th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#393939] text-[#c6c6c6]">
+                        <tbody className="divide-y divide-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
                           {curTbl.data.slice(0, 10).map((row, idx) => (
-                            <tr key={idx} className="hover:bg-[#262626]">
+                            <tr key={idx} className="hover:bg-[var(--cds-layer-02)]">
                               {curTbl.columns.map(c => (
                                 <td key={c.name} className="px-3 py-1.5 whitespace-nowrap">
                                   {String(row[c.name] ?? 'NULL')}
@@ -1104,10 +1104,10 @@ addAuditLog({
         </div>
 
         {/* Modal Footer Actions (Save to Datasets vs Export Modeled Data) */}
-        <div className="p-4 bg-[#262626] border-t border-[#393939] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-4 bg-[var(--cds-layer-02)] border-t border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-[#393939] hover:bg-[#4c4c4c] text-white text-xs font-mono uppercase tracking-wider transition-colors"
+            className="px-4 py-2 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-white text-xs font-mono uppercase tracking-wider transition-colors"
           >
             {isAr ? 'إلغاء' : 'Cancel'}
           </button>
@@ -1120,7 +1120,7 @@ addAuditLog({
                   <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
                     disabled={modeledExecutionResult.records.length === 0 || isExporting}
-                    className="px-4 py-2 bg-[#262626] hover:bg-[#393939] text-[#78a9ff] border border-[#0f62fe] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[#0f62fe] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
                     <span>{isAr ? 'تصدير الناتج (Export)' : 'Export Modeled Data'}</span>
@@ -1128,24 +1128,24 @@ addAuditLog({
 
                   {/* Export Options Popover */}
                   {showExportMenu && (
-                    <div className="absolute bottom-full end-0 mb-2 w-56 bg-[#1f1f1f] border border-[#393939] shadow-2xl p-1.5 space-y-1 z-50">
+                    <div className="absolute bottom-full end-0 mb-2 w-56 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] shadow-2xl p-1.5 space-y-1 z-50">
                       <button
                         onClick={handleExportExcel}
-                        className="w-full px-3 py-2 text-start text-xs font-mono text-[#f4f4f4] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
+                        className="w-full px-3 py-2 text-start text-xs font-mono text-[var(--cds-text-01)] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
                       >
                         <FileSpreadsheet className="w-4 h-4 text-[#42be65]" />
                         <span>{isAr ? 'تصدير كـ Excel (.xlsx)' : 'Export Excel (.xlsx)'}</span>
                       </button>
                       <button
                         onClick={handleExportCsv}
-                        className="w-full px-3 py-2 text-start text-xs font-mono text-[#f4f4f4] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
+                        className="w-full px-3 py-2 text-start text-xs font-mono text-[var(--cds-text-01)] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
                       >
                         <FileText className="w-4 h-4 text-[#4589ff]" />
                         <span>{isAr ? 'تصدير كـ CSV (.csv)' : 'Export CSV (.csv)'}</span>
                       </button>
                       <button
                         onClick={handleExportJson}
-                        className="w-full px-3 py-2 text-start text-xs font-mono text-[#f4f4f4] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
+                        className="w-full px-3 py-2 text-start text-xs font-mono text-[var(--cds-text-01)] hover:bg-[#0f62fe] hover:text-white flex items-center gap-2 transition-colors"
                       >
                         <FileCode className="w-4 h-4 text-[#f1c21b]" />
                         <span>{isAr ? 'تصدير كـ JSON (.json)' : 'Export JSON (.json)'}</span>

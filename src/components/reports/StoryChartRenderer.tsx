@@ -41,13 +41,13 @@ const PALETTE = [
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#161616] border border-[#525252] p-2.5 shadow-xl text-xs font-mono">
-        <p className="text-[#f4f4f4] font-bold mb-1">{label || payload[0]?.name}</p>
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] p-2.5 shadow-xl text-xs font-mono">
+        <p className="text-[var(--cds-text-01)] font-bold mb-1">{label || payload[0]?.name}</p>
         {payload.map((entry: any, index: number) => (
-          <div key={`item-${index}`} className="flex items-center gap-2 text-[#c6c6c6]">
+          <div key={`item-${index}`} className="flex items-center gap-2 text-[var(--cds-text-02)]">
             <span className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: entry.color || entry.fill || PALETTE[0] }} />
             <span>{entry.name || 'Value'}:</span>
-            <span className="font-bold text-[#f4f4f4]">
+            <span className="font-bold text-[var(--cds-text-01)]">
               {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
             </span>
           </div>
@@ -95,25 +95,25 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
   }, [data, xAxis, yAxis]);
 
   return (
-    <div className="bg-[#161616] border border-[#393939] p-4 flex flex-col justify-between">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-between">
       {/* Chart Control Header */}
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#262626]">
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--cds-border-subtle)]">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono uppercase tracking-wider text-[#33b1ff]">
             {language === 'ar' ? 'رسم بياني توضيحي للقصة' : 'Illustrative Data Chart'}
           </span>
-          <span className="text-[10px] font-mono text-[#8d8d8d]">
+          <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
             ({xAxis} × {yAxis})
           </span>
         </div>
 
         {/* Live Chart Type Switcher */}
-        <div className="flex items-center gap-1 bg-[#262626] p-0.5 border border-[#393939]">
+        <div className="flex items-center gap-1 bg-[var(--cds-layer-02)] p-0.5 border border-[var(--cds-border-subtle)]">
           <button
             type="button"
             onClick={() => setChartType('bar')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'bar' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white hover:bg-[#333]'
+              chartType === 'bar' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Bar Chart"
           >
@@ -123,7 +123,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('line')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'line' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white hover:bg-[#333]'
+              chartType === 'line' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Line Chart"
           >
@@ -133,7 +133,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('area')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'area' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white hover:bg-[#333]'
+              chartType === 'area' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Area Chart"
           >
@@ -143,7 +143,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('pie')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'pie' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white hover:bg-[#333]'
+              chartType === 'pie' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Pie Chart"
           >
@@ -231,7 +231,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
 
       {/* Analytical Explanation */}
       {explanation && (
-        <div className="mt-2 pt-2 border-t border-[#262626] text-[11px] text-[#8d8d8d] font-mono leading-tight">
+        <div className="mt-2 pt-2 border-t border-[var(--cds-border-subtle)] text-[11px] text-[var(--cds-text-03)] font-mono leading-tight">
           💡 {explanation}
         </div>
       )}

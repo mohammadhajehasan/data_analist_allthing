@@ -192,19 +192,19 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
   const statusColors = getQualityColor(quality.overallScore);
 
   return (
-    <div className="carbon-tile bg-[#161616] border border-[#393939] overflow-hidden p-0">
+    <div className="carbon-tile bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-hidden p-0">
       {/* HEADER BAR */}
-      <div className="bg-[#262626] border-b border-[#393939] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-start">
+      <div className="bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-start">
         <div>
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-[#0f62fe]" />
             {isAr ? 'تقرير جودة المخطط التلقائي' : 'Automated Diagnostic Quality Report'}
           </span>
-          <h2 className="text-sm font-bold text-[#f4f4f4] mt-1.5 flex items-center gap-2">
+          <h2 className="text-sm font-bold text-[var(--cds-text-01)] mt-1.5 flex items-center gap-2">
             <span>{isAr ? 'مستند الصحة الإحصائية والموثوقية:' : 'Statistical Health Cert:'}</span>
             <span className="text-[#8a3ffc] underline decoration-dotted font-mono text-xs">{dataset.name}</span>
           </h2>
-          <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+          <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
             {isAr
               ? 'فحص فوري وتحقق إحصائي تلقائي للقيم المفقودة، التباينات الإحصائية المتطرفة، وتطابق المخططات'
               : 'Executed inline during upload to detect null values, statistical anomalies, and metadata drift'}
@@ -215,7 +215,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
         <div className="flex items-center gap-3">
           <div className={`px-3.5 py-1.5 border ${statusColors.border} ${statusColors.bg} flex items-center gap-2 font-mono text-xs font-bold`}>
             <ShieldAlert className={`w-4 h-4 ${statusColors.text}`} />
-            <span className="text-[#f4f4f4]">
+            <span className="text-[var(--cds-text-01)]">
               {isAr ? 'نقاط الجودة:' : 'Quality Index:'}
             </span>
             <span className={`${statusColors.text} text-sm font-black`}>{quality.overallScore}%</span>
@@ -233,23 +233,23 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#393939]">
+      <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[var(--cds-border-subtle)]">
         {/* SIDE BAR / METRIC CIRCLES */}
         <div className="lg:col-span-1 p-5 space-y-4 text-start">
-          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#8d8d8d] block mb-2">
+          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] block mb-2">
             {isAr ? 'بطاقات النتيجة' : 'Audit Scorecard'}
           </span>
 
           {/* Completeness Meter */}
-          <div className="bg-[#1f1f1f] p-3 border border-[#393939]">
+          <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)]">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#c6c6c6] font-medium">{isAr ? 'معدل الاكتمال' : 'Completeness'}</span>
+              <span className="text-xs text-[var(--cds-text-02)] font-medium">{isAr ? 'معدل الاكتمال' : 'Completeness'}</span>
               <span className="text-xs font-mono font-bold text-[#24a148]">{quality.completenessScore}%</span>
             </div>
-            <div className="w-full h-1.5 bg-[#262626] mt-2 overflow-hidden rounded-full">
+            <div className="w-full h-1.5 bg-[var(--cds-layer-02)] mt-2 overflow-hidden rounded-full">
               <div className="h-full bg-[#24a148]" style={{ width: `${quality.completenessScore}%` }} />
             </div>
-            <span className="text-[10px] text-[#8d8d8d] mt-1.5 block">
+            <span className="text-[10px] text-[var(--cds-text-03)] mt-1.5 block">
               {columnsWithNullsCount > 0
                 ? (isAr ? `${columnsWithNullsCount} حقول تحتوي قيم فارغة` : `${columnsWithNullsCount} fields contain missing items`)
                 : (isAr ? 'اكتمال تام بنسبة 100%' : '100% fully populated rows')}
@@ -257,15 +257,15 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           </div>
 
           {/* Uniqueness Meter */}
-          <div className="bg-[#1f1f1f] p-3 border border-[#393939]">
+          <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)]">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#c6c6c6] font-medium">{isAr ? 'معدل التفرّد والتميز' : 'Uniqueness'}</span>
+              <span className="text-xs text-[var(--cds-text-02)] font-medium">{isAr ? 'معدل التفرّد والتميز' : 'Uniqueness'}</span>
               <span className="text-xs font-mono font-bold text-[#0f62fe]">{quality.uniquenessScore}%</span>
             </div>
-            <div className="w-full h-1.5 bg-[#262626] mt-2 overflow-hidden rounded-full">
+            <div className="w-full h-1.5 bg-[var(--cds-layer-02)] mt-2 overflow-hidden rounded-full">
               <div className="h-full bg-[#0f62fe]" style={{ width: `${quality.uniquenessScore}%` }} />
             </div>
-            <span className="text-[10px] text-[#8d8d8d] mt-1.5 block">
+            <span className="text-[10px] text-[var(--cds-text-03)] mt-1.5 block">
               {schemaInconsistencies.some(i => i.type === 'duplicate_keys')
                 ? (isAr ? 'تم كشف مفاتيح مكررة!' : 'Identified key duplication issues!')
                 : (isAr ? 'لا يوجد تكرار معرّفات رئيسية' : 'Keys uniqueness fully validated')}
@@ -273,20 +273,20 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           </div>
 
           {/* Anomalies Box */}
-          <div className="bg-[#1f1f1f] p-3 border border-[#393939]">
+          <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)]">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#c6c6c6] font-medium">{isAr ? 'القيم الشاذة والمتطرفة' : 'Outliers Detected'}</span>
+              <span className="text-xs text-[var(--cds-text-02)] font-medium">{isAr ? 'القيم الشاذة والمتطرفة' : 'Outliers Detected'}</span>
               <span className={`text-xs font-mono font-bold ${totalAnomalies > 0 ? 'text-[#da1e28]' : 'text-[#24a148]'}`}>
                 {totalAnomalies}
               </span>
             </div>
-            <div className="w-full h-1.5 bg-[#262626] mt-2 overflow-hidden rounded-full">
+            <div className="w-full h-1.5 bg-[var(--cds-layer-02)] mt-2 overflow-hidden rounded-full">
               <div
                 className={`h-full ${totalAnomalies > 5 ? 'bg-[#da1e28]' : 'bg-[#f1c21b]'}`}
                 style={{ width: `${Math.min(100, (totalAnomalies / 15) * 100)}%` }}
               />
             </div>
-            <span className="text-[10px] text-[#8d8d8d] mt-1.5 block">
+            <span className="text-[10px] text-[var(--cds-text-03)] mt-1.5 block">
               {isAr
                 ? `${totalAnomalies} قيمة متطرفة (Z-Score > 2.8)`
                 : `${totalAnomalies} numerical deviations exceeding IQR boundaries`}
@@ -297,11 +297,11 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
         {/* DETAILS SECTION */}
         <div className="lg:col-span-3 p-5 text-start space-y-4">
           {/* TAB BUTTONS */}
-          <div className="flex items-center border-b border-[#393939] bg-[#1a1a1a]">
+          <div className="flex items-center border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
             <button
               onClick={() => setExpandedSection('summary')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'summary' ? 'border-[#0f62fe] text-white bg-[#262626]' : 'border-transparent text-[#8d8d8d] hover:text-white'
+                expandedSection === 'summary' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Info className="w-3.5 h-3.5" />
@@ -310,7 +310,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('missing')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'missing' ? 'border-[#0f62fe] text-white bg-[#262626]' : 'border-transparent text-[#8d8d8d] hover:text-white'
+                expandedSection === 'missing' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('outliers')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'outliers' ? 'border-[#0f62fe] text-white bg-[#262626]' : 'border-transparent text-[#8d8d8d] hover:text-white'
+                expandedSection === 'outliers' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <TrendingDown className="w-3.5 h-3.5" />
@@ -338,7 +338,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('schema')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'schema' ? 'border-[#0f62fe] text-white bg-[#262626]' : 'border-transparent text-[#8d8d8d] hover:text-white'
+                expandedSection === 'schema' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -354,11 +354,11 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           {/* TAB 1: SUMMARY */}
           {expandedSection === 'summary' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <div className="bg-[#1f1f1f] border-l-4 border-l-[#8a3ffc] p-4 text-xs space-y-2">
+              <div className="bg-[var(--cds-layer-01)] border-s-4 border-s-[#8a3ffc] p-4 text-xs space-y-2">
                 <span className="font-mono text-[10px] font-bold text-[#8a3ffc] uppercase block tracking-wider">
                   {isAr ? 'استنتاج العميل الذكي التلقائي' : 'Autonomous Quality Agent Narrative'}
                 </span>
-                <p className="text-[#c6c6c6] leading-relaxed font-sans text-xs">
+                <p className="text-[var(--cds-text-02)] leading-relaxed font-sans text-xs">
                   {isAr
                     ? `خلال تحليل مجموعة البيانات "${dataset.name}"، قمنا بفحص ${dataset.rowCount.toLocaleString()} صفاً عبر ${dataset.columnCount} حقلاً. تم تسجيل مؤشر صحة بمقدار ${quality.overallScore}%. تم رصد ما مجموعه ${columnsWithNullsCount} حقلاً يحتوي على قيم مفقودة، وتحديد ${totalAnomalies} قيمة شاذة إحصائياً، مع رصد ${schemaInconsistencies.length} تعارض أو خرق في معايير المخططات.`
                     : `In-memory audit of dataset "${dataset.name}" successfully parsed ${dataset.rowCount.toLocaleString()} rows containing ${dataset.columnCount} columns. The quality validator output an overall index of ${quality.overallScore}%. Diagnostic scan pinpointed ${columnsWithNullsCount} fields with missing items, ${totalAnomalies} statistical outliers, and ${schemaInconsistencies.length} compliance anomalies.`}
@@ -367,12 +367,12 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
 
               {/* High Level Issue Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="bg-[#1f1f1f] p-3 border border-[#393939] space-y-1.5">
+                <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)] space-y-1.5">
                   <h4 className="font-bold text-white flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-[#24a148]" />
                     <span>{isAr ? 'المقاييس الإيجابية المستقرة' : 'Compliance Successes'}</span>
                   </h4>
-                  <ul className="text-[#8d8d8d] space-y-1 pl-4 list-disc text-[11px]">
+                  <ul className="text-[var(--cds-text-03)] space-y-1 pl-4 list-disc text-[11px]">
                     <li>{isAr ? 'تطابق ترميز التواريخ وتنسيقاتها' : 'Date encodings standard throughout'}</li>
                     {quality.completenessScore > 95 && (
                       <li>{isAr ? 'معدل اكتمال رائع يفوق 95٪' : 'Exceeded 95% threshold for data presence'}</li>
@@ -384,12 +384,12 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                   </ul>
                 </div>
 
-                <div className="bg-[#1f1f1f] p-3 border border-[#393939] space-y-1.5">
+                <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)] space-y-1.5">
                   <h4 className="font-bold text-white flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-[#f1c21b]" />
                     <span>{isAr ? 'نقاط الضعف المكتشفة' : 'Flagged Diagnostic Vulnerabilities'}</span>
                   </h4>
-                  <ul className="text-[#8d8d8d] space-y-1 pl-4 list-disc text-[11px]">
+                  <ul className="text-[var(--cds-text-03)] space-y-1 pl-4 list-disc text-[11px]">
                     {columnsWithNullsCount > 0 && (
                       <li>{isAr ? `${columnsWithNullsCount} أعمدة تفتقر إلى الاكتمال المطلق` : `${columnsWithNullsCount} variables require null imputation`}</li>
                     )}
@@ -408,9 +408,9 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           {/* TAB 2: MISSING VALUES */}
           {expandedSection === 'missing' && (
             <div className="space-y-3 animate-in fade-in duration-150">
-              <div className="bg-[#1f1f1f] border border-[#393939] overflow-hidden">
+              <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-hidden">
                 <table className="w-full text-xs text-start">
-                  <thead className="bg-[#262626] text-[#c6c6c6] font-mono text-[10px] uppercase tracking-wider border-b border-[#393939]">
+                  <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] font-mono text-[10px] uppercase tracking-wider border-b border-[var(--cds-border-subtle)]">
                     <tr>
                       <th className="px-3 py-2.5 text-start">{isAr ? 'اسم الحقل' : 'Column Name'}</th>
                       <th className="px-3 py-2.5 text-start">{isAr ? 'النوع' : 'Data Type'}</th>
@@ -419,15 +419,15 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                       <th className="px-3 py-2.5 text-end">{isAr ? 'الحالة والمؤشر' : 'Completeness Grade'}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#393939] font-mono text-[11px]">
+                  <tbody className="divide-y divide-[var(--cds-border-subtle)] font-mono text-[11px]">
                     {columnNullList.map(col => {
                       const completePct = 100 - col.nullPercentage;
                       return (
-                        <tr key={col.name} className="hover:bg-[#222]">
-                          <td className="px-3 py-2 text-[#f4f4f4] font-bold">{col.name}</td>
-                          <td className="px-3 py-2 text-[#8d8d8d]">{col.type}</td>
-                          <td className="px-3 py-2 text-[#e2e2e2]">{col.nullCount.toLocaleString()}</td>
-                          <td className="px-3 py-2 text-[#e2e2e2]">{col.nullPercentage}%</td>
+                        <tr key={col.name} className="hover:bg-[var(--cds-layer-02)]">
+                          <td className="px-3 py-2 text-[var(--cds-text-01)] font-bold">{col.name}</td>
+                          <td className="px-3 py-2 text-[var(--cds-text-03)]">{col.type}</td>
+                          <td className="px-3 py-2 text-[var(--cds-text-01)]">{col.nullCount.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-[var(--cds-text-01)]">{col.nullPercentage}%</td>
                           <td className="px-3 py-2 text-end">
                             <div className="flex items-center justify-end gap-2">
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${
@@ -435,7 +435,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                               }`}>
                                 {completePct > 95 ? (isAr ? 'ممتاز' : 'Excellent') : completePct > 75 ? (isAr ? 'متوسط' : 'Moderate') : (isAr ? 'منخفض' : 'Poor')}
                               </span>
-                              <span className="text-[#f4f4f4] text-xs font-semibold">{completePct.toFixed(1)}%</span>
+                              <span className="text-[var(--cds-text-01)] text-xs font-semibold">{completePct.toFixed(1)}%</span>
                             </div>
                           </td>
                         </tr>
@@ -451,27 +451,27 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           {expandedSection === 'outliers' && (
             <div className="space-y-3 animate-in fade-in duration-150">
               {totalAnomalies === 0 ? (
-                <div className="bg-[#1f1f1f] border border-[#393939] p-8 text-center space-y-2">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-8 text-center space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-[#24a148] mx-auto" />
                   <h4 className="text-xs font-bold text-white">{isAr ? 'لا توجد قيم متطرفة' : 'No Anomalies Detected'}</h4>
-                  <p className="text-[11px] text-[#8d8d8d]">
+                  <p className="text-[11px] text-[var(--cds-text-03)]">
                     {isAr ? 'تحليل الحدود الربعية (IQR) أكد تماسك وتجانس جميع السجلات الإحصائية للبيانات الرقمية.' : 'Interquartile (IQR) testing confirms 100% mathematical consistency inside numeric variables.'}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="bg-[#1f1f1f] border border-[#393939] p-3 text-xs">
+                  <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3 text-xs">
                     <span className="font-semibold text-white">{isAr ? 'نظرة تفصيلية على الانحرافات الإحصائية' : 'Detailed Statistical Anomalies'}</span>
-                    <p className="text-[11px] text-[#8d8d8d] mt-1">
+                    <p className="text-[11px] text-[var(--cds-text-03)] mt-1">
                       {isAr
                         ? 'تحديد القيم المتطرفة بناءً على قاعدة IQR (أكبر من Q3 + 1.5*IQR أو أصغر من Q1 - 1.5*IQR) ودرجة انحراف Z-Score.'
                         : 'Identified out-of-bounds numeric items calculated through interquartile values and individual standard-deviation metrics.'}
                     </p>
                   </div>
 
-                  <div className="bg-[#1f1f1f] border border-[#393939] overflow-hidden max-h-60 overflow-y-auto">
+                  <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-hidden max-h-60 overflow-y-auto">
                     <table className="w-full text-xs text-start">
-                      <thead className="bg-[#262626] text-[#c6c6c6] font-mono text-[10px] uppercase tracking-wider border-b border-[#393939] sticky top-0">
+                      <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] font-mono text-[10px] uppercase tracking-wider border-b border-[var(--cds-border-subtle)] sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-start">{isAr ? 'رقم السطر' : 'Row Index'}</th>
                           <th className="px-3 py-2 text-start">{isAr ? 'اسم العمود' : 'Column'}</th>
@@ -480,13 +480,13 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                           <th className="px-3 py-2 text-end">{isAr ? 'مستوى الانحراف' : 'Severity'}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#393939] font-mono text-[11px]">
+                      <tbody className="divide-y divide-[var(--cds-border-subtle)] font-mono text-[11px]">
                         {profile?.anomalies?.slice(0, showAllIssues ? undefined : 6).map((anom) => (
-                          <tr key={anom.id} className="hover:bg-[#222]">
+                          <tr key={anom.id} className="hover:bg-[var(--cds-layer-02)]">
                             <td className="px-3 py-2.5 text-white font-bold">#{anom.rowIndex}</td>
                             <td className="px-3 py-2.5 text-[#33b1ff]">{anom.columnName}</td>
-                            <td className="px-3 py-2.5 text-[#f4f4f4] font-semibold">{String(anom.value)}</td>
-                            <td className="px-3 py-2.5 text-[#8d8d8d]">{anom.method} (Z: {anom.score})</td>
+                            <td className="px-3 py-2.5 text-[var(--cds-text-01)] font-semibold">{String(anom.value)}</td>
+                            <td className="px-3 py-2.5 text-[var(--cds-text-03)]">{anom.method} (Z: {anom.score})</td>
                             <td className="px-3 py-2.5 text-end">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-none ${
                                 anom.severity === 'high' ? 'bg-[#da1e28]/10 text-[#da1e28]' : 'bg-[#f1c21b]/10 text-[#f1c21b]'
@@ -517,17 +517,17 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           {expandedSection === 'schema' && (
             <div className="space-y-3 animate-in fade-in duration-150">
               {schemaInconsistencies.length === 0 ? (
-                <div className="bg-[#1f1f1f] border border-[#393939] p-8 text-center space-y-2">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-8 text-center space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-[#24a148] mx-auto" />
                   <h4 className="text-xs font-bold text-white">{isAr ? 'مخطط البيانات مثالي وصحي' : 'Perfect Schema Conformance'}</h4>
-                  <p className="text-[11px] text-[#8d8d8d]">
+                  <p className="text-[11px] text-[var(--cds-text-03)]">
                     {isAr ? 'لا يوجد تكرار في المفاتيح، تفاوت في الترميز النصي، أو اختلاف في تعريف الحقول مقارنة ببقية الجداول.' : 'Zero duplicate keys, string space violations, or metadata conflicts detected.'}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {schemaInconsistencies.map((issue) => (
-                    <div key={issue.id} className="bg-[#1f1f1f] border border-[#393939] p-3.5 space-y-2.5 relative">
+                    <div key={issue.id} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3.5 space-y-2.5 relative">
                       <div className="flex items-start justify-between gap-3 text-start">
                         <div className="space-y-1">
                           <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-none ${
@@ -538,22 +538,22 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                           <h4 className="text-xs font-bold text-white mt-1.5">
                             {isAr ? issue.titleAr : issue.title}
                           </h4>
-                          <p className="text-[11px] text-[#c6c6c6] leading-relaxed">
+                          <p className="text-[11px] text-[var(--cds-text-02)] leading-relaxed">
                             {isAr ? issue.descriptionAr : issue.description}
                           </p>
                         </div>
 
-                        <div className="bg-[#262626] border border-[#393939] p-1.5 text-center font-mono text-[10px] uppercase shrink-0">
-                          <span className="text-[#8d8d8d] block">{isAr ? 'الحقل' : 'Column'}</span>
+                        <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-1.5 text-center font-mono text-[10px] uppercase shrink-0">
+                          <span className="text-[var(--cds-text-03)] block">{isAr ? 'الحقل' : 'Column'}</span>
                           <span className="text-white font-bold">{issue.columnName}</span>
                         </div>
                       </div>
 
-                      <div className="bg-[#262626] p-2.5 border-l-2 border-l-[#8a3ffc] text-[11px] space-y-1 text-start">
+                      <div className="bg-[var(--cds-layer-02)] p-2.5 border-s-2 border-s-[#8a3ffc] text-[11px] space-y-1 text-start">
                         <span className="font-mono font-bold text-[#8a3ffc] uppercase text-[9px] block">
                           {isAr ? 'الحل المقترح تلقائياً:' : 'Automated Healing Strategy:'}
                         </span>
-                        <p className="text-[#c6c6c6]">
+                        <p className="text-[var(--cds-text-02)]">
                           {isAr ? issue.suggestedFixAr : issue.suggestedFix}
                         </p>
                       </div>

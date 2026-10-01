@@ -8,6 +8,8 @@ import { SQLValidationReport, QueryResult, SqlOptimizationResult, ExecutionPlanN
 import { ChartFactory } from '../../components/charts/ChartFactory';
 import { CarbonDataTable } from '../../components/common/CarbonDataTable';
 import { SqlExecutionPlanVisualizer } from '../../components/nl2sql/SqlExecutionPlanVisualizer';
+import { NineLayerLaserGate } from '../../components/nl2sql/NineLayerLaserGate';
+import { audio } from '../../utils/audioEngine';
 import { SqlOptimizerModal } from '../../components/nl2sql/SqlOptimizerModal';
 import { optimizeSqlQuery } from '../../services/aiService';
 import { MultiModelComparisonArena } from '../../components/ai/MultiModelComparisonArena';
@@ -64,6 +66,7 @@ export const NL2SQLPage: React.FC = () => {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [gateRunId, setGateRunId] = useState(0);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionError, setExecutionError] = useState<string | null>(null);
@@ -224,6 +227,8 @@ export const NL2SQLPage: React.FC = () => {
     if (!activeDataset || !validationReport.canExecute) return;
     setIsExecuting(true);
     setExecutionError(null);
+    // Launch the photon through the 9-layer laser gate
+    setGateRunId(id => id + 1);
     setTimeout(() => {
       try {
         const result = executeAnalyticalQuery(activeDataset, {
@@ -246,6 +251,13 @@ export const NL2SQLPage: React.FC = () => {
               ? `تم استرجاع ${result.totalCount} صف في ${result.executionTimeMs} ملي ثانية.`
               : `Returned ${result.totalCount} records in ${result.executionTimeMs}ms.`
           );
+          // Sonification: glass chime for light queries, deep boom for heavy ones
+          if (result.executionTimeMs > 150 || result.totalCount > 200) {
+            audio.chimeHeavy();
+          } else {
+            audio.chimeSuccess();
+          }
+          window.dispatchEvent(new CustomEvent('carbon-analytical-success'));
         }
         setIsExecuting(false);
 
@@ -266,6 +278,8 @@ export const NL2SQLPage: React.FC = () => {
         const errMsg = err?.message || 'Query execution failed.';
         setExecutionError(errMsg);
         toast.error(isAr ? 'خطأ في التنفيذ' : 'Execution Error', errMsg);
+        audio.chimeError();
+        window.dispatchEvent(new CustomEvent('carbon-analytical-error', { detail: errMsg }));
       }
     }, 120);
   };
@@ -357,7 +371,7 @@ addAuditLog({
 
   if (!activeDataset) {
     return (
-      <div className="carbon-tile p-12 text-center text-[#c6c6c6]">
+      <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)]">
         <Database className="w-12 h-12 text-[#0f62fe] mx-auto mb-3" />
         <p className="text-sm font-bold">No active dataset selected</p>
       </div>
@@ -367,15 +381,15 @@ addAuditLog({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#393939] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
               IBM CARBON / 9-LAYER SECURE NL2SQL PIPELINE
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#f4f4f4] tracking-tight mt-1">{t.nl2sql.title}</h2>
-          <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">{t.nl2sql.subtitle}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">{t.nl2sql.title}</h2>
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">{t.nl2sql.subtitle}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -387,13 +401,13 @@ addAuditLog({
       </div>
 
       {/* Mode Sub-Tabs */}
-      <div className="flex border-b border-[#393939] bg-[#161616]">
+      <div className="flex border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
         <button
           onClick={() => setActiveSubTab('editor')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'editor'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[#262626]'
-              : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
           <Terminal className="w-3.5 h-3.5" />
@@ -404,8 +418,8 @@ addAuditLog({
           onClick={() => setActiveSubTab('arena')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'arena'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[#262626]'
-              : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-[#ff832b]" />
@@ -419,8 +433,8 @@ addAuditLog({
           onClick={() => setActiveSubTab('config')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'config'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[#262626]'
-              : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
           <Cpu className="w-3.5 h-3.5 text-[#42be65]" />
@@ -439,8 +453,8 @@ addAuditLog({
         <>
 
       {/* NL2SQL Prompt Bar */}
-      <div className="bg-[#262626] border border-[#393939] p-4 space-y-3">
-        <label className="block text-xs font-mono font-bold uppercase text-[#c6c6c6]">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 space-y-3">
+        <label className="block text-xs font-mono font-bold uppercase text-[var(--cds-text-02)]">
           {t.nl2sql.promptLabel}
         </label>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -463,8 +477,8 @@ addAuditLog({
         </div>
 
         {generatedExplanation && (
-          <div className="pt-2 border-t border-[#393939] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-            <span className="text-[#c6c6c6]">{generatedExplanation}</span>
+          <div className="pt-2 border-t border-[var(--cds-border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+            <span className="text-[var(--cds-text-02)]">{generatedExplanation}</span>
             {engineModel && (
               <span className="carbon-tag-blue text-[10px] uppercase font-bold shrink-0">
                 Engine: {engineModel}
@@ -475,35 +489,35 @@ addAuditLog({
       </div>
 
       {/* Query Presets & Quick Testing Bar */}
-      <div className="bg-[#1f1f1f] border border-[#393939] p-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#8d8d8d]">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-mono text-[var(--cds-text-03)]">
           <TestTube2 className="w-3.5 h-3.5 text-[#0f62fe]" />
           <span>{isAr ? 'نماذج استعلام سريعة للفحص:' : 'Quick Query Scenarios:'}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => loadPresetQuery('standard')}
-            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] text-[#c6c6c6] hover:text-[#f4f4f4] text-[11px] font-mono border border-[#393939] transition-colors"
+            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] text-[11px] font-mono border border-[var(--cds-border-subtle)] transition-colors"
           >
             {isAr ? 'استعلام قياسي سليم' : 'Standard Aggregation'}
           </button>
           <button
             onClick={() => loadPresetQuery('typo')}
-            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] text-[#f1c21b] text-[11px] font-mono border border-[#f1c21b]/30 transition-colors"
+            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#f1c21b] text-[11px] font-mono border border-[#f1c21b]/30 transition-colors"
             title="Test Typo Auto-Fix"
           >
             {isAr ? 'أخطاء إملائية (فحص المقترحات)' : 'Typo Error Test'}
           </button>
           <button
             onClick={() => loadPresetQuery('missingGroup')}
-            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] text-[#ff8389] text-[11px] font-mono border border-[#da1e28]/30 transition-colors"
+            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#ff8389] text-[11px] font-mono border border-[#da1e28]/30 transition-colors"
             title="Test Missing GROUP BY Detection"
           >
             {isAr ? 'تجميع ناقص (GROUP BY)' : 'Missing GROUP BY'}
           </button>
           <button
             onClick={() => loadPresetQuery('orderByMisplaced')}
-            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] text-[#be95ff] text-[11px] font-mono border border-[#8a3ffc]/30 transition-colors"
+            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#be95ff] text-[11px] font-mono border border-[#8a3ffc]/30 transition-colors"
             title="Test Misplaced Clauses"
           >
             {isAr ? 'ترتيب عبارات غير صالح' : 'Clause Order Bug'}
@@ -513,7 +527,7 @@ addAuditLog({
 
       {/* SMART ERROR SUGGESTIONS BANNER (If syntax or logical errors are detected) */}
       {errorAnalysis && errorAnalysis.hasError && (
-        <div className="bg-[#262626] border border-[#da1e28] p-4 space-y-3 animate-fade-in shadow-lg">
+        <div className="bg-[var(--cds-layer-02)] border border-[#da1e28] p-4 space-y-3 animate-fade-in shadow-lg">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-[#da1e28]/20 border border-[#da1e28] text-[#ff8389] shrink-0 mt-0.5">
@@ -528,7 +542,7 @@ addAuditLog({
                     {isAr ? 'تم رصد مشكلة في استعلام SQL ومقترحات ذكية للإصلاح' : 'SQL Syntax Issue Detected - Actionable Smart Suggestions'}
                   </h4>
                 </div>
-                <p className="text-xs font-mono text-[#f4f4f4] leading-relaxed">
+                <p className="text-xs font-mono text-[var(--cds-text-01)] leading-relaxed">
                   {isAr ? errorAnalysis.messageAr : errorAnalysis.messageEn}
                 </p>
               </div>
@@ -547,8 +561,8 @@ addAuditLog({
 
           {/* Actionable Suggestions List */}
           {errorAnalysis.suggestions.length > 0 && (
-            <div className="pt-2 border-t border-[#393939] space-y-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-[#c6c6c6] uppercase">
+            <div className="pt-2 border-t border-[var(--cds-border-subtle)] space-y-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase">
                 <Lightbulb className="w-3.5 h-3.5 text-[#f1c21b]" />
                 <span>{isAr ? 'المقترحات والإجراءات التصحيحية الموصى بها:' : 'Smart Correction Recommendations:'}</span>
               </div>
@@ -556,25 +570,25 @@ addAuditLog({
                 {errorAnalysis.suggestions.map(sug => (
                   <div
                     key={sug.id}
-                    className="p-2.5 bg-[#161616] border border-[#393939] hover:border-[#0f62fe] flex flex-col justify-between transition-colors"
+                    className="p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] flex flex-col justify-between transition-colors"
                   >
                     <div>
-                      <span className="text-xs font-mono font-bold text-[#f4f4f4] block">
+                      <span className="text-xs font-mono font-bold text-[var(--cds-text-01)] block">
                         {isAr ? sug.titleAr : sug.title}
                       </span>
-                      <p className="text-[11px] font-mono text-[#8d8d8d] mt-0.5 leading-relaxed">
+                      <p className="text-[11px] font-mono text-[var(--cds-text-03)] mt-0.5 leading-relaxed">
                         {isAr ? sug.explanationAr : sug.explanation}
                       </p>
                     </div>
 
                     {sug.autoFixAvailable && sug.fixedSql && (
-                      <div className="mt-2 pt-2 border-t border-[#262626] flex items-center justify-between">
+                      <div className="mt-2 pt-2 border-t border-[var(--cds-border-subtle)] flex items-center justify-between">
                         <span className="text-[10px] font-mono text-[#42be65]">
                           ✓ {isAr ? 'تصحيح مباشر متاح' : 'Instant Patch Available'}
                         </span>
                         <button
                           onClick={() => applyCorrection(sug.fixedSql)}
-                          className="px-2 py-0.5 bg-[#393939] hover:bg-[#0f62fe] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
+                          className="px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
                         >
                           <Check className="w-3 h-3" />
                           <span>{isAr ? 'تطبيق هذا المقترح' : 'Apply Fix'}</span>
@@ -595,11 +609,11 @@ addAuditLog({
       {/* SQL Editor & 9-Layer Security Verification Engine */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left SQL Code Console */}
-        <div className="lg:col-span-7 bg-[#262626] border border-[#393939] flex flex-col justify-between">
-          <div className="p-3 bg-[#1f1f1f] border-b border-[#393939] flex items-center justify-between flex-wrap gap-2">
+        <div className="lg:col-span-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex flex-col justify-between">
+          <div className="p-3 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-[#0f62fe]" />
-              <span className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
+              <span className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
                 Synthesized SQL Query
               </span>
             </div>
@@ -614,7 +628,7 @@ addAuditLog({
                   }
                 }}
                 disabled={!sqlCode.trim()}
-                className="px-2.5 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
                 title="Format Query"
               >
                 <AlignLeft className="w-3.5 h-3.5" />
@@ -647,7 +661,7 @@ addAuditLog({
 
               <button
                 onClick={handleCopy}
-                className="px-2 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1 transition-colors"
+                className="px-2 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1 transition-colors"
                 title="Copy SQL"
                 id="nl2sql-copy-btn"
               >
@@ -658,10 +672,10 @@ addAuditLog({
           </div>
 
           <div className="p-4 flex-1">
-            <div className={`w-full bg-[#161616] border text-xs font-mono outline-none leading-relaxed transition-colors overflow-auto max-h-[300px] ${
+            <div className={`w-full bg-[var(--cds-layer-01)] border text-xs font-mono outline-none leading-relaxed transition-colors overflow-auto max-h-[300px] ${
                 errorAnalysis?.hasError
                   ? 'border-[#da1e28] text-[#ff8389] focus-within:border-[#ff8389]'
-                  : 'border-[#393939] focus-within:border-[#0f62fe]'
+                  : 'border-[var(--cds-border-subtle)] focus-within:border-[#0f62fe]'
               }`}>
               <Editor
                 value={sqlCode}
@@ -681,7 +695,7 @@ addAuditLog({
           </div>
 
           {/* Execution Bar */}
-          <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex items-center justify-between flex-wrap gap-2">
+          <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span
                 className={`text-[10px] font-mono font-bold px-2 py-0.5 uppercase ${
@@ -692,7 +706,7 @@ addAuditLog({
               >
                 {validationReport.canExecute && !errorAnalysis?.hasError ? 'Safe for Execution' : 'Execution Blocked'}
               </span>
-              <span className="text-[11px] font-mono text-[#8d8d8d]">
+              <span className="text-[11px] font-mono text-[var(--cds-text-03)]">
                 Risk: {validationReport.estimatedCost.executionRisk}
               </span>
             </div>
@@ -701,7 +715,7 @@ addAuditLog({
               <button
                 onClick={handleExportSqlFile}
                 disabled={!sqlCode.trim()}
-                className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-30"
+                className="px-3 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-30"
                 title={isAr ? 'تصدير وحفظ كود SQL كملف .sql' : 'Export and save SQL as .sql file'}
                 id="nl2sql-bar-export-sql-btn"
               >
@@ -722,16 +736,29 @@ addAuditLog({
           </div>
         </div>
 
-        {/* Right 9-Layers Inspection Status */}
-        <div className="lg:col-span-5 bg-[#262626] border border-[#393939] p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-[#393939] pb-2">
+        {/* Right 9-Layers Inspection Status + Laser Gate */}
+        <div className="lg:col-span-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 space-y-3">
+          {/* 9-Layer Laser Gate — the query as a photon crossing security rings */}
+          <div className="rounded-lg overflow-hidden border border-[var(--cds-border-subtle)]">
+            <div className="px-3 py-1.5 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+                <ShieldCheck className="w-3 h-3" />
+                {isAr ? 'البوابة الليزرية — 9 طبقات' : 'Laser Gate — 9 Layers'}
+              </span>
+              <span className="text-[9px] font-mono text-[var(--cds-text-03)]">
+                {isAr ? 'الاستعلام كجسيم ضوئي' : 'query as photon'}
+              </span>
+            </div>
+            <NineLayerLaserGate report={validationReport} runId={gateRunId} language={language} compact />
+          </div>
+          <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#42be65]" />
-<h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
+<h3 className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
   {t.nl2sql.safetyReport}
 </h3>
             </div>
-            <span className="text-[10px] font-mono text-[#8d8d8d]">
+            <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
               {validationReport.layers.filter(l => l.status === 'passed').length}/9 Layers Passed
             </span>
           </div>
@@ -745,14 +772,14 @@ addAuditLog({
                   key={layer.layer}
                   className={`p-2 border flex items-center justify-between ${
                     isPassed
-                      ? 'bg-[#161616] border-[#393939] text-[#c6c6c6]'
+                      ? 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
                       : isWarning
                       ? 'bg-[#f1c21b]/10 border-[#f1c21b]/40 text-[#f1c21b]'
                       : 'bg-[#da1e28]/10 border-[#da1e28] text-[#ff8389]'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="text-[10px] text-[#8d8d8d] w-4">L{layer.layer}</span>
+                    <span className="text-[10px] text-[var(--cds-text-03)] w-4">L{layer.layer}</span>
                     <span className="truncate">{language === 'ar' ? layer.nameAr || layer.name : layer.name}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -763,7 +790,7 @@ addAuditLog({
                     ) : (
                       <XCircle className="w-3.5 h-3.5 text-[#da1e28]" />
                     )}
-                    <span className="text-[10px] text-[#8d8d8d] uppercase">{layer.status}</span>
+                    <span className="text-[10px] text-[var(--cds-text-03)] uppercase">{layer.status}</span>
                   </div>
                 </div>
               );
@@ -777,14 +804,14 @@ addAuditLog({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#0f62fe]" />
-            <h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
+            <h3 className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
               {isAr ? 'خطة المعالجة والتنفيذ لمحرك البيانات (Visual Execution Engine)' : 'Visual SQL Execution Plan (D3 Engine)'}
             </h3>
           </div>
 
           <button
             onClick={() => setShowPlanVisualizer(!showPlanVisualizer)}
-            className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-[#c6c6c6] hover:text-[#f4f4f4] border border-[#393939] text-xs font-mono transition-colors"
+            className="px-2.5 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] text-xs font-mono transition-colors"
           >
             {showPlanVisualizer ? (isAr ? 'إخفاء المخطط' : 'Hide Execution Plan') : (isAr ? 'إظهار المخطط التفاعلي' : 'Show Execution Plan')}
           </button>
@@ -797,13 +824,13 @@ addAuditLog({
 
       {/* Query Execution Result */}
       {queryResult && (
-        <div className="bg-[#262626] border border-[#393939] space-y-3 p-4">
-          <div className="flex items-center justify-between border-b border-[#393939] pb-3 flex-wrap gap-2">
+        <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-3 p-4">
+          <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <h3 className="text-xs font-mono font-bold text-[#f4f4f4] uppercase">
+              <h3 className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
                 Query Execution Result
               </h3>
-              <span className="text-xs font-mono text-[#8d8d8d]">
+              <span className="text-xs font-mono text-[var(--cds-text-03)]">
                 {queryResult.totalCount.toLocaleString()} rows returned in {queryResult.executionTimeMs}ms
               </span>
             </div>
@@ -811,7 +838,7 @@ addAuditLog({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportSqlFile}
-                className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#42be65]/40 text-[#42be65] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
                 title={isAr ? 'تصدير وحفظ استعلام SQL كملف .sql' : 'Export and save SQL as .sql file'}
                 id="nl2sql-result-export-sql-btn"
               >
@@ -821,7 +848,7 @@ addAuditLog({
 
               <button
                 onClick={() => setShowChart(!showChart)}
-                className="px-3 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-[#0f62fe]" />
                 <span>{showChart ? 'Show Table' : 'Visualize Chart'}</span>

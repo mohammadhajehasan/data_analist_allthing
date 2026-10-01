@@ -135,16 +135,16 @@ export const SlidesExportPanel: React.FC = () => {
   const bulletCollection = isAr ? activeSlide.bulletsAr : activeSlide.bullets;
 
   return (
-    <div className="bg-[#262626] border border-[#393939] p-5 space-y-4">
+    <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#393939] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
         <div className="flex items-center gap-2">
           <Presentation className="w-5 h-5 text-[#33b1ff]" />
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               {isAr ? 'استوديو العروض التقديمية التنفيذية' : 'Executive Presentation Slides Builder'}
             </h3>
-            <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+            <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
               {isAr
                 ? 'حول لوحة التحكم الحالية إلى شرائح عرض تقديمية احترافية جاهزة لاجتماعات الإدارة العليا'
                 : 'Transpose dashboards into a structured slide presentation deck for board-room meetings'}
@@ -169,8 +169,8 @@ export const SlidesExportPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Visual Slide Presenter Stage (Left/Top) */}
-        <div className="lg:col-span-8 bg-[#161616] border border-[#393939] p-6 flex flex-col justify-between min-h-[250px] relative">
-          <span className="absolute top-3 right-3 font-mono text-[9px] text-[#8d8d8d]">
+        <div className="lg:col-span-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-6 flex flex-col justify-between min-h-[250px] relative">
+          <span className="absolute top-3 right-3 font-mono text-[9px] text-[var(--cds-text-03)]">
             SLIDE {activeSlideIndex + 1} OF {slides.length}
           </span>
 
@@ -186,14 +186,14 @@ export const SlidesExportPanel: React.FC = () => {
             </h4>
 
             {/* Bullet List */}
-            <ul className="space-y-2.5 pl-4 list-disc text-xs text-[#c6c6c6] leading-relaxed">
+            <ul className="space-y-2.5 pl-4 list-disc text-xs text-[var(--cds-text-02)] leading-relaxed">
               {bulletCollection.map((bullet, idx) => (
                 <li key={idx} className="marker:text-[#33b1ff]">
                   <input
                     type="text"
                     value={bullet}
                     onChange={e => handleUpdateBullet(activeSlide.id, idx, e.target.value)}
-                    className="bg-transparent border-b border-transparent hover:border-[#393939] focus:border-[#33b1ff] text-white focus:text-[#33b1ff] text-xs font-sans outline-none w-full transition-all py-0.5"
+                    className="bg-transparent border-b border-transparent hover:border-[var(--cds-border-subtle)] focus:border-[#33b1ff] text-white focus:text-[#33b1ff] text-xs font-sans outline-none w-full transition-all py-0.5"
                   />
                 </li>
               ))}
@@ -201,20 +201,20 @@ export const SlidesExportPanel: React.FC = () => {
           </div>
 
           {/* Stepper Controls */}
-          <div className="flex items-center justify-between border-t border-[#393939] pt-4 mt-6">
+          <div className="flex items-center justify-between border-t border-[var(--cds-border-subtle)] pt-4 mt-6">
             <button
               onClick={handlePrevSlide}
               disabled={activeSlideIndex === 0}
               className={`p-1.5 border flex items-center justify-center transition-colors ${
                 activeSlideIndex === 0
-                  ? 'border-[#393939] text-[#525252] cursor-not-allowed'
-                  : 'border-[#525252] text-[#c6c6c6] hover:bg-[#262626] hover:text-white'
+                  ? 'border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] cursor-not-allowed'
+                  : 'border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)] hover:text-white'
               }`}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="font-mono text-[10px] text-[#8d8d8d]">
+            <span className="font-mono text-[10px] text-[var(--cds-text-03)]">
               {isAr ? `الشريحة ${activeSlideIndex + 1}` : `Slide ${activeSlideIndex + 1}`}
             </span>
 
@@ -223,8 +223,8 @@ export const SlidesExportPanel: React.FC = () => {
               disabled={activeSlideIndex === slides.length - 1}
               className={`p-1.5 border flex items-center justify-center transition-colors ${
                 activeSlideIndex === slides.length - 1
-                  ? 'border-[#393939] text-[#525252] cursor-not-allowed'
-                  : 'border-[#525252] text-[#c6c6c6] hover:bg-[#262626] hover:text-white'
+                  ? 'border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] cursor-not-allowed'
+                  : 'border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)] hover:text-white'
               }`}
             >
               <ChevronRight className="w-4 h-4" />
@@ -233,9 +233,9 @@ export const SlidesExportPanel: React.FC = () => {
         </div>
 
         {/* Slides Deck Navigation (Right/Bottom) */}
-        <div className="lg:col-span-4 bg-[#1f1f1f] border border-[#393939] p-4 space-y-3 flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 space-y-3 flex flex-col justify-between">
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#8d8d8d] block border-b border-[#393939] pb-1.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] block border-b border-[var(--cds-border-subtle)] pb-1.5">
               {isAr ? 'قائمة شرائح العرض' : 'Deck Overview'}
             </span>
 
@@ -246,11 +246,11 @@ export const SlidesExportPanel: React.FC = () => {
                   onClick={() => setActiveSlideIndex(idx)}
                   className={`w-full p-2 text-start flex items-center gap-3 border transition-colors ${
                     activeSlideIndex === idx
-                      ? 'bg-[#161616] border-[#33b1ff] text-white font-bold'
-                      : 'bg-transparent border-[#393939] text-[#8d8d8d] hover:text-white hover:bg-[#161616]'
+                      ? 'bg-[var(--cds-layer-01)] border-[#33b1ff] text-white font-bold'
+                      : 'bg-transparent border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white hover:bg-[var(--cds-layer-01)]'
                   }`}
                 >
-                  <span className="w-5 h-5 bg-[#262626] flex items-center justify-center text-[10px] font-mono shrink-0">
+                  <span className="w-5 h-5 bg-[var(--cds-layer-02)] flex items-center justify-center text-[10px] font-mono shrink-0">
                     {idx + 1}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -263,7 +263,7 @@ export const SlidesExportPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-3 bg-[#161616] border border-[#393939] text-[11px] font-mono text-[#8d8d8d] leading-relaxed">
+          <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[11px] font-mono text-[var(--cds-text-03)] leading-relaxed">
             <span className="font-bold text-white uppercase block mb-1">
               {isAr ? '💡 نصيحة التعديل السريع' : '💡 Live Inline Editing'}
             </span>

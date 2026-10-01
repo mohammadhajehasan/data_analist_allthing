@@ -359,15 +359,15 @@ export const DatasetsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header - IBM Carbon Style */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#393939] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
               IBM CARBON / DATA REPOSITORY
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#f4f4f4] tracking-tight mt-1">{t.datasets.title}</h2>
-          <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">{t.datasets.subtitle}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">{t.datasets.title}</h2>
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">{t.datasets.subtitle}</p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -399,7 +399,7 @@ export const DatasetsPage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('datamodeling')}
-            className="flex items-center gap-2 px-3 py-2 bg-[#262626] hover:bg-[#333333] border border-[#393939] text-[#c6c6c6] hover:text-white text-xs font-mono transition-colors shadow-xs"
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white text-xs font-mono transition-colors shadow-xs"
             title={isAr ? 'استوديو نمذجة العلاقات والـ ERD الشامل' : 'Open ERD & Relational Modeling Studio'}
           >
             <Workflow className="w-4 h-4 text-[#78a9ff]" />
@@ -408,7 +408,7 @@ export const DatasetsPage: React.FC = () => {
 
           <button
             onClick={() => setShowLocalCsvModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-[#262626] hover:bg-[#333333] border border-[#24a148] text-[#f4f4f4] text-xs font-mono transition-colors shadow-xs"
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#24a148] text-[var(--cds-text-01)] text-xs font-mono transition-colors shadow-xs"
             title={isAr ? 'استيراد فوري بدون رفع لأي خادم خارجي' : 'Instant in-memory parsing (Zero Server Upload)'}
           >
             <ShieldCheck className="w-4 h-4 text-[#42be65]" />
@@ -431,19 +431,19 @@ export const DatasetsPage: React.FC = () => {
       </div>
 
       {/* Main View Mode Selector Tabs (Catalog vs Lineage) */}
-      <div className="flex items-center justify-between border-b border-[#393939] bg-[#1a1a1a] px-3 pt-2">
+      <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-3 pt-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPageViewMode('catalog')}
             className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
               pageViewMode === 'catalog'
-                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
             <Table className="w-4 h-4 text-[#0f62fe]" />
             <span>{t.datasets.catalogView || (isAr ? 'كتالوج البيانات والمعاينة الحية' : 'Catalog & Live Preview')}</span>
-            <span className="text-[10px] bg-[#393939] px-1.5 py-0.2 text-[#c6c6c6]">
+            <span className="text-[10px] bg-[var(--cds-layer-03)] px-1.5 py-0.2 text-[var(--cds-text-02)]">
               {datasets.length}
             </span>
           </button>
@@ -452,8 +452,8 @@ export const DatasetsPage: React.FC = () => {
             onClick={() => setPageViewMode('lineage')}
             className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
               pageViewMode === 'lineage'
-                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
             <GitFork className="w-4 h-4 text-[#33b1ff] rotate-90" />
@@ -467,8 +467,8 @@ export const DatasetsPage: React.FC = () => {
             onClick={() => setPageViewMode('cleansing')}
             className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
               pageViewMode === 'cleansing'
-                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
             <Sparkle className="w-4 h-4 text-[#8a3ffc]" />
@@ -482,8 +482,8 @@ export const DatasetsPage: React.FC = () => {
             onClick={() => setPageViewMode('connectors')}
             className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
               pageViewMode === 'connectors'
-                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
             <WorkflowIcon className="w-4 h-4 text-[#42be65]" />
@@ -497,8 +497,8 @@ export const DatasetsPage: React.FC = () => {
             onClick={() => setPageViewMode('import_hub')}
             className={`px-4 py-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all ${
               pageViewMode === 'import_hub'
-                ? 'border-[#0f62fe] text-[#f4f4f4] bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6] hover:bg-[#222222]'
+                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
             <UploadCloud className="w-4 h-4 text-[#78a9ff]" />
@@ -510,7 +510,7 @@ export const DatasetsPage: React.FC = () => {
         </div>
 
         {pageViewMode === 'lineage' && currentPreviewDataset && (
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#8d8d8d] pb-2">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[var(--cds-text-03)] pb-2">
             <span>{isAr ? 'المجموعة المعروضة:' : 'Focus Dataset:'}</span>
             <span className="text-[#33b1ff] font-bold">{currentPreviewDataset.name}</span>
           </div>
@@ -580,7 +580,7 @@ export const DatasetsPage: React.FC = () => {
                   disabled={selectedDatasetIds.length < 2}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold transition-all ${
                     selectedDatasetIds.length >= 2
-                      ? 'bg-[#161616] text-white hover:bg-black shadow-xs'
+                      ? 'bg-[var(--cds-layer-01)] text-white hover:bg-black shadow-xs'
                       : 'bg-white/20 text-white/50 cursor-not-allowed'
                   }`}
                   title={selectedDatasetIds.length < 2 ? (isAr ? 'اختر مجموعتين على الأقل للمقارنة' : 'Select at least 2 datasets to compare') : ''}
@@ -592,7 +592,7 @@ export const DatasetsPage: React.FC = () => {
                 {/* Export Schemas */}
                 <button
                   onClick={handleExportSelectedSchemas}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161616] text-white hover:bg-black text-xs font-mono font-bold transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--cds-layer-01)] text-white hover:bg-black text-xs font-mono font-bold transition-all"
                 >
                   <Download className="w-3.5 h-3.5 text-[#42be65]" />
                   <span>{isAr ? 'تصدير المخططات (JSON)' : 'Export Schemas'}</span>
@@ -620,22 +620,22 @@ export const DatasetsPage: React.FC = () => {
 
           {/* Datasets Table - IBM Carbon Data Table Style */}
           <div className="carbon-tile overflow-hidden shadow-none">
-            <div className="bg-[#262626] px-5 py-3.5 border-b border-[#393939] flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-[var(--cds-layer-02)] px-5 py-3.5 border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <Database className="w-4 h-4 text-[#0f62fe]" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#f4f4f4]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                   {isAr ? 'مستودع البيانات النشط' : 'Workspace Datasets Catalog'}
                 </h3>
-                <span className="bg-[#393939] text-[#c6c6c6] px-2 py-0.5 text-[11px] font-mono font-bold">
+                <span className="bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] px-2 py-0.5 text-[11px] font-mono font-bold">
                   {datasets.length}
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 text-[11px] font-mono text-[#8d8d8d]">
+              <div className="flex items-center gap-3 text-[11px] font-mono text-[var(--cds-text-03)]">
                 <span className="hidden sm:inline">
                   {isAr ? 'انقر على أي صف لمعاينة أول 50 سجلاً أدناه' : 'Click any dataset row to preview top 50 records below'}
                 </span>
-                <span className="text-[#393939] hidden sm:inline">|</span>
+                <span className="text-[var(--cds-text-03)] hidden sm:inline">|</span>
                 <span className="text-[#4589ff]">
                   Supports: Excel, CSV, JSON, SQL, SQLite (.db)
                 </span>
@@ -644,10 +644,10 @@ export const DatasetsPage: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-start text-xs font-sans">
-                <thead className="bg-[#1f1f1f] border-b border-[#393939] text-[#c6c6c6] font-mono text-[11px] uppercase tracking-wider">
+                <thead className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] font-mono text-[11px] uppercase tracking-wider">
                   <tr>
                     {/* Select All Checkbox Header */}
-                    <th className="px-4 py-3.5 text-center w-12 border-e border-[#393939]">
+                    <th className="px-4 py-3.5 text-center w-12 border-e border-[var(--cds-border-subtle)]">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -655,7 +655,7 @@ export const DatasetsPage: React.FC = () => {
                           if (input) input.indeterminate = isPartiallySelected;
                         }}
                         onChange={e => handleSelectAll(e.target.checked)}
-                        className="w-4 h-4 rounded-none accent-[#0f62fe] bg-[#161616] border-[#525252] cursor-pointer"
+                        className="w-4 h-4 rounded-none accent-[#0f62fe] bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] cursor-pointer"
                         title={isAr ? 'تحديد جميع مجموعات البيانات' : 'Select all datasets'}
                       />
                     </th>
@@ -668,7 +668,7 @@ export const DatasetsPage: React.FC = () => {
                     <th className="px-5 py-3.5 text-end font-semibold">{t.datasets.tableHeaders.actions}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#393939]">
+                <tbody className="divide-y divide-[var(--cds-border-subtle)]">
                   {datasets.map(ds => {
                     const isActive = ds.id === activeDataset?.id;
                     const isPreviewed = ds.id === currentPreviewDataset?.id;
@@ -684,33 +684,33 @@ export const DatasetsPage: React.FC = () => {
                         }}
                         className={`cursor-pointer transition-colors ${
                           isPreviewed
-                            ? 'bg-[#2a2a2a] border-s-4 border-s-[#0f62fe]'
+                            ? 'bg-[var(--cds-layer-02)] border-s-4 border-s-[#0f62fe]'
                             : isSelected
                             ? 'bg-[#1f2937]'
-                            : 'hover:bg-[#353535]'
+                            : 'hover:bg-[var(--cds-layer-03)]'
                         }`}
                       >
                         {/* Row Multi-select Checkbox */}
                         <td
-                          className="px-4 py-4 text-center border-e border-[#393939]"
+                          className="px-4 py-4 text-center border-e border-[var(--cds-border-subtle)]"
                           onClick={e => e.stopPropagation()}
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={e => handleToggleSelectOne(ds.id, e as any)}
-                            className="w-4 h-4 rounded-none accent-[#0f62fe] bg-[#161616] border-[#525252] cursor-pointer"
+                            className="w-4 h-4 rounded-none accent-[#0f62fe] bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] cursor-pointer"
                           />
                         </td>
 
                         {/* Dataset Name & Meta */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-[#161616] border border-[#393939] flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center shrink-0">
                               {getFormatIcon(ds.format)}
                             </div>
                             <div>
-                              <div className="font-bold text-[#f4f4f4] flex items-center gap-2">
+                              <div className="font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                                 <span>{ds.name}</span>
                                 {isActive && (
                                   <span className="carbon-tag-blue">
@@ -724,22 +724,22 @@ export const DatasetsPage: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-[#8d8d8d] mt-0.5 line-clamp-1 max-w-sm">
+                              <p className="text-[11px] text-[var(--cds-text-03)] mt-0.5 line-clamp-1 max-w-sm">
                                 {ds.description}
                               </p>
                             </div>
                           </div>
                         </td>
 
-                        <td className="px-4 py-4 font-mono text-[#f4f4f4] font-semibold">
+                        <td className="px-4 py-4 font-mono text-[var(--cds-text-01)] font-semibold">
                           {ds.rowCount.toLocaleString()}
                         </td>
-                        <td className="px-4 py-4 font-mono text-[#c6c6c6]">
+                        <td className="px-4 py-4 font-mono text-[var(--cds-text-02)]">
                           {ds.columnCount} {isAr ? 'حقل' : 'cols'}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-16 h-2 bg-[#161616] border border-[#393939] overflow-hidden">
+                            <div className="w-16 h-2 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-hidden">
                               <div
                                 className={`h-full ${
                                   qualityScore > 85 ? 'bg-[#24a148]' : qualityScore > 70 ? 'bg-[#f1c21b]' : 'bg-[#da1e28]'
@@ -747,13 +747,13 @@ export const DatasetsPage: React.FC = () => {
                                 style={{ width: `${qualityScore}%` }}
                               />
                             </div>
-                            <span className="font-mono text-[11px] font-bold text-[#f4f4f4]">{qualityScore}%</span>
+                            <span className="font-mono text-[11px] font-bold text-[var(--cds-text-01)]">{qualityScore}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           {getFormatBadge(ds.format)}
                         </td>
-                        <td className="px-4 py-4 text-[#8d8d8d] font-mono text-[11px]">
+                        <td className="px-4 py-4 text-[var(--cds-text-03)] font-mono text-[11px]">
                           {new Date(ds.updatedAt).toLocaleDateString()}
                         </td>
                         <td className="px-5 py-4 text-end" onClick={e => e.stopPropagation()}>
@@ -765,7 +765,7 @@ export const DatasetsPage: React.FC = () => {
                                 setActiveDatasetId(ds.id);
                                 setPageViewMode('lineage');
                               }}
-                              className="px-2.5 py-1.5 bg-[#262626] hover:bg-[#0f62fe] text-[#f4f4f4] text-[11px] font-semibold flex items-center gap-1 transition-colors border border-[#393939]"
+                              className="px-2.5 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[#0f62fe] text-[var(--cds-text-01)] text-[11px] font-semibold flex items-center gap-1 transition-colors border border-[var(--cds-border-subtle)]"
                               title={isAr ? 'عرض مسار وتتبع البيانات الكامل' : 'View data lineage & provenance'}
                             >
                               <GitFork className="w-3.5 h-3.5 text-[#33b1ff] rotate-90" />
@@ -778,7 +778,7 @@ export const DatasetsPage: React.FC = () => {
                               className={`px-2.5 py-1.5 text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
                                 isPreviewed
                                   ? 'bg-[#0f62fe] text-white font-bold'
-                                  : 'bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4]'
+                                  : 'bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)]'
                               }`}
                               title={isAr ? 'معاينة حية وتدقيق البيانات' : 'Preview dataset records'}
                             >
@@ -789,7 +789,7 @@ export const DatasetsPage: React.FC = () => {
                             {/* Export Full CSV */}
                             <button
                               onClick={() => handleExportFullDataset(ds, 'csv')}
-                              className="px-2 py-1.5 bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] text-[11px] font-mono flex items-center gap-1 transition-colors border border-[#393939] cursor-pointer"
+                              className="px-2 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] text-[11px] font-mono flex items-center gap-1 transition-colors border border-[var(--cds-border-subtle)] cursor-pointer"
                               title={isAr ? 'تصدير مجموعة البيانات الكاملة بصيغة CSV' : 'Export complete dataset to CSV'}
                             >
                               <Download className="w-3.5 h-3.5 text-[#4589ff]" />
@@ -811,7 +811,7 @@ export const DatasetsPage: React.FC = () => {
                                 setActiveDatasetId(ds.id);
                                 setActiveTab('explorer');
                               }}
-                              className="px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-[11px] font-semibold flex items-center gap-1 transition-colors"
                               title={isAr ? 'استعراض واستعلام' : 'Explore data'}
                             >
                               <Eye className="w-3.5 h-3.5 text-[#08bdba]" />
@@ -822,7 +822,7 @@ export const DatasetsPage: React.FC = () => {
                                 setActiveDatasetId(ds.id);
                                 setActiveTab('profiling');
                               }}
-                              className="px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-[11px] font-semibold flex items-center gap-1 transition-colors"
                               title={isAr ? 'التوصيف الإحصائي' : 'Profile schema'}
                             >
                               <BarChart2 className="w-3.5 h-3.5 text-[#f1c21b]" />
@@ -842,7 +842,7 @@ export const DatasetsPage: React.FC = () => {
                                     isAr ? `تمت إزالة ${ds.name} من المستودع.` : `Removed ${ds.name} from catalog.`
                                   );
                                 }}
-                                className="p-1.5 bg-[#393939] hover:bg-[#da1e28] text-[#8d8d8d] hover:text-white transition-colors"
+                                className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[#da1e28] text-[var(--cds-text-03)] hover:text-white transition-colors"
                                 title="Delete dataset"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -872,13 +872,13 @@ export const DatasetsPage: React.FC = () => {
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
                     LIVE SAMPLE INSPECTOR
                   </span>
-                  <span className="text-xs text-[#8d8d8d]">
+                  <span className="text-xs text-[var(--cds-text-03)]">
                     ({isAr ? 'أول 50 سجلاً من مجموعة البيانات المختارة' : 'First 50 records of selected dataset'})
                   </span>
                 </div>
                 {datasets.length > 1 && (
                   <div className="flex items-center gap-1.5 text-xs font-mono">
-                    <span className="text-[#8d8d8d] text-[11px] me-1">
+                    <span className="text-[var(--cds-text-03)] text-[11px] me-1">
                       {isAr ? 'تبديل المعاينة:' : 'Inspect:'}
                     </span>
                     {datasets.map(ds => (
@@ -888,7 +888,7 @@ export const DatasetsPage: React.FC = () => {
                         className={`px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                           currentPreviewDataset.id === ds.id
                             ? 'bg-[#0f62fe] text-white font-bold'
-                            : 'bg-[#262626] text-[#c6c6c6] hover:bg-[#333333] border border-[#393939]'
+                            : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)]'
                         }`}
                       >
                         {ds.name}
@@ -899,23 +899,23 @@ export const DatasetsPage: React.FC = () => {
               </div>
 
               {isProcessingDataset ? (
-                <div className="carbon-tile p-6 border border-[#0f62fe] bg-[#1a1a1a] space-y-4 animate-pulse my-2">
+                <div className="carbon-tile p-6 border border-[#0f62fe] bg-[var(--cds-layer-01)] space-y-4 animate-pulse my-2">
                   {/* Loading Header Indicator */}
-                  <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+                  <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center shrink-0">
                         <Workflow className="w-4 h-4 text-[#0f62fe] animate-spin" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-[#f4f4f4]">
+                          <span className="text-xs font-mono font-bold text-[var(--cds-text-01)]">
                             {isAr ? 'جارٍ معالجة وتدقيق سجلات مجموعة البيانات المدمجة...' : 'Processing Joined Dataset Records & Schema Index...'}
                           </span>
                           <span className="bg-[#0f62fe] text-white text-[9px] font-mono px-2 py-0.5 animate-bounce">
                             EVALUATING JOINS
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#8d8d8d] mt-0.5 font-mono">
+                        <p className="text-[11px] text-[var(--cds-text-03)] mt-0.5 font-mono">
                           {isAr
                             ? `التحقق من الفهارس والربط بالمفاتيح للجدول: ${currentPreviewDataset?.name}`
                             : `Computing in-memory relational joins and profiling schema for: ${currentPreviewDataset?.name}`}
@@ -924,7 +924,7 @@ export const DatasetsPage: React.FC = () => {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-48 bg-[#262626] border border-[#393939] h-2.5 overflow-hidden rounded-none hidden sm:block">
+                    <div className="w-48 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] h-2.5 overflow-hidden rounded-none hidden sm:block">
                       <div className="bg-[#0f62fe] h-full w-3/4 animate-pulse" />
                     </div>
                   </div>
@@ -932,23 +932,23 @@ export const DatasetsPage: React.FC = () => {
                   {/* Table Skeleton Grid */}
                   <div className="space-y-2 font-mono text-xs">
                     {/* Table Header Skeleton */}
-                    <div className="grid grid-cols-6 gap-2 bg-[#262626] p-2.5 border border-[#393939]">
+                    <div className="grid grid-cols-6 gap-2 bg-[var(--cds-layer-02)] p-2.5 border border-[var(--cds-border-subtle)]">
                       {[1, 2, 3, 4, 5, 6].map(i => (
-                        <div key={i} className="h-4 bg-[#393939] rounded-none w-full animate-pulse" />
+                        <div key={i} className="h-4 bg-[var(--cds-layer-03)] rounded-none w-full animate-pulse" />
                       ))}
                     </div>
 
                     {/* Rows Skeleton */}
                     {[1, 2, 3, 4, 5].map(rowIdx => (
-                      <div key={rowIdx} className="grid grid-cols-6 gap-2 bg-[#161616] p-2.5 border border-[#262626]">
+                      <div key={rowIdx} className="grid grid-cols-6 gap-2 bg-[var(--cds-layer-01)] p-2.5 border border-[var(--cds-border-subtle)]">
                         {[1, 2, 3, 4, 5, 6].map(colIdx => (
-                          <div key={colIdx} className="h-3 bg-[#2a2a2a] rounded-none w-3/4 animate-pulse" />
+                          <div key={colIdx} className="h-3 bg-[var(--cds-layer-02)] rounded-none w-3/4 animate-pulse" />
                         ))}
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[#8d8d8d] pt-1">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-[var(--cds-text-03)] pt-1">
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-[#0f62fe] animate-ping" />
                       {isAr ? 'حساب تطابق المفاتيح وبناء شبكة العرض...' : 'Evaluating Hash Join Match & Building Schema Grid...'}
@@ -974,29 +974,29 @@ export const DatasetsPage: React.FC = () => {
       {/* Bulk Delete Confirmation Dialog */}
       {showDeleteConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-[#262626] border border-[#da1e28] max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[var(--cds-layer-02)] border border-[#da1e28] max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-3 text-[#ff8389]">
               <AlertTriangle className="w-6 h-6 text-[#da1e28]" />
-              <h3 className="text-base font-bold text-[#f4f4f4]">
+              <h3 className="text-base font-bold text-[var(--cds-text-01)]">
                 {isAr ? 'تأكيد الحذف الجماعي' : 'Confirm Bulk Deletion'}
               </h3>
             </div>
-            <p className="text-xs text-[#c6c6c6] leading-relaxed">
+            <p className="text-xs text-[var(--cds-text-02)] leading-relaxed">
               {isAr
                 ? `هل أنت متأكد من رغبتك في حذف ${selectedDatasetIds.length} مجموعة بيانات محددة نهائياً من المستودع؟ لا يمكن التراجع عن هذا الإجراء.`
                 : `Are you sure you want to permanently delete ${selectedDatasetIds.length} selected dataset(s) from the workspace? This action cannot be undone.`}
             </p>
 
-            <div className="max-h-32 overflow-y-auto bg-[#161616] p-2 border border-[#393939] space-y-1 font-mono text-[11px]">
+            <div className="max-h-32 overflow-y-auto bg-[var(--cds-layer-01)] p-2 border border-[var(--cds-border-subtle)] space-y-1 font-mono text-[11px]">
               {selectedDatasetsForComparison.map(d => (
-                <div key={d.id} className="text-[#f4f4f4] flex items-center justify-between">
+                <div key={d.id} className="text-[var(--cds-text-01)] flex items-center justify-between">
                   <span>• {d.name}</span>
-                  <span className="text-[#8d8d8d]">{d.rowCount} rows</span>
+                  <span className="text-[var(--cds-text-03)]">{d.rowCount} rows</span>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#393939]">
+            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--cds-border-subtle)]">
               <button
                 onClick={() => setShowDeleteConfirmModal(false)}
                 className="carbon-btn-secondary text-xs uppercase tracking-wider py-1.5 px-4"
@@ -1017,18 +1017,18 @@ export const DatasetsPage: React.FC = () => {
       {/* Upload & Multi-Format Ingestion Modal - IBM Carbon Style */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-[#262626] border border-[#393939] max-w-2xl w-full p-6 shadow-2xl space-y-5 rounded-none">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] max-w-2xl w-full p-6 shadow-2xl space-y-5 rounded-none">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
                   DATA INGESTION PIPELINE
                 </span>
-                <h3 className="text-base font-bold text-[#f4f4f4]">{t.datasets.uploadNew}</h3>
+                <h3 className="text-base font-bold text-[var(--cds-text-01)]">{t.datasets.uploadNew}</h3>
               </div>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="text-[#8d8d8d] hover:text-white text-lg font-mono px-2 py-1"
+                className="text-[var(--cds-text-03)] hover:text-white text-lg font-mono px-2 py-1"
               >
                 ✕
               </button>
@@ -1046,7 +1046,7 @@ export const DatasetsPage: React.FC = () => {
                 className={`border-2 border-dashed p-8 text-center transition-all ${
                   dragActive
                     ? 'border-[#0f62fe] bg-[#0f62fe]/10'
-                    : 'border-[#525252] bg-[#161616] hover:border-[#8d8d8d]'
+                    : 'border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] hover:border-[#8d8d8d]'
                 }`}
               >
                 {isParsing ? (
@@ -1059,8 +1059,8 @@ export const DatasetsPage: React.FC = () => {
                 ) : (
                   <>
                     <UploadCloud className="w-10 h-10 text-[#0f62fe] mx-auto mb-3" />
-                    <p className="text-sm font-bold text-[#f4f4f4]">{t.datasets.dragDrop}</p>
-                    <p className="text-xs text-[#8d8d8d] mt-1">
+                    <p className="text-sm font-bold text-[var(--cds-text-01)]">{t.datasets.dragDrop}</p>
+                    <p className="text-xs text-[var(--cds-text-03)] mt-1">
                       {isAr
                         ? 'يدعم ملفات: Excel (.xlsx, .xls), CSV (.csv, .tsv), JSON (.json, .jsonl), SQL (.sql), SQLite (.db, .sqlite)'
                         : 'Supports Excel (.xlsx, .xls), CSV (.csv, .tsv), JSON (.json, .jsonl), SQL Dump (.sql), SQLite (.db, .sqlite)'}
@@ -1088,12 +1088,12 @@ export const DatasetsPage: React.FC = () => {
             ) : (
               /* Ingestion Preview & Config */
               <div className="space-y-4">
-                <div className="p-3 bg-[#161616] border border-[#393939] flex flex-wrap items-center justify-between gap-3">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     {getFormatBadge(parsedResult.format as DatasetFormat)}
-                    <span className="font-mono text-xs font-bold text-[#f4f4f4]">{currentFile?.name}</span>
+                    <span className="font-mono text-xs font-bold text-[var(--cds-text-01)]">{currentFile?.name}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs font-mono text-[#c6c6c6]">
+                  <div className="flex items-center gap-4 text-xs font-mono text-[var(--cds-text-02)]">
                     <span><strong>{parsedResult.totalRows.toLocaleString()}</strong> rows</span>
                     <span><strong>{parsedResult.columns.length}</strong> columns</span>
                     <button
@@ -1126,7 +1126,7 @@ export const DatasetsPage: React.FC = () => {
                             Multi-Sheet
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+                        <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
                           {isAr
                             ? 'يمكنك استيراد ورقة محددة، أو الانتقال لنمذجة العلاقات والربط (1:1، 1:M، M:M) وحفظ الناتج أو تصديره مباشرة.'
                             : 'Ingest a single sheet or launch Multi-Sheet Modeling to build joins (1:1, 1:M, M:M), save to datasets, or export.'}
@@ -1148,9 +1148,9 @@ export const DatasetsPage: React.FC = () => {
 
                 {/* Multi-sheet or Multi-table Selector */}
                 {parsedResult.availableSheetsOrTables && parsedResult.availableSheetsOrTables.length > 1 && (
-                  <div className="p-3 bg-[#1f1f1f] border border-[#393939] space-y-2">
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-semibold text-[#c6c6c6]">
+                      <label className="block text-xs font-semibold text-[var(--cds-text-02)]">
                         {parsedResult.format === 'excel'
                           ? (isAr ? 'اختر ورقة العمل (Worksheet) للاستيراد الفردي:' : 'Select Single Worksheet to Ingest:')
                           : (isAr ? 'اختر الجدول المطلوب استيراده:' : 'Select Target Table:')}
@@ -1173,7 +1173,7 @@ export const DatasetsPage: React.FC = () => {
                           className={`px-3 py-1.5 text-xs font-mono transition-colors ${
                             selectedSheetOrTable === sheet
                               ? 'bg-[#0f62fe] text-white font-bold'
-                              : 'bg-[#393939] text-[#c6c6c6] hover:bg-[#4c4c4c]'
+                              : 'bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:bg-[var(--cds-border-strong)]'
                           }`}
                         >
                           {sheet}
@@ -1185,7 +1185,7 @@ export const DatasetsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#c6c6c6] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--cds-text-02)] mb-1">
                       {isAr ? 'اسم مجموعة البيانات' : 'Dataset Name'}
                     </label>
                     <input
@@ -1196,7 +1196,7 @@ export const DatasetsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#c6c6c6] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--cds-text-02)] mb-1">
                       {isAr ? 'الوصف' : 'Description'}
                     </label>
                     <input
@@ -1210,13 +1210,13 @@ export const DatasetsPage: React.FC = () => {
                 </div>
 
                 {/* Schema & Sample Preview Table */}
-                <div className="border border-[#393939] bg-[#161616]">
-                  <div className="p-2 border-b border-[#393939] text-[11px] font-mono text-[#8d8d8d] uppercase tracking-wider">
+                <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+                  <div className="p-2 border-b border-[var(--cds-border-subtle)] text-[11px] font-mono text-[var(--cds-text-03)] uppercase tracking-wider">
                     {isAr ? 'معاينة المخطط والبيانات المستخرجة' : 'Extracted Schema & Sample Records'}
                   </div>
                   <div className="max-h-48 overflow-auto">
                     <table className="w-full text-start text-[11px] font-mono">
-                      <thead className="bg-[#1f1f1f] text-[#c6c6c6] border-b border-[#393939] sticky top-0">
+                      <thead className="bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-b border-[var(--cds-border-subtle)] sticky top-0">
                         <tr>
                           {parsedResult.columns.map(col => (
                             <th key={col.name} className="px-3 py-2 text-start whitespace-nowrap">
@@ -1226,11 +1226,11 @@ export const DatasetsPage: React.FC = () => {
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#393939]">
+                      <tbody className="divide-y divide-[var(--cds-border-subtle)]">
                         {parsedResult.data.slice(0, 5).map((row, idx) => (
-                          <tr key={idx} className="hover:bg-[#262626]">
+                          <tr key={idx} className="hover:bg-[var(--cds-layer-02)]">
                             {parsedResult.columns.map(col => (
-                              <td key={col.name} className="px-3 py-1.5 text-[#c6c6c6] whitespace-nowrap">
+                              <td key={col.name} className="px-3 py-1.5 text-[var(--cds-text-02)] whitespace-nowrap">
                                 {String(row[col.name] ?? 'NULL')}
                               </td>
                             ))}
@@ -1244,7 +1244,7 @@ export const DatasetsPage: React.FC = () => {
             )}
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-3 pt-3 border-t border-[#393939]">
+            <div className="flex justify-end gap-3 pt-3 border-t border-[var(--cds-border-subtle)]">
               <button
                 onClick={() => setShowUploadModal(false)}
                 className="carbon-btn-secondary text-xs uppercase tracking-wider"

@@ -306,7 +306,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
   };
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-5 space-y-6 shadow-md">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-5 space-y-6 shadow-md">
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="space-y-1">
@@ -414,9 +414,9 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
       </div>
 
       {/* Top Winner Card Recommendation */}
-      <div className="bg-gradient-to-r from-[var(--cds-interactive-01)]/10 via-[var(--cds-layer-02)] to-[var(--cds-interactive-01)]/5 border border-[var(--cds-interactive-01)]/30 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-[var(--cds-interactive-01)]/10 via-[var(--cds-layer-02)] to-[var(--cds-interactive-01)]/5 border border-[var(--cds-interactive-01)]/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--cds-interactive-01)] text-white flex items-center justify-center shrink-0 shadow-md">
+          <div className="w-10 h-10 rounded-lg bg-[var(--cds-interactive-01)] text-white flex items-center justify-center shrink-0 shadow-md">
             <Award className="w-6 h-6" />
           </div>
           <div className="space-y-0.5">
@@ -467,7 +467,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
             <span>{metricLabels[selectedMetric].title}</span>
             <span>{metricLabels[selectedMetric].desc}</span>
           </div>
-          <div className="h-[320px] w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl p-3">
+          <div className="h-[320px] w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg p-3">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
@@ -489,7 +489,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-[#161616] border border-[#393939] p-3 rounded-lg shadow-xl text-xs font-mono space-y-1.5 z-50 text-left rtl:text-right">
+                        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3 rounded-lg shadow-xl text-xs font-mono space-y-1.5 z-50 text-left rtl:text-right">
                           <div className="flex items-center gap-2 font-bold text-white">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
                             <span>{data.name}</span>
@@ -499,7 +499,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
                               </span>
                             )}
                           </div>
-                          <div className="space-y-1 text-[#c6c6c6] text-[11px] pt-1 border-t border-[#333]">
+                          <div className="space-y-1 text-[var(--cds-text-02)] text-[11px] pt-1 border-t border-[var(--cds-border-subtle)]">
                             <div>Test R²: <span className="text-white font-bold">{data.r2}%</span> (Train R²: {data.trainR2}%)</div>
                             <div>RMSE: <span className="text-white font-bold">{data.rmse}</span></div>
                             <div>MAE: <span className="text-white font-bold">{data.mae}</span></div>
@@ -540,7 +540,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
       {/* Radar Profile View */}
       {viewType === 'radar' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 h-[340px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl p-3">
+          <div className="lg:col-span-2 h-[340px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg p-3">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid stroke="rgba(128,128,128,0.2)" />
@@ -566,7 +566,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
           </div>
 
           {/* Model Dimension Breakdown Info */}
-          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl p-4 space-y-3 font-mono text-xs">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg p-4 space-y-3 font-mono text-xs">
             <h4 className="font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>{isAr ? 'محاور تقييم الرادار' : 'Radar Evaluation Dimensions'}</span>
@@ -591,7 +591,7 @@ export const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProp
 
       {/* Table Comparison View */}
       {viewType === 'table' && (
-        <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-xl">
+        <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-lg">
           <table className="w-full text-xs font-mono text-left rtl:text-right">
             <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)] border-b border-[var(--cds-border-subtle)] uppercase text-[10px]">
               <tr>

@@ -248,13 +248,13 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
       <React.Fragment key={node.id}>
         <tr
           onClick={() => setSelectedNode(node)}
-          className={`cursor-pointer border-b border-[#393939] transition-colors ${
-            selectedNode?.id === node.id ? 'bg-[#393939]/80' : 'hover:bg-[#262626]'
+          className={`cursor-pointer border-b border-[var(--cds-border-subtle)] transition-colors ${
+            selectedNode?.id === node.id ? 'bg-[var(--cds-layer-03)]/80' : 'hover:bg-[var(--cds-layer-02)]'
           }`}
         >
-          <td className="p-2.5 font-mono text-xs text-[#f4f4f4]">
+          <td className="p-2.5 font-mono text-xs text-[var(--cds-text-01)]">
             <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 20}px` }}>
-              {depth > 0 && <span className="text-[#6f6f6f]">└──</span>}
+              {depth > 0 && <span className="text-[var(--cds-text-03)]">└──</span>}
               <span
                 className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
                 style={{
@@ -271,10 +271,10 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
           <td className="p-2.5 font-mono text-xs text-[#33b1ff] truncate max-w-xs">
             {node.expression || '-'}
           </td>
-          <td className="p-2.5 font-mono text-xs text-[#c6c6c6] text-right">
+          <td className="p-2.5 font-mono text-xs text-[var(--cds-text-02)] text-right">
             {node.cost}
           </td>
-          <td className="p-2.5 font-mono text-xs text-[#c6c6c6] text-right">
+          <td className="p-2.5 font-mono text-xs text-[var(--cds-text-02)] text-right">
             {node.estimatedRows.toLocaleString()}
           </td>
           <td className="p-2.5 font-mono text-xs text-[#42be65] text-right">
@@ -287,12 +287,12 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
   };
 
   return (
-    <div className="bg-[#1f1f1f] border border-[#393939] flex flex-col">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex flex-col">
       {/* Top Action Bar */}
-      <div className="p-3 bg-[#262626] border-b border-[#393939] flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-[#0f62fe]" />
-          <h4 className="text-xs font-mono font-bold uppercase text-[#f4f4f4] tracking-wide">
+          <h4 className="text-xs font-mono font-bold uppercase text-[var(--cds-text-01)] tracking-wide">
             {isAr ? 'خطة تنفيذ الاستعلام التفاعلية (EXPLAIN Plan)' : 'Interactive SQL Execution Plan (D3.js)'}
           </h4>
           <span className="carbon-tag-blue text-[10px] uppercase font-bold ml-1">
@@ -301,11 +301,11 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
         </div>
 
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center bg-[#161616] border border-[#393939] p-0.5 mr-2">
+          <div className="flex items-center bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-0.5 mr-2">
             <button
               onClick={() => setViewMode('graph')}
               className={`px-2 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
-                viewMode === 'graph' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#c6c6c6] hover:text-white'
+                viewMode === 'graph' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <Network className="w-3.5 h-3.5" />
@@ -314,7 +314,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
             <button
               onClick={() => setViewMode('tree')}
               className={`px-2 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
-                viewMode === 'tree' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#c6c6c6] hover:text-white'
+                viewMode === 'tree' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <ListTree className="w-3.5 h-3.5" />
@@ -326,21 +326,21 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
             <>
               <button
                 onClick={handleZoomIn}
-                className="p-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] transition-colors"
+                className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] transition-colors"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleZoomOut}
-                className="p-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] transition-colors"
+                className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] transition-colors"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleResetZoom}
-                className="p-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] transition-colors"
+                className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] transition-colors"
                 title="Fit View"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -355,7 +355,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
         {/* Left Diagram / Table Area */}
         <div
           ref={containerRef}
-          className="lg:col-span-8 bg-[#161616] border-b lg:border-b-0 lg:border-r border-[#393939] relative overflow-hidden flex flex-col justify-center"
+          className="lg:col-span-8 bg-[var(--cds-layer-01)] border-b lg:border-b-0 lg:border-e border-[var(--cds-border-subtle)] relative overflow-hidden flex flex-col justify-center"
         >
           {viewMode === 'graph' ? (
             <svg ref={svgRef} className="w-full h-[380px] select-none outline-none block" />
@@ -363,7 +363,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
             <div className="max-h-[380px] overflow-y-auto p-2">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#393939] text-[#8d8d8d] font-mono text-[10px] uppercase">
+                  <tr className="border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] font-mono text-[10px] uppercase">
                     <th className="p-2">{isAr ? 'عقدة العملية' : 'Operator Node'}</th>
                     <th className="p-2">{isAr ? 'التعبير / الشرط' : 'Expression / Predicate'}</th>
                     <th className="p-2 text-right">{isAr ? 'الكلفة' : 'Cost'}</th>
@@ -378,7 +378,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
 
           {/* Quick legend on bottom left */}
           {viewMode === 'graph' && (
-            <div className="absolute bottom-2 left-2 bg-[#1f1f1f]/90 border border-[#393939] p-1.5 flex flex-wrap gap-2 text-[10px] font-mono text-[#c6c6c6] backdrop-blur-sm pointer-events-none">
+            <div className="absolute bottom-2 left-2 bg-[var(--cds-layer-01)]/90 border border-[var(--cds-border-subtle)] p-1.5 flex flex-wrap gap-2 text-[10px] font-mono text-[var(--cds-text-02)] backdrop-blur-sm pointer-events-none">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-[#0f62fe]" /> Scan
               </span>
@@ -399,10 +399,10 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
         </div>
 
         {/* Right Node Inspector Panel */}
-        <div className="lg:col-span-4 bg-[#262626] p-4 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-[var(--cds-layer-02)] p-4 flex flex-col justify-between space-y-4">
           {selectedNode ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-[#393939] pb-2">
+              <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
                 <span
                   className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase"
                   style={{
@@ -413,21 +413,21 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
                 >
                   {selectedNode.type} NODE
                 </span>
-                <span className="text-[10px] font-mono text-[#8d8d8d]">ID: {selectedNode.id}</span>
+                <span className="text-[10px] font-mono text-[var(--cds-text-03)]">ID: {selectedNode.id}</span>
               </div>
 
               <div>
-                <h5 className="text-sm font-bold text-[#f4f4f4]">
+                <h5 className="text-sm font-bold text-[var(--cds-text-01)]">
                   {isAr && selectedNode.nameAr ? selectedNode.nameAr : selectedNode.name}
                 </h5>
-                <p className="text-xs text-[#c6c6c6] mt-1 leading-relaxed">
+                <p className="text-xs text-[var(--cds-text-02)] mt-1 leading-relaxed">
                   {isAr && selectedNode.detailsAr ? selectedNode.detailsAr : selectedNode.details}
                 </p>
               </div>
 
               {selectedNode.expression && (
-                <div className="bg-[#161616] border border-[#393939] p-2.5">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block mb-1">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block mb-1">
                     {isAr ? 'العبارة المنطقية' : 'Evaluated Expression'}
                   </span>
                   <code className="text-xs font-mono text-[#33b1ff] break-all block">
@@ -438,24 +438,24 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
 
               {/* Node Metrics Grid */}
               <div className="grid grid-cols-3 gap-2 pt-2">
-                <div className="bg-[#161616] p-2 border border-[#393939] text-center">
-                  <span className="text-[9px] font-mono text-[#8d8d8d] uppercase block">
+                <div className="bg-[var(--cds-layer-01)] p-2 border border-[var(--cds-border-subtle)] text-center">
+                  <span className="text-[9px] font-mono text-[var(--cds-text-03)] uppercase block">
                     {isAr ? 'الكلفة التقديرية' : 'Est. Cost'}
                   </span>
-                  <span className="text-xs font-mono font-bold text-[#f4f4f4]">
+                  <span className="text-xs font-mono font-bold text-[var(--cds-text-01)]">
                     {selectedNode.cost} units
                   </span>
                 </div>
-                <div className="bg-[#161616] p-2 border border-[#393939] text-center">
-                  <span className="text-[9px] font-mono text-[#8d8d8d] uppercase block">
+                <div className="bg-[var(--cds-layer-01)] p-2 border border-[var(--cds-border-subtle)] text-center">
+                  <span className="text-[9px] font-mono text-[var(--cds-text-03)] uppercase block">
                     {isAr ? 'تعداد الصفوف' : 'Cardinality'}
                   </span>
-                  <span className="text-xs font-mono font-bold text-[#f4f4f4]">
+                  <span className="text-xs font-mono font-bold text-[var(--cds-text-01)]">
                     {selectedNode.estimatedRows.toLocaleString()}
                   </span>
                 </div>
-                <div className="bg-[#161616] p-2 border border-[#393939] text-center">
-                  <span className="text-[9px] font-mono text-[#8d8d8d] uppercase block">
+                <div className="bg-[var(--cds-layer-01)] p-2 border border-[var(--cds-border-subtle)] text-center">
+                  <span className="text-[9px] font-mono text-[var(--cds-text-03)] uppercase block">
                     {isAr ? 'زمن التنفيذ' : 'Duration'}
                   </span>
                   <span className="text-xs font-mono font-bold text-[#42be65]">
@@ -465,15 +465,15 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
               </div>
             </div>
           ) : (
-            <div className="text-center text-[#8d8d8d] py-12">
-              <Info className="w-8 h-8 mx-auto mb-2 text-[#525252]" />
+            <div className="text-center text-[var(--cds-text-03)] py-12">
+              <Info className="w-8 h-8 mx-auto mb-2 text-[var(--cds-text-03)]" />
               <p className="text-xs font-mono">
                 {isAr ? 'انقر على أي عقدة لعرض تفاصيلها' : 'Click on any operator node to inspect details'}
               </p>
             </div>
           )}
 
-          <div className="border-t border-[#393939] pt-3 text-[11px] font-mono text-[#8d8d8d] flex items-center justify-between">
+          <div className="border-t border-[var(--cds-border-subtle)] pt-3 text-[11px] font-mono text-[var(--cds-text-03)] flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[#42be65]">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{isAr ? 'تخصيص الذاكرة مُحسّن' : 'SIMD Vector Memory OK'}</span>

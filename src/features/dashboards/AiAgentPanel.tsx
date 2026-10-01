@@ -177,15 +177,15 @@ export const AiAgentPanel: React.FC = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Generative BI Studio Panel (Left/Top) */}
-      <div className="lg:col-span-7 bg-[#262626] border border-[#393939] p-5 flex flex-col space-y-4">
-        <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+      <div className="lg:col-span-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 flex flex-col space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#8a3ffc]" />
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                 {isAr ? 'استوديو التوليد الذكي (Generative BI Studio)' : 'Generative BI Studio'}
               </h3>
-              <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+              <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
                 {isAr
                   ? 'اكتب طلبك باللغة الطبيعية لتصميم وبناء لوحات التحكم والرسوم البيانية فوراً'
                   : 'Type descriptive queries to construct custom charts and KPI cards instantly'}
@@ -205,11 +205,11 @@ export const AiAgentPanel: React.FC = () => {
                 : 'e.g. Generate a circular pie chart displaying product distribution with average sales...'
             }
             rows={3}
-            className="w-full bg-[#161616] border border-[#525252] focus:border-[#8a3ffc] p-3 text-xs text-white font-mono outline-none resize-none transition-all"
+            className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] focus:border-[#8a3ffc] p-3 text-xs text-white font-mono outline-none resize-none transition-all"
           />
 
           <div className="flex justify-between items-center gap-3 flex-wrap">
-            <span className="text-[10px] font-mono text-[#8d8d8d]">
+            <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
               {isAr ? 'مستند النشاط:' : 'Target schema:'} <strong className="text-[#33b1ff]">{activeDataset?.name || 'No dataset'}</strong>
             </span>
             <button
@@ -218,7 +218,7 @@ export const AiAgentPanel: React.FC = () => {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase transition-all ${
                 prompt.trim()
                   ? 'bg-[#8a3ffc] hover:bg-[#6929c4] text-white'
-                  : 'bg-[#393939] text-[#8d8d8d] cursor-not-allowed'
+                  : 'bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] cursor-not-allowed'
               }`}
             >
               {isGenerating ? (
@@ -238,7 +238,7 @@ export const AiAgentPanel: React.FC = () => {
 
         {/* Instant Suggestions */}
         <div className="space-y-1.5">
-          <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block font-bold">
+          <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block font-bold">
             {isAr ? '💡 اقتراحات توليد سريعة:' : '💡 Quick generation samples:'}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -249,7 +249,7 @@ export const AiAgentPanel: React.FC = () => {
                   setPrompt(s);
                   handleGenerateWidget(s);
                 }}
-                className="text-start p-2 bg-[#161616] hover:bg-[#333333] border border-[#393939] hover:border-[#8a3ffc] text-[11px] text-[#c6c6c6] hover:text-white truncate transition-all"
+                className="text-start p-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] hover:border-[#8a3ffc] text-[11px] text-[var(--cds-text-02)] hover:text-white truncate transition-all"
               >
                 {s}
               </button>
@@ -259,7 +259,7 @@ export const AiAgentPanel: React.FC = () => {
 
         {/* Generated Widgets Deck */}
         {generatedWidgets.length > 0 && (
-          <div className="space-y-3 pt-4 border-t border-[#393939] animate-in fade-in">
+          <div className="space-y-3 pt-4 border-t border-[var(--cds-border-subtle)] animate-in fade-in">
             <h4 className="text-xs font-mono font-bold text-[#8a3ffc] uppercase flex items-center gap-1.5">
               <Layout className="w-4 h-4" />
               <span>{isAr ? 'العناصر الجاهزة للمعاينة والإضافة:' : 'Widgets Drafted & Ready to Embed:'}</span>
@@ -267,7 +267,7 @@ export const AiAgentPanel: React.FC = () => {
 
             <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
               {generatedWidgets.map((w, idx) => (
-                <div key={idx} className="bg-[#161616] border border-[#393939] p-3 flex items-center justify-between gap-4">
+                <div key={idx} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <span className="text-[9px] font-mono bg-[#8a3ffc]/20 text-[#be95ff] px-1.5 py-0.2 uppercase font-bold">
                       {w.type.toUpperCase()}
@@ -275,7 +275,7 @@ export const AiAgentPanel: React.FC = () => {
                     <h5 className="text-xs font-bold text-white mt-1 truncate">
                       {isAr ? w.titleAr || w.title : w.title}
                     </h5>
-                    <p className="text-[10px] font-mono text-[#8d8d8d] mt-0.5">
+                    <p className="text-[10px] font-mono text-[var(--cds-text-03)] mt-0.5">
                       Formula: {w.aggregation?.toUpperCase()}({w.yAxis}) grouped by {w.xAxis}
                     </p>
                   </div>
@@ -295,16 +295,16 @@ export const AiAgentPanel: React.FC = () => {
       </div>
 
       {/* Autonomous AI Data Agent - Anomaly Scan (Right/Bottom) */}
-      <div className="lg:col-span-5 bg-[#262626] border border-[#393939] p-5 flex flex-col space-y-4 justify-between">
+      <div className="lg:col-span-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 flex flex-col space-y-4 justify-between">
         <div className="space-y-3">
-          <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+          <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-[#33b1ff]" />
               <div>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                   {isAr ? 'الوكيل الذكي للكشف عن الانحرافات' : 'Autonomous Anomaly Agent'}
                 </h3>
-                <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+                <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
                   {isAr
                     ? 'يقوم الوكيل بفحص البيانات آلياً لكشف القيم الشاذة وشرح أسبابها بالذكاء الاصطناعي'
                     : 'Autonomous scanner identifies statistical outliers & explains underlying skews'}
@@ -317,7 +317,7 @@ export const AiAgentPanel: React.FC = () => {
           <button
             onClick={handleAnomalyScan}
             disabled={isScanning}
-            className="w-full py-2 bg-[#262626] hover:bg-[#333333] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all flex items-center justify-center gap-2"
+            className="w-full py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all flex items-center justify-center gap-2"
           >
             {isScanning ? (
               <>
@@ -335,8 +335,8 @@ export const AiAgentPanel: React.FC = () => {
           {/* Results List */}
           <div className="space-y-2 max-h-[300px] overflow-y-auto">
             {detectedAnomalies.length === 0 ? (
-              <div className="text-center py-8 text-[#8d8d8d] space-y-2 border border-dashed border-[#393939] bg-[#161616]">
-                <HelpCircle className="w-8 h-8 mx-auto text-[#525252]" />
+              <div className="text-center py-8 text-[var(--cds-text-03)] space-y-2 border border-dashed border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+                <HelpCircle className="w-8 h-8 mx-auto text-[var(--cds-text-03)]" />
                 <p className="text-[11px] font-mono">
                   {isAr ? 'لم يتم إجراء فحص أو لم تُكتشف قيم شاذة' : 'No anomalies detected yet. Click scan.'}
                 </p>
@@ -345,21 +345,21 @@ export const AiAgentPanel: React.FC = () => {
               detectedAnomalies.map(anom => (
                 <div
                   key={anom.id}
-                  className="bg-[#161616] border-l-2 border-l-[#ff8389] p-3 text-xs font-mono space-y-1.5"
+                  className="bg-[var(--cds-layer-01)] border-s-2 border-s-[#ff8389] p-3 text-xs font-mono space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] bg-[#da1e28]/20 text-[#ff8389] px-1.5 py-0.2 font-bold uppercase">
                       {anom.type}
                     </span>
-                    <span className="text-[#8d8d8d] text-[10px]">
+                    <span className="text-[var(--cds-text-03)] text-[10px]">
                       Row #{anom.rowIndex} ({anom.context})
                     </span>
                   </div>
-                  <p className="text-[#f4f4f4] font-bold">
+                  <p className="text-[var(--cds-text-01)] font-bold">
                     {isAr ? `قيمة العمود [${anom.columnName}] تساوي:` : `Column [${anom.columnName}] reads:`}{' '}
                     <span className="text-[#ff8389]">{anom.value}</span>
                   </p>
-                  <p className="text-[11px] text-[#c6c6c6] leading-relaxed">
+                  <p className="text-[11px] text-[var(--cds-text-02)] leading-relaxed">
                     {anom.explanation}
                   </p>
                 </div>
@@ -369,7 +369,7 @@ export const AiAgentPanel: React.FC = () => {
         </div>
 
         {detectedAnomalies.length > 0 && (
-          <div className="p-3 bg-[#1192e8]/10 border border-[#1192e8] text-xs font-mono text-[#c6c6c6] flex items-center gap-2">
+          <div className="p-3 bg-[#1192e8]/10 border border-[#1192e8] text-xs font-mono text-[var(--cds-text-02)] flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#1192e8] shrink-0" />
             <span>
               {isAr

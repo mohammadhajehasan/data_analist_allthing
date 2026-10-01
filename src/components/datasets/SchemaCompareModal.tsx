@@ -189,9 +189,9 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#262626] border border-[#525252] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl">
         {/* Modal Header */}
-        <div className="bg-[#1f1f1f] px-6 py-4 border-b border-[#393939] flex items-center justify-between">
+        <div className="bg-[var(--cds-layer-01)] px-6 py-4 border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#4589ff]">
               <ArrowRightLeft className="w-4 h-4" />
@@ -201,11 +201,11 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
                   SCHEMA COMPARISON ENGINE
                 </span>
-                <span className="bg-[#393939] text-[#c6c6c6] px-2 py-0.5 text-[10px] font-mono">
+                <span className="bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] px-2 py-0.5 text-[10px] font-mono">
                   {datasets.length} {isAr ? 'مجموعات بيانات' : 'Datasets'}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-[#f4f4f4] tracking-tight mt-0.5">
+              <h3 className="text-base font-bold text-[var(--cds-text-01)] tracking-tight mt-0.5">
                 {isAr ? 'مقارنة وتحليل تطابق المخططات (Schema Diff)' : 'Multi-Dataset Schema Matrix & Diff'}
               </h3>
             </div>
@@ -214,14 +214,14 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
           <div className="flex items-center gap-2">
             <button
               onClick={exportComparisonReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono transition-colors"
             >
               <Download className="w-3.5 h-3.5 text-[#4589ff]" />
               <span>{isAr ? 'تصدير التقرير (JSON)' : 'Export Diff (JSON)'}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-[#8d8d8d] hover:text-white hover:bg-[#393939] transition-colors"
+              className="p-1.5 text-[var(--cds-text-03)] hover:text-white hover:bg-[var(--cds-layer-03)] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -229,19 +229,19 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
         </div>
 
         {/* Selected Datasets Header Cards */}
-        <div className="p-5 bg-[#161616] border-b border-[#393939] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-5 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {datasets.map(ds => (
-            <div key={ds.id} className="p-3 bg-[#1f1f1f] border border-[#393939] space-y-1.5">
+            <div key={ds.id} className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="carbon-tag-blue text-[9px] uppercase font-mono">{ds.format}</span>
                 <span className="text-[10px] font-mono text-[#24a148] font-bold">
                   {ds.profile?.quality.overallScore || 95}% Health
                 </span>
               </div>
-              <h4 className="text-xs font-bold text-[#f4f4f4] truncate" title={ds.name}>
+              <h4 className="text-xs font-bold text-[var(--cds-text-01)] truncate" title={ds.name}>
                 {ds.name}
               </h4>
-              <div className="flex items-center justify-between text-[10px] font-mono text-[#8d8d8d]">
+              <div className="flex items-center justify-between text-[10px] font-mono text-[var(--cds-text-03)]">
                 <span>{ds.rowCount.toLocaleString()} rows</span>
                 <span>{ds.columns.length} columns</span>
               </div>
@@ -254,17 +254,17 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               <span>{isAr ? 'مؤشر التطابق' : 'Compatibility'}</span>
               <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <div className="text-xl font-bold font-mono text-[#f4f4f4]">
+            <div className="text-xl font-bold font-mono text-[var(--cds-text-01)]">
               {comparisonData.overlapPct}%
             </div>
-            <p className="text-[10px] text-[#c6c6c6]">
+            <p className="text-[10px] text-[var(--cds-text-02)]">
               {comparisonData.exactMatches} {isAr ? 'حقول متطابقة تماماً' : 'matching attributes'}
             </p>
           </div>
         </div>
 
         {/* Tab & Search Filter Bar */}
-        <div className="bg-[#1f1f1f] px-5 py-2.5 border-b border-[#393939] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-[var(--cds-layer-01)] px-5 py-2.5 border-b border-[var(--cds-border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto">
             <button
@@ -272,7 +272,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               className={`px-3 py-1 text-xs font-mono transition-colors ${
                 activeTab === 'all'
                   ? 'bg-[#0f62fe] text-white font-bold'
-                  : 'bg-[#262626] text-[#c6c6c6] hover:bg-[#333333]'
+                  : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
               }`}
             >
               {isAr ? 'جميع الحقول' : 'All Attributes'} ({comparisonData.totalUniqueCols})
@@ -282,7 +282,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               className={`px-3 py-1 text-xs font-mono transition-colors ${
                 activeTab === 'match'
                   ? 'bg-[#24a148] text-white font-bold'
-                  : 'bg-[#262626] text-[#c6c6c6] hover:bg-[#333333]'
+                  : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
               }`}
             >
               {isAr ? 'متطابقة' : 'Exact Matches'} ({comparisonData.exactMatches})
@@ -293,7 +293,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
                 className={`px-3 py-1 text-xs font-mono transition-colors ${
                   activeTab === 'conflict'
                     ? 'bg-[#da1e28] text-white font-bold'
-                    : 'bg-[#262626] text-[#ff8389] hover:bg-[#333333]'
+                    : 'bg-[var(--cds-layer-02)] text-[#ff8389] hover:bg-[var(--cds-layer-03)]'
                 }`}
               >
                 {isAr ? 'تعارضات الأنواع' : 'Type Conflicts'} ({comparisonData.typeConflicts})
@@ -304,7 +304,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               className={`px-3 py-1 text-xs font-mono transition-colors ${
                 activeTab === 'unique'
                   ? 'bg-[#0f62fe] text-white font-bold'
-                  : 'bg-[#262626] text-[#c6c6c6] hover:bg-[#333333]'
+                  : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
               }`}
             >
               {isAr ? 'حقول منفردة' : 'Partial Presence'} ({comparisonData.partialPresence})
@@ -313,67 +313,67 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
 
           {/* Search column name */}
           <div className="relative min-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[#8d8d8d]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--cds-text-03)]" />
             <input
               type="text"
               placeholder={isAr ? 'تصفية أسماء الأعمدة...' : 'Filter column names...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs ps-8 pe-3 py-1 focus:border-[#0f62fe] focus:outline-none font-mono"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-3 py-1 focus:border-[#0f62fe] focus:outline-none font-mono"
             />
           </div>
         </div>
 
         {/* Matrix Comparison Table */}
-        <div className="flex-1 overflow-auto bg-[#161616]">
+        <div className="flex-1 overflow-auto bg-[var(--cds-layer-01)]">
           <table className="w-full text-start text-xs font-sans border-collapse">
-            <thead className="bg-[#1a1a1a] sticky top-0 z-20 border-b border-[#393939] text-[#c6c6c6] font-mono text-[11px]">
+            <thead className="bg-[var(--cds-layer-01)] sticky top-0 z-20 border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] font-mono text-[11px]">
               <tr>
                 <th className="px-4 py-3 text-start font-bold uppercase">{isAr ? 'اسم العمود' : 'Column Name'}</th>
                 <th className="px-4 py-3 text-start font-bold uppercase">{isAr ? 'حالة التطابق' : 'Diff Status'}</th>
                 {datasets.map(ds => (
                   <th key={ds.id} className="px-4 py-3 text-start font-bold uppercase">
-                    <div className="truncate max-w-[160px] text-[#f4f4f4]">{ds.name}</div>
-                    <span className="text-[9px] text-[#8d8d8d] font-normal">{ds.format.toUpperCase()}</span>
+                    <div className="truncate max-w-[160px] text-[var(--cds-text-01)]">{ds.name}</div>
+                    <span className="text-[9px] text-[var(--cds-text-03)] font-normal">{ds.format.toUpperCase()}</span>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2a2a2a] font-mono text-[11px]">
+            <tbody className="divide-y divide-[var(--cds-border-subtle)] font-mono text-[11px]">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={datasets.length + 2} className="py-12 text-center text-[#8d8d8d]">
+                  <td colSpan={datasets.length + 2} className="py-12 text-center text-[var(--cds-text-03)]">
                     {isAr ? 'لا توجد حقول مطابقة للتصفية الحالية' : 'No attributes match the selected filter'}
                   </td>
                 </tr>
               ) : (
                 filteredRows.map((row, idx) => {
                   return (
-                    <tr key={idx} className="hover:bg-[#262626] transition-colors">
-                      <td className="px-4 py-2.5 font-bold text-[#f4f4f4] border-e border-[#2a2a2a]">
+                    <tr key={idx} className="hover:bg-[var(--cds-layer-02)] transition-colors">
+                      <td className="px-4 py-2.5 font-bold text-[var(--cds-text-01)] border-e border-[var(--cds-border-subtle)]">
                         {row.name}
                       </td>
-                      <td className="px-4 py-2.5 border-e border-[#2a2a2a] whitespace-nowrap">
+                      <td className="px-4 py-2.5 border-e border-[var(--cds-border-subtle)] whitespace-nowrap">
                         {getStatusBadge(row.status)}
                       </td>
                       {datasets.map(ds => {
                         const colType = row.typesByDataset[ds.id];
                         const samples = row.sampleValuesByDataset[ds.id];
                         return (
-                          <td key={ds.id} className="px-4 py-2.5 border-e border-[#2a2a2a]">
+                          <td key={ds.id} className="px-4 py-2.5 border-e border-[var(--cds-border-subtle)]">
                             {colType ? (
                               <div className="space-y-0.5">
-                                <span className="inline-block px-1.5 py-0.5 bg-[#393939] text-[#f4f4f4] text-[10px] uppercase font-bold">
+                                <span className="inline-block px-1.5 py-0.5 bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] text-[10px] uppercase font-bold">
                                   {colType}
                                 </span>
                                 {samples && samples.length > 0 && (
-                                  <div className="text-[10px] text-[#8d8d8d] truncate max-w-[140px]">
+                                  <div className="text-[10px] text-[var(--cds-text-03)] truncate max-w-[140px]">
                                     e.g. {String(samples[0])}
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-[#6f6f6f] italic text-[10px]">
+                              <span className="text-[var(--cds-text-03)] italic text-[10px]">
                                 {isAr ? 'غير موجود' : 'Missing'}
                               </span>
                             )}
@@ -389,7 +389,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-[#393939] bg-[#1f1f1f] flex items-center justify-between text-xs font-mono text-[#8d8d8d]">
+        <div className="px-6 py-3 border-t border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] flex items-center justify-between text-xs font-mono text-[var(--cds-text-03)]">
           <span>
             {isAr
               ? `تمت مطابقة ${comparisonData.rows.length} حقل مختلف عبر ${datasets.length} مجموعات بيانات.`

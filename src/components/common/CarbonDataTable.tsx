@@ -363,9 +363,9 @@ export const CarbonDataTable = <T extends Record<string, any>>({
   };
 
   return (
-    <div id={id} className="bg-[#161616] border border-[#393939] flex flex-col w-full text-[#f4f4f4] font-sans antialiased shadow-lg">
+    <div id={id} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex flex-col w-full text-[var(--cds-text-01)] font-sans antialiased shadow-lg">
       {/* 1. Carbon Data Table Toolbar */}
-      <div className="bg-[#222222] border-b border-[#393939] p-3 sm:p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] p-3 sm:p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {title && (
             <div className="flex items-center gap-2">
@@ -374,7 +374,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             </div>
           )}
           {description && (
-            <span className="text-xs font-mono text-[#c6c6c6] bg-[#161616] px-2 py-0.5 border border-[#393939]">
+            <span className="text-xs font-mono text-[var(--cds-text-02)] bg-[var(--cds-layer-01)] px-2 py-0.5 border border-[var(--cds-border-subtle)]">
               {description}
             </span>
           )}
@@ -385,7 +385,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           {/* Quick Search */}
           {searchable && (
             <div className="relative flex-1 sm:w-64">
-              <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[#a8a8a8]" />
+              <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--cds-text-02)]" />
               <input
                 type="text"
                 value={internalSearch}
@@ -394,12 +394,12 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   setCurrentPage(1);
                 }}
                 placeholder={searchPlaceholder || (language === 'ar' ? 'بحث في الجدول...' : 'Search table...')}
-                className="w-full bg-[#161616] border border-[#525252] focus:border-[#0f62fe] text-[#ffffff] placeholder-[#8d8d8d] ps-8 pe-3 py-1.5 text-xs font-mono outline-none transition-colors"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] text-[#ffffff] placeholder-[#8d8d8d] ps-8 pe-3 py-1.5 text-xs font-mono outline-none transition-colors"
               />
               {internalSearch && (
                 <button
                   onClick={() => setInternalSearch('')}
-                  className="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-[#a8a8a8] hover:text-[#ffffff] font-mono px-1"
+                  className="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--cds-text-02)] hover:text-[#ffffff] font-mono px-1"
                 >
                   ✕
                 </button>
@@ -409,7 +409,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
 
           {/* Density Toggle */}
           {showDensityToggle && (
-            <div className="flex items-center border border-[#525252] bg-[#161616]">
+            <div className="flex items-center border border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)]">
               {(['compact', 'normal', 'tall'] as const).map(d => (
                 <button
                   key={d}
@@ -417,7 +417,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   className={`px-2 py-1.5 text-[11px] font-mono capitalize transition-colors ${
                     density === d
                       ? 'bg-[#0f62fe] text-[#ffffff] font-bold'
-                      : 'text-[#c6c6c6] hover:bg-[#333333] hover:text-[#ffffff]'
+                      : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-[#ffffff]'
                   }`}
                   title={`Density: ${d}`}
                 >
@@ -434,7 +434,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
               className={`px-2.5 py-1.5 border text-xs font-mono flex items-center gap-1.5 transition-colors ${
                 isZebra
                   ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#33b1ff] font-bold'
-                  : 'bg-[#161616] border-[#525252] text-[#c6c6c6] hover:bg-[#333333] hover:text-[#ffffff]'
+                  : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-[#ffffff]'
               }`}
               title="Toggle Zebra striping"
             >
@@ -447,7 +447,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           <div className="relative">
             <button
               onClick={() => setShowColumnPicker(!showColumnPicker)}
-              className="px-2.5 py-1.5 bg-[#161616] border border-[#525252] hover:bg-[#333333] text-[#ffffff] text-xs font-mono flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] hover:bg-[var(--cds-layer-03)] text-[#ffffff] text-xs font-mono flex items-center gap-1.5 transition-colors"
               title="Column visibility"
             >
               <EyeOff className="w-3.5 h-3.5 text-[#33b1ff]" />
@@ -458,8 +458,8 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             </button>
 
             {showColumnPicker && (
-              <div className="absolute end-0 mt-1 w-52 bg-[#1f1f1f] border border-[#525252] shadow-2xl p-2 z-50 text-xs font-mono space-y-1">
-                <div className="flex items-center justify-between pb-1 mb-1 border-b border-[#393939] text-[#c6c6c6]">
+              <div className="absolute end-0 mt-1 w-52 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] shadow-2xl p-2 z-50 text-xs font-mono space-y-1">
+                <div className="flex items-center justify-between pb-1 mb-1 border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
                   <span className="font-bold">{language === 'ar' ? 'إظهار الأعمدة' : 'Toggle Columns'}</span>
                   <button
                     onClick={() => setHiddenColumns(new Set())}
@@ -471,7 +471,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                 {resolvedColumns.map(col => (
                   <label
                     key={col.key}
-                    className="flex items-center gap-2 p-1 hover:bg-[#333333] text-[#f4f4f4] cursor-pointer"
+                    className="flex items-center gap-2 p-1 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] cursor-pointer"
                   >
                     <input
                       type="checkbox"
@@ -507,10 +507,10 @@ export const CarbonDataTable = <T extends Record<string, any>>({
       >
         <table className="w-full text-start border-collapse font-mono">
           {/* Carbon Column Headers with Enhanced Contrast & IBM Tooltips */}
-          <thead className="bg-[#1f1f1f] border-b-2 border-[#525252] sticky top-0 z-20 select-none">
+          <thead className="bg-[var(--cds-layer-01)] border-b-2 border-[var(--cds-border-strong)] sticky top-0 z-20 select-none">
             <tr>
               {selectable && (
-                <th className="px-3 py-3 w-10 text-center bg-[#1f1f1f] border-e border-[#393939]">
+                <th className="px-3 py-3 w-10 text-center bg-[var(--cds-layer-01)] border-e border-[var(--cds-border-subtle)]">
                   <input
                     type="checkbox"
                     checked={paginatedData.length > 0 && selectedRows?.size === paginatedData.length}
@@ -520,7 +520,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                 </th>
               )}
 
-              <th className="px-3 py-3 w-12 text-center text-[#c6c6c6] text-[11px] font-bold bg-[#1f1f1f] border-e border-[#393939]">
+              <th className="px-3 py-3 w-12 text-center text-[var(--cds-text-02)] text-[11px] font-bold bg-[var(--cds-layer-01)] border-e border-[var(--cds-border-subtle)]">
                 #
               </th>
 
@@ -544,9 +544,9 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                     onMouseLeave={() => setHoveredHeaderKey(null)}
                     onClick={() => col.sortable !== false && handleSort(col.key)}
                     style={{ width: col.width }}
-                    className={`${headerDensityStyles[density]} font-bold text-[#ffffff] bg-[#1f1f1f] border-e border-[#393939] whitespace-nowrap transition-colors relative group/th ${
-                      col.sortable !== false ? 'cursor-pointer hover:bg-[#2d2d2d] hover:text-[#ffffff]' : ''
-                    } ${isSorted ? 'bg-[#262626] border-b-2 border-b-[#0f62fe]' : ''}`}
+                    className={`${headerDensityStyles[density]} font-bold text-[#ffffff] bg-[var(--cds-layer-01)] border-e border-[var(--cds-border-subtle)] whitespace-nowrap transition-colors relative group/th ${
+                      col.sortable !== false ? 'cursor-pointer hover:bg-[var(--cds-layer-02)] hover:text-[#ffffff]' : ''
+                    } ${isSorted ? 'bg-[var(--cds-layer-02)] border-b-2 border-b-[#0f62fe]' : ''}`}
                   >
                     <div className={`flex items-center gap-2 ${alignClass}`}>
                       <span className="tracking-tight text-sm text-[#ffffff] font-bold">
@@ -554,7 +554,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                       </span>
 
                       {/* Header Info Tooltip Trigger Icon */}
-                      <Info className="w-3 h-3 text-[#8d8d8d] group-hover/th:text-[#33b1ff] transition-colors" />
+                      <Info className="w-3 h-3 text-[var(--cds-text-03)] group-hover/th:text-[#33b1ff] transition-colors" />
 
                       {col.sortable !== false && (
                         <div className="shrink-0 flex items-center">
@@ -565,7 +565,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                               <ArrowDown className="w-3.5 h-3.5 text-[#0f62fe]" />
                             )
                           ) : (
-                            <ArrowUpDown className="w-3 h-3 text-[#6f6f6f] group-hover/th:text-[#ffffff]" />
+                            <ArrowUpDown className="w-3 h-3 text-[var(--cds-text-03)] group-hover/th:text-[#ffffff]" />
                           )}
                         </div>
                       )}
@@ -585,18 +585,18 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                     {isHovered && (
                       <div
                         role="tooltip"
-                        className="absolute start-1/2 -translate-x-1/2 top-full mt-1.5 w-64 bg-[#161616] border border-[#525252] p-3 text-xs font-mono shadow-2xl z-50 text-start pointer-events-none rounded-none"
+                        className="absolute start-1/2 -translate-x-1/2 top-full mt-1.5 w-64 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] p-3 text-xs font-mono shadow-2xl z-50 text-start pointer-events-none rounded-none"
                       >
                         {/* Carbon Accent Top Line */}
                         <div className="h-1 bg-[#0f62fe] -mx-3 -mt-3 mb-2" />
 
                         {/* Title & Type Badge */}
-                        <div className="flex items-center justify-between border-b border-[#393939] pb-1.5 mb-2">
+                        <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-1.5 mb-2">
                           <div>
                             <p className="font-bold text-[#ffffff] text-xs">
                               {language === 'ar' && col.headerAr ? `${col.headerAr} (${col.header})` : col.header}
                             </p>
-                            <span className="text-[10px] text-[#a8a8a8] block">{typeInfo.label}</span>
+                            <span className="text-[10px] text-[var(--cds-text-02)] block">{typeInfo.label}</span>
                           </div>
                           <span
                             className="text-[9px] font-bold uppercase px-1.5 py-0.5 border"
@@ -608,28 +608,28 @@ export const CarbonDataTable = <T extends Record<string, any>>({
 
                         {/* Field Description */}
                         {(col.description || col.descriptionAr) ? (
-                          <p className="text-[11px] text-[#c6c6c6] mb-2 leading-relaxed">
+                          <p className="text-[11px] text-[var(--cds-text-02)] mb-2 leading-relaxed">
                             {language === 'ar' && col.descriptionAr ? col.descriptionAr : col.description}
                           </p>
                         ) : (
-                          <p className="text-[11px] text-[#a8a8a8] mb-2 leading-relaxed">
+                          <p className="text-[11px] text-[var(--cds-text-02)] mb-2 leading-relaxed">
                             {typeInfo.desc}
                           </p>
                         )}
 
                         {/* Live Statistical Profiling Preview */}
                         {stats && (
-                          <div className="bg-[#222222] border border-[#393939] p-2 mb-2 space-y-1 text-[10px]">
-                            <div className="flex justify-between text-[#c6c6c6]">
+                          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-2 mb-2 space-y-1 text-[10px]">
+                            <div className="flex justify-between text-[var(--cds-text-02)]">
                               <span>{language === 'ar' ? 'القيم الصالحة:' : 'Valid records:'}</span>
                               <strong className="text-[#ffffff]">{(stats.total - stats.nulls).toLocaleString()} / {stats.total.toLocaleString()}</strong>
                             </div>
-                            <div className="flex justify-between text-[#c6c6c6]">
+                            <div className="flex justify-between text-[var(--cds-text-02)]">
                               <span>{language === 'ar' ? 'القيم الفريدة:' : 'Distinct count:'}</span>
                               <strong className="text-[#33b1ff]">{stats.distinct.toLocaleString()}</strong>
                             </div>
                             {stats.min !== undefined && stats.max !== undefined && (
-                              <div className="flex justify-between text-[#c6c6c6] pt-1 border-t border-[#393939]">
+                              <div className="flex justify-between text-[var(--cds-text-02)] pt-1 border-t border-[var(--cds-border-subtle)]">
                                 <span>{language === 'ar' ? 'الأدنى / الأقصى:' : 'Min / Max:'}</span>
                                 <strong className="text-[#42be65]">{stats.min.toLocaleString()} ↔ {stats.max.toLocaleString()}</strong>
                               </div>
@@ -638,7 +638,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                         )}
 
                         {/* Sorting Interaction Prompt */}
-                        <div className="text-[10px] text-[#33b1ff] flex items-center gap-1 pt-1 border-t border-[#393939]">
+                        <div className="text-[10px] text-[#33b1ff] flex items-center gap-1 pt-1 border-t border-[var(--cds-border-subtle)]">
                           <ArrowUpDown className="w-3 h-3 shrink-0" />
                           <span>
                             {language === 'ar'
@@ -655,7 +655,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           </thead>
 
           {/* Table Data Rows with Maximum Dark Contrast */}
-          <tbody className="divide-y divide-[#393939]">
+          <tbody className="divide-y divide-[var(--cds-border-subtle)]">
             {isLoading ? (
               <tr>
                 <td colSpan={visibleColumns.length + (selectable ? 2 : 1)} className="p-12 text-center">
@@ -668,9 +668,9 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length + (selectable ? 2 : 1)} className="p-12 text-center">
-                  <div className="max-w-sm mx-auto space-y-2 text-[#a8a8a8]">
-                    {emptyIcon || <Database className="w-10 h-10 text-[#525252] mx-auto mb-2" />}
-                    <p className="text-xs font-mono font-medium text-[#f4f4f4]">
+                  <div className="max-w-sm mx-auto space-y-2 text-[var(--cds-text-02)]">
+                    {emptyIcon || <Database className="w-10 h-10 text-[var(--cds-text-03)] mx-auto mb-2" />}
+                    <p className="text-xs font-mono font-medium text-[var(--cds-text-01)]">
                       {emptyMessage || (language === 'ar' ? 'لا توجد سجلات مطابقة لمعايير البحث أو التصفية الحالية.' : 'No records found matching query.')}
                     </p>
                     {internalSearch && (
@@ -693,17 +693,17 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   ? 'bg-[#002d9c]/30 border-s-4 border-s-[#0f62fe]'
                   : isZebra
                   ? isRowEven
-                    ? 'bg-[#161616]'
-                    : 'bg-[#222222]'
-                  : 'bg-[#161616]';
+                    ? 'bg-[var(--cds-layer-01)]'
+                    : 'bg-[var(--cds-layer-02)]'
+                  : 'bg-[var(--cds-layer-01)]';
 
                 return (
                   <tr
                     key={rowIdx}
-                    className={`${rowBg} hover:bg-[#353535] transition-colors group relative`}
+                    className={`${rowBg} hover:bg-[var(--cds-layer-03)] transition-colors group relative`}
                   >
                     {selectable && (
-                      <td className="px-3 py-2 text-center border-e border-[#393939]">
+                      <td className="px-3 py-2 text-center border-e border-[var(--cds-border-subtle)]">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -713,7 +713,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                       </td>
                     )}
 
-                    <td className="px-3 py-2 text-center text-[#8d8d8d] text-[11px] font-bold border-e border-[#393939] group-hover:text-[#ffffff]">
+                    <td className="px-3 py-2 text-center text-[var(--cds-text-03)] text-[11px] font-bold border-e border-[var(--cds-border-subtle)] group-hover:text-[#ffffff]">
                       {absoluteIndex + 1}
                     </td>
 
@@ -733,12 +733,12 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                       return (
                         <td
                           key={col.key}
-                          className={`${densityStyles[density]} ${alignClass} text-[#f4f4f4] border-e border-[#393939] whitespace-nowrap relative group/cell font-mono`}
+                          className={`${densityStyles[density]} ${alignClass} text-[var(--cds-text-01)] border-e border-[var(--cds-border-subtle)] whitespace-nowrap relative group/cell font-mono`}
                         >
                           {col.render ? (
                             col.render(val, row, rowIdx)
                           ) : isNull ? (
-                            <span className="text-[10px] text-[#8d8d8d] italic">NULL</span>
+                            <span className="text-[10px] text-[var(--cds-text-03)] italic">NULL</span>
                           ) : typeof val === 'boolean' ? (
                             <span
                               className={`px-1.5 py-0.5 text-[10px] font-bold ${
@@ -754,14 +754,14 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                               {val.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                             </span>
                           ) : (
-                            <span className="font-mono text-[#f4f4f4]">{String(val)}</span>
+                            <span className="font-mono text-[var(--cds-text-01)]">{String(val)}</span>
                           )}
 
                           {/* Quick Copy Cell Button on Cell Hover */}
                           {!isNull && (
                             <button
                               onClick={() => handleCopyCell(val, cellId)}
-                              className="absolute top-1/2 -translate-y-1/2 end-1 p-1 bg-[#262626] border border-[#525252] text-[#c6c6c6] hover:text-white opacity-0 group-hover/cell:opacity-100 transition-opacity shadow-md"
+                              className="absolute top-1/2 -translate-y-1/2 end-1 p-1 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white opacity-0 group-hover/cell:opacity-100 transition-opacity shadow-md"
                               title="Copy cell value"
                             >
                               {isCopied ? (
@@ -783,16 +783,16 @@ export const CarbonDataTable = <T extends Record<string, any>>({
       </div>
 
       {/* 3. Carbon Pagination Bar with High Contrast */}
-      <div className="bg-[#1f1f1f] border-t-2 border-[#525252] px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-[#ffffff]">
+      <div className="bg-[var(--cds-layer-01)] border-t-2 border-[var(--cds-border-strong)] px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-[#ffffff]">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[#c6c6c6]">{language === 'ar' ? 'صفوف لكل صفحة:' : 'Items per page:'}</span>
+          <span className="text-[var(--cds-text-02)]">{language === 'ar' ? 'صفوف لكل صفحة:' : 'Items per page:'}</span>
           <select
             value={pageSize}
             onChange={e => {
               setPageSize(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-[#161616] border border-[#525252] text-[#ffffff] font-bold px-2 py-1 text-xs outline-none focus:border-[#0f62fe]"
+            className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[#ffffff] font-bold px-2 py-1 text-xs outline-none focus:border-[#0f62fe]"
           >
             {pageSizeOptions.map(opt => (
               <option key={opt} value={opt}>
@@ -801,7 +801,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             ))}
           </select>
 
-          <span className="text-[#a8a8a8]">
+          <span className="text-[var(--cds-text-02)]">
             {totalRecords > 0
               ? `${(currentPageSafe - 1) * pageSize + 1}–${Math.min(currentPageSafe * pageSize, totalRecords)} of ${totalRecords.toLocaleString()} items`
               : '0 items'}
@@ -813,7 +813,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           <button
             disabled={currentPageSafe <= 1}
             onClick={() => setCurrentPage(1)}
-            className="p-1.5 bg-[#262626] border border-[#525252] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[#262626] hover:bg-[#393939] transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="First Page"
           >
             <ChevronsLeft className="w-4 h-4 rtl:rotate-180" />
@@ -823,14 +823,14 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           <button
             disabled={currentPageSafe <= 1}
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            className="p-1.5 bg-[#262626] border border-[#525252] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[#262626] hover:bg-[#393939] transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="Previous Page"
           >
             <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
           </button>
 
           {/* Page Indicator */}
-          <span className="px-3 py-1 bg-[#161616] border border-[#525252] text-[#ffffff] font-bold">
+          <span className="px-3 py-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[#ffffff] font-bold">
             {currentPageSafe} / {totalPages}
           </span>
 
@@ -838,7 +838,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           <button
             disabled={currentPageSafe >= totalPages}
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            className="p-1.5 bg-[#262626] border border-[#525252] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[#262626] hover:bg-[#393939] transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="Next Page"
           >
             <ChevronRight className="w-4 h-4 rtl:rotate-180" />
@@ -848,7 +848,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           <button
             disabled={currentPageSafe >= totalPages}
             onClick={() => setCurrentPage(totalPages)}
-            className="p-1.5 bg-[#262626] border border-[#525252] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[#262626] hover:bg-[#393939] transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="Last Page"
           >
             <ChevronsRight className="w-4 h-4 rtl:rotate-180" />

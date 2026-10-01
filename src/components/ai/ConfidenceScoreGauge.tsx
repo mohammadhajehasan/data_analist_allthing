@@ -73,16 +73,16 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
   }
 
   return (
-    <div className={`bg-[#161616] border border-[#393939] p-4 space-y-4 ${className}`}>
+    <div className={`bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 space-y-4 ${className}`}>
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-[#393939] pb-3">
+      <div className="flex items-start justify-between border-b border-[var(--cds-border-subtle)] pb-3">
         <div className="flex items-center gap-2.5">
           <div className={`w-8 h-8 flex items-center justify-center border ${getScoreColor(score.overallScore)}`}>
             <TrendingUp className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-xs font-semibold text-[#f4f4f4] uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-[var(--cds-text-01)] uppercase tracking-wider">
                 {isAr ? 'مقياس موثوقية وثقة الاستجابة' : 'Model Response Confidence Score'}
               </h4>
               {score.isLocalOnly && (
@@ -92,7 +92,7 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-[#8d8d8d]">
+            <p className="text-[11px] text-[var(--cds-text-03)]">
               {isAr
                 ? `تقييم تقديري لدقة ومطابقة استجابة نموذج (${score.modelName}) مع مخطط البيانات`
                 : `Estimated accuracy & schema conformance score for ${score.modelName}`}
@@ -102,7 +102,7 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
 
         {/* Big Score Gauge */}
         <div className="text-end">
-          <div className="text-[10px] text-[#8d8d8d] uppercase">
+          <div className="text-[10px] text-[var(--cds-text-03)] uppercase">
             {isAr ? 'الدرجة التقديرية' : 'Overall Index'}
           </div>
           <div className="flex items-baseline gap-1">
@@ -118,10 +118,10 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
       {/* Primary Progress Bar */}
       <div>
         <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-[#c6c6c6] font-medium">
+          <span className="text-[var(--cds-text-02)] font-medium">
             {isAr ? score.reliabilityVerdictAr : score.reliabilityVerdict}
           </span>
-          <span className="text-[#8d8d8d] text-[11px] font-mono">
+          <span className="text-[var(--cds-text-03)] text-[11px] font-mono">
             {score.overallScore >= 85
               ? (isAr ? 'موثوقية عالية جداً' : 'High Reliability')
               : score.overallScore >= 70
@@ -129,7 +129,7 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
               : (isAr ? 'يوصى بالمراجعة' : 'Review Recommended')}
           </span>
         </div>
-        <div className="w-full h-2 bg-[#262626] border border-[#393939] overflow-hidden">
+        <div className="w-full h-2 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] overflow-hidden">
           <div
             className={`h-full transition-all duration-500 ${getBarColor(score.overallScore)}`}
             style={{ width: `${score.overallScore}%` }}
@@ -140,8 +140,8 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
       {/* Dimensional Breakdown Matrix */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
         {/* 1. Syntax */}
-        <div className="p-2.5 bg-[#262626] border border-[#393939] space-y-1">
-          <div className="text-[10px] text-[#8d8d8d] uppercase">
+        <div className="p-2.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-1">
+          <div className="text-[10px] text-[var(--cds-text-03)] uppercase">
             {isAr ? 'صحة صياغة الـ SQL' : 'Syntax Validity'}
           </div>
           <div className="flex items-center justify-between">
@@ -151,8 +151,8 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
         </div>
 
         {/* 2. Schema Alignment */}
-        <div className="p-2.5 bg-[#262626] border border-[#393939] space-y-1">
-          <div className="text-[10px] text-[#8d8d8d] uppercase">
+        <div className="p-2.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-1">
+          <div className="text-[10px] text-[var(--cds-text-03)] uppercase">
             {isAr ? 'تطابق أسماء الأعمدة' : 'Schema Alignment'}
           </div>
           <div className="flex items-center justify-between">
@@ -162,8 +162,8 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
         </div>
 
         {/* 3. Hallucination Risk */}
-        <div className="p-2.5 bg-[#262626] border border-[#393939] space-y-1">
-          <div className="text-[10px] text-[#8d8d8d] uppercase">
+        <div className="p-2.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-1">
+          <div className="text-[10px] text-[var(--cds-text-03)] uppercase">
             {isAr ? 'مخاطر الهلوسة' : 'Hallucination Risk'}
           </div>
           <div className="flex items-center justify-between">
@@ -183,8 +183,8 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
         </div>
 
         {/* 4. Execution Safety */}
-        <div className="p-2.5 bg-[#262626] border border-[#393939] space-y-1">
-          <div className="text-[10px] text-[#8d8d8d] uppercase">
+        <div className="p-2.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-1">
+          <div className="text-[10px] text-[var(--cds-text-03)] uppercase">
             {isAr ? 'أمان التنفيذ (9-طبقات)' : '9-Layer Safety'}
           </div>
           <div className="flex items-center justify-between">
@@ -196,10 +196,10 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
 
       {/* Model Recommendation Hint */}
       {(score.recommendation || score.recommendationAr) && (
-        <div className="p-2.5 bg-[#262626] border border-[#393939] flex items-start gap-2 text-xs text-[#c6c6c6]">
+        <div className="p-2.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-start gap-2 text-xs text-[var(--cds-text-02)]">
           <Info className="w-4 h-4 text-[#78a9ff] shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold text-[#f4f4f4]">
+            <span className="font-semibold text-[var(--cds-text-01)]">
               {isAr ? 'توصية النظام لتحسين الثقة: ' : 'Recommendation: '}
             </span>
             <span>{isAr ? score.recommendationAr : score.recommendation}</span>

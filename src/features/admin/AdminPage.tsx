@@ -19,17 +19,144 @@ import {
   Server,
   RefreshCw,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Database,
+  Download,
+  Upload
 } from 'lucide-react';
 import { CarbonDataTable, CarbonDataTableColumn } from '../../components/common/CarbonDataTable';
 import { motion } from 'motion/react';
 
 export const AdminPage: React.FC = () => {
-  const { workspace, setWorkspace, usersList, setUsersList, user, language, t, aiSettings, updateProviderConfig } = useApp();
+  const { workspace, setWorkspace, usersList, setUsersList, user, language, t, aiSettings, updateProviderConfig, toast } = useApp();
+  const isAr = language === 'ar';
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<Role>('analyst');
+
+  // Privacy-scoped user visibility: regular users only see their own account
+  // plus people who share a discussion group with them. Admins keep the full list.
+  const isAdmin = user.role === 'admin';
+
+  // ---- Database migration (export/import) — admin only ----
+  const [dbBusy, setDbBusy] = useState<'export' | 'import' | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const authHeadersDb = (): Record<string, string> => {
+    const token = localStorage.getItem('carbon_auth_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+  const exportDatabase = async () => {
+    setDbBusy('export');
+    try {
+      const res = await fetch('/api/admin/db/export', { headers: authHeadersDb() });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `HTTP ${res.status}`);
+      }
+      // Stream the .db file to a local download
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-db-${new Date().toISOString().slice(0, 10)}.db`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(isAr ? 'تم تصدير قاعدة البيانات' : 'Database exported');
+    } catch (err: any) {
+      toast.error(isAr ? 'خطأ' : 'Error', err.message);
+    } finally {
+      setDbBusy(null);
+    }
+  };
+  const importDatabase = async (file: File | undefined | null) => {
+    if (!file) return;
+    // Double confirmation — this replaces ALL live data
+    const confirmed = window.confirm(
+      isAr
+        ? `⚠️ سيتم استبدال كل البيانات الحالية (المستخدمون، المجموعات، الرسائل) بمحتوى الملف "${file.name}".\nسيُحفظ نسخة أمان تلقائية قبل الاستبدال.\nهل تريد المتابعة؟`
+        : `⚠️ ALL current data (users, groups, messages) will be replaced with "${file.name}".\nAn automatic safety backup will be taken first.\nContinue?`
+    );
+    if (!confirmed) return;
+    setDbBusy('import');
+    try {
+      const res = await fetch('/api/admin/db/import', {
+        method: 'POST',
+        headers: { ...authHeadersDb(), 'Content-Type': 'application/octet-stream' },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      toast.success(isAr ? 'تم الاستيراد' : 'Imported', data.message || (isAr ? 'الخادم يعيد التشغيل…' : 'Server restarting…'));
+      // The server exits to reload the new db — offer a page reload
+      setTimeout(() => window.location.reload(), 4000);
+    } catch (err: any) {
+      toast.error(isAr ? 'خطأ' : 'Error', err.message);
+    } finally {
+      setDbBusy(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+  // ---- Platform health monitoring (admin only): uptime / memory / database ----
+  interface SystemStatus {
+    uptimeSec: number;
+    memory: { rss: number; heapUsed: number; heapTotal: number };
+    db: { size: number; walSize: number; users: number; messages: number; integrity: string };
+    nodeVersion: string;
+    env: string;
+    platform: string;
+    checkedAt: string;
+  }
+  const [sysStatus, setSysStatus] = useState<SystemStatus | null>(null);
+  const [sysRefreshing, setSysRefreshing] = useState(false);
+  const fetchSystemStatus = React.useCallback(async () => {
+    setSysRefreshing(true);
+    try {
+      const token = localStorage.getItem('carbon_auth_token');
+      const res = await fetch('/api/admin/system-status', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) setSysStatus(await res.json());
+    } catch { /* keep last known values on transient errors */ }
+    finally { setSysRefreshing(false); }
+  }, []);
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchSystemStatus();
+    const id = setInterval(fetchSystemStatus, 15000);
+    return () => clearInterval(id);
+  }, [isAdmin, fetchSystemStatus]);
+  const fmtUptime = (s: number) => {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (isAr) return d > 0 ? `${d} يوم ${h} ساعة` : h > 0 ? `${h} ساعة ${m} دقيقة` : `${m} دقيقة ${sec} ثانية`;
+    return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m ${sec}s`;
+  };
+  const fmtBytes = (b: number) => {
+    if (b >= 1073741824) return `${(b / 1073741824).toFixed(1)} GB`;
+    if (b >= 1048576) return `${(b / 1048576).toFixed(1)} MB`;
+    if (b >= 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${b} B`;
+  };
+
+  const [contacts, setContacts] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  useEffect(() => {
+    if (isAdmin) return;
+    const token = localStorage.getItem('carbon_auth_token');
+    fetch('/api/users/contacts', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(res => (res.ok ? res.json() : { contacts: [] }))
+      .then(data => setContacts(data.contacts || []))
+      .catch(() => setContacts([]));
+  }, [isAdmin]);
+  const visibleUsers: User[] = isAdmin
+    ? usersList
+    : contacts.map(c => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        role: c.role as User['role'],
+        workspaceId: 'ws-main',
+        createdAt: new Date().toISOString(),
+      }));
   
   // Tunnel Configuration State
   const ollamaProvider = aiSettings?.providers?.ollama;
@@ -137,7 +264,7 @@ export const AdminPage: React.FC = () => {
       key: 'name',
       header: t.admin.userTable.name,
       render: (val, row) => (
-        <span className="font-bold text-[#f4f4f4] font-mono">
+        <span className="font-bold text-[var(--cds-text-01)] font-mono">
           {val} {row.id === user.id && <span className="text-[#33b1ff] text-[11px] font-normal">(You)</span>}
         </span>
       ),
@@ -145,7 +272,7 @@ export const AdminPage: React.FC = () => {
     {
       key: 'email',
       header: t.admin.userTable.email,
-      render: val => <span className="text-[#c6c6c6] font-mono text-xs">{val}</span>,
+      render: val => <span className="text-[var(--cds-text-02)] font-mono text-xs">{val}</span>,
     },
     {
       key: 'role',
@@ -174,7 +301,7 @@ export const AdminPage: React.FC = () => {
         row.id !== user.id ? (
           <button
             onClick={() => handleDeleteUser(row.id)}
-            className="p-1.5 bg-[#393939] hover:bg-[#da1e28] text-[#c6c6c6] hover:text-white transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[#da1e28] text-[var(--cds-text-02)] hover:text-white transition-colors"
             title="Remove member"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -186,85 +313,197 @@ export const AdminPage: React.FC = () => {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       {/* Top Header */}
-      <div className="border-b border-[#393939] pb-4">
+      <div className="border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
             IBM CARBON / WORKSPACE ADMINISTRATION
           </span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-[#f4f4f4] tracking-tight mt-1">{t.admin.title}</h2>
-        <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">{t.admin.subtitle}</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">{t.admin.title}</h2>
+        <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">{t.admin.subtitle}</p>
       </div>
 
       {/* Monitoring Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-           <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+           <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
              <span>API Latency</span>
              <Activity className="w-4 h-4 text-[#33b1ff]" />
            </div>
-           <div className="text-2xl font-bold text-[#f4f4f4] font-mono">{metrics.latency} ms</div>
+           <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{metrics.latency} ms</div>
         </div>
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-           <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+           <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
              <span>Success Rate</span>
              <CheckCircle2 className="w-4 h-4 text-[#42be65]" />
            </div>
-           <div className="text-2xl font-bold text-[#f4f4f4] font-mono">{metrics.successRate.toFixed(1)}%</div>
+           <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{metrics.successRate.toFixed(1)}%</div>
         </div>
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-           <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+           <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
              <span>Token Usage</span>
              <Sliders className="w-4 h-4 text-[#8a3ffc]" />
            </div>
-           <div className="text-2xl font-bold text-[#f4f4f4] font-mono">{metrics.tokens}</div>
+           <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{metrics.tokens}</div>
         </div>
       </div>
 
+      {/* Platform health monitoring (admin only) */}
+      {isAdmin && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-[#42be65]" />
+              <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+                {isAr ? 'مراقبة حالة المنصة' : 'Platform health'}
+              </h3>
+              <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                {isAr ? 'تُحدّث تلقائياً كل 15 ثانية' : 'auto-refresh · 15s'}
+              </span>
+            </div>
+            <button
+              onClick={fetchSystemStatus}
+              disabled={sysRefreshing}
+              className="p-1.5 rounded text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-01)] disabled:opacity-60 transition-colors"
+              title={isAr ? 'تحديث الآن' : 'Refresh now'}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${sysRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          {sysStatus ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+                  <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
+                    <span>{isAr ? 'زمن التشغيل' : 'Uptime'}</span>
+                    <Activity className="w-4 h-4 text-[#42be65]" />
+                  </div>
+                  <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{fmtUptime(sysStatus.uptimeSec)}</div>
+                </div>
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+                  <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
+                    <span>{isAr ? 'ذاكرة الخادم (RSS)' : 'Server memory (RSS)'}</span>
+                    <Server className="w-4 h-4 text-[#33b1ff]" />
+                  </div>
+                  <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{fmtBytes(sysStatus.memory.rss)}</div>
+                  <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
+                    {isAr ? 'الكومة' : 'heap'}: {fmtBytes(sysStatus.memory.heapUsed)} / {fmtBytes(sysStatus.memory.heapTotal)}
+                  </p>
+                </div>
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+                  <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
+                    <span>{isAr ? 'قاعدة البيانات' : 'Database'}</span>
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: sysStatus.db.integrity === 'ok' ? '#42be65' : '#da1e28' }}
+                      title={`integrity: ${sysStatus.db.integrity}`}
+                    />
+                  </div>
+                  <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{fmtBytes(sysStatus.db.size)}</div>
+                  <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
+                    {sysStatus.db.users} {isAr ? 'مستخدم' : 'users'} · {sysStatus.db.messages} {isAr ? 'رسالة' : 'messages'}
+                    {sysStatus.db.walSize > 0 ? ` · WAL ${fmtBytes(sysStatus.db.walSize)}` : ''}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                Node {sysStatus.nodeVersion} · {sysStatus.platform} · {sysStatus.env}
+              </p>
+            </>
+          ) : (
+            <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-xs text-[var(--cds-text-03)] font-mono">
+              {isAr ? 'جارٍ جمع حالة النظام…' : 'Collecting system status…'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Database migration (admin only) */}
+      {isAdmin && (
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-[#0f62fe]" />
+            <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+              {isAr ? 'ترحيل قاعدة البيانات (تجربة ⇄ إنتاج)' : 'Database migration (staging ⇄ production)'}
+            </h3>
+          </div>
+          <p className="text-[11px] text-[var(--cds-text-03)] leading-relaxed">
+            {isAr
+              ? 'صدّر نسخة كاملة من قاعدة البيانات (مستخدمون، مجموعات، رسائل) وارفعها في بيئة أخرى. الاستيراد يستبدل كل البيانات الحالية — تُحفظ نسخة أمان تلقائية قبل الاستبدال ويُعاد تشغيل الخادم لتحميل البيانات الجديدة.'
+              : 'Export a full snapshot of the database (users, groups, messages) and upload it to another environment. Import replaces ALL current data — an automatic safety backup is taken first and the server restarts to load the new data.'}
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".db,application/octet-stream"
+            className="hidden"
+            onChange={e => importDatabase(e.target.files?.[0])}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={exportDatabase}
+              disabled={dbBusy !== null}
+              className="h-9 px-4 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
+            >
+              {dbBusy === 'export' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              {isAr ? 'تصدير قاعدة البيانات' : 'Export database'}
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={dbBusy !== null}
+              className="h-9 px-4 text-xs font-semibold rounded-lg flex items-center gap-2 text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-01)] disabled:opacity-60"
+            >
+              {dbBusy === 'import' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {isAr ? 'استيراد واستبدال…' : 'Import & replace…'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Workspace Plan & Resource Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-          <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+          <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
             <span>{t.admin.workspacePlan}</span>
             <Building2 className="w-4 h-4 text-[#0f62fe]" />
           </div>
-          <div className="text-2xl font-bold text-[#f4f4f4] font-mono">{workspace.plan.toUpperCase()}</div>
-          <p className="text-[11px] text-[#8d8d8d] font-mono">
+          <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{workspace.plan.toUpperCase()}</div>
+          <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
             {workspace.name} • Active
           </p>
         </div>
 
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-          <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+          <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
             <span>{t.admin.storageUsed}</span>
             <HardDrive className="w-4 h-4 text-[#33b1ff]" />
           </div>
-          <div className="text-2xl font-bold text-[#f4f4f4] font-mono">1.2 GB / 50 GB</div>
-          <div className="w-full bg-[#161616] h-1.5 border border-[#393939]">
+          <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">1.2 GB / 50 GB</div>
+          <div className="w-full bg-[var(--cds-layer-01)] h-1.5 border border-[var(--cds-border-subtle)]">
             <div className="bg-[#33b1ff] h-full" style={{ width: '2.4%' }} />
           </div>
         </div>
 
-        <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-          <div className="flex items-center justify-between text-[#8d8d8d] text-xs font-mono font-semibold uppercase">
+        <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+          <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
             <span>{t.admin.activeMembers}</span>
             <Users className="w-4 h-4 text-[#42be65]" />
           </div>
-          <div className="text-2xl font-bold text-[#f4f4f4] font-mono">{usersList.length} Active Users</div>
-          <p className="text-[11px] text-[#8d8d8d] font-mono">
+          <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{visibleUsers.length} Active Users</div>
+          <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
             RBAC Policies Enforced
           </p>
         </div>
       </div>
 
       {/* Secure Local Tunnel Configuration */}
-      <div className="bg-[#262626] border border-[#393939] p-5">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <Server className="w-5 h-5 text-[#8a3ffc]" />
-          <h3 className="text-lg font-bold text-[#f4f4f4] font-mono">Secure Local Tunnel (ngrok)</h3>
+          <h3 className="text-lg font-bold text-[var(--cds-text-01)] font-mono">Secure Local Tunnel (ngrok)</h3>
         </div>
         
-        <p className="text-sm text-[#c6c6c6] mb-5">
+        <p className="text-sm text-[var(--cds-text-02)] mb-5">
           {language === 'ar' 
             ? 'قم بتكوين اتصال الخادم الخاص بك (Ollama/vLLM) ليعمل مع تطبيق السحابة عبر نفق ngrok الآمن.'
             : 'Configure your local Ollama/vLLM endpoint to communicate securely with the cloud application via ngrok SDK.'}
@@ -273,7 +512,7 @@ export const AdminPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-[#8d8d8d] uppercase mb-1.5 font-mono">
+              <label className="block text-xs font-bold text-[var(--cds-text-03)] uppercase mb-1.5 font-mono">
                 {language === 'ar' ? 'رابط الـ API الأساسي (Ngrok URL)' : 'API Base URL (Ngrok Tunnel)'}
               </label>
               <input 
@@ -281,12 +520,12 @@ export const AdminPage: React.FC = () => {
                 value={tunnelUrl}
                 onChange={(e) => setTunnelUrl(e.target.value)}
                 placeholder="https://broadly-precision-shakiness.ngrok-free.dev"
-                className="w-full h-10 px-3 bg-[#161616] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
+                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
               />
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-[#8d8d8d] uppercase mb-1.5 font-mono">
+              <label className="block text-xs font-bold text-[var(--cds-text-03)] uppercase mb-1.5 font-mono">
                 {language === 'ar' ? 'منفذ الاتصال المحلي (Ollama Port)' : 'Target Local Port (e.g. 11434)'}
               </label>
               <input 
@@ -294,7 +533,7 @@ export const AdminPage: React.FC = () => {
                 value={tunnelPort}
                 onChange={(e) => setTunnelPort(e.target.value)}
                 placeholder="11434"
-                className="w-full h-10 px-3 bg-[#161616] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
+                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
               />
             </div>
 
@@ -328,15 +567,15 @@ export const AdminPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-[#161616] border border-[#393939] p-4 flex flex-col justify-center">
-            <h4 className="text-xs font-bold text-[#8d8d8d] uppercase font-mono mb-4">Connection Status</h4>
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-center">
+            <h4 className="text-xs font-bold text-[var(--cds-text-03)] uppercase font-mono mb-4">Connection Status</h4>
             
             <div className="flex items-center gap-3 mb-4">
               <div className="relative">
                 {tunnelStatus === 'connected' && <div className="absolute inset-0 bg-[#24a148] rounded-full blur-sm opacity-50 animate-pulse" />}
-                <div className={`w-3 h-3 rounded-full relative z-10 ${tunnelStatus === 'connected' ? 'bg-[#24a148]' : tunnelStatus === 'error' ? 'bg-[#da1e28]' : tunnelStatus === 'checking' ? 'bg-[#f1c21b] animate-ping' : 'bg-[#525252]'}`} />
+                <div className={`w-3 h-3 rounded-full relative z-10 ${tunnelStatus === 'connected' ? 'bg-[#24a148]' : tunnelStatus === 'error' ? 'bg-[#da1e28]' : tunnelStatus === 'checking' ? 'bg-[#f1c21b] animate-ping' : 'bg-[var(--cds-border-strong)]'}`} />
               </div>
-              <span className={`font-mono text-sm font-bold ${tunnelStatus === 'connected' ? 'text-[#42be65]' : tunnelStatus === 'error' ? 'text-[#fa4d56]' : tunnelStatus === 'checking' ? 'text-[#f1c21b]' : 'text-[#8d8d8d]'}`}>
+              <span className={`font-mono text-sm font-bold ${tunnelStatus === 'connected' ? 'text-[#42be65]' : tunnelStatus === 'error' ? 'text-[#fa4d56]' : tunnelStatus === 'checking' ? 'text-[#f1c21b]' : 'text-[var(--cds-text-03)]'}`}>
                 {tunnelStatus === 'connected' ? 'ACTIVE - BRIDGE ESTABLISHED' : 
                  tunnelStatus === 'error' ? 'ERROR - CONNECTION FAILED' : 
                  tunnelStatus === 'checking' ? 'NEGOTIATING HANDSHAKE...' : 'OFFLINE - READY'}
@@ -363,42 +602,50 @@ export const AdminPage: React.FC = () => {
       {/* User Management Section with CarbonDataTable */}
       <CarbonDataTable
         id="admin-users-table"
-        data={usersList}
+        data={visibleUsers}
         columns={userColumns}
         language={language}
         title={t.admin.teamMembers}
-        description={`${usersList.length} registered team members`}
+        description={
+          isAdmin
+            ? `${visibleUsers.length} registered team members`
+            : language === 'ar'
+              ? `${visibleUsers.length} — حسابك وجهات اتصالك من المناقشات المشتركة فقط`
+              : `${visibleUsers.length} — your account and shared-discussion contacts only`
+        }
         initialPageSize={10}
         toolbarActions={
-          <button
-            onClick={() => setShowAddUserModal(true)}
-            className="carbon-btn-primary text-xs font-mono font-bold uppercase gap-2 py-1.5 px-3"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t.admin.inviteMember}</span>
-          </button>
+          isAdmin ? (
+            <button
+              onClick={() => setShowAddUserModal(true)}
+              className="carbon-btn-primary text-xs font-mono font-bold uppercase gap-2 py-1.5 px-3"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t.admin.inviteMember}</span>
+            </button>
+          ) : undefined
         }
       />
 
       {/* Invite Member Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
-          <div className="bg-[#262626] border border-[#393939] max-w-md w-full p-6 shadow-2xl space-y-4 rounded-none">
-            <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] max-w-md w-full p-6 shadow-2xl space-y-4 rounded-none">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
                   INVITE COLLABORATOR
                 </span>
-                <h3 className="text-base font-bold text-[#f4f4f4]">{t.admin.inviteMember}</h3>
+                <h3 className="text-base font-bold text-[var(--cds-text-01)]">{t.admin.inviteMember}</h3>
               </div>
-              <button onClick={() => setShowAddUserModal(false)} className="text-[#8d8d8d] hover:text-white font-mono">
+              <button onClick={() => setShowAddUserModal(false)} className="text-[var(--cds-text-03)] hover:text-white font-mono">
                 ✕
               </button>
             </div>
 
             <div className="space-y-3 font-mono text-xs">
               <div>
-                <label className="block text-[#c6c6c6] mb-1">Full Name</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">Full Name</label>
                 <input
                   type="text"
                   value={newUserName}
@@ -409,7 +656,7 @@ export const AdminPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[#c6c6c6] mb-1">Email Address</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">Email Address</label>
                 <input
                   type="email"
                   value={newUserEmail}
@@ -420,7 +667,7 @@ export const AdminPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[#c6c6c6] mb-1">Role (RBAC Permission)</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">Role (RBAC Permission)</label>
                 <select
                   value={newUserRole}
                   onChange={e => setNewUserRole(e.target.value as Role)}
@@ -434,7 +681,7 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#393939]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--cds-border-subtle)]">
               <button
                 onClick={() => setShowAddUserModal(false)}
                 className="carbon-btn-secondary text-xs font-mono font-bold uppercase"

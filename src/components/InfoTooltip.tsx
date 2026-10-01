@@ -111,7 +111,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
         <div
           ref={tooltipRef}
           role="tooltip"
-          className={`absolute z-50 w-72 max-w-[90vw] p-3 rounded-xl bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] shadow-xl shadow-black/20 text-xs leading-relaxed pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ${positionClasses[position]}`}
+          className={`absolute z-50 w-72 max-w-[90vw] p-3 rounded-lg bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] shadow-xl shadow-black/20 text-xs leading-relaxed pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ${positionClasses[position]}`}
           style={{ textTransform: 'none' }}
           onClick={(e) => e.stopPropagation()}
         >

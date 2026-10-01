@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   User,
   Workspace,
@@ -124,6 +124,8 @@ interface AppContextType {
    testProviderConnection: (providerId: AIProviderId) => Promise<{ status: 'connected' | 'error'; message: string; latencyMs?: number }>;
     refreshOllamaModels: () => Promise<string[]>;
     refreshCloudModels: (providerId: AIProviderId, apiKey: string, endpointUrl?: string) => Promise<any[]>;
+    // Authentication
+    logout: () => void;
     // Comments & Annotations Collaboration
    comments: CommentItem[];
    addComment: (comment: Omit<CommentItem, 'id' | 'createdAt'>) => CommentItem;
@@ -215,6 +217,16 @@ const getInitialDashboards = (): Dashboard[] => {
   return [DEFAULT_DASHBOARD];
 };
 
+const MODEL_ID_ALIASES: Record<string, string> = {
+  'openrouter/anthropic/claude-3.7-sonnet': 'openrouter/anthropic/claude-sonnet-5.5',
+  'openrouter/anthropic/claude-sonnet-4.5': 'openrouter/anthropic/claude-sonnet-5.5',
+  'openrouter/meta-llama/llama-3.3-70b-instruct': 'openrouter/deepseek/deepseek-v4.1-flash',
+  'openrouter/google/gemini-2.5-flash': 'openrouter/deepseek/deepseek-v4.1-flash',
+  'openrouter/openai/gpt-4o': 'openrouter/deepseek/deepseek-v4.1-flash',
+  // Default paid model → free default so low-credit accounts never hit 402 unexpectedly
+  'openrouter/anthropic/claude-sonnet-5.5': 'openrouter/nvidia/nemotron-3.5-lightning:free',
+};
+
 const sanitizeStoredModel = (modelId?: string): string => {
   if (!modelId) return 'gemini-3.8-flash';
   const clean = modelId.toLowerCase().trim();
@@ -223,6 +235,9 @@ const sanitizeStoredModel = (modelId?: string): string => {
   }
   if (clean === 'gemini-1.5-pro' || clean === 'gemini-2.0-pro' || clean === 'gemini-pro') {
     return 'gemini-3.1-pro-preview';
+  }
+  if (MODEL_ID_ALIASES[clean]) {
+    return MODEL_ID_ALIASES[clean];
   }
   return modelId;
 };
@@ -233,17 +248,28 @@ const getInitialAISettings = (): AISettings => {
     if (saved) {
       const parsed = JSON.parse(saved);
       const activeModel = sanitizeStoredModel(parsed.activeModel);
+      const providers: Record<string, any> = {
+        ...INITIAL_AI_SETTINGS.providers,
+        ...(parsed.providers || {}),
+      };
+      // Migrate deprecated model ids stored inside each provider config
+      Object.keys(providers).forEach((key) => {
+        const p = providers[key];
+        if (p && typeof p === 'object') {
+          if (p.defaultModelId) p.defaultModelId = sanitizeStoredModel(p.defaultModelId);
+          if (p.selectedModelId) p.selectedModelId = sanitizeStoredModel(p.selectedModelId);
+        }
+      });
       return {
         ...INITIAL_AI_SETTINGS,
         ...parsed,
         activeModel,
         providers: {
-          ...INITIAL_AI_SETTINGS.providers,
-          ...(parsed.providers || {}),
+          ...providers,
           gemini: {
             ...INITIAL_AI_SETTINGS.providers.gemini,
-            defaultModelId: 'gemini-3.8-flash',
             ...(parsed.providers?.gemini || {}),
+            defaultModelId: 'gemini-3.8-flash',
           },
         },
       };
@@ -423,13 +449,36 @@ const DEFAULT_AUDIT_LOGS: AuditLogEntry[] = [
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{
+  children: React.ReactNode;
+  authUser?: { id: string; email: string; name: string; role: string } | null;
+  onLogout?: () => void;
+}> = ({ children, authUser, onLogout }) => {
   const [language, setLanguageState] = useState<Language>(getInitialLanguage);
   const [activeTab, setActiveTab] = useState<string>('landing');
+
+  // External navigation request (e.g. after accepting a group invite link)
+  useEffect(() => {
+    const openDiscussions = () => setActiveTab('discussions');
+    window.addEventListener('carbon-open-discussions', openDiscussions);
+    return () => window.removeEventListener('carbon-open-discussions', openDiscussions);
+  }, []);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [theme, setThemeState] = useState<ThemeVariant>(getInitialTheme);
   const [layoutSettings, setLayoutSettings] = useState<LayoutSettings>(getInitialLayout);
-  const [user, setUser] = useState<User>(DEFAULT_USER);
+  // Authenticated user from the SQLite-backed session (falls back to demo default)
+  const [user, setUser] = useState<User>(
+    authUser
+      ? {
+          id: authUser.id,
+          name: authUser.name,
+          email: authUser.email,
+          role: authUser.role as User['role'],
+          workspaceId: 'ws-main',
+          createdAt: new Date().toISOString(),
+        }
+      : DEFAULT_USER
+  );
   const [usersList, setUsersList] = useState<User[]>([
     DEFAULT_USER,
     {
@@ -760,22 +809,32 @@ const refreshOllamaModels = async (): Promise<string[]> => {
      return [];
     };
 
-  // Auto-discover cloud models when API key is added/changed
+  // Tracks the last key per provider that model discovery ran for, so a key
+  // change (paste/edit/delete) re-triggers discovery.
+  const lastDiscoveredKeys = useRef<Partial<Record<AIProviderId, string>>>({});
+
+  // Auto-discover cloud models whenever an API key is added OR CHANGED.
+  // Re-discovery runs on every key change so the model list always reflects
+  // what that specific key can actually access (per-provider, all providers).
   useEffect(() => {
     const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
-    
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
     for (const providerId of cloudProviders) {
       const config = aiSettings.providers[providerId];
-      const hasKey = config.apiKey && config.apiKey.trim().length > 0;
-      const needsDiscovery = hasKey && (!config.discoveredModels || config.discoveredModels.length === 0);
-      
-      if (needsDiscovery) {
+      const currentKey = (config.apiKey || '').trim();
+      const keyChanged = currentKey !== (lastDiscoveredKeys.current[providerId] ?? null);
+      const openrouterServerKey = providerId === 'openrouter'; // backend can use .env key
+
+      if ((currentKey || openrouterServerKey) && keyChanged) {
+        lastDiscoveredKeys.current[providerId] = currentKey;
         const timeoutId = setTimeout(() => {
-          refreshCloudModels(providerId, config.apiKey!, config.endpointUrl);
+          refreshCloudModels(providerId, currentKey, config.endpointUrl);
         }, 500);
-        return () => clearTimeout(timeoutId);
+        timeouts.push(timeoutId);
       }
     }
+    return () => timeouts.forEach(clearTimeout);
   }, [
     aiSettings.providers.gemini.apiKey,
     aiSettings.providers.qwen.apiKey,
@@ -808,19 +867,20 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       return [];
 };
 
-   // Auto-discover cloud models when API key is added/changed
+   // Auto-discover cloud models when API key is added/changed.
+   // Runs even without a browser-stored key: the backend falls back to .env keys.
    useEffect(() => {
     const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
     
     for (const providerId of cloudProviders) {
       const config = aiSettings.providers[providerId];
       const hasKey = config.apiKey && config.apiKey.trim().length > 0;
-      const needsDiscovery = hasKey && (!config.discoveredModels || config.discoveredModels.length === 0);
+      const needsDiscovery = (hasKey || providerId === 'openrouter') && (!config.discoveredModels || config.discoveredModels.length === 0);
       
       if (needsDiscovery) {
         // Debounce to avoid multiple rapid calls
         const timeoutId = setTimeout(() => {
-          refreshCloudModels(providerId, config.apiKey!, config.endpointUrl);
+          refreshCloudModels(providerId, config.apiKey || '', config.endpointUrl);
         }, 500);
         return () => clearTimeout(timeoutId);
       }
@@ -1712,6 +1772,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         testProviderConnection,
         refreshOllamaModels,
         refreshCloudModels,
+        logout: () => { onLogout?.(); },
         comments,
         addComment,
         addCommentReply,

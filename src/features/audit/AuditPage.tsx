@@ -28,7 +28,7 @@ export const AuditPage: React.FC = () => {
       key: 'timestamp',
       header: t.audit.timestamp,
       render: val => (
-        <span className="text-[#8d8d8d] font-mono">
+        <span className="text-[var(--cds-text-03)] font-mono">
           {new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </span>
       ),
@@ -36,7 +36,7 @@ export const AuditPage: React.FC = () => {
     {
       key: 'userName',
       header: t.audit.user,
-      render: val => <span className="text-[#f4f4f4] font-bold font-mono">{val}</span>,
+      render: val => <span className="text-[var(--cds-text-01)] font-bold font-mono">{val}</span>,
     },
     {
       key: 'action',
@@ -51,7 +51,7 @@ export const AuditPage: React.FC = () => {
       key: 'resourceId',
       header: t.audit.target,
       render: (_, row) => (
-        <span className="text-[#c6c6c6] font-mono text-xs">
+        <span className="text-[var(--cds-text-02)] font-mono text-xs">
           {row.resourceType}: {row.resourceId}
         </span>
       ),
@@ -69,7 +69,7 @@ export const AuditPage: React.FC = () => {
       key: 'payloadSummary',
       header: 'Payload Summary',
       render: (val, row) => (
-        <span className="text-[#8d8d8d] font-mono text-xs max-w-xs truncate block">
+        <span className="text-[var(--cds-text-03)] font-mono text-xs max-w-xs truncate block">
           {val || JSON.stringify(row.details || {})}
         </span>
       ),
@@ -79,15 +79,15 @@ export const AuditPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#393939] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
               IBM CARBON / GOVERNANCE & AUDIT LOGS
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#f4f4f4] tracking-tight mt-1">{t.audit.title}</h2>
-          <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">{t.audit.subtitle}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">{t.audit.title}</h2>
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">{t.audit.subtitle}</p>
         </div>
 
         <button
@@ -100,13 +100,13 @@ export const AuditPage: React.FC = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-[#262626] border border-[#393939] p-4 flex items-center justify-between gap-4">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-mono text-xs">
-          <span className="text-[#8d8d8d] shrink-0">Action Type Filter:</span>
+          <span className="text-[var(--cds-text-03)] shrink-0">Action Type Filter:</span>
           <select
             value={filterAction}
             onChange={e => setFilterAction(e.target.value)}
-            className="bg-[#161616] border border-[#525252] text-[#f4f4f4] px-3 py-1.5 text-xs outline-none focus:border-[#0f62fe]"
+            className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] px-3 py-1.5 text-xs outline-none focus:border-[#0f62fe]"
           >
             <option value="ALL">ALL Actions (الكل)</option>
             <option value="QUERY_EXECUTION">QUERY_EXECUTION</option>
@@ -117,8 +117,8 @@ export const AuditPage: React.FC = () => {
           </select>
         </div>
 
-        <span className="text-xs font-mono text-[#8d8d8d]">
-          Total Events: <strong className="text-[#f4f4f4]">{filteredLogs.length}</strong>
+        <span className="text-xs font-mono text-[var(--cds-text-03)]">
+          Total Events: <strong className="text-[var(--cds-text-01)]">{filteredLogs.length}</strong>
         </span>
       </div>
 

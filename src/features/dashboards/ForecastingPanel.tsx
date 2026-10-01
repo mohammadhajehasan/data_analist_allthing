@@ -103,16 +103,16 @@ export const ForecastingPanel: React.FC = () => {
   const textCols = activeDataset?.columns.filter(c => c.type === 'string' || c.type === 'category' || c.type === 'date') || [];
 
   return (
-    <div className="bg-[#262626] border border-[#393939] p-5 space-y-5">
+    <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#393939] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-[#24a148]" />
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               {isAr ? 'محرك التنبؤ الآلي وسيناريوهات المحاكاة' : 'Automated Predictive Engine & What-If Simulator'}
             </h3>
-            <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+            <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
               {isAr
                 ? 'توقع مسار الأرقام والمبيعات لـ 12 شهراً القادمة بناءً على تعديلات تسويقية وتسعيرية افتراضية'
                 : 'Project metrics 12 months ahead using Holt-Winters math modified by real-time What-If inputs'}
@@ -123,14 +123,14 @@ export const ForecastingPanel: React.FC = () => {
         {/* Column Selectors */}
         <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
           <div className="flex items-center gap-1">
-            <span className="text-[#8d8d8d]">{isAr ? 'المقياس:' : 'Metric:'}</span>
+            <span className="text-[var(--cds-text-03)]">{isAr ? 'المقياس:' : 'Metric:'}</span>
             <select
               value={selectedMetric}
               onChange={e => setSelectedMetric(e.target.value)}
-              className="bg-[#161616] border border-[#393939] text-[#24a148] px-2 py-1 outline-none font-bold"
+              className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[#24a148] px-2 py-1 outline-none font-bold"
             >
               {numericCols.map(col => (
-                <option key={col.name} value={col.name} className="bg-[#262626] text-white">
+                <option key={col.name} value={col.name} className="bg-[var(--cds-layer-02)] text-white">
                   {col.name}
                 </option>
               ))}
@@ -138,14 +138,14 @@ export const ForecastingPanel: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-[#8d8d8d]">{isAr ? 'التصنيف:' : 'Group By:'}</span>
+            <span className="text-[var(--cds-text-03)]">{isAr ? 'التصنيف:' : 'Group By:'}</span>
             <select
               value={selectedDimension}
               onChange={e => setSelectedDimension(e.target.value)}
-              className="bg-[#161616] border border-[#393939] text-[#33b1ff] px-2 py-1 outline-none font-bold"
+              className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[#33b1ff] px-2 py-1 outline-none font-bold"
             >
               {textCols.map(col => (
-                <option key={col.name} value={col.name} className="bg-[#262626] text-white">
+                <option key={col.name} value={col.name} className="bg-[var(--cds-layer-02)] text-white">
                   {col.name}
                 </option>
               ))}
@@ -156,12 +156,12 @@ export const ForecastingPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Predictive Chart Visualizer (Left/Top) */}
-        <div className="lg:col-span-8 bg-[#161616] border border-[#393939] p-4 flex flex-col justify-between min-h-[360px]">
+        <div className="lg:col-span-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-between min-h-[360px]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#24a148]">
               12-Month Mathematical Time Series Forecast
             </span>
-            <div className="flex items-center gap-3 text-[10px] font-mono text-[#c6c6c6]">
+            <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--cds-text-02)]">
               <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-[#24a148]" /> {isAr ? 'البيانات التاريخية' : 'Historical'}</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-[#ff832b] border-dashed" /> {isAr ? 'توقع مستقبلي' : 'Predictive Projection'}</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2 bg-[#ff832b]/15" /> {isAr ? 'قناة الثقة 95%' : '95% Confidence Bounds'}</span>
@@ -169,7 +169,7 @@ export const ForecastingPanel: React.FC = () => {
           </div>
 
           {forecastData.length === 0 ? (
-            <div className="text-center py-20 text-[#8d8d8d]">
+            <div className="text-center py-20 text-[var(--cds-text-03)]">
               {isAr ? 'يرجى اختيار مقاييس صالحة للحساب التنبئي.' : 'Please select valid columns to run forecasting.'}
             </div>
           ) : (
@@ -234,9 +234,9 @@ export const ForecastingPanel: React.FC = () => {
         </div>
 
         {/* Real-time What-If Sliders Panel (Right/Bottom) */}
-        <div className="lg:col-span-4 bg-[#1f1f1f] border border-[#393939] p-4 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-between space-y-4">
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#393939] pb-2">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
               <div className="flex items-center gap-1.5">
                 <Sliders className="w-4 h-4 text-[#ff832b]" />
                 <span className="text-xs font-mono font-bold text-white uppercase">
@@ -245,7 +245,7 @@ export const ForecastingPanel: React.FC = () => {
               </div>
               <button
                 onClick={resetWhatIf}
-                className="text-[10px] font-mono text-[#8d8d8d] hover:text-white underline"
+                className="text-[10px] font-mono text-[var(--cds-text-03)] hover:text-white underline"
               >
                 {isAr ? 'إعادة تعيين' : 'Reset Modifiers'}
               </button>
@@ -254,7 +254,7 @@ export const ForecastingPanel: React.FC = () => {
             {/* Slider 1: Marketing Spend Boost */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[11px] font-mono">
-                <span className="text-[#c6c6c6]">{isAr ? '📣 تكثيف الإنفاق التسويقي:' : '📣 Marketing Boost:'}</span>
+                <span className="text-[var(--cds-text-02)]">{isAr ? '📣 تكثيف الإنفاق التسويقي:' : '📣 Marketing Boost:'}</span>
                 <span className={`font-bold ${marketingBoost >= 0 ? 'text-[#24a148]' : 'text-[#da1e28]'}`}>
                   {marketingBoost > 0 ? `+${marketingBoost}%` : `${marketingBoost}%`}
                 </span>
@@ -266,9 +266,9 @@ export const ForecastingPanel: React.FC = () => {
                 step="5"
                 value={marketingBoost}
                 onChange={e => setMarketingBoost(Number(e.target.value))}
-                className="w-full accent-[#ff832b] h-1.5 bg-[#161616] rounded-none appearance-none cursor-pointer"
+                className="w-full accent-[#ff832b] h-1.5 bg-[var(--cds-layer-01)] rounded-none appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[9px] font-mono text-[#8d8d8d]">
+              <div className="flex justify-between text-[9px] font-mono text-[var(--cds-text-03)]">
                 <span>-50% (Budget Cut)</span>
                 <span>+100% (Double Budget)</span>
               </div>
@@ -277,7 +277,7 @@ export const ForecastingPanel: React.FC = () => {
             {/* Slider 2: Pricing Factor Adjustments */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[11px] font-mono">
-                <span className="text-[#c6c6c6]">{isAr ? '🏷️ تخفيض / زيادة الأسعار:' : '🏷️ Price Adjustment:'}</span>
+                <span className="text-[var(--cds-text-02)]">{isAr ? '🏷️ تخفيض / زيادة الأسعار:' : '🏷️ Price Adjustment:'}</span>
                 <span className={`font-bold ${pricingFactor >= 0 ? 'text-[#33b1ff]' : 'text-[#ff832b]'}`}>
                   {pricingFactor > 0 ? `+${pricingFactor}%` : `${pricingFactor}%`}
                 </span>
@@ -289,9 +289,9 @@ export const ForecastingPanel: React.FC = () => {
                 step="2"
                 value={pricingFactor}
                 onChange={e => setPricingFactor(Number(e.target.value))}
-                className="w-full accent-[#ff832b] h-1.5 bg-[#161616] rounded-none appearance-none cursor-pointer"
+                className="w-full accent-[#ff832b] h-1.5 bg-[var(--cds-layer-01)] rounded-none appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[9px] font-mono text-[#8d8d8d]">
+              <div className="flex justify-between text-[9px] font-mono text-[var(--cds-text-03)]">
                 <span>-30% (Discounts)</span>
                 <span>+30% (Premium Markup)</span>
               </div>
@@ -300,7 +300,7 @@ export const ForecastingPanel: React.FC = () => {
             {/* Slider 3: Seasonal multiplier */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[11px] font-mono">
-                <span className="text-[#c6c6c6]">{isAr ? '❄️ العامل الموسمي والظروف:' : '❄️ Seasonal Coefficient:'}</span>
+                <span className="text-[var(--cds-text-02)]">{isAr ? '❄️ العامل الموسمي والظروف:' : '❄️ Seasonal Coefficient:'}</span>
                 <span className="font-bold text-white">
                   {seasonalMultiplier}x
                 </span>
@@ -312,9 +312,9 @@ export const ForecastingPanel: React.FC = () => {
                 step="0.1"
                 value={seasonalMultiplier}
                 onChange={e => setSeasonalMultiplier(Number(e.target.value))}
-                className="w-full accent-[#ff832b] h-1.5 bg-[#161616] rounded-none appearance-none cursor-pointer"
+                className="w-full accent-[#ff832b] h-1.5 bg-[var(--cds-layer-01)] rounded-none appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[9px] font-mono text-[#8d8d8d]">
+              <div className="flex justify-between text-[9px] font-mono text-[var(--cds-text-03)]">
                 <span>0.5x (Recession/Low Season)</span>
                 <span>2.0x (Peak Season/Holiday)</span>
               </div>
@@ -322,7 +322,7 @@ export const ForecastingPanel: React.FC = () => {
           </div>
 
           {/* Quick Informational Notice */}
-          <div className="p-3 bg-[#161616] border border-[#393939] text-[11px] font-mono text-[#8d8d8d] space-y-1 leading-relaxed">
+          <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[11px] font-mono text-[var(--cds-text-03)] space-y-1 leading-relaxed">
             <div className="flex items-center gap-1.5 text-[#ff832b] font-bold uppercase mb-1">
               <Info className="w-3.5 h-3.5" />
               <span>{isAr ? 'منهجية التنبؤ' : 'Forecasting Theory'}</span>

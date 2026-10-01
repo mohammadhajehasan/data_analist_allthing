@@ -51,17 +51,17 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in">
-      <div className="bg-[#262626] border border-[#393939] max-w-xl w-full p-6 shadow-2xl space-y-5 rounded-none">
-        <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] max-w-xl w-full p-6 shadow-2xl space-y-5 rounded-none">
+        <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
           <div>
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
               GOVERNANCE & RUNTIME TOGGLES
             </span>
-            <h3 className="text-base font-bold text-[#f4f4f4]">{t.common.featureFlags}</h3>
+            <h3 className="text-base font-bold text-[var(--cds-text-01)]">{t.common.featureFlags}</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-[#8d8d8d] hover:text-white text-lg font-mono px-2 py-1"
+            className="text-[var(--cds-text-03)] hover:text-white text-lg font-mono px-2 py-1"
           >
             ✕
           </button>
@@ -74,15 +74,15 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
             return (
               <div
                 key={item.key}
-                className="flex items-center justify-between p-3 bg-[#161616] border border-[#393939] hover:border-[#525252] transition-colors"
+                className="flex items-center justify-between p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 bg-[#262626] border border-[#393939] flex items-center justify-center text-[#0f62fe] shrink-0 mt-0.5">
+                  <div className="w-7 h-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe] shrink-0 mt-0.5">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[#f4f4f4]">{item.name}</div>
-                    <div className="text-[11px] text-[#8d8d8d]">{item.desc}</div>
+                    <div className="text-xs font-bold text-[var(--cds-text-01)]">{item.name}</div>
+                    <div className="text-[11px] text-[var(--cds-text-03)]">{item.desc}</div>
                   </div>
                 </div>
 
@@ -93,14 +93,14 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
                     onChange={e => updateFeatureFlags({ [item.key]: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-[#393939] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0f62fe]" />
+                  <div className="w-9 h-5 bg-[var(--cds-layer-03)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0f62fe]" />
                 </label>
               </div>
             );
           })}
         </div>
 
-        <div className="flex justify-end pt-3 border-t border-[#393939]">
+        <div className="flex justify-end pt-3 border-t border-[var(--cds-border-subtle)]">
           <button
             onClick={onClose}
             className="carbon-btn-secondary text-xs uppercase tracking-wider"

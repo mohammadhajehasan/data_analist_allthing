@@ -310,7 +310,7 @@ export const MergedDataPreviewTable: React.FC<MergedDataPreviewTableProps> = ({
   };
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl overflow-hidden shadow-xl space-y-4 p-4">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg overflow-hidden shadow-xl space-y-4 p-4">
       {/* Header Banner */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
         <div className="flex items-center gap-2.5">
@@ -345,7 +345,7 @@ export const MergedDataPreviewTable: React.FC<MergedDataPreviewTableProps> = ({
               className="bg-transparent text-xs font-mono font-bold text-[var(--cds-text-01)] outline-none cursor-pointer"
             >
               {tables.map(t => (
-                <option key={t.name} value={t.name} className="bg-[#1f1f1f] text-white">
+                <option key={t.name} value={t.name} className="bg-[var(--cds-layer-01)] text-white">
                   {t.name} ({t.rowCount})
                 </option>
               ))}

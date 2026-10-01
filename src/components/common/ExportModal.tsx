@@ -348,29 +348,29 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-[#161616] border border-[#393939] rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#2d2d2d] pb-4">
+        <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#0f62fe]/15 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40 rounded-lg shrink-0">
               <Download className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#f4f4f4] flex items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                 <span>{title || (isAr ? 'خيارات التصدير المركزية (Centralized Export)' : 'Export Options Hub')}</span>
                 <span className="px-2 py-0.5 text-[10px] font-mono bg-[#24a148]/20 text-[#42be65] border border-[#24a148]/40 rounded">
                   {targetData.length} {isAr ? 'سجل' : 'rows'}
                 </span>
               </h2>
-              <p className="text-xs text-[#8d8d8d] mt-0.5">
+              <p className="text-xs text-[var(--cds-text-03)] mt-0.5">
                 {description || (isAr ? 'تنزيل أو نسخ البيانات الحالية بالتنسيقات القياسية (CSV, JSON, Excel, PDF, SQL, Markdown).' : 'Export current dataset or view in standard formats.')}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#a8a8a8] hover:text-white hover:bg-[#262626] rounded-md transition-colors cursor-pointer"
+            className="p-1.5 text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-02)] rounded-md transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -381,7 +381,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
           
           {/* Format Selector Pills */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-[#8d8d8d] uppercase tracking-wider block">
+            <label className="text-xs font-semibold text-[var(--cds-text-03)] uppercase tracking-wider block">
               {isAr ? '1. اختر تنسيق الملف (Export Format):' : '1. Choose Export Format:'}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -402,16 +402,16 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                     className={`p-3 text-start border transition-all rounded-lg cursor-pointer flex flex-col justify-between h-20 ${
                       isSelected
                         ? 'bg-[#0f62fe]/15 border-[#0f62fe] ring-1 ring-[#0f62fe]'
-                        : 'bg-[#1e1e1e] border-[#2d2d2d] hover:border-[#525252]'
+                        : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <Icon className="w-4 h-4" style={{ color: item.color }} />
-                      <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 bg-[#262626] text-[#8d8d8d] border border-[#393939] rounded">
+                      <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 bg-[var(--cds-layer-02)] text-[var(--cds-text-03)] border border-[var(--cds-border-subtle)] rounded">
                         {item.badge}
                       </span>
                     </div>
-                    <span className="text-xs font-semibold text-[#f4f4f4] mt-2 block">
+                    <span className="text-xs font-semibold text-[var(--cds-text-01)] mt-2 block">
                       {item.name}
                     </span>
                   </button>
@@ -421,11 +421,11 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
           </div>
 
           {/* Configuration Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#1e1e1e] p-4 border border-[#2d2d2d] rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[var(--cds-layer-01)] p-4 border border-[var(--cds-border-subtle)] rounded-lg">
             
             {/* Filename Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#f4f4f4] block">
+              <label className="text-xs font-semibold text-[var(--cds-text-01)] block">
                 {isAr ? 'اسم الملف (Filename):' : 'Filename:'}
               </label>
               <input
@@ -433,19 +433,19 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                 value={filename}
                 onChange={e => setFilename(e.target.value)}
                 placeholder="export-report"
-                className="w-full h-9 px-3 text-xs bg-[#161616] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md"
+                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md"
               />
             </div>
 
             {/* Scope Selection */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#f4f4f4] block">
+              <label className="text-xs font-semibold text-[var(--cds-text-01)] block">
                 {isAr ? 'نطاق السجلات (Record Scope):' : 'Record Scope:'}
               </label>
               <select
                 value={scope}
                 onChange={e => setScope(e.target.value as any)}
-                className="w-full h-9 px-3 text-xs bg-[#161616] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md cursor-pointer"
+                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md cursor-pointer"
               >
                 <option value="all">{isAr ? `جميع السجلات (${data.length} سجل)` : `All Records (${data.length} rows)`}</option>
                 {selectedRowIndices && selectedRowIndices.size > 0 && (
@@ -457,7 +457,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
             {/* CSV Delimiter Options */}
             {(format === 'csv' || format === 'excel') && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#f4f4f4] block">
+                <label className="text-xs font-semibold text-[var(--cds-text-01)] block">
                   {isAr ? 'محدد الخلايا (CSV Delimiter):' : 'CSV Delimiter:'}
                 </label>
                 <div className="flex items-center gap-2">
@@ -473,7 +473,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                       className={`h-9 px-3 text-xs font-mono border rounded-md cursor-pointer transition-colors ${
                         delimiter === d.id
                           ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-bold'
-                          : 'bg-[#161616] border-[#393939] text-[#c6c6c6] hover:bg-[#262626]'
+                          : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                       }`}
                     >
                       {d.label}
@@ -485,22 +485,22 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
 
             {/* Checkbox Options */}
             <div className="space-y-2 flex flex-col justify-center">
-              <label className="flex items-center gap-2 text-xs text-[#f4f4f4] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-[var(--cds-text-01)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includeHeader}
                   onChange={e => setIncludeHeader(e.target.checked)}
-                  className="rounded border-[#525252] bg-[#161616] text-[#0f62fe] focus:ring-0"
+                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[#0f62fe] focus:ring-0"
                 />
                 <span>{isAr ? 'تضمين أسماء الأعمدة (Header Row)' : 'Include Header Row'}</span>
               </label>
 
-              <label className="flex items-center gap-2 text-xs text-[#f4f4f4] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-[var(--cds-text-01)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includeMetadata}
                   onChange={e => setIncludeMetadata(e.target.checked)}
-                  className="rounded border-[#525252] bg-[#161616] text-[#0f62fe] focus:ring-0"
+                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[#0f62fe] focus:ring-0"
                 />
                 <span>{isAr ? 'تضمين بيانات وصفية وتاريخ التقرير (Metadata Note)' : 'Include Metadata Header'}</span>
               </label>
@@ -512,7 +512,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
           {availableColumns.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#8d8d8d] uppercase tracking-wider">
+                <label className="text-xs font-semibold text-[var(--cds-text-03)] uppercase tracking-wider">
                   {isAr ? '2. الأعمدة المحددة للتصدير:' : '2. Select Columns to Include:'}
                 </label>
                 <button
@@ -526,7 +526,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto p-2 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg custom-scrollbar">
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto p-2 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg custom-scrollbar">
                 {availableColumns.map(col => {
                   const isChecked = selectedColumnKeys.has(col.key);
                   return (
@@ -537,7 +537,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                       className={`px-2.5 py-1 text-xs font-mono border rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                         isChecked
                           ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#78a9ff] font-semibold'
-                          : 'bg-[#161616] border-[#393939] text-[#8d8d8d] hover:text-white'
+                          : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white'
                       }`}
                     >
                       {isChecked ? <CheckSquare className="w-3.5 h-3.5 text-[#0f62fe]" /> : <Square className="w-3.5 h-3.5" />}
@@ -552,16 +552,16 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
           {/* Live Output Code Preview */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#8d8d8d] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-[var(--cds-text-03)] uppercase tracking-wider flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5 text-[#78a9ff]" />
                 {isAr ? 'معاينة حية للملف المعالج (Live Output Preview):' : 'Live Output Snippet Preview:'}
               </span>
-              <span className="text-[10px] font-mono text-[#8d8d8d]">
+              <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
                 {format.toUpperCase()}
               </span>
             </div>
 
-            <pre className="p-3 bg-[#0d0d0d] border border-[#2d2d2d] rounded-lg text-[11px] font-mono text-[#42be65] max-h-36 overflow-auto custom-scrollbar select-all whitespace-pre-wrap">
+            <pre className="p-3 bg-[var(--cds-background)] border border-[var(--cds-border-subtle)] rounded-lg text-[11px] font-mono text-[#42be65] max-h-36 overflow-auto custom-scrollbar select-all whitespace-pre-wrap">
               {generatedContent.slice(0, 1200)}
               {generatedContent.length > 1200 && '\n\n... [Truncated for preview]'}
             </pre>
@@ -570,11 +570,11 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-[#2d2d2d] pt-4 gap-3 shrink-0">
+        <div className="flex items-center justify-between border-t border-[var(--cds-border-subtle)] pt-4 gap-3 shrink-0">
           <button
             type="button"
             onClick={handleCopy}
-            className="h-9 px-4 text-xs font-semibold bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] border border-[#525252] flex items-center gap-2 transition-all rounded-md cursor-pointer"
+            className="h-9 px-4 text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] flex items-center gap-2 transition-all rounded-md cursor-pointer"
           >
             {copied ? <Check className="w-4 h-4 text-[#42be65]" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ إلى الحافظة' : 'Copy to Clipboard')}</span>
@@ -584,7 +584,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
             <button
               type="button"
               onClick={onClose}
-              className="h-9 px-4 text-xs font-semibold bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] border border-[#393939] transition-all rounded-md cursor-pointer"
+              className="h-9 px-4 text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] transition-all rounded-md cursor-pointer"
             >
               {isAr ? 'إلغاء' : 'Cancel'}
             </button>

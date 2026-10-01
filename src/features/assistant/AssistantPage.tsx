@@ -230,14 +230,14 @@ export const AssistantPage: React.FC = () => {
   return (
     <div className="space-y-5 flex flex-col h-[calc(100vh-130px)]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#393939] pb-3 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
               IBM CARBON / AI ANALYTICS AGENT
             </span>
           </div>
-          <h2 className="text-xl font-bold text-[#f4f4f4] tracking-tight mt-0.5">{t.assistant.title}</h2>
+          <h2 className="text-xl font-bold text-[var(--cds-text-01)] tracking-tight mt-0.5">{t.assistant.title}</h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ export const AssistantPage: React.FC = () => {
       </div>
 
       {/* Main Chat Box Container - IBM Carbon Style */}
-      <div className="flex-1 bg-[#262626] border border-[#393939] flex flex-col justify-between overflow-hidden relative">
+      <div className="flex-1 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex flex-col justify-between overflow-hidden relative">
         <ExecutionDebugger 
             agentState={isThinking ? 'thinking' : lastError ? 'error' : 'idle'} 
             dataset={targetDataset}
@@ -303,7 +303,7 @@ export const AssistantPage: React.FC = () => {
                   className={`w-7 h-7 flex items-center justify-center shrink-0 font-mono text-xs font-bold ${
                     isUser
                       ? 'bg-[#0f62fe] text-white'
-                      : 'bg-[#161616] text-[#0f62fe] border border-[#393939]'
+                      : 'bg-[var(--cds-layer-01)] text-[#0f62fe] border border-[var(--cds-border-subtle)]'
                   }`}
                 >
                   {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
@@ -313,15 +313,15 @@ export const AssistantPage: React.FC = () => {
                   <div
                     className={`p-3.5 border ${
                       isUser
-                        ? 'bg-[#0f62fe]/10 border-[#0f62fe]/40 text-[#f4f4f4]'
-                        : 'bg-[#161616] border-[#393939] text-[#c6c6c6]'
+                        ? 'bg-[#0f62fe]/10 border-[#0f62fe]/40 text-[var(--cds-text-01)]'
+                        : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
                     }`}
                   >
                     <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
 
                     {/* SQL Snippet in Assistant Message */}
                     {msg.sqlSnippet && (
-                      <div className="mt-3 border border-[#393939] bg-[#121212] p-2.5 font-mono text-[11px]">
+                      <div className="mt-3 border border-[var(--cds-border-subtle)] bg-[var(--cds-background)] p-2.5 font-mono text-[11px]">
                         <div className="text-[#0f62fe] font-bold uppercase text-[10px] mb-1 flex items-center gap-1.5">
                           <Terminal className="w-3 h-3" />
                           <span>Generated SQL Execution</span>
@@ -332,9 +332,9 @@ export const AssistantPage: React.FC = () => {
 
                     {/* Insights list */}
                     {msg.insights && msg.insights.length > 0 && (
-                      <div className="mt-3 space-y-1 pt-2 border-t border-[#393939]">
+                      <div className="mt-3 space-y-1 pt-2 border-t border-[var(--cds-border-subtle)]">
                         {msg.insights.map((ins, i) => (
-                          <div key={i} className="flex items-start gap-1.5 text-xs text-[#f4f4f4]">
+                          <div key={i} className="flex items-start gap-1.5 text-xs text-[var(--cds-text-01)]">
                             <Sparkles className="w-3.5 h-3.5 text-[#0f62fe] shrink-0 mt-0.5" />
                             <span>{ins}</span>
                           </div>
@@ -343,7 +343,7 @@ export const AssistantPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="text-[10px] font-mono text-[#8d8d8d]">
+                  <div className="text-[10px] font-mono text-[var(--cds-text-03)]">
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </div>
                 </div>
@@ -353,10 +353,10 @@ export const AssistantPage: React.FC = () => {
 
           {isThinking && (
             <div className="flex gap-3 max-w-2xl">
-              <div className="w-7 h-7 bg-[#161616] border border-[#393939] flex items-center justify-center text-[#0f62fe]">
+              <div className="w-7 h-7 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
                 <Bot className="w-3.5 h-3.5 animate-spin" />
               </div>
-              <div className="p-3 bg-[#161616] border border-[#393939] text-xs font-mono text-[#0f62fe] flex items-center gap-2">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-[#0f62fe] flex items-center gap-2">
                 <span>Analyzing data context &amp; synthesizing insights...</span>
               </div>
             </div>
@@ -366,13 +366,13 @@ export const AssistantPage: React.FC = () => {
         </div>
 
         {/* Suggested Quick Prompts */}
-        <div className="px-4 py-2 bg-[#1f1f1f] border-t border-[#393939] flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-mono font-bold text-[#8d8d8d] uppercase">Quick Queries:</span>
+        <div className="px-4 py-2 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-mono font-bold text-[var(--cds-text-03)] uppercase">Quick Queries:</span>
           {samplePrompts.map((p, idx) => (
             <button
               key={idx}
               onClick={() => handleSendMessage(p)}
-              className="text-[11px] font-mono bg-[#262626] hover:bg-[#353535] text-[#c6c6c6] px-2.5 py-1 border border-[#393939] transition-colors truncate max-w-xs"
+              className="text-[11px] font-mono bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] px-2.5 py-1 border border-[var(--cds-border-subtle)] transition-colors truncate max-w-xs"
             >
               {p}
             </button>
@@ -380,7 +380,7 @@ export const AssistantPage: React.FC = () => {
         </div>
 
         {/* Input Bar */}
-        <div className="p-3 bg-[#161616] border-t border-[#393939] flex gap-2">
+        <div className="p-3 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex gap-2">
           <input
             type="text"
             value={inputPrompt}

@@ -320,13 +320,13 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div 
-        className="relative w-full max-w-6xl max-h-[92vh] flex flex-col bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] rounded-2xl border border-[var(--cds-border-subtle)] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-6xl max-h-[92vh] flex flex-col bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] rounded-xl border border-[var(--cds-border-subtle)] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         dir={language === 'ar' ? 'rtl' : 'ltr'}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -348,7 +348,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-01)] transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-01)] transition-colors cursor-pointer"
             title={language === 'ar' ? 'إغلاق' : 'Close'}
           >
             <X className="w-5 h-5" />
@@ -358,7 +358,7 @@ export const GridSearchModal: React.FC<GridSearchModalProps> = ({
         {/* Scrollable Content Container */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Configuration Box */}
-          <div className="p-4 rounded-xl bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-4">
+          <div className="p-4 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               {/* Scope Selection */}
               <div className="space-y-1.5">
@@ -380,7 +380,7 @@ recommended={language === 'ar' ? 'مقارنة شاملة لجميع النما�
                 <select
                   value={scope}
                   onChange={(e) => setScope(e.target.value as any)}
-                  className="w-full text-xs font-semibold p-2.5 rounded-xl bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full text-xs font-semibold p-2.5 rounded-lg bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="all_models">
                     {language === 'ar' ? '🏆 مقارنة شاملة لجميع النماذج (All Models Champion)' : '🏆 Champion Across All Models (OLS, Poly, Ridge)'}
@@ -420,7 +420,7 @@ recommended="5-Fold CV"
                       key={kVal}
                       type="button"
                       onClick={() => setKFolds(kVal)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all ${
                         kFolds === kVal
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
@@ -452,7 +452,7 @@ recommended="R² (Validation)"
                 <select
                   value={scoringMetric}
                   onChange={(e) => setScoringMetric(e.target.value as any)}
-                  className="w-full text-xs font-semibold p-2.5 rounded-xl bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full text-xs font-semibold p-2.5 rounded-lg bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="r2">{language === 'ar' ? 'أعلى معامل تحديد R² (Validation R²)' : 'Highest Validation R²'}</option>
                   <option value="rmse">{language === 'ar' ? 'أدنى جذر متوسط مربع الخطأ (Min RMSE)' : 'Lowest Validation RMSE'}</option>
@@ -463,7 +463,7 @@ recommended="R² (Validation)"
 
             {/* Custom Grid Configuration if Selected */}
             {scope === 'custom' && (
-              <div className="p-3 bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] space-y-3">
+              <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] space-y-3">
                 <div className="text-xs font-bold text-[var(--cds-text-01)]">
                   {language === 'ar' ? 'تخصيص قيم المعاملات للبحث الشبكي:' : 'Customize Grid Search Hyperparameter Candidates:'}
                 </div>
@@ -572,7 +572,7 @@ recommended="R² (Validation)"
                 type="button"
                 onClick={handleRunGridSearch}
                 disabled={isRunning || data.length < 5}
-                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 active:scale-95 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 active:scale-95 text-white font-bold px-6 py-2.5 rounded-lg text-xs shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isRunning ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -616,10 +616,10 @@ recommended="R² (Validation)"
 
           {/* Champion Model Banner */}
           {bestModel && (
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-emerald-500/10 border-2 border-amber-500/40 shadow-lg space-y-4">
+            <div className="p-5 rounded-xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-emerald-500/10 border-2 border-amber-500/40 shadow-lg space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30">
                     <Award className="w-7 h-7" />
                   </div>
                   <div>
@@ -644,7 +644,7 @@ recommended="R² (Validation)"
                     type="button"
                     onClick={handleExportChampionPdf}
                     disabled={isExportingPdf}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-50"
                     title={language === 'ar' ? 'تصدير تفاصيل النموذج الفائز كملف PDF' : 'Export champion model as PDF'}
                   >
                     {isExportingPdf ? (
@@ -662,7 +662,7 @@ recommended="R² (Validation)"
                   <button
                     type="button"
                     onClick={() => handleApply(bestModel.candidate)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer ${
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer ${
                       appliedCandidateId === bestModel.candidate.id
                         ? 'bg-emerald-600 shadow-emerald-500/30'
                         : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 shadow-emerald-500/25'
@@ -684,7 +684,7 @@ recommended="R² (Validation)"
 
               {/* Champion Metric Scorecards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="p-3 bg-[var(--cds-layer-01)] rounded-xl border border-amber-500/20 shadow-2xs">
+                <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-amber-500/20 shadow-2xs">
                   <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">
                     {language === 'ar' ? 'متوسط R² التحقق (CV R²)' : 'Mean Validation R²'}
                   </div>
@@ -696,7 +696,7 @@ recommended="R² (Validation)"
                   </div>
                 </div>
 
-                <div className="p-3 bg-[var(--cds-layer-01)] rounded-xl border border-amber-500/20 shadow-2xs">
+                <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-amber-500/20 shadow-2xs">
                   <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">
                     {language === 'ar' ? 'جذر متوسط مربع الخطأ (RMSE)' : 'Validation RMSE'}
                   </div>
@@ -708,7 +708,7 @@ recommended="R² (Validation)"
                   </div>
                 </div>
 
-                <div className="p-3 bg-[var(--cds-layer-01)] rounded-xl border border-amber-500/20 shadow-2xs">
+                <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-amber-500/20 shadow-2xs">
                   <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">
                     {language === 'ar' ? 'متوسط R² التدريب' : 'Mean Train R²'}
                   </div>
@@ -720,7 +720,7 @@ recommended="R² (Validation)"
                   </div>
                 </div>
 
-                <div className="p-3 bg-[var(--cds-layer-01)] rounded-xl border border-amber-500/20 shadow-2xs">
+                <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-amber-500/20 shadow-2xs">
                   <div className="text-[10px] text-[var(--cds-text-03)] font-semibold">
                     {language === 'ar' ? 'فجوة التعميم (Generalization Gap)' : 'Generalization Gap'}
                   </div>
@@ -740,7 +740,7 @@ recommended="R² (Validation)"
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 {/* Tabs */}
-                <div className="flex items-center gap-1 bg-[var(--cds-layer-02)] p-1 rounded-xl border border-[var(--cds-border-subtle)]">
+                <div className="flex items-center gap-1 bg-[var(--cds-layer-02)] p-1 rounded-lg border border-[var(--cds-border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setActiveTab('table')}
@@ -805,14 +805,14 @@ recommended="R² (Validation)"
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
                       placeholder={language === 'ar' ? 'تصفية النماذج...' : 'Filter models...'}
-                      className="text-xs pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-1.5 rounded-xl bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none w-44"
+                      className="text-xs pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-1.5 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:outline-none w-44"
                     />
                   </div>
 
                   <button
                     type="button"
                     onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] transition-colors cursor-pointer"
                     title={language === 'ar' ? 'تصدير النتائج إلى CSV' : 'Export to CSV'}
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -823,7 +823,7 @@ recommended="R² (Validation)"
 
               {/* Leaderboard Table View */}
               {activeTab === 'table' && (
-                <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-xl bg-[var(--cds-layer-01)] shadow-2xs max-h-[420px]">
+                <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-lg bg-[var(--cds-layer-01)] shadow-2xs max-h-[420px]">
                   <table className="w-full text-xs text-left rtl:text-right border-collapse">
                     <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] font-bold sticky top-0 border-b border-[var(--cds-border-subtle)] z-10">
                       <tr>
@@ -938,7 +938,7 @@ recommended="R² (Validation)"
 
               {/* Visual Top 10 Comparison Chart */}
               {activeTab === 'visual' && (
-                <div className="p-4 bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] space-y-3">
+                <div className="p-4 bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-[var(--cds-text-01)]">
                       {language === 'ar' ? 'مقارنة أفضل 10 نماذج: دقة التحقق (Validation R²) مقابل التدريب (Train R²)' : 'Top 10 Models: Validation R² vs Training R²'}
@@ -1007,7 +1007,7 @@ recommended="R² (Validation)"
 
               {/* Performance Curves & Overfitting Detection View */}
               {activeTab === 'curves' && (
-                <div className="p-4 bg-[var(--cds-layer-01)] rounded-2xl border border-[var(--cds-border-subtle)] space-y-4">
+                <div className="p-4 bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--cds-border-subtle)]">
                     <div>
                       <h4 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
@@ -1048,7 +1048,7 @@ recommended="R² (Validation)"
 
               {/* Automatic Text Report View */}
               {activeTab === 'report' && (
-                <div className="p-4 bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] space-y-4">
+                <div className="p-4 bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--cds-border-subtle)]">
                     <div>
                       <h4 className="text-xs font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
@@ -1066,7 +1066,7 @@ recommended="R² (Validation)"
                       <button
                         type="button"
                         onClick={handleCopyReport}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] transition-all active:scale-95 cursor-pointer shadow-2xs"
                       >
                         {copiedReport ? (
                           <>
@@ -1084,7 +1084,7 @@ recommended="R² (Validation)"
                       <button
                         type="button"
                         onClick={handleDownloadReport}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all active:scale-95 cursor-pointer shadow-2xs"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>{language === 'ar' ? 'تنزيل التقرير (.md)' : 'Download (.md)'}</span>
@@ -1093,7 +1093,7 @@ recommended="R² (Validation)"
                   </div>
 
                   {/* Formatted Markdown Box */}
-                  <div className="p-4 rounded-xl bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] font-mono text-xs leading-relaxed text-[var(--cds-text-01)] max-h-[380px] overflow-y-auto whitespace-pre-wrap select-text">
+                  <div className="p-4 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] font-mono text-xs leading-relaxed text-[var(--cds-text-01)] max-h-[380px] overflow-y-auto whitespace-pre-wrap select-text">
                     {summaryReport}
                   </div>
                 </div>
@@ -1102,7 +1102,7 @@ recommended="R² (Validation)"
           )}
 
           {/* Guide / Educational Callout */}
-          <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex items-start gap-2.5 text-xs text-[var(--cds-text-03)]">
+          <div className="p-3 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] flex items-start gap-2.5 text-xs text-[var(--cds-text-03)]">
             <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-[var(--cds-text-01)] block mb-0.5">
@@ -1133,7 +1133,7 @@ recommended="R² (Validation)"
 
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] font-semibold transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-lg border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] font-semibold transition-colors cursor-pointer"
           >
             {language === 'ar' ? 'إغلاق' : 'Close'}
           </button>

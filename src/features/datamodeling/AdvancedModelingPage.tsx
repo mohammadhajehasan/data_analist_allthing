@@ -243,7 +243,7 @@ export const AdvancedModelingPage: React.FC = () => {
   return (
     <div className="space-y-5 animate-fade-in pb-10">
       {/* Top Banner with Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 md:p-5 rounded-xl shadow-lg">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 md:p-5 rounded-lg shadow-lg">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[var(--cds-interactive-01)] shadow-xs animate-pulse" />
@@ -291,7 +291,7 @@ export const AdvancedModelingPage: React.FC = () => {
       </div>
 
       {/* Main Studio Navigation Tabs */}
-      <div className="flex items-center gap-1 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-1 rounded-xl">
+      <div className="flex items-center gap-1 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('relational')}
           className={`px-4 py-2 text-xs font-mono font-bold rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
@@ -370,15 +370,15 @@ export const AdvancedModelingPage: React.FC = () => {
           <div className="space-y-4">
             {/* Validation Summary Display after join creation */}
             {validationSummary && (
-              <div className="bg-[#1f1f1f] border border-[#24a148] p-4 space-y-3 animate-in fade-in">
+              <div className="bg-[var(--cds-layer-01)] border border-[#24a148] p-4 space-y-3 animate-in fade-in">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 text-[#42be65]">
                     <CheckCircle2 className="w-5 h-5 text-[#24a148]" />
                     <div>
-                      <h3 className="text-xs font-mono font-bold uppercase text-[#f4f4f4]">
+                      <h3 className="text-xs font-mono font-bold uppercase text-[var(--cds-text-01)]">
                         {isAr ? 'تم التحقق من عملية الدمج وحفظ الناتج المترابط' : 'Join Operation Validated & Persisted'}
                       </h3>
-                      <p className="text-[11px] text-[#8d8d8d]">
+                      <p className="text-[11px] text-[var(--cds-text-03)]">
                         {isAr
                           ? `تم ربط ${validationSummary.sourceTable} بـ ${validationSummary.targetTable} عبر المفتاح (${validationSummary.sourceColumn} = ${validationSummary.targetColumn}).`
                           : `Successfully connected ${validationSummary.sourceTable} to ${validationSummary.targetTable} via (${validationSummary.sourceColumn} = ${validationSummary.targetColumn}).`}
@@ -401,21 +401,21 @@ export const AdvancedModelingPage: React.FC = () => {
                 </div>
 
                 {/* Summary Metrics & Schema Preview */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#161616] p-3 border border-[#393939] text-xs font-mono">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)] text-xs font-mono">
                   <div>
-                    <span className="text-[#8d8d8d] text-[10px] uppercase block">{isAr ? 'إجمالي الصفوف المدمجة' : 'Joined Row Count'}</span>
-                    <span className="text-[#f4f4f4] text-sm font-bold">{validationSummary.rowCount.toLocaleString()} rows</span>
+                    <span className="text-[var(--cds-text-03)] text-[10px] uppercase block">{isAr ? 'إجمالي الصفوف المدمجة' : 'Joined Row Count'}</span>
+                    <span className="text-[var(--cds-text-01)] text-sm font-bold">{validationSummary.rowCount.toLocaleString()} rows</span>
                   </div>
                   <div>
-                    <span className="text-[#8d8d8d] text-[10px] uppercase block">{isAr ? 'إجمالي حقول المخطط' : 'Total Schema Columns'}</span>
+                    <span className="text-[var(--cds-text-03)] text-[10px] uppercase block">{isAr ? 'إجمالي حقول المخطط' : 'Total Schema Columns'}</span>
                     <span className="text-[#33b1ff] text-sm font-bold">{validationSummary.columnCount} cols</span>
                   </div>
                   <div>
-                    <span className="text-[#8d8d8d] text-[10px] uppercase block">{isAr ? 'نوع شروط الربط' : 'Join Strategy'}</span>
+                    <span className="text-[var(--cds-text-03)] text-[10px] uppercase block">{isAr ? 'نوع شروط الربط' : 'Join Strategy'}</span>
                     <span className="text-[#be95ff] text-sm font-bold">{validationSummary.joinType} JOIN</span>
                   </div>
                   <div>
-                    <span className="text-[#8d8d8d] text-[10px] uppercase block">{isAr ? 'حالة الحفظ بالمستودع' : 'Workspace Status'}</span>
+                    <span className="text-[var(--cds-text-03)] text-[10px] uppercase block">{isAr ? 'حالة الحفظ بالمستودع' : 'Workspace Status'}</span>
                     <span className="text-[#42be65] text-xs font-bold flex items-center gap-1 mt-0.5">
                       <Check className="w-3 h-3" />
                       {isAr ? 'مستعد للعرض والتصدير' : 'Persisted & Ready'}
@@ -425,17 +425,17 @@ export const AdvancedModelingPage: React.FC = () => {
 
                 {/* Schema Columns Preview */}
                 <div className="space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-[#8d8d8d] block">
+                  <span className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] block">
                     {isAr ? 'معاينة حقول المخطط المدمج (Schema Preview):' : 'Joined Schema Preview:'}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {validationSummary.columnsSample.map((col, idx) => (
-                      <span key={idx} className="px-2 py-0.5 bg-[#262626] border border-[#393939] text-[#c6c6c6] text-[10px] font-mono">
+                      <span key={idx} className="px-2 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] text-[10px] font-mono">
                         {col}
                       </span>
                     ))}
                     {validationSummary.columnCount > validationSummary.columnsSample.length && (
-                      <span className="px-2 py-0.5 bg-[#393939] text-[#8d8d8d] text-[10px] font-mono">
+                      <span className="px-2 py-0.5 bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] text-[10px] font-mono">
                         +{validationSummary.columnCount - validationSummary.columnsSample.length} {isAr ? 'حقول أخرى' : 'more fields'}
                       </span>
                     )}
@@ -463,7 +463,7 @@ export const AdvancedModelingPage: React.FC = () => {
       {/* Tab 2: Statistical & Multivariate Regression Studio */}
       {activeTab === 'statistical' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)] rounded-xl">
+          <div className="flex items-center justify-between bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)] rounded-lg">
             <span className="text-xs font-mono text-[var(--cds-text-02)]">
               {isAr ? 'أداة تحليل الانحدار الخطي ومتعدد الحدود ومقارنة المتغيرات الإحصائية' : 'Multivariate Linear & Polynomial Regression Analysis Engine'}
             </span>

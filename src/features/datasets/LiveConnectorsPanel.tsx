@@ -141,16 +141,16 @@ export const LiveConnectorsPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#262626] border border-[#393939] p-5 space-y-5">
+    <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#393939] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="flex items-center gap-2">
           <CloudLightning className="w-5 h-5 text-[#33b1ff]" />
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               {isAr ? 'قنوات الربط والمزامنة السحابية' : 'Live Cloud Connectors & Sync Scheduler'}
             </h3>
-            <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+            <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
               {isAr
                 ? 'اربط جداول Google Sheets أو قواعد بيانات PostgreSQL السحابية لمزامنة بياناتك دورياً وبشكل تلقائي'
                 : 'Connect external worksheets or SQL instances with an automated periodic cron scheduler'}
@@ -159,11 +159,11 @@ export const LiveConnectorsPanel: React.FC = () => {
         </div>
 
         {/* Local Type Select Tab */}
-        <div className="flex bg-[#161616] p-1 border border-[#393939] text-xs font-mono font-bold">
+        <div className="flex bg-[var(--cds-layer-01)] p-1 border border-[var(--cds-border-subtle)] text-xs font-mono font-bold">
           <button
             onClick={() => setActiveTab('sheet')}
             className={`px-3 py-1 transition-colors ${
-              activeTab === 'sheet' ? 'bg-[#33b1ff] text-[#161616]' : 'text-[#8d8d8d] hover:text-white'
+              activeTab === 'sheet' ? 'bg-[#33b1ff] text-[#161616]' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             Google Sheets
@@ -171,7 +171,7 @@ export const LiveConnectorsPanel: React.FC = () => {
           <button
             onClick={() => setActiveTab('sql')}
             className={`px-3 py-1 transition-colors ${
-              activeTab === 'sql' ? 'bg-[#33b1ff] text-[#161616]' : 'text-[#8d8d8d] hover:text-white'
+              activeTab === 'sql' ? 'bg-[#33b1ff] text-[#161616]' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             PostgreSQL / SQL
@@ -181,14 +181,14 @@ export const LiveConnectorsPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Connector Creation Form & Live Logs (Left/Top) */}
-        <div className="lg:col-span-8 bg-[#161616] border border-[#393939] p-5 flex flex-col space-y-4 text-start">
+        <div className="lg:col-span-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 flex flex-col space-y-4 text-start">
           
           <form onSubmit={handleAddConnector} className="space-y-4">
             {activeTab === 'sheet' ? (
               /* Google Sheets Form */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'رابط ملف Google Sheets (مشاركة عامة أو رمز وصول):' : 'Google Sheet URL (Public or Token Access):'}
                   </label>
                   <div className="flex gap-2">
@@ -203,7 +203,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleTestConnection('sheet')}
-                      className="px-3 py-2 bg-[#262626] hover:bg-[#333333] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all whitespace-nowrap"
+                      className="px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all whitespace-nowrap"
                     >
                       {isAr ? 'فحص الاتصال' : 'Test'}
                     </button>
@@ -211,7 +211,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'اسم الاتصال المرجع:' : 'Connector Reference Name:'}
                   </label>
                   <input
@@ -225,7 +225,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'جدول المزامنة الدورية (Cron Interval):' : 'Automatic Refresh Schedule:'}
                   </label>
                   <select
@@ -244,7 +244,7 @@ export const LiveConnectorsPanel: React.FC = () => {
               /* PostgreSQL Cloud SQL Form */
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'مضيف السيرفر (Server Host IP/Domain):' : 'PostgreSQL Host Connection IP:'}
                   </label>
                   <input
@@ -258,7 +258,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'المنفذ (Port):' : 'Port:'}
                   </label>
                   <input
@@ -271,7 +271,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'اسم قاعدة البيانات (DB Name):' : 'Database Name:'}
                   </label>
                   <input
@@ -285,7 +285,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'اسم المستخدم:' : 'User:'}
                   </label>
                   <input
@@ -298,7 +298,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'جدول المزامنة:' : 'Sync Schedule:'}
                   </label>
                   <select
@@ -314,7 +314,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-mono font-bold text-[#c6c6c6] mb-1">
+                  <label className="block text-xs font-mono font-bold text-[var(--cds-text-02)] mb-1">
                     {isAr ? 'مرجع الاتصال:' : 'Connector Title Reference:'}
                   </label>
                   <input
@@ -331,7 +331,7 @@ export const LiveConnectorsPanel: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleTestConnection('sql')}
-                    className="w-full px-3 py-2 bg-[#262626] hover:bg-[#333333] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all"
+                    className="w-full px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#33b1ff] text-[#33b1ff] text-xs font-mono font-bold transition-all"
                   >
                     {isAr ? 'فحص الاتصال والمسار' : 'Test SQL Connection'}
                   </button>
@@ -350,7 +350,7 @@ export const LiveConnectorsPanel: React.FC = () => {
 
           {/* Test Logs Console (Simulated Connection Debugger) */}
           {testLog.length > 0 && (
-            <div className="p-3 bg-black border border-[#393939] font-mono text-[11px] text-[#24a148] space-y-1 rounded-none max-h-32 overflow-y-auto">
+            <div className="p-3 bg-black border border-[var(--cds-border-subtle)] font-mono text-[11px] text-[#24a148] space-y-1 rounded-none max-h-32 overflow-y-auto">
               {testLog.map((log, idx) => (
                 <div key={idx} className="flex gap-2">
                   <span>&gt;</span>
@@ -368,15 +368,15 @@ export const LiveConnectorsPanel: React.FC = () => {
         </div>
 
         {/* Registered Active Connectors Catalog (Right/Bottom) */}
-        <div className="lg:col-span-4 bg-[#1f1f1f] border border-[#393939] p-4 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-between space-y-4">
           <div className="space-y-3">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#8d8d8d] block border-b border-[#393939] pb-1.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] block border-b border-[var(--cds-border-subtle)] pb-1.5">
               {isAr ? 'القنوات النشطة الحالية' : 'Registered Cloud Links'}
             </span>
 
             <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
               {connectors.map(c => (
-                <div key={c.id} className="bg-[#161616] border border-[#393939] p-2.5 text-xs font-mono space-y-2 text-start">
+                <div key={c.id} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5 text-xs font-mono space-y-2 text-start">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white truncate max-w-[120px]">{c.name}</span>
                     <span className="text-[9px] bg-[#33b1ff]/20 text-[#33b1ff] px-1.5 py-0.2 uppercase font-bold">
@@ -384,10 +384,10 @@ export const LiveConnectorsPanel: React.FC = () => {
                     </span>
                   </div>
 
-                  <p className="text-[10px] text-[#8d8d8d] truncate">{c.endpoint}</p>
+                  <p className="text-[10px] text-[var(--cds-text-03)] truncate">{c.endpoint}</p>
 
-                  <div className="flex items-center justify-between pt-1 border-t border-[#262626] text-[10px]">
-                    <span className="text-[#c6c6c6] flex items-center gap-1">
+                  <div className="flex items-center justify-between pt-1 border-t border-[var(--cds-border-subtle)] text-[10px]">
+                    <span className="text-[var(--cds-text-02)] flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       <span>{isAr ? 'آخر تحديث' : 'Last Sync'}: {new Date(c.lastSynced).toLocaleTimeString()}</span>
                     </span>
@@ -405,7 +405,7 @@ export const LiveConnectorsPanel: React.FC = () => {
           </div>
 
           {/* Secure Cloud SQL / Tunnel Notice */}
-          <div className="p-3 bg-[#161616] border border-[#393939] text-[11px] font-mono text-[#8d8d8d] space-y-1 leading-relaxed text-start">
+          <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[11px] font-mono text-[var(--cds-text-03)] space-y-1 leading-relaxed text-start">
             <div className="flex items-center gap-1.5 text-[#33b1ff] font-bold uppercase mb-1">
               <Info className="w-3.5 h-3.5" />
               <span>{isAr ? 'سرية وأمن البيانات' : 'SSL Encrypted'}</span>

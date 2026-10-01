@@ -29,28 +29,28 @@ import { WorkflowNodeData, WorkflowNodeCategory } from './types';
 const CATEGORY_STYLES: Record<WorkflowNodeCategory, { border: string; bg: string; badgeBg: string; text: string; dot: string }> = {
   trigger: {
     border: 'border-[#0f62fe]',
-    bg: 'bg-[#161616]',
+    bg: 'bg-[var(--cds-layer-01)]',
     badgeBg: 'bg-[#0f62fe]/15 text-[#78a9ff] border-[#0f62fe]/30',
     text: 'text-[#78a9ff]',
     dot: 'bg-[#0f62fe]'
   },
   ai: {
     border: 'border-[#8a3ffc]',
-    bg: 'bg-[#161616]',
+    bg: 'bg-[var(--cds-layer-01)]',
     badgeBg: 'bg-[#8a3ffc]/15 text-[#be95ff] border-[#8a3ffc]/30',
     text: 'text-[#be95ff]',
     dot: 'bg-[#8a3ffc]'
   },
   logic: {
     border: 'border-[#009d9a]',
-    bg: 'bg-[#161616]',
+    bg: 'bg-[var(--cds-layer-01)]',
     badgeBg: 'bg-[#009d9a]/15 text-[#08bdba] border-[#009d9a]/30',
     text: 'text-[#08bdba]',
     dot: 'bg-[#009d9a]'
   },
   action: {
     border: 'border-[#24a148]',
-    bg: 'bg-[#161616]',
+    bg: 'bg-[var(--cds-layer-01)]',
     badgeBg: 'bg-[#24a148]/15 text-[#42be65] border-[#24a148]/30',
     text: 'text-[#42be65]',
     dot: 'bg-[#24a148]'
@@ -99,7 +99,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
   return (
     <div
       id={`workflow-node-${id}`}
-      className={`relative min-w-[260px] max-w-[320px] rounded-xl border-2 transition-all duration-200 shadow-lg ${
+      className={`relative min-w-[260px] max-w-[320px] rounded-lg border-2 transition-all duration-200 shadow-lg ${
         selected ? 'ring-2 ring-white/80 scale-[1.02] shadow-2xl' : ''
       } ${
         status === 'running'
@@ -120,16 +120,16 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
             className="!w-4.5 !h-4.5 !bg-[#0f62fe] !border-2 !border-white hover:!bg-[#78a9ff] hover:!scale-130 transition-all !cursor-crosshair shadow-[0_0_8px_rgba(15,98,254,0.6)] !static !transform-none"
             title={isArabic ? 'منفذ الاستلام: اسحب رابطاً إلى هنا للتوصيل' : 'Input Port: Drop connection here'}
           />
-          <span className="hidden group-hover/handle:block absolute -top-5 text-[9px] font-mono bg-[#161616] text-[#78a9ff] border border-[#0f62fe] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+          <span className="hidden group-hover/handle:block absolute -top-5 text-[9px] font-mono bg-[var(--cds-layer-01)] text-[#78a9ff] border border-[#0f62fe] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
             {isArabic ? '📥 منفذ إدخال البيانات' : '📥 Input Port'}
           </span>
         </div>
       )}
 
       {/* Node Header */}
-      <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-[#393939]/70">
+      <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-[var(--cds-border-subtle)]/70">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-lg bg-[#262626] border border-[#393939] shrink-0">
+          <div className="p-1.5 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] shrink-0">
             {getNodeIcon(nodeData?.nodeType)}
           </div>
           <div className="min-w-0">
@@ -160,25 +160,25 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
             </span>
           )}
           {status === 'idle' && (
-            <span className="w-2 h-2 rounded-full bg-[#525252]" title="جاهز للتشغيل" />
+            <span className="w-2 h-2 rounded-full bg-[var(--cds-border-strong)]" title="جاهز للتشغيل" />
           )}
         </div>
       </div>
 
       {/* Node Title & Description */}
       <div className="space-y-1 mb-2.5">
-        <h4 className="text-xs font-bold text-[#f4f4f4] leading-tight truncate">
+        <h4 className="text-xs font-bold text-[var(--cds-text-01)] leading-tight truncate">
           {isArabic ? (nodeData?.labelAr || nodeData?.label) : (nodeData?.label || nodeData?.labelAr)}
         </h4>
-        <p className="text-[11px] text-[#a8a8a8] line-clamp-2 leading-relaxed">
+        <p className="text-[11px] text-[var(--cds-text-02)] line-clamp-2 leading-relaxed">
           {isArabic ? (nodeData?.descriptionAr || nodeData?.description) : (nodeData?.description || nodeData?.descriptionAr)}
         </p>
       </div>
 
       {/* Configuration Summary Pill */}
       {nodeData?.config && Object.keys(nodeData.config).length > 0 && (
-        <div className="bg-[#262626]/80 rounded px-2 py-1 text-[10px] font-mono text-[#c6c6c6] border border-[#393939] flex items-center justify-between gap-1 mb-1 truncate">
-          <span className="text-[#8d8d8d]">{isArabic ? 'الإعداد:' : 'Config:'}</span>
+        <div className="bg-[var(--cds-layer-02)]/80 rounded px-2 py-1 text-[10px] font-mono text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] flex items-center justify-between gap-1 mb-1 truncate">
+          <span className="text-[var(--cds-text-03)]">{isArabic ? 'الإعداد:' : 'Config:'}</span>
           <span className="truncate text-white">
             {nodeData.config.model || 
              nodeData.config.threshold !== undefined ? `Threshold: ${nodeData.config.threshold}` :
@@ -210,7 +210,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
 
       {/* Source Handles (Outputs) */}
       {isCondition ? (
-        <div className="relative mt-3 pt-2.5 border-t border-[#393939] flex justify-between text-[9px] font-mono">
+        <div className="relative mt-3 pt-2.5 border-t border-[var(--cds-border-subtle)] flex justify-between text-[9px] font-mono">
           <div className="flex items-center gap-1 text-[#42be65]">
             <span className="w-2 h-2 rounded-full bg-[#24a148] animate-pulse" />
             <span>ناجح / Pass</span>
@@ -243,7 +243,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
             className="!w-4.5 !h-4.5 !bg-[#24a148] !border-2 !border-white hover:!bg-[#42be65] hover:!scale-135 transition-all !cursor-crosshair shadow-[0_0_8px_rgba(36,161,72,0.7)] !static !transform-none"
             title={isArabic ? 'منفذ الإخراج: اسحب هذا المخرج إلى العقدة التالية' : 'Output Port: Drag to next node'}
           />
-          <span className="hidden group-hover/handle:block absolute -bottom-6 text-[9px] font-mono bg-[#161616] text-[#42be65] border border-[#24a148] px-1.5 py-0.5 rounded shadow whitespace-nowrap z-20">
+          <span className="hidden group-hover/handle:block absolute -bottom-6 text-[9px] font-mono bg-[var(--cds-layer-01)] text-[#42be65] border border-[#24a148] px-1.5 py-0.5 rounded shadow whitespace-nowrap z-20">
             {isArabic ? '📤 اسحب هذا المنفذ للتوصيل' : '📤 Drag to Connect'}
           </span>
         </div>

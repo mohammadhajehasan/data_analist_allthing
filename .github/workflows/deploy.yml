@@ -1,0 +1,117 @@
+# ==============================================================
+# CI + نشر اختياري إلى Oracle عند كل دفعة إلى main
+# --------------------------------------------------------------
+# بدون أي secrets: يبني ويختبر فقط (أخضر) — كافٍ لنشر Render
+# الذي يبني المستودع بنفسه عند كل دفعة.
+#
+# اختياري — النشر الآلي إلى Oracle عبر SSH. أضف في
+# Settings → Secrets and variables → Actions:
+#   ORACLE_SSH_HOST  — عنوان الخادم العام (IP أو النطاق)
+#   ORACLE_SSH_USER  — مستخدم SSH (ubuntu)
+#   ORACLE_SSH_KEY   — المفتاح الخاص كاملاً بصيغة PEM
+#   ORACLE_SSH_PORT  — اختياري (الافتراضي 22)
+# ويشترط خادماً مهيأً بـ deploy/oracle/setup-oracle.sh
+# (التطبيق في /opt/analytics-platform وخدمة systemd اسمها analytics)
+#
+# السلامة: نسخة احتياطية من قاعدة SQLite قبل كل نشر — data/ غير
+# متتبَّعة في Git لذا لا يمسّها git reset --hard.
+# ==============================================================
+
+name: CI / Deploy to Oracle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # إطلاق يدوي من تبويب Actions
+
+concurrency:
+  group: deploy-oracle
+  cancel-in-progress: false # لا تتداخل عمليتا نشر أبداً
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npx vitest run
+
+      - name: Build (verify bundle compiles)
+        run: npm run build
+
+      # secrets لا تُقيَّم في if: مباشرة — لذا نفحصها في خطوة وسيطة
+      - name: Check Oracle secrets present
+        id: oracle
+        run: |
+          if [ -n "${{ secrets.ORACLE_SSH_HOST }}" ] && [ -n "${{ secrets.ORACLE_SSH_USER }}" ] && [ -n "${{ secrets.ORACLE_SSH_KEY }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # يشتغل فقط إذا أُضيفت secrets أوراكل — وإلا يُتخطى والبناء يبقى أخضر
+      - name: Deploy to Oracle over SSH (optional)
+        if: steps.oracle.outputs.present == 'true'
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.ORACLE_SSH_HOST }}
+          username: ${{ secrets.ORACLE_SSH_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: ${{ secrets.ORACLE_SSH_PORT || 22 }}
+          script_stop: true # فشل سريع عند أول خطأ على الخادم
+          script: |
+            set -e
+            cd /opt/analytics-platform
+
+            echo "== 1) نسخة أمان من قاعدة البيانات قبل النشر =="
+            if [ -f data/auth.db ]; then
+              sudo -u analytics mkdir -p backups
+              sudo -u analytics sqlite3 data/auth.db \
+                ".backup 'backups/pre-deploy-$(date +%F-%H%M%S).db'"
+              sudo -u analytics find backups -name 'pre-deploy-*.db' -mtime +14 -delete
+              echo "backup done"
+            fi
+
+            echo "== 2) سحب أحدث كود =="
+            sudo -u analytics git fetch --prune origin main
+            sudo -u analytics git reset --hard origin/main
+            sudo -u analytics git clean -fd --exclude=data --exclude=.env --exclude=backups
+
+            echo "== 3) تثبيت وبناء =="
+            sudo -u analytics -H npm ci
+            sudo -u analytics -H npm run build
+
+            echo "== 4) إعادة تشغيل الخدمة =="
+            sudo systemctl restart analytics
+
+            echo "== 5) فحص الصحة =="
+            for i in $(seq 1 15); do
+              if curl -fsS http://127.0.0.1:3000/api/health > /dev/null 2>&1; then
+                echo "DEPLOY OK — الخدمة تعمل"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "health check FAILED بعد النشر" >&2
+            sudo systemctl status analytics --no-pager -l || true
+            sudo journalctl -u analytics -n 30 --no-pager || true
+            exit 1
+
+      - name: Oracle secrets not set — skipping SSH deploy
+        if: steps.oracle.outputs.present != 'true'
+        run: echo "لا توجد secrets أوراكل — تم البناء والاختبار فقط. النشر يُدار من Render."

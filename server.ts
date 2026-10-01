@@ -1,13 +1,20 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import BetterSqlite3 from 'better-sqlite3';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import {
+  createUser, verifyLogin, getUserByToken, revokeSession,
+  roleForFirstUser, listUsers, type Role,
+} from './server/auth';
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000; // cloud platforms inject PORT
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -146,6 +153,7 @@ async function callUniversalAI(params: {
   apiKey?: string;
   jsonMode?: boolean;
   disableFallback?: boolean;
+  maxTokens?: number;
 }): Promise<{ text: string; modelUsed: string; durationMs: number; isLocal: boolean }> {
   const startTime = Date.now();
   const provider = (params.provider || 'gemini').toLowerCase();
@@ -172,7 +180,9 @@ async function callUniversalAI(params: {
           ],
           stream: false,
           format: params.jsonMode ? 'json' : undefined,
-          options: { temperature: 0.1 },
+          // num_ctx: 3072 keeps 3B-class local models fully in GPU on 4GB cards;
+          // the default 4096 spills them into hybrid CPU mode (~60x slower).
+          options: { temperature: 0.1, num_ctx: 3072, num_gpu: 99 },
         }),
       });
       clearTimeout(timeoutId);
@@ -195,6 +205,10 @@ async function callUniversalAI(params: {
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (params.disableFallback) {
+        const isAbort = err.name === 'AbortError' || /abort/i.test(err.message || '');
+        if (isAbort) {
+          throw new Error(`Ollama request timed out after 120s. The local model may still be loading into VRAM (cold start) or another model is occupying the GPU. Try again in a few seconds.`);
+        }
         throw new Error(`Ollama connection failed: ${err.message}`);
       }
       // Graceful fallback to cloud Gemini without noisy console error
@@ -232,14 +246,18 @@ async function callUniversalAI(params: {
     if (baseUrl && (authHeader || provider === 'custom_openai')) {
       const endpoint = baseUrl.replace(/\/+$/, '') + '/chat/completions';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      // 90s: free-tier cloud models (OpenRouter etc.) can take 30-60s under load;
+      // the previous 25s aborted valid requests mid-generation.
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       try {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(authHeader ? { Authorization: authHeader } : {}),
-          'HTTP-Referer': 'https://aistudio.google.com',
-          'X-Title': 'IBM Carbon Data & AI Platform',
+          // Honest app attribution — spoofed referers (e.g. aistudio.google.com) can
+          // trigger OpenRouter's security policy (403 Access denied).
+          'HTTP-Referer': 'http://localhost:3000',
+          'X-Title': 'AI Data Analytics Platform',
           'ngrok-skip-browser-warning': 'true',
         };
 
@@ -254,6 +272,9 @@ async function callUniversalAI(params: {
               { role: 'user', content: params.prompt },
             ],
             temperature: 0.1,
+            // Cap max_tokens explicitly: without it OpenRouter assumes the model's
+            // full limit (e.g. 64000) and rejects prepaid accounts with low credit (402).
+            max_tokens: params.maxTokens || 4096,
             ...(params.jsonMode ? { response_format: { type: 'json_object' } } : {}),
           }),
         });
@@ -271,12 +292,59 @@ async function callUniversalAI(params: {
         } else {
           if (params.disableFallback) {
             const errText = await res.text().catch(() => '');
+            // 402 with free/low-credit accounts: OpenRouter rejects the POTENTIAL cost of
+            // max_tokens. Parse the affordable token count from the error and retry once.
+            if (res.status === 402) {
+              const affordMatch = errText.match(/can only afford (\d+)/i);
+              const affordable = affordMatch ? parseInt(affordMatch[1], 10) : 0;
+              if (affordable >= 200) {
+                try {
+                  const retryRes = await fetch(endpoint, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                      model: modelName,
+                      messages: [
+                        ...(params.systemInstruction ? [{ role: 'system', content: params.systemInstruction }] : []),
+                        { role: 'user', content: params.prompt },
+                      ],
+                      temperature: 0.1,
+                      max_tokens: Math.min(affordable, 4096),
+                      ...(params.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+                    }),
+                  });
+                  if (retryRes.ok) {
+                    const retryData: any = await retryRes.json();
+                    const retryText = retryData?.choices?.[0]?.message?.content || '';
+                    return {
+                      text: retryText,
+                      modelUsed: `${provider}:${modelName}`,
+                      durationMs: Date.now() - startTime,
+                      isLocal: provider === 'custom_openai',
+                    };
+                  }
+                  const retryErr = await retryRes.text().catch(() => '');
+                  throw new Error(`${provider} returned status ${retryRes.status}: ${retryErr || retryRes.statusText}`);
+                } catch (retryError: any) {
+                  if (!/openrouter returned status/.test(retryError.message || '')) throw retryError;
+                  throw new Error(`${provider} returned status 402: رصيد الحساب لا يكفي حتى لأصغر طلب. استخدم نموذجاً مجانياً (ينتهي بـ :free) أو نموذجاً محلياً (Ollama).`);
+                }
+              }
+              throw new Error(`${provider} returned status 402: رصيد حسابك في ${provider} غير كافٍ. اشحن الرصيد من لوحة تحكم المزود، أو استخدم نموذجاً مجانياً (ينتهي بـ :free) أو نموذجاً محلياً (Ollama).`);
+            }
+            if (res.status === 403) {
+              throw new Error(`${provider} returned status 403: تم حجب الطلب بسياسة أمنية من المزود. غالباً حجب جغرافي على مستوى IP أو مفتاح API مقيّد. جرّب نموذجاً محلياً (Ollama) من إعدادات الذكاء الاصطناعي.`);
+            }
             throw new Error(`${provider} returned status ${res.status}: ${errText || res.statusText}`);
           }
         }
       } catch (err: any) {
         clearTimeout(timeoutId);
         if (params.disableFallback) {
+          const isAbort = err.name === 'AbortError' || /abort/i.test(err.message || '');
+          if (isAbort) {
+            throw new Error(`${provider} request timed out after 90s. Free-tier models can be slow under load — retry, or switch to a faster/local model.`);
+          }
           throw new Error(`${provider} connection failed: ${err.message}`);
         }
         console.warn(`[${provider} Call Notice] Request failed (${err?.message}). Falling back.`);
@@ -790,10 +858,23 @@ models: [],
 // 1e. Dynamic Model Discovery for Cloud Providers
 // Fetches supported models from provider APIs based on API keys and sorts by cost (free first)
 app.post('/api/ai/fetch-models', async (req, res) => {
-  const { provider, apiKey, endpointUrl } = req.body;
+  let { provider, apiKey, endpointUrl } = req.body;
+
+  // Fall back to server-side .env keys when the browser has none stored —
+  // otherwise a key configured only on the server can never discover models.
+  if (!apiKey) {
+    const envKeys: Record<string, string | undefined> = {
+      openrouter: process.env.OPENROUTER_API_KEY,
+      deepseek: process.env.DEEPSEEK_API_KEY,
+      qwen: process.env.QWEN_API_KEY,
+      gemini: process.env.GEMINI_API_KEY,
+      custom_openai: process.env.CUSTOM_OPENAI_API_KEY,
+    };
+    apiKey = envKeys[provider];
+  }
 
   if (!provider || !apiKey) {
-    return res.status(400).json({ error: 'Provider and API key are required' });
+    return res.status(400).json({ error: 'Provider and API key are required (no stored key found in browser or .env)' });
   }
 
   try {
@@ -953,6 +1034,38 @@ app.post('/api/ai/fetch-models', async (req, res) => {
   }
 });
 
+// 1f. Live Account Balance / Usage (OpenRouter)
+// Proxy for GET /api/v1/key — surfaces remaining credits & free-tier quota in provider settings.
+app.get('/api/ai/openrouter/balance', async (req, res) => {
+  const apiKey = (req.query.apiKey as string) || process.env.OPENROUTER_API_KEY || '';
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No OpenRouter API key provided or stored in .env' });
+  }
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/key', {
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `OpenRouter key endpoint returned ${response.status}` });
+    }
+    const data: any = await response.json();
+    const d = data?.data || {};
+    res.json({
+      label: d.label,
+      isFreeTier: d.is_free_tier ?? true,
+      usageUsd: d.usage ?? 0,
+      limitUsd: d.limit ?? null,
+      limitRemainingUsd: d.limit_remaining ?? null,
+      freeDailyRequests: d.free_model_daily_requests
+        ? { used: d.free_model_daily_requests.used, limit: d.free_model_daily_requests.limit, remaining: d.free_model_daily_requests.remaining }
+        : null,
+      expiresAt: d.expires_at ?? null,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch balance' });
+  }
+});
+
 // 1d. Unified API Proxy Layer for Local Ollama & Custom Endpoints
 // Prevents CORS preflight and 400 Bad Request errors by creating a server-side proxy boundary
 app.options('/api/proxy/ollama', (_req, res) => {
@@ -1084,6 +1197,81 @@ function evaluateModelSqlOutput(sql: string, datasetSchema: any): {
 }
 
 // 2. NL2SQL Generation Endpoint (Multi-Provider Aware)
+/**
+ * Free-tier models share crowded upstream queues (30-66s cold latency).
+ * Racing several free models in parallel and taking the first valid SQL cuts
+ * the wall time to roughly the FASTEST model's latency instead of the chosen one's.
+ */
+const FREE_RACE_MODELS = [
+  'nvidia/nemotron-3.5-lightning:free',
+  'qwen/qwen3.8-27b:free',
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'cohere/north-mini-code:free',
+  'poolside/laguna-s-2.1:free',
+  'thinkingmachines/inkling-small:free',
+];
+
+async function raceFreeModels(buildCall: (model: string) => Promise<{ text: string; modelUsed: string; durationMs: number; isLocal: boolean }>): Promise<{ text: string; modelUsed: string; durationMs: number; isLocal: boolean }> {
+  const attempts = FREE_RACE_MODELS.map(async (m) => {
+    try {
+      const r = await buildCall(m);
+      // A response with no SQL in it (refusal, empty, echoed schema) should not win the race
+      if (!r.text || !/(SELECT|WITH)\s/i.test(r.text)) {
+        throw new Error('no-sql');
+      }
+      return r;
+    } catch (e: any) {
+      // Propagate a tagged failure so Promise.any skips it
+      const err = new Error(e?.message || 'race-attempt-failed');
+      (err as any).skippable = true;
+      throw err;
+    }
+  });
+  try {
+    return await Promise.any(attempts);
+  } catch (e: any) {
+    throw new Error('كل النماذج المجانية فشلت أو مشغولة حالياً. أعد المحاولة، أو استخدم النموذج المحلي (Ollama) — أسرع بـ30 مرة.');
+  }
+}
+
+/**
+ * Robust SQL extraction: models often wrap SQL in JSON arrays/objects, prose,
+ * or markdown fences. Normalize everything down to the pure SQL statement.
+ */
+function extractCleanSQL(raw: string): { sql: string; explanation?: string } {
+  let text = (raw || '').trim();
+  let explanation: string | undefined;
+
+  const explMatch = text.match(/EXPLANATION:\s*([\s\S]+)/i);
+  if (explMatch) explanation = explMatch[1].trim();
+
+  // 1. Direct markdown fence (preferred shape)
+  const fence = text.match(/```sql\s*([\s\S]+?)\s*```/i);
+  if (fence) return { sql: fence[1].trim(), explanation };
+
+  // 2. JSON-wrapped response (array or object, with or without fences)
+  const jsonCandidate = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/i)?.[1] || text;
+  try {
+    const parsed = JSON.parse(jsonCandidate);
+    const candidate = Array.isArray(parsed) ? parsed[0] : parsed;
+    if (candidate && typeof candidate === 'object') {
+      if (typeof candidate.sql === 'string') {
+        const inner = candidate.sql.match(/```sql\s*([\s\S]+?)\s*```/i);
+        return { sql: (inner ? inner[1] : candidate.sql).trim(), explanation: candidate.explanation || explanation };
+      }
+      // Echoed schema / wrong payload — no SQL inside
+    }
+  } catch { /* not JSON */ }
+
+  // 3. Bare SELECT/WITH statement embedded in prose
+  const bare = text.match(/((?:WITH[\s\S]+?)?SELECT\s+[\s\S]+?)(?:;|$)/i);
+  if (bare) return { sql: bare[1].trim().replace(/;+$/, ''), explanation };
+
+  return { sql: text.replace(/;+$/, '').trim(), explanation };
+}
+
 app.post('/api/nl2sql/generate', async (req, res) => {
   const { question, datasetSchema, language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey } = req.body;
   const startTime = Date.now();
@@ -1099,28 +1287,37 @@ Generate a clean, safe, valid PostgreSQL/DuckDB SQL SELECT query to answer the u
 Rules:
 1. ONLY return a SELECT or WITH (CTE) query. Do NOT use DROP, TRUNCATE, DELETE, INSERT, ALTER, or multiple statements.
 2. Output ONLY the raw SQL statement inside a \`\`\`sql ... \`\`\` code block, followed by a 1-sentence explanation labeled "EXPLANATION: [Brief explanation]" in ${language === 'ar' ? 'Arabic' : 'English'}.
+3. Be terse: no preamble, no restating the schema, no thinking out loud.
 Format:
 \`\`\`sql
 SELECT ...
 \`\`\`
 EXPLANATION: [Brief explanation]`;
 
-const aiResult = await callUniversalAI({
+    // Free-tier OpenRouter models share crowded queues (30-66s). Racing 3 free
+    // models in parallel and taking the first valid SQL cuts wall time to the
+    // fastest responder. Paid/local models skip the race entirely.
+    const isFreeModel = String(model || '').endsWith(':free');
+    const singleCall = (m: string) => callUniversalAI({
       provider,
-      model,
+      model: m,
       endpointUrl,
       apiKey,
       prompt,
       jsonMode: true,
       disableFallback: true,
+      maxTokens: 512, // SQL + 1-line explanation fits well under 512; smaller cap = cheaper & faster
     });
+
+    const aiResult = isFreeModel
+      ? await raceFreeModels(singleCall)
+      : await singleCall(model);
 
     if (aiResult && aiResult.text) {
       const responseText = aiResult.text || '';
-      const sqlMatch = responseText.match(/```sql\s*([\s\S]+?)\s*```/i);
-      const sql = sqlMatch ? sqlMatch[1].trim() : responseText.trim();
-      const explMatch = responseText.match(/EXPLANATION:\s*([\s\S]+)/i);
-      const explanation = explMatch ? explMatch[1].trim() : (language === 'ar' ? 'تم توليد استعلام SQL محسوب وفق معايير المخطط بدقة.' : 'SQL query generated per schema specifications.');
+      const extracted = extractCleanSQL(responseText);
+      const sql = extracted.sql;
+      const explanation = extracted.explanation || (language === 'ar' ? 'تم توليد استعلام SQL محسوب وفق معايير المخطط بدقة.' : 'SQL query generated per schema specifications.');
 
       const durationMs = aiResult.durationMs || (Date.now() - startTime);
       serverAuditLogs.unshift({
@@ -2135,6 +2332,727 @@ app.get('/api/audit', (_req, res) => {
   res.json({ logs: serverAuditLogs.slice(0, 100) });
 });
 
+// ---------------------------------------------------------------------------
+// Authentication (SQLite-backed): register / login / logout / session
+// ---------------------------------------------------------------------------
+app.post('/api/auth/register', (req, res) => {
+  const { email, name, password } = req.body || {};
+  if (!email || !name || !password) {
+    return res.status(400).json({ error: 'البريد والاسم وكلمة المرور مطلوبة' });
+  }
+  try {
+    const role: Role = roleForFirstUser(); // first account = admin
+    const user = createUser(email, name, password, role);
+    // Auto-join: if this email was invited to a group while unregistered,
+    // consume the invite and add the fresh account to that group now.
+    let joinedGroup: { discussionId: string; discussionName: string } | null = null;
+    try { joinedGroup = consumeEmailInviteForNewUser(user.id, email); } catch { /* non-fatal */ }
+    const { token, expiresAt } = verifyLogin(email, password);
+    res.json({ user, token, expiresAt, joinedGroup });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });
+  }
+  try {
+    const { user, token, expiresAt } = verifyLogin(email, password);
+    res.json({ user, token, expiresAt });
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (token) revokeSession(token);
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const user = getUserByToken(token);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة أو منتهية' });
+  res.json({ user });
+});
+
+// Full platform user list — ADMIN ONLY. Regular users must use
+// /api/users/contacts (self + shared-discussion contacts) instead.
+app.get('/api/auth/users', (req, res) => {
+  const caller = authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (caller.role !== 'admin') {
+    return res.status(403).json({ error: 'هذه القائمة متاحة للمدير فقط — استخدم جهات اتصالك من المناقشات' });
+  }
+  res.json({ users: listUsers() });
+});
+
+// ---- Database migration (admin only): safe export/import of data/auth.db ----
+// Export uses sqlite's online .backup API so it is consistent even under WAL
+// while the live server keeps serving requests.
+
+app.get('/api/admin/db/export', (req, res) => {
+  const caller = authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (caller.role !== 'admin') return res.status(403).json({ error: 'عملية الترحيل متاحة للمدير فقط' });
+  let tmpPath: string | null = null;
+  try {
+    const dbPath = path.join(process.cwd(), 'data', 'auth.db');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    tmpPath = path.join(process.cwd(), 'data', `export-${stamp}.db`);
+    // Online backup: consistent snapshot, WAL-safe
+    const src = new BetterSqlite3(dbPath);
+    src.exec(`VACUUM INTO '${tmpPath.replace(/'/g, "''")}'`);
+    src.close();
+    console.log('[db-export] cwd:', process.cwd(), '| tmp exists:', fs.existsSync(tmpPath), '| size:', fs.existsSync(tmpPath) ? fs.statSync(tmpPath).size : 0);
+    res.download(tmpPath, `analytics-db-${stamp}.db`, err => {
+      // Clean the temp snapshot after streaming (or on failure)
+      try { if (tmpPath) fs.unlinkSync(tmpPath); } catch { /* already gone */ }
+      if (err) console.error('[db-export] stream failed:', err.message);
+    });
+  } catch (err: any) {
+    try { if (tmpPath) fs.unlinkSync(tmpPath); } catch { /* noop */ }
+    res.status(500).json({ error: `فشل التصدير: ${err.message}` });
+  }
+});
+
+// Import: replaces the live database with an uploaded .db file.
+// Safety chain: size cap → file magic check → automatic pre-replace backup
+// → replace → process exit (systemd/Render restarts into the new data).
+app.post('/api/admin/db/import', express.raw({ type: 'application/octet-stream', limit: '200mb' }), async (req, res) => {
+  const caller = authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (caller.role !== 'admin') return res.status(403).json({ error: 'عملية الترحيل متاحة للمدير فقط' });
+  const upload = Buffer.from(req.body || Buffer.alloc(0));
+  if (upload.length < 4096) return res.status(400).json({ error: 'الملف المرفوع صغير جداً أو فارغ' });
+  // SQLite file magic: "SQLite format 3\0"
+  if (upload.subarray(0, 16).toString('utf8') !== 'SQLite format 3\0') {
+    return res.status(400).json({ error: 'الملف ليس قاعدة بيانات SQLite صالحة' });
+  }
+  try {
+    const dataDir = path.join(process.cwd(), 'data');
+    const dbPath = path.join(dataDir, 'auth.db');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // 1) Automatic safety backup of the CURRENT database
+    const backupPath = path.join(dataDir, `pre-import-backup-${stamp}.db`);
+    const cur = new BetterSqlite3(dbPath);
+    cur.exec(`VACUUM INTO '${backupPath.replace(/'/g, "''")}'`);
+    cur.close();
+    // 2) Validate the upload can actually open as a database (integrity check)
+    const tmpUpload = path.join(dataDir, `import-${stamp}.db`);
+    fs.writeFileSync(tmpUpload, upload);
+    const test = new BetterSqlite3(tmpUpload);
+    const integrity = (test.pragma('integrity_check') as any[])[0];
+    test.close();
+    if (integrity?.integrity_check !== 'ok') {
+      fs.unlinkSync(tmpUpload);
+      return res.status(400).json({ error: `قاعدة البيانات المرفوعة تالفة: ${integrity?.integrity_check}` });
+    }
+    // 3) Transfer the uploaded database into the LIVE one via sqlite's online
+    // backup API: open the UPLOAD as source and .backup() into the live db path.
+    // Handles WAL + open connections safely, on any OS. No file swaps.
+    const uploadedDb = new BetterSqlite3(tmpUpload);
+    await uploadedDb.backup(dbPath);
+    uploadedDb.close();
+    fs.unlinkSync(tmpUpload);
+    res.json({
+      ok: true,
+      message: 'تم الاستيراد بنجاح — الخادم سيُعاد تشغيله تلقائياً لتحميل البيانات الجديدة',
+      backup: path.basename(backupPath),
+    });
+    // 4) Graceful exit so the process manager reloads the replaced file
+    setTimeout(() => {
+      console.log('[db-import] exiting for clean reload…');
+      process.exit(0);
+    }, 500);
+  } catch (err: any) {
+    res.status(500).json({ error: `فشل الاستيراد: ${err.message}` });
+  }
+});
+
+// ---- Platform health monitoring (admin only): uptime, memory, database ----
+app.get('/api/admin/system-status', (req, res) => {
+  const caller = authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (caller.role !== 'admin') return res.status(403).json({ error: 'مراقبة النظام متاحة للمدير فقط' });
+  try {
+    const mem = process.memoryUsage();
+    const dbPath = path.join(process.cwd(), 'data', 'auth.db');
+    let dbSize = 0, dbWalSize = 0, userCount = 0, messageCount = 0, dbIntegrity = 'unknown';
+    try {
+      dbSize = fs.statSync(dbPath).size;
+      const walPath = dbPath + '-wal';
+      if (fs.existsSync(walPath)) dbWalSize = fs.statSync(walPath).size;
+      const db = new BetterSqlite3(dbPath, { readonly: true });
+      userCount = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as any).c;
+      const hasMsgs = (db.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='discussion_messages'").get() as any).c > 0;
+      if (hasMsgs) messageCount = (db.prepare('SELECT COUNT(*) AS c FROM discussion_messages').get() as any).c;
+      dbIntegrity = (db.pragma('integrity_check') as any[])[0]?.integrity_check || 'unknown';
+      db.close();
+    } catch { /* database details are optional — never fail the whole probe */ }
+    res.json({
+      uptimeSec: Math.floor(process.uptime()),
+      memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+      db: { size: dbSize, walSize: dbWalSize, users: userCount, messages: messageCount, integrity: dbIntegrity },
+      nodeVersion: process.version,
+      env: process.env.NODE_ENV || 'development',
+      platform: `${os.platform()} ${os.arch()}`,
+      checkedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `فشل جمع حالة النظام: ${err.message}` });
+  }
+});
+
+// Privacy-scoped contact list: the caller's own account + users who share at
+// least one discussion group with the caller (no global user enumeration).
+app.get('/api/users/contacts', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const rows = listContactsForUser(user.id);
+  res.json({ contacts: rows });
+});
+
+// ---------------------------------------------------------------------------
+// Group Discussions (WhatsApp-style groups): create / invite / chat
+// ---------------------------------------------------------------------------
+import {
+  createDiscussion, listDiscussionsForUser, addMember, removeMember,
+  deleteDiscussion, postMessage, listMessages, findUserByIdOrEmail,
+  isMember, isOwner, isModerator, promoteToModerator, demoteModerator,
+  setSendPolicy, getDiscussionRow, addSseClient, broadcastTyping,
+  listContactsForUser, createInvite, revokeInvite, peekInvite, joinViaInvite,
+  listInvites, addUserListener, hasOlderMessages, listChatSummaries,
+  markDiscussionRead, emitToUser, totalUnreadCount, markAllDiscussionsRead,
+  snapshotUnreadBySource, type DiscussionEvent,
+} from './server/discussions';
+import {
+  pushNotification, listNotifications, countUnread, markNotificationRead,
+  markAllNotificationsRead, sendDiscussionInvite, acceptDiscussionInvite,
+  rejectDiscussionInvite, listPendingInvitesFor, listGroupPendingInvites,
+  cancelPendingInvite, resendPendingInvite,
+} from './server/notifications';
+import {
+  createEmailInvite, peekEmailInvite, consumeEmailInviteForNewUser,
+  listGroupEmailInvites, revokeEmailInvite, startEmailInviteReminderScheduler,
+} from './server/emailInvites';
+
+function authUserFromReq(req: express.Request) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  return getUserByToken(token);
+}
+
+// The current user's groups — strictly members-only, no discovery.
+// ?light=1 strips image payloads from lastMessage (fast chat list).
+app.get('/api/discussions', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (req.query.light === '1') return res.json(listChatSummaries(user.id));
+  res.json(listDiscussionsForUser(user.id));
+});
+
+// Total unread across all the user's groups — the sidebar tab badge.
+// MUST be defined before '/api/discussions/:id' style routes.
+app.get('/api/discussions/unread-total', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ total: totalUnreadCount(user.id) });
+});
+
+// Unread SHARED-SNAPSHOT counts per source tab — mini badges on Dashboards/Reports tabs
+app.get('/api/discussions/snapshot-badges', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json(snapshotUnreadBySource(user.id));
+});
+
+app.post('/api/discussions', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const { name, topic, memberIds } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'اسم المجموعة مطلوب' });
+  }
+  try {
+    const discussion = createDiscussion(String(name), topic ? String(topic) : '', user.id, user.name);
+    // Optionally invite members at creation time (ids or emails)
+    const invited: string[] = [];
+    const failed: { target: string; error: string }[] = [];
+    if (Array.isArray(memberIds)) {
+      for (const raw of memberIds.slice(0, 100)) {
+        try {
+          const target = findUserByIdOrEmail(String(raw));
+          if (!target) throw new Error('غير موجود');
+          addMember(discussion.id, target.id);
+          invited.push(target.id);
+        } catch (e: any) {
+          failed.push({ target: String(raw), error: e.message });
+        }
+      }
+    }
+    const list = listDiscussionsForUser(user.id);
+    const full = list.mine.find(d => d.id === discussion.id) || discussion;
+    res.json({ discussion: full, invited, failed });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/discussions/:id/messages', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const disc = getDiscussionRow(req.params.id);
+  if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const before = req.query.before ? String(req.query.before) : undefined;
+    const messages = listMessages(req.params.id, user.id, limit, before);
+    const oldest = messages.length > 0 ? messages[0].createdAt : null;
+    res.json({
+      messages,
+      hasOlder: oldest ? hasOlderMessages(req.params.id, oldest) : false,
+    });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+app.post('/api/discussions/:id/messages', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const disc = getDiscussionRow(req.params.id);
+  if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
+  try {
+    const message = postMessage(
+      req.params.id, user.id, user.name,
+      String(req.body?.body || ''),
+      req.body?.imageData ?? null,
+      req.body?.snapshotSource ?? null
+    );
+    res.json({ message });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invite members (owner or moderators — like WhatsApp group admins)
+app.post('/api/discussions/:id/members', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const disc = getDiscussionRow(req.params.id);
+  if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
+  if (!isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم دعوة الأعضاء' });
+  const { memberIds } = req.body || {};
+  if (!Array.isArray(memberIds) || memberIds.length === 0) {
+    return res.status(400).json({ error: 'قائمة الأعضاء (memberIds) مطلوبة' });
+  }
+  const invited: string[] = [];
+  const failed: { target: string; error: string }[] = [];
+  for (const raw of memberIds.slice(0, 100)) {
+    try {
+      const target = findUserByIdOrEmail(String(raw));
+      if (!target) throw new Error('غير موجود');
+      addMember(req.params.id, target.id);
+      invited.push(target.id);
+    } catch (e: any) {
+      failed.push({ target: String(raw), error: e.message });
+    }
+  }
+  const list = listDiscussionsForUser(user.id);
+  const full = list.mine.find(d => d.id === req.params.id);
+  res.json({ discussion: full, invited, failed });
+});
+
+app.delete('/api/discussions/:id/members/:userId', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (!isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم إزالة الأعضاء' });
+  try {
+    removeMember(req.params.id, req.params.userId, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ---- Moderator management (owner only) ----
+
+// Owner promotes a member to moderator
+app.post('/api/discussions/:id/moderators/:userId', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    promoteToModerator(req.params.id, req.params.userId, user.id);
+    // Let the promotee know about their new role
+    const disc = getDiscussionRow(req.params.id);
+    pushNotification(
+      req.params.userId,
+      'info',
+      'تم تعيينك مشرفاً 🛡',
+      `${user.name} منحك صلاحيات الإشراف في مجموعة "${disc?.name || ''}" — يمكنك الآن دعوة الأعضاء وإدارتهم`,
+      { discussionId: req.params.id, discussionName: disc?.name, role: 'moderator' }
+    );
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Owner demotes a moderator back to member
+app.delete('/api/discussions/:id/moderators/:userId', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    demoteModerator(req.params.id, req.params.userId, user.id);
+    // Let the demoted member know their role changed
+    const disc = getDiscussionRow(req.params.id);
+    pushNotification(
+      req.params.userId,
+      'info',
+      'أُلغي إشرافك في مجموعة',
+      `${user.name} ألغى صلاحيات الإشراف لديك في مجموعة "${disc?.name || ''}" — ما زلت عضواً ويمكنك المشاركة`,
+      { discussionId: req.params.id, discussionName: disc?.name, role: 'member' }
+    );
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Owner toggles closed-group mode: only owner & moderators can post
+app.post('/api/discussions/:id/send-policy', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const policy = String(req.body?.policy || '');
+  if (policy !== 'everyone' && policy !== 'moderators_only') {
+    return res.status(400).json({ error: "policy يجب أن تكون 'everyone' أو 'moderators_only'" });
+  }
+  try {
+    setSendPolicy(req.params.id, user.id, policy);
+    res.json({ ok: true, sendPolicy: policy });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Leave a group (non-owner)
+app.post('/api/discussions/:id/leave', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (isOwner(req.params.id, user.id)) {
+    return res.status(400).json({ error: 'المالك لا يمكنه المغادرة — احذف المجموعة بدلاً من ذلك' });
+  }
+  try {
+    removeMember(req.params.id, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/discussions/:id', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    deleteDiscussion(req.params.id, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// ---- Invite links: the only path into a private group ----
+
+// Owner generates a fresh secret invite link
+app.post('/api/discussions/:id/invites', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const maxUses = req.body?.maxUses ? Number(req.body.maxUses) : undefined;
+    const invite = createInvite(req.params.id, user.id, maxUses);
+    res.json(invite);
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Owner lists the group's invite links (with usage + revoke state)
+app.get('/api/discussions/:id/invites', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    res.json({ invites: listInvites(req.params.id, user.id) });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Owner revokes an invite link
+app.delete('/api/discussions/:id/invites/:code', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    revokeInvite(req.params.id, req.params.code, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Pending invites received by the current user (MUST be registered before
+// the '/api/invites/:code' route or "pending" is captured as a code!)
+app.get('/api/invites/pending', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ invites: listPendingInvitesFor(user.id) });
+});
+
+// Public-ish preview of an invite code (name only — no messages, no members)
+app.get('/api/invites/:code', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json(peekInvite(req.params.code));
+});
+
+// Join a group through a valid invite code
+app.post('/api/invites/:code/join', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const result = joinViaInvite(req.params.code, user.id, user.name);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ---- Email invites for UNREGISTERED people ----
+
+// Owner invites an email address (SMTP if configured, manual link otherwise)
+app.post('/api/discussions/:id/invite-email', async (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'البريد الإلكتروني مطلوب' });
+  try {
+    const result = await createEmailInvite(req.params.id, user.id, String(email));
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invitee-side preview of an email invite (name of group only)
+app.get('/api/email-invites/:code', (req, res) => {
+  res.json(peekEmailInvite(req.params.code));
+});
+
+// Owner: all email invites of a group with consumption status
+app.get('/api/discussions/:id/email-invites', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    res.json({ invites: listGroupEmailInvites(req.params.id, user.id) });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Owner: revoke a pending email invite (its link stops working)
+app.delete('/api/discussions/:id/email-invites/:code', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    revokeEmailInvite(req.params.id, req.params.code, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Ephemeral typing signal (fire-and-forget, nothing persisted).
+app.post('/api/discussions/:id/typing', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    broadcastTyping(req.params.id, user.id, user.name);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Live stream of discussion events for the current user (Server-Sent Events).
+// Auth via query token because EventSource cannot send headers.
+app.get('/api/discussions/stream', (req, res) => {
+  const token = String(req.query.token || '');
+  const user = getUserByToken(token);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write(`event: connected\ndata: ${JSON.stringify({ userId: user.id })}\n\n`);
+
+  const removeClient = addSseClient(user.id, (event: DiscussionEvent) => {
+    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+  });
+  // Notification pings (e.g. new discussion invite) on the same stream
+  const removeUserListener = addUserListener(user.id, (unreadCount: number) => {
+    res.write(`event: notification\ndata: ${JSON.stringify({ unreadCount })}\n\n`);
+  });
+
+  // Keep the connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch { /* cleaned up below */ }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeClient();
+    removeUserListener();
+  });
+});
+
+// ---- Notifications ----
+app.get('/api/notifications', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ notifications: listNotifications(user.id), unread: countUnread(user.id) });
+});
+
+app.post('/api/notifications/:id/read', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  markNotificationRead(user.id, req.params.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/notifications/read-all', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  markAllNotificationsRead(user.id);
+  res.json({ ok: true });
+});
+
+// ---- Group invites (pending → accept/reject) ----
+// Owner invites a contact: creates a PENDING invite + notification for the invitee
+app.post('/api/discussions/:id/invite-user', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const { userId } = req.body || {};
+  if (!userId) return res.status(400).json({ error: 'معرّف المدعو (userId) مطلوب' });
+  try {
+    const result = sendDiscussionInvite(req.params.id, user.id, user.name, String(userId));
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invitee accepts — membership happens ONLY here
+app.post('/api/invites/pending/:id/accept', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    res.json(acceptDiscussionInvite(req.params.id, user.id));
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invitee rejects — owner is notified
+app.post('/api/invites/pending/:id/reject', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    rejectDiscussionInvite(req.params.id, user.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Mark ALL the user's groups as read in one click (sidebar badge → 0).
+// MUST be registered before '/api/discussions/:id/read' ("all" ≠ a group id).
+app.post('/api/discussions/read-all', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const affected = markAllDiscussionsRead(user.id);
+  emitToUser(user.id, countUnread(user.id));
+  res.json({ ok: true, total: 0, affected });
+});
+
+// Mark the group as read for the current user (unread badge resets).
+// Replies with the user's fresh unread counts per group for instant badge sync.
+app.post('/api/discussions/:id/read', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    markDiscussionRead(req.params.id, user.id);
+    const list = listChatSummaries(user.id);
+    const unreadByGroup: Record<string, number> = {};
+    for (const g of list.mine) unreadByGroup[g.id] = g.unreadCount;
+    // Nudge the caller's own SSE stream so other open tabs sync too
+    emitToUser(user.id, countUnread(user.id));
+    res.json({ ok: true, unreadByGroup });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Group members: see this group's pending invites (owner manages them)
+app.get('/api/discussions/:id/pending-invites', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    res.json({ invites: listGroupPendingInvites(req.params.id, user.id) });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Cancel a pending invite (the inviter themselves, or the group owner for anyone's)
+app.post('/api/discussions/:id/pending-invites/:inviteId/cancel', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const disc = getDiscussionRow(req.params.id);
+  if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
+  try {
+    cancelPendingInvite(req.params.id, req.params.inviteId, user.id, isOwner(req.params.id, user.id));
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Resend a pending invite (fresh notification to the invitee)
+app.post('/api/discussions/:id/pending-invites/:inviteId/resend', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    resendPendingInvite(req.params.id, req.params.inviteId, user.id, user.name);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
+// Favicon: browsers request /favicon.ico automatically even when the HTML
+// declares an SVG icon — serve the SVG content under both paths.
+const faviconPath = path.join(process.cwd(), 'public', 'favicon.svg');
+app.get(['/favicon.ico', '/favicon.svg'], (_req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile(faviconPath);
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -2152,6 +3070,9 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`AI Analytics Platform server running on http://0.0.0.0:${PORT}`);
+    // Hourly sweeper: reminder email + owner notification for email invites
+    // still pending after 3 days (runs once per invite, never repeats)
+    startEmailInviteReminderScheduler();
   });
 }
 

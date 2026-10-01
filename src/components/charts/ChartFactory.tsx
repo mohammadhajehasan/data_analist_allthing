@@ -544,7 +544,7 @@ export const ChartFactory: React.FC<{
               <Legend
                 verticalAlign="bottom"
                 height={36}
-                formatter={val => <span className="text-[10px] font-mono text-[#f4f4f4] font-semibold">{val}</span>}
+                formatter={val => <span className="text-[10px] font-mono text-[var(--cds-text-01)] font-semibold">{val}</span>}
               />
             </PieChart>
           </ResponsiveContainer>

@@ -20,7 +20,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Cpu,
+  MessagesSquare,
 } from 'lucide-react';
+import { DiscussionsBadge } from './DiscussionsBadge';
+import { SnapshotBadge } from './SnapshotBadge';
 
 export const Sidebar: React.FC = () => {
   const { activeTab, setActiveTab, startTour, layoutSettings, updateLayoutSettings, language, t } = useApp();
@@ -38,6 +41,7 @@ export const Sidebar: React.FC = () => {
     { id: 'models', label: t.nav.models, icon: Cpu, badge: 'Ollama' },
     { id: 'guide', label: t.nav.guide, icon: HelpCircle, badge: 'New' },
     { id: 'assistant', label: t.nav.assistant, icon: Bot, badge: 'AI' },
+    { id: 'discussions', label: t.nav.discussions, icon: MessagesSquare, badge: 'Groups' },
     { id: 'workflow', label: t.nav.workflow, icon: Workflow, badge: 'Agent' },
     { id: 'reports', label: t.nav.reports, icon: FileText },
     { id: 'audit', label: t.nav.audit, icon: ShieldAlert },
@@ -92,6 +96,18 @@ export const Sidebar: React.FC = () => {
                 >
                   {item.badge}
                 </span>
+              )}
+              {/* Total unread messages across all groups — Discussions tab only */}
+              {item.id === 'discussions' && (
+                isCollapsed
+                  ? <DiscussionsBadge className="absolute top-1 end-1" />
+                  : <DiscussionsBadge />
+              )}
+              {/* Unread shared-snapshot mini badges — Dashboards & Reports tabs */}
+              {(item.id === 'dashboards' || item.id === 'reports') && (
+                isCollapsed
+                  ? <SnapshotBadge source={item.id === 'dashboards' ? 'dashboard' : 'reports'} className="absolute top-1 end-1" />
+                  : <SnapshotBadge source={item.id === 'dashboards' ? 'dashboard' : 'reports'} />
               )}
             </button>
           );

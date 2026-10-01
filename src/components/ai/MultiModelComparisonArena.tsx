@@ -346,21 +346,21 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
     <div className="space-y-6">
       
       {/* Top Banner & Strategy Intro */}
-      <div className="bg-[#161616] p-5 border border-[#393939] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#0f62fe]/20 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40 shrink-0">
             <Trophy className="w-5 h-5 text-[#ff832b]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-[#f4f4f4]">
+              <h2 className="text-base font-semibold text-[var(--cds-text-01)]">
                 {isAr ? 'حلبة مقارنة النماذج الذكية (Multi-Model Evaluation Arena)' : 'Multi-Model Benchmark & Evaluation Arena'}
               </h2>
               <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#42be65]/20 text-[#42be65] border border-[#42be65]/30">
                 Ollama Privacy + Multi-LLM
               </span>
             </div>
-            <p className="text-xs text-[#a8a8a8] mt-0.5">
+            <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
               {isAr
                 ? 'قارن دقة استعلامات SQL، الأداء، الأمان (9-Layers)، وسرعة الاستجابة بين Ollama المحلي، Gemini، DeepSeek-R1، و Qwen جنباً إلى جنب.'
                 : 'Benchmark SQL accuracy, 9-layer security conformance, latency, and syntax quality across local Ollama, Gemini, DeepSeek, and Qwen.'}
@@ -374,7 +374,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'grid'
                 ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:bg-[#393939]'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -386,7 +386,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'table'
                 ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:bg-[#393939]'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
             <PieIcon className="w-3.5 h-3.5" />
@@ -398,7 +398,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'charts'
                 ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:bg-[#393939]'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5 text-[#42be65]" />
@@ -410,7 +410,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'latency'
                 ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:bg-[#393939]'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-[#ff832b]" />
@@ -420,13 +420,13 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
       </div>
 
       {/* Model Selection Multi-Chip Bar */}
-      <div className="bg-[#262626] p-4 border border-[#393939] space-y-3">
+      <div className="bg-[var(--cds-layer-02)] p-4 border border-[var(--cds-border-subtle)] space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-[#f4f4f4] uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-[var(--cds-text-01)] uppercase tracking-wider flex items-center gap-1.5">
             <Cpu className="w-4 h-4 text-[#78a9ff]" />
             {isAr ? 'اختر النماذج للمقارنة المباشرة (2 إلى 6 نماذج):' : 'Select Models to Benchmark (2 to 6):'}
           </label>
-          <span className="text-xs text-[#8d8d8d]">
+          <span className="text-xs text-[var(--cds-text-03)]">
             {isAr ? `تم تحديد ${selectedModelIds.length} نماذج` : `${selectedModelIds.length} models active`}
           </span>
         </div>
@@ -440,8 +440,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 onClick={() => toggleModelSelection(m.id)}
                 className={`p-2 text-start text-xs border transition-all flex flex-col justify-between ${
                   isSelected
-                    ? 'border-[#0f62fe] bg-[#0f62fe]/15 text-[#f4f4f4] shadow-xs'
-                    : 'border-[#393939] bg-[#161616] text-[#8d8d8d] hover:border-[#525252] hover:text-[#c6c6c6]'
+                    ? 'border-[#0f62fe] bg-[#0f62fe]/15 text-[var(--cds-text-01)] shadow-xs'
+                    : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-[var(--cds-text-03)] hover:border-[var(--cds-border-strong)] hover:text-[var(--cds-text-02)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-1">
@@ -449,7 +449,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                   {isSelected ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#0f62fe] shrink-0" />
                   ) : (
-                    <div className="w-3.5 h-3.5 rounded-full border border-[#525252] shrink-0" />
+                    <div className="w-3.5 h-3.5 rounded-full border border-[var(--cds-border-strong)] shrink-0" />
                   )}
                 </div>
 
@@ -459,12 +459,12 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                       🔒 Local
                     </span>
                   ) : (
-                    <span className="px-1 py-0.2 bg-[#393939] text-[#78a9ff]">
+                    <span className="px-1 py-0.2 bg-[var(--cds-layer-03)] text-[#78a9ff]">
                       ☁️ Cloud
                     </span>
                   )}
                   {m.parameterSize && (
-                    <span className="text-[#8d8d8d] font-mono">{m.parameterSize}</span>
+                    <span className="text-[var(--cds-text-03)] font-mono">{m.parameterSize}</span>
                   )}
                 </div>
               </button>
@@ -474,8 +474,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
       </div>
 
       {/* Query Input Box & Execution Controls */}
-      <div className="bg-[#161616] p-4 border border-[#393939] space-y-3">
-        <label className="block text-xs font-semibold text-[#f4f4f4] uppercase tracking-wider">
+      <div className="bg-[var(--cds-layer-01)] p-4 border border-[var(--cds-border-subtle)] space-y-3">
+        <label className="block text-xs font-semibold text-[var(--cds-text-01)] uppercase tracking-wider">
           {isAr ? 'السؤال التحليلي لاختبار النماذج (Prompt under Test):' : 'Analytical Query Prompt under Test:'}
         </label>
         
@@ -485,7 +485,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder={isAr ? 'اكتب سؤالك باللغة الطبيعية...' : 'Type natural language analytical query...'}
-            className="flex-1 px-4 py-2.5 text-xs bg-[#262626] text-[#f4f4f4] border border-[#525252] focus:border-[#0f62fe] focus:outline-hidden"
+            className="flex-1 px-4 py-2.5 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden"
           />
 
           <button
@@ -505,7 +505,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
         </div>
 
         {/* Quick Sample Presets */}
-        <div className="flex items-center gap-2 pt-1 text-xs text-[#8d8d8d] overflow-x-auto">
+        <div className="flex items-center gap-2 pt-1 text-xs text-[var(--cds-text-03)] overflow-x-auto">
           <span className="shrink-0">{isAr ? 'أمثلة سريعة:' : 'Quick Presets:'}</span>
           {[
             isAr ? 'أعلى 5 فئات مبيعاً ومتوسط الأرباح' : 'Top 5 categories by sales and profit',
@@ -515,7 +515,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             <button
               key={idx}
               onClick={() => setQuestion(sample)}
-              className="px-2 py-0.5 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] text-[11px] whitespace-nowrap transition-colors"
+              className="px-2 py-0.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] text-[11px] whitespace-nowrap transition-colors"
             >
               {sample}
             </button>
@@ -529,16 +529,16 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
           
           {/* Winner Banner */}
           {session && (
-            <div className="p-4 bg-linear-to-r from-[#0f62fe]/20 via-[#262626] to-[#161616] border border-[#0f62fe]/40 flex items-center justify-between">
+            <div className="p-4 bg-linear-to-r from-[#0f62fe]/20 via-[#262626] to-[var(--cds-layer-01)] border border-[#0f62fe]/40 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-[#f1c21b]/20 text-[#f1c21b] flex items-center justify-center border border-[#f1c21b]/40">
                   <Trophy className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs text-[#8d8d8d] uppercase tracking-wider">
+                  <div className="text-xs text-[var(--cds-text-03)] uppercase tracking-wider">
                     {isAr ? 'النموذج الفائز في الجولة الحالية' : 'Benchmark Winner Model'}
                   </div>
-                  <div className="text-sm font-bold text-[#f4f4f4] flex items-center gap-2">
+                  <div className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                     <span>{availableAIModels.find(m => m.id === session.winnerModelId)?.name || session.winnerModelId}</span>
                     <span className="px-2 py-0.2 text-[10px] bg-[#42be65]/20 text-[#42be65] font-normal border border-[#42be65]/30">
                       🏆 Top Composite Score
@@ -548,7 +548,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
               </div>
 
               <div className="text-end">
-                <div className="text-xs text-[#8d8d8d]">{isAr ? 'زمن التنفيذ الإجمالي' : 'Total Execution Latency'}</div>
+                <div className="text-xs text-[var(--cds-text-03)]">{isAr ? 'زمن التنفيذ الإجمالي' : 'Total Execution Latency'}</div>
                 <div className="text-sm font-mono font-bold text-[#78a9ff]">{session.results[0]?.durationMs || 0} ms</div>
               </div>
             </div>
@@ -565,19 +565,19 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 return (
                   <div
                     key={res.modelId}
-                    className={`bg-[#161616] border transition-all flex flex-col justify-between ${
+                    className={`bg-[var(--cds-layer-01)] border transition-all flex flex-col justify-between ${
                       isPinned
                         ? 'border-[#f1c21b] ring-1 ring-[#f1c21b]/40 bg-[#f1c21b]/5'
                         : isWinner
                         ? 'border-[#0f62fe] shadow-md ring-1 ring-[#0f62fe]/50'
-                        : 'border-[#393939]'
+                        : 'border-[var(--cds-border-subtle)]'
                     }`}
                   >
                     {/* Model Header */}
-                    <div className="p-4 bg-[#262626] border-b border-[#393939] flex items-center justify-between gap-3">
+                    <div className="p-4 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between gap-3">
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold text-xs text-[#f4f4f4] truncate">{res.modelName}</h3>
+                          <h3 className="font-semibold text-xs text-[var(--cds-text-01)] truncate">{res.modelName}</h3>
                           {isPinned && (
                             <span className="px-1.5 py-0.2 text-[9px] bg-[#f1c21b]/20 text-[#f1c21b] border border-[#f1c21b]/40 font-semibold flex items-center gap-1">
                               <Pin className="w-2.5 h-2.5 fill-current" /> Pinned
@@ -594,7 +594,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-[#8d8d8d]">
+                        <div className="text-[11px] text-[var(--cds-text-03)]">
                           {res.providerName} • {res.durationMs}ms
                         </div>
                       </div>
@@ -607,14 +607,14 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                           className={`p-1.5 border transition-colors ${
                             isPinned
                               ? 'bg-[#f1c21b]/20 text-[#f1c21b] border-[#f1c21b]/50'
-                              : 'bg-[#161616] text-[#8d8d8d] border-[#393939] hover:text-[#f4f4f4] hover:bg-[#393939]'
+                              : 'bg-[var(--cds-layer-01)] text-[var(--cds-text-03)] border-[var(--cds-border-subtle)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)]'
                           }`}
                         >
                           <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current rotate-45' : ''}`} />
                         </button>
 
                         <div className="text-end">
-                          <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'التقييم الإجمالي' : 'Overall Score'}</div>
+                          <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'التقييم الإجمالي' : 'Overall Score'}</div>
                           <div className={`text-base font-mono font-bold ${
                             res.score.overallScore >= 90 ? 'text-[#42be65]' : res.score.overallScore >= 75 ? 'text-[#78a9ff]' : 'text-[#ff832b]'
                           }`}>
@@ -625,17 +625,17 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                     </div>
 
                     {/* Metrics Bar Breakdown */}
-                    <div className="p-4 border-b border-[#393939] bg-[#1a1a1a] grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 bg-[#262626] border border-[#393939]">
-                        <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'الدقة المنطقية' : 'Accuracy'}</div>
+                    <div className="p-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)]">
+                        <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'الدقة المنطقية' : 'Accuracy'}</div>
                         <div className="font-mono font-bold text-[#42be65] mt-0.5">{res.score.accuracy}%</div>
                       </div>
-                      <div className="p-2 bg-[#262626] border border-[#393939]">
-                        <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'أمان 9-طبقات' : '9-Layer Safety'}</div>
+                      <div className="p-2 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)]">
+                        <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'أمان 9-طبقات' : '9-Layer Safety'}</div>
                         <div className="font-mono font-bold text-[#78a9ff] mt-0.5">{res.score.safety}%</div>
                       </div>
-                      <div className="p-2 bg-[#262626] border border-[#393939]">
-                        <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'كفاءة الاستعلام' : 'Efficiency'}</div>
+                      <div className="p-2 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)]">
+                        <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'كفاءة الاستعلام' : 'Efficiency'}</div>
                         <div className="font-mono font-bold text-[#ff832b] mt-0.5">{res.score.efficiency}%</div>
                       </div>
                     </div>
@@ -643,13 +643,13 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                     {/* SQL Code Block */}
                     <div className="p-4 space-y-3 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-[#c6c6c6] uppercase tracking-wider">
+                        <span className="text-[11px] font-semibold text-[var(--cds-text-02)] uppercase tracking-wider">
                           Generated SQL Query:
                         </span>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => exportSql(res.sql || '', res.modelId)}
-                            className="px-2 py-1 bg-[#262626] hover:bg-[#333333] border border-[#42be65]/40 text-[#42be65] text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#42be65]/40 text-[#42be65] text-[11px] font-mono flex items-center gap-1 transition-colors"
                             title={isAr ? 'تصدير الاستعلام كملف .sql' : 'Export query as .sql file'}
                           >
                             <Download className="w-3 h-3 text-[#42be65]" />
@@ -657,7 +657,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                           </button>
                           <button
                             onClick={() => copySql(res.sql || '', res.modelId)}
-                            className="px-2 py-1 bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] text-[11px] flex items-center gap-1 transition-colors"
+                            className="px-2 py-1 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] text-[11px] flex items-center gap-1 transition-colors"
                           >
                             {copiedId === res.modelId ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
                             {copiedId === res.modelId ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ' : 'Copy')}
@@ -666,15 +666,15 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                       </div>
 
                       <div className="relative">
-                        <pre className="p-3 bg-[#0a0a0a] border border-[#393939] text-xs font-mono text-[#42be65] overflow-x-auto max-h-48 whitespace-pre-wrap">
+                        <pre className="p-3 bg-[#0a0a0a] border border-[var(--cds-border-subtle)] text-xs font-mono text-[#42be65] overflow-x-auto max-h-48 whitespace-pre-wrap">
                           {res.sql || '-- No SQL generated'}
                         </pre>
                       </div>
 
                       {/* Explanation */}
                       {res.explanation && (
-                        <div className="text-xs text-[#c6c6c6] bg-[#262626] p-2.5 border border-[#393939]">
-                          <span className="font-semibold text-[#f4f4f4] block mb-0.5">
+                        <div className="text-xs text-[var(--cds-text-02)] bg-[var(--cds-layer-02)] p-2.5 border border-[var(--cds-border-subtle)]">
+                          <span className="font-semibold text-[var(--cds-text-01)] block mb-0.5">
                             {isAr ? 'تفسير منطق الاستعلام:' : 'Logic Explanation:'}
                           </span>
                           {res.explanation}
@@ -685,7 +685,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                       {res.insights && res.insights.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {res.insights.map((ins, ii) => (
-                            <span key={ii} className="px-2 py-0.5 text-[10px] bg-[#262626] text-[#a8a8a8] border border-[#393939]">
+                            <span key={ii} className="px-2 py-0.5 text-[10px] bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)]">
                               {ins}
                             </span>
                           ))}
@@ -694,13 +694,13 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                     </div>
 
                     {/* Action Footer */}
-                    <div className="p-3 bg-[#262626] border-t border-[#393939] flex items-center justify-between gap-2">
+                    <div className="p-3 bg-[var(--cds-layer-02)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between gap-2">
                       <button
                         onClick={() => handleVoteWinner(res.modelId)}
                         className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${
                           isUserVoted
                             ? 'bg-[#42be65] text-black font-semibold'
-                            : 'bg-[#393939] hover:bg-[#525252] text-[#f4f4f4]'
+                            : 'bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)]'
                         }`}
                       >
                         <ThumbsUp className="w-3.5 h-3.5" />
@@ -733,9 +733,9 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
 
           {/* View 2: Comprehensive Scorecard Matrix */}
           {activeTab === 'table' && (
-            <div className="bg-[#161616] border border-[#393939] overflow-x-auto">
+            <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-x-auto">
               <table className="w-full text-xs text-start">
-                <thead className="bg-[#262626] border-b border-[#393939] text-[#c6c6c6]">
+                <thead className="bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
                   <tr>
                     <th className="p-3 text-start">{isAr ? 'النموذج الذكي' : 'AI Model'}</th>
                     <th className="p-3 text-start">{isAr ? 'مزود الخدمة' : 'Provider'}</th>
@@ -748,39 +748,39 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                     <th className="p-3 text-start">{isAr ? 'الإجراء' : 'Action'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#393939]">
+                <tbody className="divide-y divide-[var(--cds-border-subtle)]">
                   {sortedActiveResults.map((res) => {
                     const isWinner = res.modelId === activeWinnerId;
                     const isPinned = pinnedModelIds.includes(res.modelId);
 
                     return (
-                      <tr key={res.modelId} className={`hover:bg-[#262626] ${isPinned ? 'bg-[#f1c21b]/5 font-medium' : isWinner ? 'bg-[#0f62fe]/5 font-medium' : ''}`}>
+                      <tr key={res.modelId} className={`hover:bg-[var(--cds-layer-02)] ${isPinned ? 'bg-[#f1c21b]/5 font-medium' : isWinner ? 'bg-[#0f62fe]/5 font-medium' : ''}`}>
                         <td className="p-3 flex items-center gap-2">
                           <button
                             onClick={() => togglePinModel(res.modelId)}
                             title={isPinned ? (isAr ? 'إلغاء التثبيت' : 'Unpin') : (isAr ? 'تثبيت' : 'Pin')}
                             className={`p-1 border transition-colors ${
-                              isPinned ? 'bg-[#f1c21b]/20 text-[#f1c21b] border-[#f1c21b]/40' : 'text-[#8d8d8d] border-[#393939] hover:text-[#f4f4f4]'
+                              isPinned ? 'bg-[#f1c21b]/20 text-[#f1c21b] border-[#f1c21b]/40' : 'text-[var(--cds-text-03)] border-[var(--cds-border-subtle)] hover:text-[var(--cds-text-01)]'
                             }`}
                           >
                             <Pin className={`w-3 h-3 ${isPinned ? 'fill-current' : ''}`} />
                           </button>
                           {isWinner && <Trophy className="w-3.5 h-3.5 text-[#f1c21b]" />}
-                          <span className="text-[#f4f4f4] font-semibold">{res.modelName}</span>
+                          <span className="text-[var(--cds-text-01)] font-semibold">{res.modelName}</span>
                         </td>
-                        <td className="p-3 text-[#c6c6c6]">{res.providerName}</td>
+                        <td className="p-3 text-[var(--cds-text-02)]">{res.providerName}</td>
                         <td className="p-3">
                           {res.isLocal ? (
                             <span className="px-2 py-0.5 text-[10px] bg-[#42be65]/20 text-[#42be65] border border-[#42be65]/30">
                               🔒 Local Zero-Egress
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 text-[10px] bg-[#393939] text-[#78a9ff]">
+                            <span className="px-2 py-0.5 text-[10px] bg-[var(--cds-layer-03)] text-[#78a9ff]">
                               ☁️ Cloud Managed
                             </span>
                           )}
                         </td>
-                        <td className="p-3 font-mono text-[#c6c6c6]">{res.durationMs} ms</td>
+                        <td className="p-3 font-mono text-[var(--cds-text-02)]">{res.durationMs} ms</td>
                         <td className="p-3 font-mono text-[#42be65] font-bold">{res.score.accuracy}%</td>
                         <td className="p-3 font-mono text-[#78a9ff] font-bold">{res.score.safety}%</td>
                         <td className="p-3 font-mono text-[#ff832b] font-bold">{res.score.efficiency}%</td>
@@ -820,14 +820,14 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             <div className="space-y-6 animate-in fade-in duration-150">
               
               {/* Header Info */}
-              <div className="bg-[#161616] p-4 border border-[#393939] flex items-center justify-between">
+              <div className="bg-[var(--cds-layer-01)] p-4 border border-[var(--cds-border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-[#42be65]" />
                   <div>
-                    <h3 className="text-sm font-semibold text-[#f4f4f4]">
+                    <h3 className="text-sm font-semibold text-[var(--cds-text-01)]">
                       {isAr ? 'مقارنة مقاييس الأداء التنافسية (Multi-Model D3/Recharts Visualizer)' : 'Multi-Model Performance Metrics Visualizer'}
                     </h3>
-                    <p className="text-xs text-[#8d8d8d]">
+                    <p className="text-xs text-[var(--cds-text-03)]">
                       {isAr
                         ? 'تحليل مرئي شامل لدقة استعلامات SQL، درجات درع الأمان التساعي، كفاءة الاستعلام، والتقييم المركّب.'
                         : 'Side-by-side visualization of SQL accuracy, 9-layer security scores, query efficiency, and composite quality index.'}
@@ -843,8 +843,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
               </div>
 
               {/* Main Grouped Bar Chart */}
-              <div className="bg-[#161616] p-5 border border-[#393939] space-y-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#c6c6c6] flex items-center gap-2">
+              <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] space-y-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--cds-text-02)] flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#78a9ff]" />
                   {isAr ? 'مقارنة النواحي الأربعة: الدقة، الأمان، الكفاءة، والنتيجة الإجمالية' : 'Side-by-Side Scores: Accuracy, 9-Layer Safety, Efficiency, & Overall Quality'}
                 </h4>
@@ -882,8 +882,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Multidimensional Radar Chart */}
-                <div className="bg-[#161616] p-5 border border-[#393939] space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#c6c6c6] flex items-center gap-2">
+                <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--cds-text-02)] flex items-center gap-2">
                     <PieIcon className="w-4 h-4 text-[#be95ff]" />
                     {isAr ? 'مخطط الرادار المتعدد الأبعاد للمهارات (Multidimensional Capability Radar)' : 'Multidimensional Capability Radar'}
                   </h4>
@@ -939,8 +939,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 </div>
 
                 {/* Token Throughput & Token Counts */}
-                <div className="bg-[#161616] p-5 border border-[#393939] space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#c6c6c6] flex items-center gap-2">
+                <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--cds-text-02)] flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-[#33b1ff]" />
                     {isAr ? 'عدد التوكينات والسرعة النسبية (Tokens Produced & Tokens/sec)' : 'Token Count & Output Throughput (Tokens/sec)'}
                   </h4>
@@ -979,16 +979,16 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             <div className="space-y-6 animate-in fade-in duration-150">
               
               {/* Header Banner & Live Ping Control */}
-              <div className="bg-[#161616] p-5 border border-[#393939] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#ff832b]/20 text-[#ff832b] flex items-center justify-center border border-[#ff832b]/40 shrink-0">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-[#f4f4f4]">
+                    <h3 className="text-base font-semibold text-[var(--cds-text-01)]">
                       {isAr ? 'راصد زمن الاستجابة والسرعة (Model Latency Tracker Dashboard)' : 'Model Latency & Speed Tracker Dashboard'}
                     </h3>
-                    <p className="text-xs text-[#8d8d8d] mt-0.5">
+                    <p className="text-xs text-[var(--cds-text-03)] mt-0.5">
                       {isAr
                         ? 'مراقبة ومقارنة زمن استجابة الاستعلامات (بالمللي ثانية ms) بين خادم Ollama المحلي والشبكات السحابية (Gemini, DeepSeek, Qwen).'
                         : 'Monitor and benchmark response time (in milliseconds) across local Ollama vs cloud AI providers.'}
@@ -999,7 +999,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 <button
                   onClick={handlePingAllProviders}
                   disabled={isPingingProviders}
-                  className="px-4 py-2 text-xs font-semibold bg-[#262626] hover:bg-[#393939] text-[#78a9ff] border border-[#0f62fe]/50 flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
+                  className="px-4 py-2 text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[#0f62fe]/50 flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
                 >
                   <RefreshCw className={`w-4 h-4 ${isPingingProviders ? 'animate-spin' : ''}`} />
                   {isPingingProviders
@@ -1010,51 +1010,51 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
 
               {/* Latency Classification Tiers */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 bg-[#161616] border border-[#42be65]/40 flex items-center gap-3">
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[#42be65]/40 flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-[#42be65] animate-pulse" />
                   <div>
-                    <div className="text-[11px] text-[#8d8d8d] uppercase">{isAr ? 'استجابة محلي فائقة' : 'Local Low-Latency'}</div>
+                    <div className="text-[11px] text-[var(--cds-text-03)] uppercase">{isAr ? 'استجابة محلي فائقة' : 'Local Low-Latency'}</div>
                     <div className="text-sm font-bold text-[#42be65] font-mono">&lt; 50 ms</div>
-                    <div className="text-[10px] text-[#c6c6c6]">🔒 Ollama Zero-Egress</div>
+                    <div className="text-[10px] text-[var(--cds-text-02)]">🔒 Ollama Zero-Egress</div>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[#161616] border border-[#0f62fe]/40 flex items-center gap-3">
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[#0f62fe]/40 flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-[#0f62fe]" />
                   <div>
-                    <div className="text-[11px] text-[#8d8d8d] uppercase">{isAr ? 'سحابي سريع' : 'Fast Cloud'}</div>
+                    <div className="text-[11px] text-[var(--cds-text-03)] uppercase">{isAr ? 'سحابي سريع' : 'Fast Cloud'}</div>
                     <div className="text-sm font-bold text-[#78a9ff] font-mono">150 - 300 ms</div>
-                    <div className="text-[10px] text-[#c6c6c6]">☁️ Gemini Flash</div>
+                    <div className="text-[10px] text-[var(--cds-text-02)]">☁️ Gemini Flash</div>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[#161616] border border-[#be95ff]/40 flex items-center gap-3">
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[#be95ff]/40 flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-[#be95ff]" />
                   <div>
-                    <div className="text-[11px] text-[#8d8d8d] uppercase">{isAr ? 'نماذج متخصصة' : 'Specialized SQL LLM'}</div>
+                    <div className="text-[11px] text-[var(--cds-text-03)] uppercase">{isAr ? 'نماذج متخصصة' : 'Specialized SQL LLM'}</div>
                     <div className="text-sm font-bold text-[#be95ff] font-mono">300 - 600 ms</div>
-                    <div className="text-[10px] text-[#c6c6c6]">📊 Qwen Coder 32B</div>
+                    <div className="text-[10px] text-[var(--cds-text-02)]">📊 Qwen Coder 32B</div>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[#161616] border border-[#ff832b]/40 flex items-center gap-3">
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[#ff832b]/40 flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-[#ff832b]" />
                   <div>
-                    <div className="text-[11px] text-[#8d8d8d] uppercase">{isAr ? 'استدلال عميق' : 'Deep CoT Reasoning'}</div>
+                    <div className="text-[11px] text-[var(--cds-text-03)] uppercase">{isAr ? 'استدلال عميق' : 'Deep CoT Reasoning'}</div>
                     <div className="text-sm font-bold text-[#ff832b] font-mono">600 - 1500 ms</div>
-                    <div className="text-[10px] text-[#c6c6c6]">🧠 DeepSeek-R1</div>
+                    <div className="text-[10px] text-[var(--cds-text-02)]">🧠 DeepSeek-R1</div>
                   </div>
                 </div>
               </div>
 
               {/* Main Latency Comparison Chart */}
-              <div className="bg-[#161616] p-5 border border-[#393939] space-y-4">
+              <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#c6c6c6] flex items-center gap-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--cds-text-02)] flex items-center gap-2">
                     <Gauge className="w-4 h-4 text-[#ff832b]" />
                     {isAr ? 'مخطط مقارنة وقت الاستجابة بالمللي ثانية (Response Latency ms per Model)' : 'Response Latency Comparison (ms per Model)'}
                   </h4>
-                  <span className="text-xs text-[#8d8d8d] font-mono">Lower is Faster ⚡</span>
+                  <span className="text-xs text-[var(--cds-text-03)] font-mono">Lower is Faster ⚡</span>
                 </div>
 
                 <div className="h-72 w-full pt-2">
@@ -1097,19 +1097,19 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                   return (
                     <div
                       key={r.modelId}
-                      className={`p-4 bg-[#161616] border flex flex-col justify-between ${
-                        isLocal ? 'border-[#42be65]/50 bg-[#42be65]/5' : 'border-[#393939]'
+                      className={`p-4 bg-[var(--cds-layer-01)] border flex flex-col justify-between ${
+                        isLocal ? 'border-[#42be65]/50 bg-[#42be65]/5' : 'border-[var(--cds-border-subtle)]'
                       }`}
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-[#f4f4f4] truncate max-w-[140px]">{r.modelName}</span>
+                          <span className="text-xs font-semibold text-[var(--cds-text-01)] truncate max-w-[140px]">{r.modelName}</span>
                           {isLocal ? (
                             <span className="px-1.5 py-0.2 text-[9px] bg-[#42be65]/20 text-[#42be65] font-mono border border-[#42be65]/30 flex items-center gap-1">
                               <Lock className="w-2.5 h-2.5" /> Local
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.2 text-[9px] bg-[#393939] text-[#78a9ff] font-mono">
+                            <span className="px-1.5 py-0.2 text-[9px] bg-[var(--cds-layer-03)] text-[#78a9ff] font-mono">
                               Cloud
                             </span>
                           )}
@@ -1121,19 +1121,19 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                           }`}>
                             {r.durationMs}
                           </span>
-                          <span className="text-xs text-[#8d8d8d] font-mono">ms</span>
+                          <span className="text-xs text-[var(--cds-text-03)] font-mono">ms</span>
                         </div>
 
-                        <div className="text-[11px] text-[#c6c6c6]">
+                        <div className="text-[11px] text-[var(--cds-text-02)]">
                           {isLocal
                             ? (isAr ? '⚡ 0ms تأخير شبكة خارجي' : '⚡ Zero network egress latency')
                             : (isAr ? `سرعة استجابة المزود ${r.providerName}` : `${r.providerName} API network trip`)}
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-2 border-t border-[#393939] flex items-center justify-between text-[10px] font-mono text-[#8d8d8d]">
+                      <div className="mt-3 pt-2 border-t border-[var(--cds-border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--cds-text-03)]">
                         <span>Relative Speed:</span>
-                        <span className="text-[#f4f4f4] font-bold">{speedMultiplier.toFixed(1)}x baseline</span>
+                        <span className="text-[var(--cds-text-01)] font-bold">{speedMultiplier.toFixed(1)}x baseline</span>
                       </div>
                     </div>
                   );
@@ -1141,12 +1141,12 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
               </div>
 
               {/* Summary Insight Box */}
-              <div className="p-4 bg-[#262626] border border-[#393939] space-y-2">
-                <h4 className="text-xs font-semibold text-[#f4f4f4] flex items-center gap-2">
+              <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
+                <h4 className="text-xs font-semibold text-[var(--cds-text-01)] flex items-center gap-2">
                   <Zap className="w-4 h-4 text-[#ff832b]" />
                   {isAr ? 'تحليل مقارنة السرعة: Ollama المحلي مقابل المحركات السحابية:' : 'Speed Benchmark Summary: Local Ollama vs Cloud AI:'}
                 </h4>
-                <p className="text-xs text-[#c6c6c6] leading-relaxed">
+                <p className="text-xs text-[var(--cds-text-02)] leading-relaxed">
                   {isAr
                     ? 'يتميز محرك Ollama المحلي بعدم وجود أي تأخير ناتج عن الاتصال بالإنترنت أو تشفير SSL عبر الشبكة (Zero Network Hop Latency)، مما يجعله الخيار الأسرع للاستعلامات الفورية والأكثر أماناً لحماية خصوصية المؤسسة. في المقابل، تتيح النماذج السحابية مثل Gemini 3.7 و DeepSeek-R1 قدرات استدلال أعمق للطلبات المعقدة جداً.'
                     : 'Local Ollama engines bypass network handshakes, DNS resolution, and cloud API gateway queues, rendering instantaneous response times (<40ms) with zero egress. Cloud models (Gemini 3.7, DeepSeek-R1) offer extended reasoning depth for massive multi-table analytical tasks.'}

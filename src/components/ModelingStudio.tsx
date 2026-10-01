@@ -2731,7 +2731,7 @@ metrics: {
         </div>
 
         {/* Studio Main Mode Navigation */}
-        <div className="flex items-center gap-1.5 bg-[var(--cds-layer-02)] p-1 rounded-xl border border-[var(--cds-border-subtle)]">
+        <div className="flex items-center gap-1.5 bg-[var(--cds-layer-02)] p-1 rounded-lg border border-[var(--cds-border-subtle)]">
           <button
             onClick={() => setMainViewMode('studio')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mainViewMode === 'studio' ? 'bg-[var(--cds-layer-01)] text-blue-600 shadow-sm' : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)]'}`}
@@ -2771,7 +2771,7 @@ metrics: {
       </div>
       
       {/* File Upload & Synthetic Datasets Bar (Data Pipeline Hub) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[var(--cds-layer-02)]/30 p-5 rounded-2xl border border-[var(--cds-border-subtle)] shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[var(--cds-layer-02)]/30 p-5 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm">
         <div className="md:col-span-1 space-y-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-[var(--cds-text-03)] uppercase tracking-wider flex items-center gap-1.5">
@@ -2810,7 +2810,7 @@ metrics: {
             type="file" 
             accept=".csv, .xlsx, .xls" 
             onChange={handleFileUpload} 
-            className="block w-full text-xs text-[var(--cds-text-02)] file:mr-3 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 border border-[var(--cds-border-subtle)] rounded-xl p-1.5 bg-[var(--cds-layer-01)] transition-colors" 
+            className="block w-full text-xs text-[var(--cds-text-02)] file:mr-3 file:py-1.5 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 border border-[var(--cds-border-subtle)] rounded-lg p-1.5 bg-[var(--cds-layer-01)] transition-colors" 
           />
         </div>
 
@@ -2837,7 +2837,7 @@ metrics: {
                 onChange={(e) => {
                   setXAxisCols(Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value));
                 }} 
-                className="w-full p-2.5 h-20 border border-[var(--cds-border-subtle)] rounded-xl text-xs font-mono bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/40 outline-none transition-all"
+                className="w-full p-2.5 h-20 border border-[var(--cds-border-subtle)] rounded-lg text-xs font-mono bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/40 outline-none transition-all"
               >
                 {headers.map(h => <option key={h} value={h} className="p-1 rounded">{h}</option>)}
               </select>
@@ -2851,7 +2851,7 @@ metrics: {
                 <select 
                   value={yAxisCol} 
                   onChange={(e) => setYAxisCol(e.target.value)} 
-                  className="w-full px-3 h-10 border border-[var(--cds-border-subtle)] rounded-xl text-xs font-mono bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/40 outline-none transition-all"
+                  className="w-full px-3 h-10 border border-[var(--cds-border-subtle)] rounded-lg text-xs font-mono bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/40 outline-none transition-all"
                 >
                   {headers.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
@@ -2906,7 +2906,7 @@ metrics: {
             </div>
           </>
         ) : (
-          <div className="md:col-span-2 flex items-center justify-center border border-dashed border-[var(--cds-border-subtle)] rounded-xl p-6 bg-[var(--cds-layer-01)]/50">
+          <div className="md:col-span-2 flex items-center justify-center border border-dashed border-[var(--cds-border-subtle)] rounded-lg p-6 bg-[var(--cds-layer-01)]/50">
             <span className="text-xs font-semibold text-[var(--cds-text-03)]">
               {language === 'ar' ? 'يرجى تحميل ملف بيانات أو تحديد أحد العينات التجريبية أعلاه للبدء بالنمذجة.' : 'Please upload a dataset or select a quick demo above to start modeling.'}
             </span>
@@ -2921,7 +2921,7 @@ metrics: {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           <div className="xl:col-span-3 space-y-6">
             {/* Model Configurations Grid */}
-            <div className="bg-[var(--cds-layer-01)] rounded-2xl border border-[var(--cds-border-subtle)] overflow-hidden shadow-md">
+            <div className="bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] overflow-hidden shadow-md">
               {/* Step 1 & 2 Headers */}
               <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-6 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]/30">
                 {/* Select Algorithm */}
@@ -2936,7 +2936,7 @@ metrics: {
                       setResult(null);
                       setKmeansClusters(null);
                     }} 
-                    className="w-full h-10 px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl text-xs font-semibold text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all"
+                    className="w-full h-10 px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all"
                   >
                     <option value="linear">
                       {xAxisCols.length > 1 ? (language === 'ar' ? 'انحدار خطي متعدد (Multiple Linear)' : 'Multiple Linear Regression') : (language === 'ar' ? 'انحدار خطي بسيط (Simple Linear)' : 'Simple Linear Regression')}
@@ -2961,7 +2961,7 @@ metrics: {
                       <button
                         type="button"
                         onClick={() => setIsGridSearchOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 transition-all active:scale-95 cursor-pointer shadow-2xs"
                         title={language === 'ar' ? 'البحث الشبكي الآلي لتحديد أفضل درجة ومعامل جزاء بدقة عبر التحقق المتقاطع' : 'Grid Search Hyperparameter Tuning via Cross-Validation'}
                       >
                         <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
@@ -2973,7 +2973,7 @@ metrics: {
                   {/* Polynomial or Ridge Configuration */}
                   {(selectedType === 'polynomial' || selectedType === 'ridge') && (
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-xl border border-[var(--cds-border-subtle)]">
+                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-lg border border-[var(--cds-border-subtle)]">
                         <span className="text-xs font-semibold text-[var(--cds-text-02)]">{language === 'ar' ? 'الدرجة:' : 'Degree:'}</span>
                         <input 
                           type="number" 
@@ -2999,7 +2999,7 @@ metrics: {
                       </div>
 
                       {xAxisCols.length > 1 && (
-                        <label className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] px-3.5 py-1.5 rounded-xl border border-[var(--cds-border-subtle)] cursor-pointer transition-colors">
+                        <label className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] px-3.5 py-1.5 rounded-lg border border-[var(--cds-border-subtle)] cursor-pointer transition-colors">
                           <input 
                             type="checkbox" 
                             checked={includeInteractions} 
@@ -3010,7 +3010,7 @@ metrics: {
                         </label>
                       )}
 
-                      <label className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] px-3.5 py-1.5 rounded-xl border border-[var(--cds-border-subtle)] cursor-pointer transition-colors">
+                      <label className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] px-3.5 py-1.5 rounded-lg border border-[var(--cds-border-subtle)] cursor-pointer transition-colors">
                         <input 
                           type="checkbox" 
                           checked={isComparisonMode} 
@@ -3028,7 +3028,7 @@ metrics: {
                   {/* Ridge Alpha Configuration */}
                   {selectedType === 'ridge' && (
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-xl border border-[var(--cds-border-subtle)]">
+                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-lg border border-[var(--cds-border-subtle)]">
                         <span className="text-xs font-semibold text-[var(--cds-text-02)]">{language === 'ar' ? 'معامل الجزاء α:' : 'Alpha α:'}</span>
                         <input 
                           type="number" 
@@ -3057,7 +3057,7 @@ metrics: {
                       <button
                         type="button"
                         onClick={handleFindOptimalLambda}
-                        className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 font-bold px-3 py-1.5 rounded-xl border border-amber-500/30 text-xs transition-all active:scale-95 cursor-pointer"
+                        className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 text-xs transition-all active:scale-95 cursor-pointer"
                         title={language === 'ar' ? 'البحث التلقائي عن أفضل معامل جزاء (عبر التحقق المتقاطع 5-folds)' : 'Auto-tune best Ridge penalty using 5-fold Cross-Validation'}
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
@@ -3069,7 +3069,7 @@ metrics: {
                   {/* K-Means Clustering Settings */}
                   {selectedType === 'kmeans' && (
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-xl border border-[var(--cds-border-subtle)]">
+                      <div className="flex items-center gap-2 bg-[var(--cds-layer-01)] px-3 py-1.5 rounded-lg border border-[var(--cds-border-subtle)]">
                         <span className="text-xs font-semibold text-[var(--cds-text-02)]">{language === 'ar' ? 'عدد العناقيد (k):' : 'Clusters (k):'}</span>
                         <input 
                           type="number" 
@@ -3272,7 +3272,7 @@ recommended="70%"
                     </div>
 
                     {enableCrossValidation && (
-                      <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-3">
+                      <div className="p-3 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-[var(--cds-text-01)]">
@@ -3346,7 +3346,7 @@ language === 'ar'
                 <div className="flex flex-wrap items-center gap-2.5">
                   <button 
                     onClick={calculateModel} 
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white h-10 px-5 rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 cursor-pointer"
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white h-10 px-5 rounded-lg text-xs font-bold shadow-md shadow-blue-500/10 cursor-pointer"
                   >
                     <Zap className="w-4 h-4" />
                     <span>{language === 'ar' ? 'تدريب وحساب النموذج' : 'Compute Model'}</span>
@@ -3356,7 +3356,7 @@ language === 'ar'
                     <button
                       type="button"
                       onClick={() => setIsGridSearchOpen(true)}
-                      className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                      className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 h-10 px-4 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
                       title={language === 'ar' ? 'فتح لوحة البحث الشبكي لضبط واختيار النموذج الأمثل عبر التحقق المتقاطع' : 'Open Grid Search CV Studio'}
                     >
                       <Sparkles className="w-4 h-4 text-indigo-500" />
@@ -3377,7 +3377,7 @@ language === 'ar'
                   <button
                     type="button"
                     onClick={handleSaveConfiguration}
-                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 h-10 px-4 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
                     title={language === 'ar' ? 'حفظ إعدادات تقسيم البيانات والـ Grid Search المختارة كملف JSON محلي' : 'Save current data split and Grid Search config as JSON'}
                   >
                     <FileJson className="w-4 h-4 text-emerald-500" />
@@ -3388,7 +3388,7 @@ language === 'ar'
                   <button
                     type="button"
                     onClick={() => configFileInputRef.current?.click()}
-                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] h-10 px-3.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] h-10 px-3.5 rounded-lg text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
                     title={language === 'ar' ? 'استيراد إعدادات النموذج والتقسيم من ملف JSON سابق' : 'Load config from JSON file'}
                   >
                     <Upload className="w-4 h-4 text-[var(--cds-text-03)]" />
@@ -3399,7 +3399,7 @@ language === 'ar'
                     <button
                       onClick={retrainOnFullData}
                       title={language === 'ar' ? 'تدريب النموذج النهائي على كامل البيانات (100%) للاستخدام والتنبؤ مع بقاء تقييم الاختبار كمرجع' : 'Train the final model on 100% of all data for production readiness'}
-                      className={`flex items-center gap-2 h-10 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer border ${
+                      className={`flex items-center gap-2 h-10 px-4 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer border ${
                         result.splitInfo.isRetrainedOnFullData
                           ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 shadow-xs'
                           : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-95 shadow-md shadow-emerald-500/20'
@@ -3441,7 +3441,7 @@ language === 'ar'
                         }]);
                         addLog(`Saved Model: ${modelName}`);
                       }}
-                      className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] h-10 px-4 rounded-xl text-xs font-semibold border border-[var(--cds-border-subtle)] transition-colors active:scale-95 cursor-pointer"
+                      className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] h-10 px-4 rounded-lg text-xs font-semibold border border-[var(--cds-border-subtle)] transition-colors active:scale-95 cursor-pointer"
                     >
                       <Layers className="w-4 h-4 text-purple-500" />
                       <span>{language === 'ar' ? 'حفظ للمقارنة' : 'Save Model'}</span>
@@ -3450,7 +3450,7 @@ language === 'ar'
                   
                   <button 
                     onClick={exportCSV} 
-                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] h-10 px-4 rounded-xl text-xs font-semibold border border-[var(--cds-border-subtle)] transition-colors active:scale-95 cursor-pointer"
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] h-10 px-4 rounded-lg text-xs font-semibold border border-[var(--cds-border-subtle)] transition-colors active:scale-95 cursor-pointer"
                   >
                     <span>{language === 'ar' ? 'تصدير (CSV)' : 'Export CSV'}</span>
                   </button>
@@ -3460,7 +3460,7 @@ language === 'ar'
                   <button 
                     onClick={handleExportModelPdf}
                     disabled={isExportingModelPdf}
-                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-60 active:scale-95 text-white h-10 px-4 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 border border-emerald-600/10 transition-all cursor-pointer"
+                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-60 active:scale-95 text-white h-10 px-4 rounded-lg text-xs font-bold shadow-md shadow-emerald-500/10 border border-emerald-600/10 transition-all cursor-pointer"
                     title={language === 'ar' ? 'تصدير النموذج المختار وتنزيل تفاصيل الإعدادات النهائية (Hyperparameters) بصيغة PDF لسهولة التوثيق والمشاركة' : 'Export selected model hyperparameters and metrics as PDF'}
                   >
                     <FileDown className="w-4 h-4" />
@@ -3475,7 +3475,7 @@ language === 'ar'
             </div>
 
             {/* True Function Overlay Controls */}
-            <div className="bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
                 <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-emerald-800 dark:text-emerald-300 shrink-0">
                   <input 
@@ -3493,7 +3493,7 @@ language === 'ar'
                     value={trueFunctionFormula}
                     onChange={(e) => setTrueFunctionFormula(e.target.value)}
                     placeholder="e.g. 2.5 * x^2 - 4.2 * x + 15"
-                    className="flex-1 h-9 px-3 bg-[var(--cds-layer-01)] border border-emerald-500/30 rounded-xl text-xs font-mono text-[var(--cds-text-01)] focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="flex-1 h-9 px-3 bg-[var(--cds-layer-01)] border border-emerald-500/30 rounded-lg text-xs font-mono text-[var(--cds-text-01)] focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -3532,10 +3532,10 @@ language === 'ar'
 
           {/* Train/Test Split & Out-of-Sample Evaluation Scorecard */}
           {result && selectedType !== 'kmeans' && result.splitInfo?.enabled && (
-            <div className="bg-[var(--cds-layer-01)] rounded-2xl border border-[var(--cds-border-subtle)] p-5 shadow-sm space-y-4">
+            <div className="bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] p-5 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
@@ -3568,13 +3568,13 @@ language === 'ar'
                   {!result.splitInfo.isRetrainedOnFullData ? (
                     <button
                       onClick={retrainOnFullData}
-                      className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                      className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>{language === 'ar' ? 'إعادة التدريب النهائي على كامل البيانات (100%)' : 'Retrain Final Model on Full Data (100%)'}</span>
                     </button>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                       <span>{language === 'ar' ? '✓ تم تدريب النموذج النهائي على 100% من البيانات' : 'Model Retrained on 100% Full Data'}</span>
                     </div>
@@ -3585,7 +3585,7 @@ language === 'ar'
               {/* Metric Comparison Grid: Train vs Test */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Train Set (In-Sample) */}
-                <div className="p-4 bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/20 rounded-xl space-y-3">
+                <div className="p-4 bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/20 rounded-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
@@ -3617,7 +3617,7 @@ language === 'ar'
                 </div>
 
                 {/* Test Set (Out-of-Sample) */}
-                <div className="p-4 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-xl space-y-3">
+                <div className="p-4 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -3649,7 +3649,7 @@ language === 'ar'
                 </div>
 
                 {/* Generalization Diagnosis */}
-                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl space-y-3 flex flex-col justify-between">
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-[var(--cds-text-01)]">
@@ -3704,7 +3704,7 @@ language === 'ar'
               </div>
 
               {/* Production Readiness Status Callout */}
-              <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="p-3 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2">
                   <Info className="w-4 h-4 text-indigo-500 shrink-0" />
                   <span className="text-[var(--cds-text-02)]">
@@ -3731,10 +3731,10 @@ language === 'ar'
 
           {/* K-Fold Cross-Validation Scorecard (درجة التحقق التبادلي وتنبؤ بالمخرجات) */}
           {result && selectedType !== 'kmeans' && result.cvInfo && (
-            <div className="bg-[var(--cds-layer-01)] border border-teal-500/30 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="bg-[var(--cds-layer-01)] border border-teal-500/30 rounded-xl p-5 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                  <div className="w-10 h-10 rounded-lg bg-teal-500/15 flex items-center justify-center text-teal-600 dark:text-teal-400">
                     <Network className="w-5 h-5" />
                   </div>
                   <div>
@@ -3772,7 +3772,7 @@ language === 'ar'
               {/* CV Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {/* Mean Test R2 */}
-                <div className="p-3.5 bg-teal-500/5 dark:bg-teal-950/20 rounded-xl border border-teal-500/20">
+                <div className="p-3.5 bg-teal-500/5 dark:bg-teal-950/20 rounded-lg border border-teal-500/20">
                   <div className="text-[11px] font-semibold text-teal-700 dark:text-teal-300">
                     {language === 'ar' ? 'متوسط درجة التحقق التبادلي (CV R²)' : 'Mean CV R² Score'}
                   </div>
@@ -3785,7 +3785,7 @@ language === 'ar'
                 </div>
 
                 {/* Overall OOF R2 */}
-                <div className="p-3.5 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-xl border border-indigo-500/20">
+                <div className="p-3.5 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-lg border border-indigo-500/20">
                   <div className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
                     {language === 'ar' ? 'دقة التنبؤ خارج العينة (OOF R²)' : 'Out-of-Fold R² Score'}
                   </div>
@@ -3798,7 +3798,7 @@ language === 'ar'
                 </div>
 
                 {/* Mean Test RMSE */}
-                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)]">
+                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)]">
                   <div className="text-[11px] font-semibold text-[var(--cds-text-02)]">
                     {language === 'ar' ? 'متوسط خطأ الاختبار (CV RMSE)' : 'Mean CV Test RMSE'}
                   </div>
@@ -3811,7 +3811,7 @@ language === 'ar'
                 </div>
 
                 {/* Stability / Diagnosis */}
-                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex flex-col justify-between">
+                <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] flex flex-col justify-between">
                   <div className="text-[11px] font-semibold text-[var(--cds-text-02)]">
                     {language === 'ar' ? 'استقرار النموذج عبر الطيات' : 'Model Fold Stability'}
                   </div>
@@ -3867,7 +3867,7 @@ language === 'ar'
           {result && selectedType !== 'kmeans' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Statistical Evaluation Panel */}
-              <div className="lg:col-span-4 bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-4">
+              <div className="lg:col-span-4 bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
                   <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
                     <Activity className="w-4 h-4 text-blue-500" />
@@ -3991,7 +3991,7 @@ language === 'ar'
               </div>
 
               {/* Resulting Equation & Mathematical Formula Box */}
-              <div className="lg:col-span-8 bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-3 flex flex-col justify-between">
+              <div className="lg:col-span-8 bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-3 flex flex-col justify-between">
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--cds-border-subtle)] pb-2.5">
                     <div className="flex items-center gap-2">
@@ -4040,26 +4040,26 @@ language === 'ar'
                   {/* Display Area */}
                   <div className="mt-3 relative">
                     {activeEquationTab === 'math' && (
-                      <div className="p-4 bg-[var(--cds-layer-02)] text-emerald-600 dark:text-emerald-400 rounded-xl font-mono text-sm leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px] flex items-center">
+                      <div className="p-4 bg-[var(--cds-layer-02)] text-emerald-600 dark:text-emerald-400 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px] flex items-center">
                         <span className="text-[var(--cds-text-03)] mr-2 text-xs font-sans">ƒ(x):</span>
                         <span>{result.equation}</span>
                       </div>
                     )}
  
                     {activeEquationTab === 'python' && (
-                      <pre className="p-4 bg-[var(--cds-layer-02)] text-blue-600 dark:text-blue-400 rounded-xl font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
+                      <pre className="p-4 bg-[var(--cds-layer-02)] text-blue-600 dark:text-blue-400 rounded-lg font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
                         {result.pythonCode}
                       </pre>
                     )}
 
                     {activeEquationTab === 'scikit' && (
-                      <pre className="p-4 bg-[var(--cds-layer-02)] text-indigo-600 dark:text-indigo-400 rounded-xl font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
+                      <pre className="p-4 bg-[var(--cds-layer-02)] text-indigo-600 dark:text-indigo-400 rounded-lg font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
                         {scikitCode}
                       </pre>
                     )}
  
                     {activeEquationTab === 'js' && (
-                      <pre className="p-4 bg-[var(--cds-layer-02)] text-amber-600 dark:text-amber-400 rounded-xl font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
+                      <pre className="p-4 bg-[var(--cds-layer-02)] text-amber-600 dark:text-amber-400 rounded-lg font-mono text-xs leading-relaxed overflow-x-auto select-all shadow-inner border border-[var(--cds-border-subtle)] min-h-[90px]">
                         {result.jsCode}
                       </pre>
                     )}
@@ -4140,7 +4140,7 @@ language === 'ar'
           )}
 
           {/* Interactive Visualizations & Data Comparison Section */}
-          <div className="bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] shadow-sm overflow-hidden">
+          <div className="bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] shadow-sm overflow-hidden">
             {/* Viz Navigation Tabs */}
             <div className="flex flex-wrap items-center justify-between border-b border-[var(--cds-border-subtle)] px-4 py-3 bg-[var(--cds-layer-02)]">
               <div className="flex items-center gap-2">
@@ -4234,7 +4234,7 @@ language === 'ar'
                 result && selectedType !== 'kmeans' && comparisonRows.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Plot 1: Residuals vs Fitted */}
-                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-xs">
+                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-xs">
                       <div className="text-xs font-bold text-[var(--cds-text-01)] mb-1">
                         {language === 'ar' ? '1. المتبقيات مقابل التوافق (Residuals vs Fitted)' : '1. Residuals vs Fitted'}
                       </div>
@@ -4278,7 +4278,7 @@ language === 'ar'
                     </div>
 
                     {/* Plot 2: Normal Q-Q */}
-                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-xs">
+                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-xs">
                       <div className="text-xs font-bold text-[var(--cds-text-01)] mb-1">
                         {language === 'ar' ? '2. مخطط التطابق الطبيعي (Normal Q-Q Plot)' : '2. Normal Q-Q Plot'}
                       </div>
@@ -4337,7 +4337,7 @@ language === 'ar'
                     </div>
 
                     {/* Plot 3: Scale-Location Plot */}
-                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-xs">
+                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-xs">
                       <div className="text-xs font-bold text-[var(--cds-text-01)] mb-1">
                         {language === 'ar' ? '3. مخطط ثبات التباين (Scale-Location Plot)' : '3. Scale-Location Plot'}
                       </div>
@@ -4383,7 +4383,7 @@ language === 'ar'
                     </div>
 
                     {/* Plot 4: Normality Histogram */}
-                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-xs">
+                    <div className="bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-xs">
                       <div className="text-xs font-bold text-[var(--cds-text-01)] mb-1">
                         {language === 'ar' ? '4. مدرج توزيع المتبقيات (Residuals Histogram)' : '4. Residuals Histogram'}
                       </div>
@@ -4547,7 +4547,7 @@ language === 'ar'
               ) : (
                 <div className="space-y-4">
                   {/* Model Selection Dropdowns */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[var(--cds-layer-02)] p-3 rounded-xl border border-[var(--cds-border-subtle)] shadow-inner">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[var(--cds-layer-02)] p-3 rounded-lg border border-[var(--cds-border-subtle)] shadow-inner">
                     <div>
                       <label className="block text-[10px] font-bold text-[var(--cds-text-03)] uppercase mb-1">
                         {language === 'ar' ? 'النموذج المقارن أ (اللون الأزرق):' : 'Model A to Compare (Blue):'}
@@ -4584,7 +4584,7 @@ language === 'ar'
                   {/* Chart and Delta Table */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     {/* Visualizer Chart */}
-                    <div className="lg:col-span-7 border border-[var(--cds-border-subtle)] rounded-xl overflow-hidden bg-[var(--cds-layer-02)] p-2 h-[380px]">
+                    <div className="lg:col-span-7 border border-[var(--cds-border-subtle)] rounded-lg overflow-hidden bg-[var(--cds-layer-02)] p-2 h-[380px]">
                       <Plot
                         key={JSON.stringify(data.length) + selectedCompModelAId + selectedCompModelBId + activeVizTab + (isDark ? 'dark' : 'light')}
                         data={plotData as any}
@@ -4604,7 +4604,7 @@ language === 'ar'
 
                     {/* Performance Delta Table */}
                     <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
-                      <div className="bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] p-3.5 flex-1 overflow-y-auto">
+                      <div className="bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] p-3.5 flex-1 overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2 mb-2">
                           <span className="text-xs font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
                             <Activity className="w-4 h-4 text-purple-600" />
@@ -4700,7 +4700,7 @@ language === 'ar'
                         if (!modelA || !modelB) return null;
                         
                         return (
-                          <div className="p-3 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-xl border border-purple-500/15 text-xs shadow-2xs">
+                          <div className="p-3 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-lg border border-purple-500/15 text-xs shadow-2xs">
                             <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                               💡 {language === 'ar' ? 'التحليل التلقائي المقارن:' : 'Automated Comparative Insight:'}
                             </span>
@@ -4735,7 +4735,7 @@ language === 'ar'
         </div>
 
         {/* SIDE PANEL: Saved Models with Advanced Radar Comparison */}
-        <div className="xl:col-span-1 bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm flex flex-col h-full max-h-[850px]">
+        <div className="xl:col-span-1 bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm flex flex-col h-full max-h-[850px]">
           {/* Header */}
           <div className="flex flex-col gap-2.5 border-b border-[var(--cds-border-subtle)] pb-3 mb-3 shrink-0">
             <div className="flex items-center justify-between">
@@ -4800,7 +4800,7 @@ language === 'ar'
 
           {/* RADAR CHART: Multi-Metric Model Comparison (MSE, R2, Training Time, Overfitting Index) */}
           {savedModels.length > 0 ? (
-            <div className="h-64 mb-3 shrink-0 border border-[var(--cds-border-subtle)] rounded-xl bg-[var(--cds-layer-02)] p-2 relative overflow-hidden">
+            <div className="h-64 mb-3 shrink-0 border border-[var(--cds-border-subtle)] rounded-lg bg-[var(--cds-layer-02)] p-2 relative overflow-hidden">
               <div className="flex items-center justify-between px-2 pt-1 pb-1">
                 <span className="text-[10px] font-bold text-[var(--cds-text-02)] flex items-center gap-1">
                   <Activity className="w-3 h-3 text-purple-600" />
@@ -4823,7 +4823,7 @@ language === 'ar'
                       if (!active || !payload || !payload.length) return null;
                       const metricRow = radarData.find(d => d.name === label);
                       return (
-                        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[200px] z-50">
+                        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5 rounded-lg shadow-xl text-xs space-y-1.5 min-w-[200px] z-50">
                           <div className="font-bold text-[var(--cds-text-01)] border-b border-[var(--cds-border-subtle)] pb-1 text-[11px]">
                             {metricRow?.fullLabel || label}
                           </div>
@@ -4870,7 +4870,7 @@ language === 'ar'
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="p-6 text-center bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] mb-3">
+            <div className="p-6 text-center bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] mb-3">
               <Box className="w-8 h-8 text-[var(--cds-text-03)] mx-auto mb-2 opacity-60" />
               <p className="text-xs font-semibold text-[var(--cds-text-01)]">
                 {language === 'ar' ? 'لا توجد نماذج محفوظة للمقارنة بعد' : 'No saved models for comparison yet'}
@@ -4899,7 +4899,7 @@ language === 'ar'
               return (
                 <div 
                   key={model.id} 
-                  className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-blue-500/50 rounded-xl text-xs space-y-2 transition-all shadow-2xs"
+                  className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-blue-500/50 rounded-lg text-xs space-y-2 transition-all shadow-2xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 truncate">
@@ -4997,7 +4997,7 @@ language === 'ar'
       {mainViewMode === 'inference' && (
         <div className="space-y-6">
           {!result || selectedType === 'kmeans' ? (
-            <div className="p-12 text-center bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] shadow-sm">
+            <div className="p-12 text-center bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
               <Zap className="w-12 h-12 text-[var(--cds-text-03)] mx-auto mb-4" />
               <h3 className="text-base font-bold text-[var(--cds-text-01)]">{language === 'ar' ? 'يتطلب تدريب نموذج الانحدار أولاً' : 'Train a Regression Model First'}</h3>
               <p className="text-xs text-[var(--cds-text-02)] mt-2">
@@ -5007,7 +5007,7 @@ language === 'ar'
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <div className="bg-[var(--cds-layer-01)] p-6 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm">
+                <div className="bg-[var(--cds-layer-01)] p-6 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
                   <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-2 mb-4 border-b border-[var(--cds-border-subtle)] pb-3">
                     <Sliders className="w-4 h-4 text-blue-500" />
                     {language === 'ar' ? 'لوحة التحكم بالمتغيرات (Sensitivity Controls)' : 'Feature Sensitivity Controls'}
@@ -5049,7 +5049,7 @@ language === 'ar'
               </div>
 
               <div className="lg:col-span-1 space-y-6">
-                <div className="bg-gradient-to-br from-blue-900/90 to-indigo-950/90 p-6 rounded-xl border border-blue-700/50 shadow-lg text-white">
+                <div className="bg-gradient-to-br from-blue-900/90 to-indigo-950/90 p-6 rounded-lg border border-blue-700/50 shadow-lg text-white">
                   <h3 className="text-sm font-bold text-blue-200 flex items-center gap-2 mb-2">
                     <Zap className="w-4 h-4 text-blue-400" />
                     {language === 'ar' ? 'النتيجة المتوقعة (Prediction)' : 'Predicted Target'}
@@ -5098,7 +5098,7 @@ language === 'ar'
                   </button>
                 </div>
 
-                <div className="bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm flex flex-col max-h-[400px]">
+                <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm flex flex-col max-h-[400px]">
                   <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2 mb-3 shrink-0">
                     <span className="flex items-center gap-2"><TableIcon className="w-4 h-4 text-emerald-500" />{language === 'ar' ? 'سجل التوقعات' : 'Prediction Log'}</span>
                     {predictionHistory.length > 0 && (
@@ -5158,7 +5158,7 @@ language === 'ar'
               {/* Correlation Insights Overview Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Ranking with Target Y */}
-                <div className="lg:col-span-2 bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-3">
+                <div className="lg:col-span-2 bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-3">
                   <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2">
                     <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
                       <Network className="w-4 h-4 text-purple-500" />
@@ -5224,7 +5224,7 @@ language === 'ar'
                 </div>
 
                 {/* Multicollinearity & Threshold Config Card */}
-                <div className="bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-4">
+                <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-4">
                   <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-1.5 border-b border-[var(--cds-border-subtle)] pb-2">
                     <Gauge className="w-4 h-4 text-blue-500" />
                     {language === 'ar' ? 'معايير الفلترة والارتباط المتعدد' : 'Collinearity & Thresholds'}
@@ -5288,7 +5288,7 @@ language === 'ar'
               </div>
 
               {/* Correlation Matrix Heatmap */}
-              <div className="bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm">
+              <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
                 <h3 className="text-sm font-bold text-[var(--cds-text-01)] mb-3 flex items-center gap-2">
                   <BarChart2 className="w-4 h-4 text-blue-500" />
                   {language === 'ar' ? 'مصفوفة الارتباط الحرارية التفاعلية (Pearson Correlation Heatmap)' : 'Pearson Correlation Heatmap'}
@@ -5338,7 +5338,7 @@ language === 'ar'
               </div>
             </>
           ) : (
-            <div className="p-12 text-center bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)]">
+            <div className="p-12 text-center bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)]">
               <Network className="w-12 h-12 text-[var(--cds-text-03)] mx-auto mb-3" />
               <h3 className="text-base font-bold text-[var(--cds-text-01)]">{language === 'ar' ? 'يرجى تحميل ملف بيانات أولاً' : 'Upload Data to Analyze'}</h3>
               <p className="text-xs text-[var(--cds-text-02)] mt-1 max-w-md mx-auto">
@@ -5354,7 +5354,7 @@ language === 'ar'
       {/* ========================================================================= */}
       {mainViewMode === 'pipeline' && (
         <div className="space-y-6">
-          <div className="bg-[var(--cds-layer-01)] p-6 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-6">
+          <div className="bg-[var(--cds-layer-01)] p-6 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                 <GitBranch className="w-5 h-5 text-emerald-500" />
@@ -5368,7 +5368,7 @@ language === 'ar'
             {/* Pipeline Flowchart Nodes */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               {/* Step 1 */}
-              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-2 relative">
+              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full">Phase 1</span>
                   <CheckCircle2 className="w-4 h-4 text-blue-500" />
@@ -5380,7 +5380,7 @@ language === 'ar'
               </div>
 
               {/* Step 2 */}
-              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-2 relative">
+              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/15 px-2 py-0.5 rounded-full">Phase 2</span>
                   <Sparkles className="w-4 h-4 text-purple-500" />
@@ -5392,7 +5392,7 @@ language === 'ar'
               </div>
 
               {/* Step 3 */}
-              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-2 relative">
+              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">Phase 3</span>
                   <Code2 className="w-4 h-4 text-amber-500" />
@@ -5406,7 +5406,7 @@ language === 'ar'
               </div>
 
               {/* Step 4 */}
-              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-2 relative">
+              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">Phase 4</span>
                   <Activity className="w-4 h-4 text-emerald-500" />
@@ -5418,7 +5418,7 @@ language === 'ar'
               </div>
 
               {/* Step 5 */}
-              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] space-y-2 relative">
+              <div className="p-3.5 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/15 px-2 py-0.5 rounded-full">Phase 5</span>
                   <Zap className="w-4 h-4 text-indigo-500" />
@@ -5431,7 +5431,7 @@ language === 'ar'
             </div>
 
             {/* Quick Action Button in Pipeline */}
-            <div className="p-4 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-4">
+            <div className="p-4 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-bold text-[var(--cds-text-01)]">{language === 'ar' ? 'تشغيل مسار المعالجة والتدريب الفوري:' : 'Execute Full Pipeline:'}</h4>
                 <p className="text-xs text-[var(--cds-text-02)]">{language === 'ar' ? 'يقوم بتطبيق أفضل إعدادات المدخلات وتدريب النموذج الرياضي مباشرة.' : 'Applies recommended correlation features and fits regression model.'}</p>
@@ -5459,7 +5459,7 @@ language === 'ar'
       {/* ========================================================================= */}
       {mainViewMode === 'preprocessing' && (
         <div className="space-y-6">
-          <div className="bg-[var(--cds-layer-01)] p-6 rounded-xl border border-[var(--cds-border-subtle)] shadow-sm space-y-6">
+          <div className="bg-[var(--cds-layer-01)] p-6 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-orange-500" />
@@ -5473,7 +5473,7 @@ language === 'ar'
             {preprocessingSuggestions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {preprocessingSuggestions.map((sug, idx) => (
-                  <div key={idx} className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-xl space-y-2">
+                  <div key={idx} className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-2">
                     <h4 className="text-sm font-bold text-[var(--cds-text-01)]">{sug.feature}</h4>
                     <div className="flex flex-col gap-1 text-xs">
                       <span className="font-semibold text-orange-600 dark:text-orange-400">{language === 'ar' ? `التحويل المقترح: ${sug.type}` : `Suggested: ${sug.type}`}</span>
@@ -5483,7 +5483,7 @@ language === 'ar'
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)]">
+              <div className="p-12 text-center bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)]">
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
                 <h3 className="text-base font-bold text-[var(--cds-text-01)]">{language === 'ar' ? 'بياناتك تبدو جاهزة ومثالية!' : 'Features Look Clean & Ready!'}</h3>
                 <p className="text-xs text-[var(--cds-text-02)] mt-1 max-w-md mx-auto">
@@ -5496,7 +5496,7 @@ language === 'ar'
       )}
 
       {/* Execution Logs Terminal */}
-      <div className="bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] p-3.5 rounded-xl text-xs h-28 overflow-y-auto font-mono border border-[var(--cds-border-subtle)] shadow-inner">
+      <div className="bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] p-3.5 rounded-lg text-xs h-28 overflow-y-auto font-mono border border-[var(--cds-border-subtle)] shadow-inner">
         <h4 className="font-bold text-[var(--cds-text-03)] mb-1 flex items-center gap-1.5">
           <Activity className="w-3.5 h-3.5 text-blue-500" />
           {language === 'ar' ? 'سجل عمليات النمذجة والتدريب (Execution Log):' : 'Modeling Execution Log:'}

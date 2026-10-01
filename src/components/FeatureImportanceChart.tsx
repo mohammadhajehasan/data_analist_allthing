@@ -88,7 +88,7 @@ export const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({
 
   if (!features || features.length === 0) {
     return (
-      <div className="text-center p-8 bg-[var(--cds-layer-01)] rounded-2xl border border-[var(--cds-border-subtle)] text-[var(--cds-text-03)]">
+      <div className="text-center p-8 bg-[var(--cds-layer-01)] rounded-xl border border-[var(--cds-border-subtle)] text-[var(--cds-text-03)]">
         <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50 text-blue-500" />
         <p className="text-sm font-semibold">
           {language === 'ar'
@@ -103,7 +103,7 @@ export const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-xl text-xs space-y-1.5 min-w-[200px] z-50">
+        <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-xl text-xs space-y-1.5 min-w-[200px] z-50">
           <div className="font-bold text-[var(--cds-text-01)] flex items-center justify-between pb-1 border-b border-[var(--cds-border-subtle)]">
             <span className="font-mono">{data.name}</span>
             <span
@@ -160,11 +160,11 @@ export const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({
   };
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-2xl p-5 space-y-5 shadow-xs">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-5 space-y-5 shadow-xs">
       {/* Header & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--cds-border-subtle)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
             <Scale className="w-5 h-5" />
           </div>
           <div>
@@ -251,7 +251,7 @@ export const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({
 
       {/* Top Driver Highlight Card */}
       {topDriver && (
-        <div className="p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-teal-500/10 rounded-xl border border-blue-500/25 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-teal-500/10 rounded-lg border border-blue-500/25 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/30">
               <Award className="w-5 h-5" />
@@ -345,7 +345,7 @@ export const FeatureImportanceChart: React.FC<FeatureImportanceChartProps> = ({
       </div>
 
       {/* Detailed Feature Importance Breakdown Table */}
-      <div className="overflow-x-auto rounded-xl border border-[var(--cds-border-subtle)]">
+      <div className="overflow-x-auto rounded-lg border border-[var(--cds-border-subtle)]">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-b border-[var(--cds-border-subtle)] font-bold">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { WidgetConfig, WidgetType, AggregationFunction, Dataset } from '../../types';
 import {
@@ -24,6 +25,9 @@ import { AiAgentPanel } from './AiAgentPanel';
 import { ForecastingPanel } from './ForecastingPanel';
 import { AudioBriefingPanel } from './AudioBriefingPanel';
 import { SlidesExportPanel } from './SlidesExportPanel';
+import { DataCinemaMode } from '../../components/dashboards/DataCinemaMode';
+import { ShareToGroupModal } from '../../components/discussions/ShareToGroupModal';
+import { captureElementToCanvas } from '../../utils/dashboardExport';
 import {
   LayoutDashboard,
   Plus,
@@ -56,6 +60,7 @@ import {
   LayoutGrid,
   Camera,
   CheckCircle2,
+  Clapperboard,
   X,
   FileSpreadsheet,
   ShieldCheck,
@@ -63,6 +68,7 @@ import {
   Volume2,
   AlertTriangle,
   Palette,
+  MessageSquare,
 } from 'lucide-react';
 
 export const DashboardBuilder: React.FC = () => {
@@ -95,6 +101,7 @@ export const DashboardBuilder: React.FC = () => {
   // Export Progress State
   const [exportProgress, setExportProgress] = useState<ExportProgressState | null>(null);
   const [showCentralizedExportModal, setShowCentralizedExportModal] = useState(false);
+  const [showCinemaMode, setShowCinemaMode] = useState(false);
 
   // Visualization Theme Selection State
   const [selectedTheme, setSelectedTheme] = useState<string>('professional');
@@ -390,8 +397,61 @@ export const DashboardBuilder: React.FC = () => {
     }
   };
 
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareImageData, setShareImageData] = useState<string | null>(null);
+  const [shareWidgetName, setShareWidgetName] = useState('');
+  const [sharingDashboard, setSharingDashboard] = useState(false);
+
+  // Capture the widget card as a PNG data URL and open the share-to-group modal
+  const handleShareWidgetToGroup = async (widgetId: string, widgetName: string) => {
+    setActiveWidgetExportMenuId(null);
+    const element = document.getElementById(`widget-card-${widgetId}`);
+    if (!element) return;
+    try {
+      const canvas = await captureElementToCanvas(element, { backgroundColor: '#161616', scale: 2.0 });
+      setShareWidgetName(widgetName || 'chart');
+      setShareImageData(canvas.toDataURL('image/png'));
+      setShareModalOpen(true);
+    } catch (err) {
+      console.error('Share widget error:', err);
+      toast.error(
+        isAr ? 'فشل الالتقاط' : 'Capture Failed',
+        isAr ? 'تعذر التقاط لقطة الرسم البياني.' : 'Failed to capture the chart snapshot.'
+      );
+    }
+  };
+
+  // Capture the WHOLE dashboard (all charts + KPIs) and open the share-to-group modal
+  const handleShareDashboardToGroup = async () => {
+    setShowExportMenu(false);
+    setActiveWidgetExportMenuId(null);
+    if (!dashboardContainerRef.current) return;
+    const dashTitle = isAr
+      ? activeDashboard?.nameAr || activeDashboard?.name
+      : activeDashboard?.name;
+    setSharingDashboard(true);
+    try {
+      // Lower scale: the full board is much larger than a single widget
+      const canvas = await captureElementToCanvas(dashboardContainerRef.current, {
+        backgroundColor: '#161616',
+        scale: 1.5,
+      });
+      setShareWidgetName(dashTitle || (isAr ? 'لوحة التحكم' : 'Dashboard'));
+      setShareImageData(canvas.toDataURL('image/png'));
+      setShareModalOpen(true);
+    } catch (err) {
+      console.error('Share dashboard error:', err);
+      toast.error(
+        isAr ? 'فشل الالتقاط' : 'Capture Failed',
+        isAr ? 'تعذر التقاط لقطة لوحة التحكم الكاملة.' : 'Failed to capture the full dashboard snapshot.'
+      );
+    } finally {
+      setSharingDashboard(false);
+    }
+  };
+
   if (!activeDashboard) {
-    return <div className="carbon-tile p-8 text-center text-[#c6c6c6]">{isAr ? 'لا توجد لوحة تحكم نشطة' : 'No dashboard active'}</div>;
+    return <div className="carbon-tile p-8 text-center text-[var(--cds-text-02)]">{isAr ? 'لا توجد لوحة تحكم نشطة' : 'No dashboard active'}</div>;
   }
 
   const kpis = activeDashboard.widgets.filter(w => w.type === 'kpi');
@@ -460,14 +520,21 @@ export const DashboardBuilder: React.FC = () => {
             >
               <button
                 onClick={() => handleOpenEditModal(w)}
-                className="p-1 bg-[#393939] hover:bg-[#0f62fe] text-[#c6c6c6] hover:text-white transition-colors"
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white transition-colors"
                 title={isAr ? 'تعديل العنصر' : 'Edit Widget'}
               >
                 <Edit3 className="w-3 h-3" />
               </button>
               <button
+                onClick={() => handleShareWidgetToGroup(w.id, isAr ? w.titleAr || w.title : w.title)}
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white transition-colors"
+                title={isAr ? 'مشاركة في مناقشة جماعية' : 'Share to group discussion'}
+              >
+                <MessageSquare className="w-3 h-3" />
+              </button>
+              <button
                 onClick={() => handleExportWidget(w.id, isAr ? w.titleAr || w.title : w.title, 'png')}
-                className="p-1 bg-[#393939] hover:bg-[#24a148] text-[#c6c6c6] hover:text-white transition-colors"
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#24a148] text-[var(--cds-text-02)] hover:text-white transition-colors"
                 title={isAr ? 'تصدير كصورة PNG' : 'Export as PNG'}
               >
                 <Camera className="w-3 h-3" />
@@ -480,7 +547,7 @@ export const DashboardBuilder: React.FC = () => {
                     isAr ? `تمت إزالة ${w.titleAr || w.title} من لوحة القيادة.` : `Removed ${w.title} from dashboard.`
                   );
                 }}
-                className="p-1 bg-[#393939] hover:bg-[#da1e28] text-[#c6c6c6] hover:text-white transition-colors"
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#da1e28] text-[var(--cds-text-02)] hover:text-white transition-colors"
                 title={isAr ? 'حذف العنصر' : 'Delete Widget'}
               >
                 <Trash2 className="w-3 h-3" />
@@ -496,7 +563,7 @@ export const DashboardBuilder: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#393939] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
@@ -507,7 +574,7 @@ export const DashboardBuilder: React.FC = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-[#ffffff] tracking-tight mt-1">
             {isAr ? activeDashboard.nameAr || activeDashboard.name || 'Untitled' : activeDashboard.name || 'Untitled'}
           </h2>
-          <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">
             {isAr ? activeDashboard.descriptionAr || activeDashboard.description || '' : activeDashboard.description || ''}
           </p>
         </div>
@@ -516,7 +583,7 @@ export const DashboardBuilder: React.FC = () => {
           {/* Quick Zero-Upload CSV Ingestion */}
           <button
             onClick={() => setShowCsvModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#262626] hover:bg-[#333333] border border-[#24a148] text-[#f4f4f4] text-xs font-mono font-bold transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#24a148] text-[var(--cds-text-01)] text-xs font-mono font-bold transition-colors shadow-xs"
             title={isAr ? 'استيراد فوري بدون خادم وتغذية لوحة القيادة' : 'Instant in-memory CSV import to feed this dashboard'}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-[#42be65]" />
@@ -566,6 +633,18 @@ export const DashboardBuilder: React.FC = () => {
             <span>{isAr ? 'التنبيهات' : 'Alerts'}</span>
           </button>
 
+          {/* Data Cinema — Story Mode Trigger */}
+          {activeDashboard.widgets.length > 0 && (
+            <button
+              onClick={() => setShowCinemaMode(true)}
+              className="carbon-btn-secondary text-xs font-mono font-bold gap-1.5"
+              title={isAr ? 'سينما البيانات: عرض سينمائي متتابع مع سرد تحليلي تلقائي' : 'Data Cinema: guided cinematic walkthrough with auto narration'}
+            >
+              <Clapperboard className="w-3.5 h-3.5 text-[#f1c21b]" />
+              <span>{isAr ? 'وضع السينما' : 'Story Mode'}</span>
+            </button>
+          )}
+
           {/* Export Dropdown Menu (PNG / PDF) */}
           <div className="relative">
             <button
@@ -575,38 +654,52 @@ export const DashboardBuilder: React.FC = () => {
             >
               <Download className="w-3.5 h-3.5 text-[#24a148]" />
               <span>{isAr ? 'تصدير اللوحة' : 'Export'}</span>
-              <ChevronDown className="w-3 h-3 text-[#8d8d8d]" />
+              <ChevronDown className="w-3 h-3 text-[var(--cds-text-03)]" />
             </button>
 
             {showExportMenu && (
               <div
-                className={`absolute top-full mt-1 w-64 bg-[#262626] border border-[#525252] shadow-2xl p-1 z-50 ${
+                className={`absolute top-full mt-1 w-64 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] shadow-2xl p-1 z-50 ${
                   isAr ? 'left-0' : 'right-0'
                 }`}
               >
-                <div className="px-3 py-1.5 text-[10px] font-mono font-bold text-[#8d8d8d] uppercase tracking-wider border-b border-[#393939] mb-1">
+                <div className="px-3 py-1.5 text-[10px] font-mono font-bold text-[var(--cds-text-03)] uppercase tracking-wider border-b border-[var(--cds-border-subtle)] mb-1">
                   {isAr ? 'خيارات التصدير عالي الدقة' : 'Export High-Resolution'}
                 </div>
 
                 <button
                   onClick={() => handleExportFullDashboard('png')}
-                  className="w-full text-start px-3 py-2 text-xs font-mono text-[#f4f4f4] hover:bg-[#353535] flex items-center gap-2.5 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2.5 transition-colors"
                 >
                   <FileImage className="w-4 h-4 text-[#33b1ff]" />
                   <div>
                     <div className="font-bold">{isAr ? 'تصدير كصورة PNG عالية الدقة' : 'Export as High-Res PNG'}</div>
-                    <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'صورة 2x جاهزة للمشاركة والعروض' : 'Retina 2x resolution raster'}</div>
+                    <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'صورة 2x جاهزة للمشاركة والعروض' : 'Retina 2x resolution raster'}</div>
                   </div>
                 </button>
 
                 <button
                   onClick={() => handleExportFullDashboard('pdf')}
-                  className="w-full text-start px-3 py-2 text-xs font-mono text-[#f4f4f4] hover:bg-[#353535] flex items-center gap-2.5 transition-colors border-b border-[#393939]"
+                  className="w-full text-start px-3 py-2 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2.5 transition-colors border-b border-[var(--cds-border-subtle)]"
                 >
                   <FileText className="w-4 h-4 text-[#da1e28]" />
                   <div>
                     <div className="font-bold">{isAr ? 'تصدير كتقرير PDF رسمي' : 'Export as Official PDF'}</div>
-                    <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'مستند A4 منسق مع الرسوم التوضيحية' : 'A4 formatted PDF document'}</div>
+                    <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'مستند A4 منسق مع الرسوم التوضيحية' : 'A4 formatted PDF document'}</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleShareDashboardToGroup}
+                  disabled={sharingDashboard}
+                  className="w-full text-start px-3 py-2 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2.5 transition-colors disabled:opacity-60"
+                >
+                  {sharingDashboard
+                    ? <Loader2 className="w-4 h-4 text-[#0f62fe] animate-spin" />
+                    : <MessageSquare className="w-4 h-4 text-[#78a9ff]" />}
+                  <div>
+                    <div className="font-bold">{isAr ? 'مشاركة لقطة اللوحة كاملة في مناقشة' : 'Share full dashboard snapshot'}</div>
+                    <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'كل الرسوم والمؤشرات معاً في صورة واحدة' : 'All charts & KPIs in one image'}</div>
                   </div>
                 </button>
 
@@ -617,7 +710,7 @@ export const DashboardBuilder: React.FC = () => {
                   <Download className="w-4 h-4 text-[#0f62fe]" />
                   <div>
                     <div className="font-bold">{isAr ? 'خيارات التصدير الشاملة (CSV, JSON, Excel, SQL)' : 'Centralized Multi-Format Export'}</div>
-                    <div className="text-[10px] text-[#8d8d8d]">{isAr ? 'مركز تصدير البيانات والتقارير المتقدم' : 'Advanced multi-format data export hub'}</div>
+                    <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'مركز تصدير البيانات والتقارير المتقدم' : 'Advanced multi-format data export hub'}</div>
                   </div>
                 </button>
               </div>
@@ -636,19 +729,19 @@ export const DashboardBuilder: React.FC = () => {
       </div>
 
       {/* Visualization Themes Palette Selector */}
-      <div className="bg-[#1f1f1f] border border-[#393939] p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-md">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="p-2 bg-[#0f62fe]/15 border border-[#0f62fe] text-[#0f62fe]">
             <Palette className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-xs font-mono font-bold text-[#f4f4f4] flex items-center gap-2">
+            <div className="text-xs font-mono font-bold text-[var(--cds-text-01)] flex items-center gap-2">
               <span>{isAr ? 'نسق الألوان للرسوم البيانية' : 'Visualization Themes'}</span>
-              <span className="px-1.5 py-0.5 bg-[#262626] border border-[#525252] text-[10px] text-[#33b1ff] font-bold">
+              <span className="px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[10px] text-[#33b1ff] font-bold">
                 {isAr ? VISUALIZATION_THEMES[selectedTheme]?.nameAr : VISUALIZATION_THEMES[selectedTheme]?.nameEn}
               </span>
             </div>
-            <p className="text-[11px] text-[#8d8d8d]">
+            <p className="text-[11px] text-[var(--cds-text-03)]">
               {isAr
                 ? 'اختيار لوحة ألوان موحدة تُطبق تلقائياً على كافة أنواع الرسوم البيانية'
                 : 'Select a unified color palette applied across all chart types'}
@@ -671,8 +764,8 @@ export const DashboardBuilder: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 px-2.5 py-1.5 text-xs font-mono transition-all border ${
                   isSelected
-                    ? 'bg-[#262626] border-[#0f62fe] text-[#f4f4f4] shadow-md ring-1 ring-[#0f62fe]'
-                    : 'bg-[#161616] border-[#393939] text-[#8d8d8d] hover:border-[#525252] hover:text-[#f4f4f4]'
+                    ? 'bg-[var(--cds-layer-02)] border-[#0f62fe] text-[var(--cds-text-01)] shadow-md ring-1 ring-[#0f62fe]'
+                    : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:border-[var(--cds-border-strong)] hover:text-[var(--cds-text-01)]'
                 }`}
                 title={isAr ? vt.descriptionAr : vt.descriptionEn}
               >
@@ -681,7 +774,7 @@ export const DashboardBuilder: React.FC = () => {
                   {vt.colors.slice(0, 4).map((c, idx) => (
                     <span
                       key={idx}
-                      className="w-2.5 h-2.5 rounded-full border border-[#161616]"
+                      className="w-2.5 h-2.5 rounded-full border border-[var(--cds-layer-01)]"
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -700,12 +793,12 @@ export const DashboardBuilder: React.FC = () => {
 
         {/* Analytical Charts Grid */}
         {charts.length === 0 && kpis.length === 0 ? (
-          <div className="bg-[#161616] border border-dashed border-[#525252] p-12 text-center space-y-3">
-            <BarChart3 className="w-12 h-12 text-[#8d8d8d] mx-auto opacity-50" />
-            <h3 className="text-base font-bold text-[#f4f4f4]">
+          <div className="bg-[var(--cds-layer-01)] border border-dashed border-[var(--cds-border-strong)] p-12 text-center space-y-3">
+            <BarChart3 className="w-12 h-12 text-[var(--cds-text-03)] mx-auto opacity-50" />
+            <h3 className="text-base font-bold text-[var(--cds-text-01)]">
               {isAr ? 'لا توجد عناصر أو رسوم بيانية في هذه اللوحة' : 'No widgets in this dashboard yet'}
             </h3>
-            <p className="text-xs text-[#c6c6c6] max-w-md mx-auto">
+            <p className="text-xs text-[var(--cds-text-02)] max-w-md mx-auto">
               {isAr
                 ? 'انقر على "إضافة عنصر جديد" لاختيار نوع الرسم والمحاور وتطبيق الدوال الرياضية والإحصائية المتطورة.'
                 : 'Click "Add Widget" to choose chart type, configure axes, and apply mathematical/statistical functions.'}
@@ -728,13 +821,13 @@ export const DashboardBuilder: React.FC = () => {
                 <div
                   key={w.id}
                   id={`widget-card-${w.id}`}
-                  className={`bg-[#262626] border border-[#393939] hover:border-[#525252] transition-colors p-4 flex flex-col justify-between ${cardHeightClass} relative group rounded-none shadow-md overflow-hidden`}
+                  className={`bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors p-4 flex flex-col justify-between ${cardHeightClass} relative group rounded-none shadow-md overflow-hidden`}
                 >
                   {/* Visual Calculating Loading Overlay on specific widget */}
                   {isWidgetCalculating && (
-                    <div className="absolute inset-0 z-20 bg-[#161616]/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 transition-all">
+                    <div className="absolute inset-0 z-20 bg-[var(--cds-layer-01)]/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 transition-all">
                       <Loader2 className="w-6 h-6 text-[#0f62fe] animate-spin" />
-                      <span className="text-xs font-mono text-[#f4f4f4] font-bold">
+                      <span className="text-xs font-mono text-[var(--cds-text-01)] font-bold">
                         {isAr ? 'جارِ إعادة احتساب الدالة الإحصائية...' : 'Recalculating statistical aggregation...'}
                       </span>
                       <span className="text-[10px] font-mono text-[#33b1ff]">
@@ -744,7 +837,7 @@ export const DashboardBuilder: React.FC = () => {
                   )}
 
                   {/* Chart Card Header */}
-                  <div className="flex items-center justify-between border-b border-[#393939] pb-2.5 mb-3 gap-2">
+                  <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-2.5 mb-3 gap-2">
                     <div className="min-w-0 flex-1">
                       <h4 className="text-xs font-mono font-bold text-[#ffffff] uppercase tracking-wider truncate" title={w.title}>
                         {widgetDisplayName}
@@ -752,39 +845,39 @@ export const DashboardBuilder: React.FC = () => {
                       <div className="flex items-center gap-2 mt-1">
                         {/* Mathematical Aggregation Switcher Dropdown (Carbon Styled) */}
                         {layoutSettings.showFormulas && (
-                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#33b1ff] bg-[#161616] border border-[#393939] px-2 py-0.5">
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#33b1ff] bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2 py-0.5">
                             <Sigma className="w-3 h-3 text-[#33b1ff] shrink-0" />
-                            <span className="text-[#a8a8a8]">{isAr ? 'الدالة:' : 'Func:'}</span>
+                            <span className="text-[var(--cds-text-02)]">{isAr ? 'الدالة:' : 'Func:'}</span>
                             <select
                               value={currentAgg}
                               onChange={e => handleQuickAggChange(w, e.target.value as AggregationFunction)}
                               className="bg-transparent text-[#33b1ff] font-bold text-[10px] outline-none cursor-pointer hover:underline"
                               title={isAr ? 'تغيير الدالة الحسابية والإحصائية فوراً' : 'Switch math/statistical aggregation function'}
                             >
-                              <optgroup label={isAr ? '── مقاييس النزعة المركزية ──' : '── Central Tendency ──'} className="bg-[#262626] text-[#8d8d8d]">
+                              <optgroup label={isAr ? '── مقاييس النزعة المركزية ──' : '── Central Tendency ──'} className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]">
                                 {AGGREGATION_OPTIONS.filter(o => o.category === 'central').map(opt => (
-                                  <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                                  <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                                     {opt.symbol} {isAr ? opt.labelAr : opt.labelEn}
                                   </option>
                                 ))}
                               </optgroup>
-                              <optgroup label={isAr ? '── مقاييس التشتت والتباين ──' : '── Dispersion & Spread ──'} className="bg-[#262626] text-[#8d8d8d]">
+                              <optgroup label={isAr ? '── مقاييس التشتت والتباين ──' : '── Dispersion & Spread ──'} className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]">
                                 {AGGREGATION_OPTIONS.filter(o => o.category === 'dispersion').map(opt => (
-                                  <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                                  <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                                     {opt.symbol} {isAr ? opt.labelAr : opt.labelEn}
                                   </option>
                                 ))}
                               </optgroup>
-                              <optgroup label={isAr ? '── المقاييس المئوية والاحتمالية ──' : '── Percentiles & Quartiles ──'} className="bg-[#262626] text-[#8d8d8d]">
+                              <optgroup label={isAr ? '── المقاييس المئوية والاحتمالية ──' : '── Percentiles & Quartiles ──'} className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]">
                                 {AGGREGATION_OPTIONS.filter(o => o.category === 'percentile').map(opt => (
-                                  <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                                  <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                                     {opt.symbol} {isAr ? opt.labelAr : opt.labelEn}
                                   </option>
                                 ))}
                               </optgroup>
-                              <optgroup label={isAr ? '── الإجماليات والتكرارات ──' : '── Totals & Aggregates ──'} className="bg-[#262626] text-[#8d8d8d]">
+                              <optgroup label={isAr ? '── الإجماليات والتكرارات ──' : '── Totals & Aggregates ──'} className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]">
                                 {AGGREGATION_OPTIONS.filter(o => o.category === 'aggregate').map(opt => (
-                                  <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                                  <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                                     {opt.symbol} {isAr ? opt.labelAr : opt.labelEn}
                                   </option>
                                 ))}
@@ -795,8 +888,8 @@ export const DashboardBuilder: React.FC = () => {
 
                         {/* Axes Indicator */}
                         {layoutSettings.showCardBadges && (
-                          <span className="text-[10px] font-mono text-[#8d8d8d] hidden sm:inline-block truncate">
-                            Y: <strong className="text-[#c6c6c6]">{w.yAxis || 'value'}</strong> | X: <strong className="text-[#c6c6c6]">{w.xAxis || w.categoryField || 'category'}</strong>
+                          <span className="text-[10px] font-mono text-[var(--cds-text-03)] hidden sm:inline-block truncate">
+                            Y: <strong className="text-[var(--cds-text-02)]">{w.yAxis || 'value'}</strong> | X: <strong className="text-[var(--cds-text-02)]">{w.xAxis || w.categoryField || 'category'}</strong>
                           </span>
                         )}
                       </div>
@@ -809,11 +902,11 @@ export const DashboardBuilder: React.FC = () => {
                         targetType="dashboard_widget"
                         targetId={w.id}
                         targetTitle={widgetDisplayName}
-                        className="bg-[#161616] border border-[#393939]"
+                        className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]"
                       />
 
                       {layoutSettings.showCardBadges && (
-                        <span className="text-[10px] font-mono uppercase bg-[#161616] text-[#0f62fe] border border-[#393939] px-2 py-0.5 font-bold">
+                        <span className="text-[10px] font-mono uppercase bg-[var(--cds-layer-01)] text-[#0f62fe] border border-[var(--cds-border-subtle)] px-2 py-0.5 font-bold">
                           {w.type}
                         </span>
                       )}
@@ -822,7 +915,7 @@ export const DashboardBuilder: React.FC = () => {
                       <div className="relative">
                         <button
                           onClick={() => setActiveWidgetExportMenuId(isExportMenuOpen ? null : w.id)}
-                          className="p-1.5 bg-[#161616] hover:bg-[#24a148] text-[#c6c6c6] hover:text-white border border-[#393939] transition-colors"
+                          className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[#24a148] text-[var(--cds-text-02)] hover:text-white border border-[var(--cds-border-subtle)] transition-colors"
                           title={isAr ? 'تصدير هذا الرسم بشكل منفصل (PNG/PDF)' : 'Export this chart (PNG/PDF)'}
                         >
                           <Camera className="w-3.5 h-3.5" />
@@ -830,23 +923,31 @@ export const DashboardBuilder: React.FC = () => {
 
                         {isExportMenuOpen && (
                           <div
-                            className={`absolute top-full mt-1 w-48 bg-[#1f1f1f] border border-[#525252] shadow-2xl p-1 z-30 ${
+                            className={`absolute top-full mt-1 w-48 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] shadow-2xl p-1 z-30 ${
                               isAr ? 'left-0' : 'right-0'
                             }`}
                           >
                             <button
                               onClick={() => handleExportWidget(w.id, widgetDisplayName, 'png')}
-                              className="w-full text-start px-2.5 py-1.5 text-xs font-mono text-[#f4f4f4] hover:bg-[#353535] flex items-center gap-2"
+                              className="w-full text-start px-2.5 py-1.5 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2"
                             >
                               <FileImage className="w-3.5 h-3.5 text-[#33b1ff]" />
                               <span>{isAr ? 'تصدير كصورة PNG' : 'Save as PNG'}</span>
                             </button>
                             <button
                               onClick={() => handleExportWidget(w.id, widgetDisplayName, 'pdf')}
-                              className="w-full text-start px-2.5 py-1.5 text-xs font-mono text-[#f4f4f4] hover:bg-[#353535] flex items-center gap-2"
+                              className="w-full text-start px-2.5 py-1.5 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2"
                             >
                               <FileText className="w-3.5 h-3.5 text-[#da1e28]" />
                               <span>{isAr ? 'تصدير كمستند PDF' : 'Save as PDF'}</span>
+                            </button>
+                            <div className="h-px bg-[var(--cds-border-subtle)] my-1" />
+                            <button
+                              onClick={() => handleShareWidgetToGroup(w.id, widgetDisplayName)}
+                              className="w-full text-start px-2.5 py-1.5 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-[#78a9ff]" />
+                              <span>{isAr ? 'مشاركة في مناقشة جماعية' : 'Share to group discussion'}</span>
                             </button>
                           </div>
                         )}
@@ -855,7 +956,7 @@ export const DashboardBuilder: React.FC = () => {
                       {/* Edit Button */}
                       <button
                         onClick={() => handleOpenEditModal(w)}
-                        className="p-1.5 bg-[#161616] hover:bg-[#0f62fe] text-[#c6c6c6] hover:text-white border border-[#393939] transition-colors"
+                        className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white border border-[var(--cds-border-subtle)] transition-colors"
                         title={isAr ? 'تعديل المحاور والخيارات' : 'Edit Axes & Settings'}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -870,7 +971,7 @@ export const DashboardBuilder: React.FC = () => {
                             isAr ? `تمت إزالة ${w.titleAr || w.title} من لوحة القيادة.` : `Removed ${w.title} from dashboard.`
                           );
                         }}
-                        className="p-1.5 bg-[#161616] hover:bg-[#da1e28] text-[#c6c6c6] hover:text-white border border-[#393939] transition-colors"
+                        className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[#da1e28] text-[var(--cds-text-02)] hover:text-white border border-[var(--cds-border-subtle)] transition-colors"
                         title={isAr ? 'حذف العنصر' : 'Delete Widget'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -895,8 +996,8 @@ export const DashboardBuilder: React.FC = () => {
       {/* ──────────────────────────────────────────────────────────────────────── */}
       {/* ADVANCED ANALYTICAL TOOLS SUITE - IBM CARBON THEME */}
       {/* ──────────────────────────────────────────────────────────────────────── */}
-      <div className="border-t border-[#393939] pt-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#161616] border border-[#393939] p-4 text-start">
+      <div className="border-t border-[var(--cds-border-subtle)] pt-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 text-start">
           <div>
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#8a3ffc] flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-[#8a3ffc]" />
@@ -905,17 +1006,17 @@ export const DashboardBuilder: React.FC = () => {
             <h3 className="text-sm font-bold text-white mt-1">
               {isAr ? 'حزمة التحليلات المتقدمة والذكاء الاصطناعي' : 'AI & Advanced Decision Intelligence'}
             </h3>
-            <p className="text-[11px] text-[#c6c6c6] mt-0.5">
+            <p className="text-[11px] text-[var(--cds-text-02)] mt-0.5">
               {isAr ? 'محركات متكاملة للتنبؤ المستقبلي، الموجزات الصوتية، وتصدير العروض الإدارية' : 'Integrated modules for automated forecasting, text-to-speech briefing, and presentation builders'}
             </p>
           </div>
 
           {/* Sub-Tab Selector Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#262626] p-1 border border-[#393939] text-xs font-mono font-bold">
+          <div className="flex flex-wrap items-center gap-1.5 bg-[var(--cds-layer-02)] p-1 border border-[var(--cds-border-subtle)] text-xs font-mono font-bold">
             <button
               onClick={() => setAdvancedToolTab('forecast')}
               className={`px-3 py-1.5 flex items-center gap-1.5 transition-all rounded-none ${
-                advancedToolTab === 'forecast' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[#8d8d8d] hover:text-white'
+                advancedToolTab === 'forecast' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
@@ -925,7 +1026,7 @@ export const DashboardBuilder: React.FC = () => {
             <button
               onClick={() => setAdvancedToolTab('audio')}
               className={`px-3 py-1.5 flex items-center gap-1.5 transition-all rounded-none ${
-                advancedToolTab === 'audio' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[#8d8d8d] hover:text-white'
+                advancedToolTab === 'audio' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Volume2 className="w-3.5 h-3.5" />
@@ -935,7 +1036,7 @@ export const DashboardBuilder: React.FC = () => {
             <button
               onClick={() => setAdvancedToolTab('slides')}
               className={`px-3 py-1.5 flex items-center gap-1.5 transition-all rounded-none ${
-                advancedToolTab === 'slides' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[#8d8d8d] hover:text-white'
+                advancedToolTab === 'slides' ? 'bg-[#8a3ffc] text-white shadow-xs' : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Presentation className="w-3.5 h-3.5" />
@@ -955,7 +1056,7 @@ export const DashboardBuilder: React.FC = () => {
 
       {/* Export Toast / Progress Indicator */}
       {exportProgress && (
-        <div className="fixed bottom-6 end-6 z-50 bg-[#1f1f1f] border border-[#0f62fe] shadow-2xl p-4 w-80 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 end-6 z-50 bg-[var(--cds-layer-01)] border border-[#0f62fe] shadow-2xl p-4 w-80 animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {exportProgress.status === 'done' ? (
@@ -975,7 +1076,7 @@ export const DashboardBuilder: React.FC = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-[#161616] h-1.5 overflow-hidden mb-1.5">
+          <div className="w-full bg-[var(--cds-layer-01)] h-1.5 overflow-hidden mb-1.5">
             <div
               className={`h-full transition-all duration-200 ${
                 exportProgress.status === 'done' ? 'bg-[#24a148]' : 'bg-[#0f62fe]'
@@ -984,7 +1085,7 @@ export const DashboardBuilder: React.FC = () => {
             />
           </div>
 
-          <p className="text-[11px] font-mono text-[#c6c6c6] truncate">
+          <p className="text-[11px] font-mono text-[var(--cds-text-02)] truncate">
             {exportProgress.step}
           </p>
         </div>
@@ -999,9 +1100,9 @@ export const DashboardBuilder: React.FC = () => {
       {/* Full Modal for Adding & Configuring New / Existing Widget */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-[#262626] border border-[#525252] max-w-3xl w-full p-6 shadow-2xl space-y-5 rounded-none my-8 max-h-[92vh] overflow-y-auto">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] max-w-3xl w-full p-6 shadow-2xl space-y-5 rounded-lg my-8 max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
                   <Sliders className="w-3 h-3" />
@@ -1015,7 +1116,7 @@ export const DashboardBuilder: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[#c6c6c6] hover:text-white font-mono text-sm p-1 hover:bg-[#393939]"
+                className="text-[var(--cds-text-02)] hover:text-white font-mono text-sm p-1 hover:bg-[var(--cds-layer-03)]"
               >
                 ✕
               </button>
@@ -1025,7 +1126,7 @@ export const DashboardBuilder: React.FC = () => {
               {/* Dataset Selection (if multiple) */}
               {datasets.length > 1 && (
                 <div>
-                  <label className="block text-[#f4f4f4] font-bold mb-1 flex items-center gap-1.5">
+                  <label className="block text-[var(--cds-text-01)] font-bold mb-1 flex items-center gap-1.5">
                     <Database className="w-3.5 h-3.5 text-[#0f62fe]" />
                     <span>{isAr ? 'مجموعة البيانات المصدرية' : 'Source Dataset'}</span>
                   </label>
@@ -1046,7 +1147,7 @@ export const DashboardBuilder: React.FC = () => {
               {/* Widget Title */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#f4f4f4] font-bold mb-1">
+                  <label className="block text-[var(--cds-text-01)] font-bold mb-1">
                     {isAr ? 'عنوان العنصر (بالإنجليزية)' : 'Widget Title (English)'}
                   </label>
                   <input
@@ -1058,7 +1159,7 @@ export const DashboardBuilder: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[#f4f4f4] font-bold mb-1">
+                  <label className="block text-[var(--cds-text-01)] font-bold mb-1">
                     {isAr ? 'عنوان العنصر (بالعربية)' : 'Widget Title (Arabic)'}
                   </label>
                   <input
@@ -1073,7 +1174,7 @@ export const DashboardBuilder: React.FC = () => {
 
               {/* Visualization Type */}
               <div>
-                <label className="block text-[#f4f4f4] font-bold mb-2">
+                <label className="block text-[var(--cds-text-01)] font-bold mb-2">
                   {isAr ? 'نوع الرسم البياني والتمثيل' : 'Visualization Type'}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1098,10 +1199,10 @@ export const DashboardBuilder: React.FC = () => {
                         className={`p-2.5 flex flex-col items-center justify-center gap-1.5 border text-center transition-all ${
                           isSelected
                             ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-white font-bold shadow-md'
-                            : 'bg-[#161616] border-[#393939] text-[#c6c6c6] hover:border-[#525252] hover:text-white'
+                            : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-strong)] hover:text-white'
                         }`}
                       >
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[#0f62fe]' : 'text-[#8d8d8d]'}`} />
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[#0f62fe]' : 'text-[var(--cds-text-03)]'}`} />
                         <span className="text-[11px]">{isAr ? item.labelAr : item.labelEn}</span>
                       </button>
                     );
@@ -1111,9 +1212,9 @@ export const DashboardBuilder: React.FC = () => {
 
               {/* If KPI Type is selected */}
               {widgetType === 'kpi' ? (
-                <div className="space-y-3 bg-[#161616] border border-[#393939] p-4">
-                  <div className="flex items-center gap-4 border-b border-[#393939] pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#f4f4f4]">
+                <div className="space-y-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4">
+                  <div className="flex items-center gap-4 border-b border-[var(--cds-border-subtle)] pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[var(--cds-text-01)]">
                       <input
                         type="radio"
                         name="kpiMode"
@@ -1123,7 +1224,7 @@ export const DashboardBuilder: React.FC = () => {
                       />
                       <span>{isAr ? 'حساب رياضي وإحصائي آلي من البيانات' : 'Auto Compute from Dataset'}</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#f4f4f4]">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[var(--cds-text-01)]">
                       <input
                         type="radio"
                         name="kpiMode"
@@ -1139,7 +1240,7 @@ export const DashboardBuilder: React.FC = () => {
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[#c6c6c6] mb-1 font-bold">
+                          <label className="block text-[var(--cds-text-02)] mb-1 font-bold">
                             {isAr ? 'عمود المقياس الرقمي' : 'Metric Column'}
                           </label>
                           <select
@@ -1155,7 +1256,7 @@ export const DashboardBuilder: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[#c6c6c6] mb-1 font-bold">
+                          <label className="block text-[var(--cds-text-02)] mb-1 font-bold">
                             {isAr ? 'الدالة الرياضية والإحصائية' : 'Statistical Function'}
                           </label>
                           <select
@@ -1197,7 +1298,7 @@ export const DashboardBuilder: React.FC = () => {
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[#c6c6c6] mb-1">{isAr ? 'بادئة (Prefix)' : 'Prefix'}</label>
+                          <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'بادئة (Prefix)' : 'Prefix'}</label>
                           <input
                             type="text"
                             value={kpiPrefix}
@@ -1207,7 +1308,7 @@ export const DashboardBuilder: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-[#c6c6c6] mb-1">{isAr ? 'لاحقة (Suffix)' : 'Suffix'}</label>
+                          <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'لاحقة (Suffix)' : 'Suffix'}</label>
                           <input
                             type="text"
                             value={kpiSuffix}
@@ -1217,7 +1318,7 @@ export const DashboardBuilder: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-[#c6c6c6] mb-1">{isAr ? 'تسمية الوصف' : 'Description Label'}</label>
+                          <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'تسمية الوصف' : 'Description Label'}</label>
                           <input
                             type="text"
                             value={kpiLabel}
@@ -1231,7 +1332,7 @@ export const DashboardBuilder: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[#c6c6c6] mb-1 font-bold">
+                        <label className="block text-[var(--cds-text-02)] mb-1 font-bold">
                           {isAr ? 'القيمة المعروضة (KPI Value)' : 'Display Value'}
                         </label>
                         <input
@@ -1243,7 +1344,7 @@ export const DashboardBuilder: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-[#c6c6c6] mb-1 font-bold">
+                        <label className="block text-[var(--cds-text-02)] mb-1 font-bold">
                           {isAr ? 'الوصف التوضيحي (Label)' : 'Metric Label'}
                         </label>
                         <input
@@ -1259,12 +1360,12 @@ export const DashboardBuilder: React.FC = () => {
                 </div>
               ) : (
                 /* Standard Chart Axes & Mathematical Aggregation Configuration */
-                <div className="space-y-4 bg-[#161616] border border-[#393939] p-4">
+                <div className="space-y-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4">
                   {/* Axes Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Dimension / X-Axis */}
                     <div>
-                      <label className="block text-[#f4f4f4] font-bold mb-1.5 flex items-center justify-between">
+                      <label className="block text-[var(--cds-text-01)] font-bold mb-1.5 flex items-center justify-between">
                         <span>{isAr ? 'المحور الأفقي / التصنيف (X-Axis)' : 'Dimension / Category (X-Axis)'}</span>
                         <span className="text-[10px] text-[#0f62fe] font-normal font-mono">Category / Time</span>
                       </label>
@@ -1279,14 +1380,14 @@ export const DashboardBuilder: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <p className="text-[10px] text-[#8d8d8d] mt-1">
+                      <p className="text-[10px] text-[var(--cds-text-03)] mt-1">
                         {isAr ? 'يحدد الأعمدة التجميعية (مثل: المدينة، التصنيف، التاريخ)' : 'Grouping dimension column'}
                       </p>
                     </div>
 
                     {/* Metric / Y-Axis */}
                     <div>
-                      <label className="block text-[#f4f4f4] font-bold mb-1.5 flex items-center justify-between">
+                      <label className="block text-[var(--cds-text-01)] font-bold mb-1.5 flex items-center justify-between">
                         <span>{isAr ? 'المحور الرأسي / المقياس الرقمي (Y-Axis)' : 'Metric / Measure (Y-Axis)'}</span>
                         <span className="text-[10px] text-[#33b1ff] font-normal font-mono">Numeric Metric</span>
                       </label>
@@ -1301,16 +1402,16 @@ export const DashboardBuilder: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <p className="text-[10px] text-[#8d8d8d] mt-1">
+                      <p className="text-[10px] text-[var(--cds-text-03)] mt-1">
                         {isAr ? 'يحدد العمود الرقمي المراد حسابه وتجميعه' : 'Numeric value column to aggregate'}
                       </p>
                     </div>
                   </div>
 
                   {/* Mathematical / Statistical Function Selection Section */}
-                  <div className="border-t border-[#393939] pt-4 space-y-3">
+                  <div className="border-t border-[var(--cds-border-subtle)] pt-4 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <label className="block text-[#f4f4f4] font-bold flex items-center gap-1.5">
+                      <label className="block text-[var(--cds-text-01)] font-bold flex items-center gap-1.5">
                         <Calculator className="w-4 h-4 text-[#33b1ff]" />
                         <span>{isAr ? 'الدالة الرياضية والإحصائية للتجميع (Mathematical Function Dropdown)' : 'Mathematical & Statistical Function'}</span>
                       </label>
@@ -1332,7 +1433,7 @@ export const DashboardBuilder: React.FC = () => {
                     </div>
 
                     {/* Dedicated Dropdown (Select Control) as explicitly requested */}
-                    <div className="bg-[#262626] p-3 border border-[#393939] space-y-2">
+                    <div className="bg-[var(--cds-layer-02)] p-3 border border-[var(--cds-border-subtle)] space-y-2">
                       <div className="flex items-center gap-2">
                         <Sigma className="w-4 h-4 text-[#33b1ff] shrink-0" />
                         <span className="text-xs font-bold text-[#ffffff]">
@@ -1343,40 +1444,40 @@ export const DashboardBuilder: React.FC = () => {
                       <select
                         value={widgetAggregation}
                         onChange={e => handleAggregationChange(e.target.value as AggregationFunction)}
-                        className="carbon-input w-full text-xs font-mono font-bold text-[#33b1ff] bg-[#161616] border-[#525252] focus:border-[#0f62fe] py-2 cursor-pointer"
+                        className="carbon-input w-full text-xs font-mono font-bold text-[#33b1ff] bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] focus:border-[#0f62fe] py-2 cursor-pointer"
                         id="math-function-select"
                       >
                         <optgroup label={isAr ? '── مقاييس النزعة المركزية (Central Tendency) ──' : '── Central Tendency Measures ──'}>
                           {AGGREGATION_OPTIONS.filter(o => o.category === 'central').map(opt => (
-                            <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                            <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                               {opt.symbol} {isAr ? opt.labelAr : opt.labelEn} — ({isAr ? opt.descAr : opt.descEn})
                             </option>
                           ))}
                         </optgroup>
                         <optgroup label={isAr ? '── مقاييس التشتت والتباين (Dispersion & Spread) ──' : '── Measures of Dispersion ──'}>
                           {AGGREGATION_OPTIONS.filter(o => o.category === 'dispersion').map(opt => (
-                            <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                            <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                               {opt.symbol} {isAr ? opt.labelAr : opt.labelEn} — ({isAr ? opt.descAr : opt.descEn})
                             </option>
                           ))}
                         </optgroup>
                         <optgroup label={isAr ? '── المقاييس المئوية والاحتمالية والربيعيات (Percentiles & Quartiles) ──' : '── Percentiles & Probabilistic ──'}>
                           {AGGREGATION_OPTIONS.filter(o => o.category === 'percentile').map(opt => (
-                            <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                            <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                               {opt.symbol} {isAr ? opt.labelAr : opt.labelEn} — ({isAr ? opt.descAr : opt.descEn})
                             </option>
                           ))}
                         </optgroup>
                         <optgroup label={isAr ? '── الإجماليات والتكرارات العامة (Totals & Counts) ──' : '── Totals & Aggregates ──'}>
                           {AGGREGATION_OPTIONS.filter(o => o.category === 'aggregate').map(opt => (
-                            <option key={opt.value} value={opt.value} className="bg-[#262626] text-white">
+                            <option key={opt.value} value={opt.value} className="bg-[var(--cds-layer-02)] text-white">
                               {opt.symbol} {isAr ? opt.labelAr : opt.labelEn} — ({isAr ? opt.descAr : opt.descEn})
                             </option>
                           ))}
                         </optgroup>
                       </select>
 
-                      <div className="flex items-center justify-between text-[11px] text-[#a8a8a8] pt-1">
+                      <div className="flex items-center justify-between text-[11px] text-[var(--cds-text-02)] pt-1">
                         <span>{isAr ? selectedAggOption.descAr : selectedAggOption.descEn}</span>
                         <span className="font-mono text-[#33b1ff] font-bold">
                           {isAr ? 'رمز الدالة:' : 'Symbol:'} {selectedAggOption.symbol}
@@ -1386,12 +1487,12 @@ export const DashboardBuilder: React.FC = () => {
 
                     {/* Quick Selection Tags Grid categorized for high ergonomics */}
                     <div className="space-y-2 pt-1">
-                      <div className="text-[10px] text-[#8d8d8d] uppercase font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-[var(--cds-text-03)] uppercase font-bold flex items-center justify-between">
                         <span>{isAr ? 'أو اختر سريعاً بالنقر المباشر على بطاقات الدوال:' : 'Or quick select via function cards:'}</span>
                         <span className="text-[#33b1ff]">{AGGREGATION_OPTIONS.length} {isAr ? 'دالة متاحة' : 'functions available'}</span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 max-h-[160px] overflow-y-auto p-1 bg-[#161616] border border-[#393939]">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 max-h-[160px] overflow-y-auto p-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                         {AGGREGATION_OPTIONS.map(opt => {
                           const isSelected = widgetAggregation === opt.value;
                           return (
@@ -1402,16 +1503,16 @@ export const DashboardBuilder: React.FC = () => {
                               className={`p-1.5 border text-start flex flex-col justify-between transition-all text-[10px] ${
                                 isSelected
                                   ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white shadow-sm font-bold'
-                                  : 'bg-[#262626] border-[#393939] text-[#c6c6c6] hover:border-[#525252] hover:text-white'
+                                  : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-strong)] hover:text-white'
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
-                                <span className={`font-mono px-1 py-0.2 text-[9px] ${isSelected ? 'bg-[#0f62fe] text-white' : 'bg-[#161616] text-[#33b1ff]'}`}>
+                                <span className={`font-mono px-1 py-0.2 text-[9px] ${isSelected ? 'bg-[#0f62fe] text-white' : 'bg-[var(--cds-layer-01)] text-[#33b1ff]'}`}>
                                   {opt.symbol}
                                 </span>
                                 {isSelected && <Check className="w-3 h-3 text-[#0f62fe]" />}
                               </div>
-                              <span className="font-bold truncate mt-1 text-[#f4f4f4]">
+                              <span className="font-bold truncate mt-1 text-[var(--cds-text-01)]">
                                 {isAr ? opt.labelAr.split('(')[0] : opt.labelEn.split('(')[0]}
                               </span>
                             </button>
@@ -1425,7 +1526,7 @@ export const DashboardBuilder: React.FC = () => {
                   <div className={`p-3 border transition-colors flex items-center gap-3 relative ${
                     isCalculatingAgg
                       ? 'bg-[#0f62fe]/10 border-[#0f62fe]'
-                      : 'bg-[#262626] border-[#525252]'
+                      : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-strong)]'
                   }`}>
                     {isCalculatingAgg ? (
                       <div className="w-8 h-8 bg-[#0f62fe] text-white flex items-center justify-center shrink-0">
@@ -1438,7 +1539,7 @@ export const DashboardBuilder: React.FC = () => {
                     )}
 
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] text-[#8d8d8d] uppercase font-bold tracking-wider flex items-center justify-between">
+                      <div className="text-[10px] text-[var(--cds-text-03)] uppercase font-bold tracking-wider flex items-center justify-between">
                         <span>{isAr ? 'معاينة صيغة الحساب الفعلي والنتيجة اللحظية' : 'Formula Preview & Live Calculated Value'}</span>
                         <span className="text-[#42be65] font-mono font-bold">
                           {isAr ? 'عينة محسوبة:' : 'Sample Value:'} {computedSampleAgg.toLocaleString()}
@@ -1454,7 +1555,7 @@ export const DashboardBuilder: React.FC = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-[#393939]">
+            <div className="flex items-center justify-between pt-4 border-t border-[var(--cds-border-subtle)]">
               <button
                 onClick={() => setShowModal(false)}
                 className="carbon-btn-secondary text-xs uppercase"
@@ -1496,6 +1597,28 @@ export const DashboardBuilder: React.FC = () => {
         data={activeDataset?.data || datasets[0]?.data || []}
         defaultFilename={activeDashboard?.name ? activeDashboard.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_') : 'dashboard_report'}
         language={language}
+      />
+
+      {/* Data Cinema — Cinematic Story Mode Reel */}
+      <AnimatePresence>
+        {showCinemaMode && activeDashboard && (
+          <DataCinemaMode
+            isOpen={showCinemaMode}
+            onClose={() => setShowCinemaMode(false)}
+            widgets={activeDashboard.widgets}
+            datasets={datasets}
+            activeTheme={selectedTheme}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Share Widget Snapshot to Group Discussion */}
+      <ShareToGroupModal
+        isOpen={shareModalOpen}
+        source="dashboard"
+        onClose={() => setShareModalOpen(false)}
+        imageDataUrl={shareImageData}
+        widgetName={shareWidgetName}
       />
     </div>
   );

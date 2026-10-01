@@ -92,7 +92,7 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
       case 'openrouter':
         return <Globe className="w-3.5 h-3.5 text-[#33b1ff]" />;
       default:
-        return <Cpu className="w-3.5 h-3.5 text-[#c6c6c6]" />;
+        return <Cpu className="w-3.5 h-3.5 text-[var(--cds-text-02)]" />;
     }
   };
 
@@ -100,12 +100,14 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
     const matchesSearch =
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.providerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (m.description && m.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'local') return m.isLocal;
     if (selectedFilter === 'cloud') return !m.isLocal;
+    if (selectedFilter === 'free') return m.id.endsWith(':free');
     if (selectedFilter === 'reasoning') return m.capabilities.includes('reasoning');
     if (selectedFilter === 'sql') return m.capabilities.includes('nl2sql');
     return true;
@@ -155,7 +157,7 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute top-full mt-1.5 end-0 z-50 w-84 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-2xl p-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="absolute top-full mt-1.5 end-0 z-50 w-84 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
 {/* Search Input */}
                 <div className="relative mb-2">
                   <Search className="w-3.5 h-3.5 absolute top-2.5 start-2.5 text-[var(--cds-text-03)]" />
@@ -187,8 +189,9 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
                 { id: 'all', label: isAr ? 'الكل' : 'All' },
                 { id: 'local', label: isAr ? '🔒 محلي' : '🔒 Local' },
                 { id: 'cloud', label: isAr ? '☁️ سحابي' : '☁️ Cloud' },
-                { id: 'reasoning', label: isAr ? 'استدلال' : 'Reasoning' },
+                { id: 'free', label: isAr ? '🎁 مجاني' : '🎁 Free' },
                 { id: 'sql', label: isAr ? 'SQL' : 'SQL' },
+                { id: 'reasoning', label: isAr ? 'استدلال' : 'Reasoning' },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -222,6 +225,11 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--cds-text-01)]">
                         {getProviderIcon(model.provider)}
                         <span>{model.name}</span>
+                        {model.id.endsWith(':free') && (
+                          <span className="px-1 text-[9px] font-medium rounded-sm bg-[#42be65]/20 text-[#42be65]">
+                            {isAr ? 'مجاني' : 'Free'}
+                          </span>
+                        )}
                         {model.isLocal && (
                           <span className="px-1 text-[9px] font-medium rounded-sm bg-emerald-500/20 text-emerald-400">
                             Local
@@ -243,6 +251,11 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
               {filteredModels.length === 0 && (
                 <div className="text-center py-4 text-xs text-[var(--cds-text-03)]">
                   {isAr ? 'لا توجد نماذج مطابقة' : 'No matching models found'}
+                </div>
+              )}
+              {filteredModels.length > 0 && (
+                <div className="text-center pt-1 text-[10px] text-[var(--cds-text-03)]">
+                  {isAr ? `${filteredModels.length} نموذجاً` : `${filteredModels.length} models`}
                 </div>
               )}
             </div>

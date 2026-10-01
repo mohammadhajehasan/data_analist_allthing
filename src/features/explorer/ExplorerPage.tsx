@@ -307,7 +307,7 @@ export const ExplorerPage: React.FC = () => {
 
   if (!activeDataset) {
     return (
-      <div className="carbon-tile p-12 text-center text-[#c6c6c6]">
+      <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)]">
         <Database className="w-12 h-12 text-[#0f62fe] mx-auto mb-3" />
         <p className="text-sm font-mono font-bold">No active dataset selected</p>
       </div>
@@ -319,7 +319,7 @@ export const ExplorerPage: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Top IBM Carbon Header Control Bar */}
-      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center gap-2 text-[11px] font-mono text-blue-500 uppercase tracking-wider">
             <Layers className="w-3.5 h-3.5 text-blue-500" />
@@ -344,7 +344,7 @@ export const ExplorerPage: React.FC = () => {
 
         {/* View Mode Switcher */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-1 rounded-xl flex items-center gap-1 shadow-xs">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-1 rounded-lg flex items-center gap-1 shadow-xs">
             <button
               onClick={() => {
                 setActiveView('table');
@@ -395,7 +395,7 @@ export const ExplorerPage: React.FC = () => {
       {/* Comprehensive Statistical KPI Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* 1. Count */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'العدد (Count)' : 'Count'}
           </span>
@@ -405,7 +405,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {/* 2. Total Sum */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'الإجمالي (Sum)' : 'Sum'}
           </span>
@@ -415,7 +415,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {/* 3. Average / Mean */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'المتوسط (Avg)' : 'Average'}
           </span>
@@ -425,7 +425,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {/* 4. Range */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'المدى (Range)' : 'Range (Max-Min)'}
           </span>
@@ -435,7 +435,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {/* 5. Standard Deviation */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'الانحراف (StdDev)' : 'Std Deviation'}
           </span>
@@ -445,7 +445,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {/* 6. Mode & Min/Max */}
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-3.5 hover:border-[var(--cds-border-strong)] transition-all shadow-xs">
           <span className="text-xs font-medium text-[var(--cds-text-03)] block truncate">
             {language === 'ar' ? 'المنوال / الأصغر / الأكبر' : 'Mode / Min / Max'}
           </span>
@@ -460,7 +460,7 @@ export const ExplorerPage: React.FC = () => {
         <div className={`flex-1 space-y-4 w-full ${showProfiling ? 'xl:max-w-[calc(100%-350px)]' : ''}`}>
           {/* SQL Interactive Console View */}
           {activeView === 'sql' && (
-        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-4 space-y-3 shadow-sm">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-4 space-y-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Code2 className="w-4 h-4 text-blue-500" />
@@ -533,7 +533,7 @@ export const ExplorerPage: React.FC = () => {
       )}
 
       {/* Filter Parameters and Real-time Search Box */}
-      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-4 space-y-3 shadow-sm">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-4 space-y-3 shadow-sm">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-[var(--cds-text-03)] absolute top-1/2 -translate-y-1/2 start-3" />
@@ -676,7 +676,7 @@ export const ExplorerPage: React.FC = () => {
       ) : (
         /* Visual Recharts Explorer View with Math Aggregations */
         <div className="space-y-4">
-          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-4 flex flex-wrap items-center gap-3.5 text-xs shadow-sm">
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-4 flex flex-wrap items-center gap-3.5 text-xs shadow-sm">
             {/* Chart Type Selector */}
             <div className="flex items-center gap-2">
               <span className="text-[var(--cds-text-02)] font-semibold">{language === 'ar' ? 'نوع المخطط:' : 'Chart Type:'}</span>
@@ -775,7 +775,7 @@ export const ExplorerPage: React.FC = () => {
           </div>
 
           {/* Interactive Recharts Canvas */}
-          <div className="h-[500px] bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-4 shadow-sm">
+          <div className="h-[500px] bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-4 shadow-sm">
             <ChartFactory
               dataset={activeDataset}
               customData={queryResult.rows}
@@ -798,7 +798,7 @@ export const ExplorerPage: React.FC = () => {
         </div>
 
         {showProfiling && (
-          <div className="w-full xl:w-[360px] bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-lg shrink-0 flex flex-col h-[calc(100vh-250px)] overflow-hidden">
+          <div className="w-full xl:w-[360px] bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-lg shrink-0 flex flex-col h-[calc(100vh-250px)] overflow-hidden">
             <div className="p-4 border-b border-[var(--cds-border-subtle)] flex items-center justify-between sticky top-0 bg-[var(--cds-layer-01)] z-10 shrink-0">
               <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                 <Activity className="w-4 h-4 text-amber-500" />

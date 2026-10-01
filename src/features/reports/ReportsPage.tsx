@@ -86,9 +86,10 @@ const PROVIDER_OPTIONS = [
     id: 'openrouter',
     name: 'OpenRouter (Multi-Model Gateway)',
     models: [
-      { id: 'openrouter/anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet (Anthropic)' },
-      { id: 'openrouter/google/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-      { id: 'openrouter/openai/gpt-4o', name: 'OpenAI GPT-4o' },
+      { id: 'openrouter/anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5 (Anthropic)' },
+      { id: 'openrouter/deepseek/deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash' },
+      { id: 'openrouter/nvidia/nemotron-3.5-lightning:free', name: 'Nemotron 3.5 Lightning (Free)' },
+      { id: 'openrouter/qwen/qwen3.8-27b:free', name: 'Qwen 3.8 27B (Free)' },
     ],
   },
 ];
@@ -310,7 +311,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
   return (
     <div className="space-y-6">
       {/* Top Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#393939] pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
@@ -321,10 +322,10 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               {activeDataset?.name || 'Dataset'}
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#f4f4f4] tracking-tight mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">
             {t.reports.title}
           </h2>
-          <p className="text-xs sm:text-sm text-[#c6c6c6] mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">
             {t.reports.subtitle}
           </p>
         </div>
@@ -332,11 +333,11 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Navigation Tabs */}
-          <div className="flex items-center bg-[#262626] border border-[#393939] p-0.5">
+          <div className="flex items-center bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-0.5">
             <button
               onClick={() => setActiveTab('studio')}
               className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-                activeTab === 'studio' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white'
+                activeTab === 'studio' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -345,7 +346,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
             <button
               onClick={() => setActiveTab('library')}
               className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-                activeTab === 'library' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white'
+                activeTab === 'library' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <ListFilter className="w-3.5 h-3.5" />
@@ -405,29 +406,29 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
       {activeTab === 'studio' ? (
         <div className="space-y-6">
           {/* AI Generator Configuration Card */}
-          <div className="bg-[#262626] border border-[#393939] p-4 sm:p-5">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#393939]">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 sm:p-5">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--cds-border-subtle)]">
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-[#0f62fe]" />
-                <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[#f4f4f4]">
+                <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                   {isAr ? 'تخصيص محرك توليد قصة البيانات' : 'Data Story Intelligence Parameters'}
                 </h3>
               </div>
-              <span className="text-[11px] font-mono text-[#8d8d8d]">
-                Active Dataset: <strong className="text-[#f4f4f4]">{activeDataset?.name}</strong> ({activeDataset?.rowCount} rows)
+              <span className="text-[11px] font-mono text-[var(--cds-text-03)]">
+                Active Dataset: <strong className="text-[var(--cds-text-01)]">{activeDataset?.name}</strong> ({activeDataset?.rowCount} rows)
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* 1. Provider Picker */}
               <div>
-                <label className="block text-[11px] font-mono font-bold text-[#c6c6c6] uppercase tracking-wider mb-1">
+                <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
                   {isAr ? 'مزود الخدمة (AI Provider)' : 'AI Provider'}
                 </label>
                 <select
                   value={selectedProvider}
                   onChange={e => setSelectedProvider(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
                 >
                   {PROVIDER_OPTIONS.map(p => (
                     <option key={p.id} value={p.id}>
@@ -439,13 +440,13 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
               {/* 2. Model Picker */}
               <div>
-                <label className="block text-[11px] font-mono font-bold text-[#c6c6c6] uppercase tracking-wider mb-1">
+                <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
                   {isAr ? 'النموذج المختار (AI Model)' : 'Selected Model'}
                 </label>
                 <select
                   value={selectedModel}
                   onChange={e => setSelectedModel(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
                 >
                   {(PROVIDER_OPTIONS.find(p => p.id === selectedProvider)?.models || []).map(m => (
                     <option key={m.id} value={m.id}>
@@ -457,13 +458,13 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
               {/* 3. Focus Angle Picker */}
               <div>
-                <label className="block text-[11px] font-mono font-bold text-[#c6c6c6] uppercase tracking-wider mb-1">
+                <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
                   {isAr ? 'زاوية التركيز التحليلي' : 'Analytical Focus Angle'}
                 </label>
                 <select
                   value={selectedFocus}
                   onChange={e => setSelectedFocus(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
                 >
                   {FOCUS_ANGLES.map(f => (
                     <option key={f.id} value={f.id}>
@@ -475,13 +476,13 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
               {/* 4. Tone / Style Picker */}
               <div>
-                <label className="block text-[11px] font-mono font-bold text-[#c6c6c6] uppercase tracking-wider mb-1">
+                <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
                   {isAr ? 'أسلوب ونبرة السرد' : 'Narrative Tone & Style'}
                 </label>
                 <select
                   value={selectedTone}
                   onChange={e => setSelectedTone(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
                 >
                   {TONES.map(tOption => (
                     <option key={tOption.id} value={tOption.id}>
@@ -493,10 +494,10 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
             </div>
 
             {/* Ingestion Dataset Switcher Row */}
-            <div className="mt-4 pt-3 border-t border-[#393939] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="mt-4 pt-3 border-t border-[var(--cds-border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Database className="w-3.5 h-3.5 text-[#009d9a]" />
-                <span className="text-xs font-mono text-[#c6c6c6]">
+                <span className="text-xs font-mono text-[var(--cds-text-02)]">
                   {isAr ? 'تغيير مجموعة البيانات النشطة:' : 'Switch Active Dataset:'}
                 </span>
                 <select
@@ -505,7 +506,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     const found = datasets.find(d => d.id === e.target.value);
                     if (found) setActiveDataset(found);
                   }}
-                  className="bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs font-mono px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
+                  className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
                 >
                   {datasets.map(d => (
                     <option key={d.id} value={d.id}>
@@ -532,15 +533,15 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
             {/* Live Progress Bar when Generating */}
             {isGenerating && (
-              <div className="mt-4 p-3 bg-[#161616] border border-[#0f62fe] space-y-2 animate-pulse">
+              <div className="mt-4 p-3 bg-[var(--cds-layer-01)] border border-[#0f62fe] space-y-2 animate-pulse">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-[#33b1ff] font-bold flex items-center gap-1.5">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     <span>{generationStep || (isAr ? 'جارٍ تحليل البيانات والتوليد السردي...' : 'Processing dataset insights...')}</span>
                   </span>
-                  <span className="text-[#8d8d8d]">Provider: {selectedProvider.toUpperCase()}</span>
+                  <span className="text-[var(--cds-text-03)]">Provider: {selectedProvider.toUpperCase()}</span>
                 </div>
-                <div className="w-full bg-[#262626] h-1.5 overflow-hidden">
+                <div className="w-full bg-[var(--cds-layer-02)] h-1.5 overflow-hidden">
                   <div className="bg-[#0f62fe] h-full w-2/3 animate-pulse" />
                 </div>
               </div>
@@ -549,9 +550,9 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
           {/* Rendered Story View */}
           {activeStory ? (
-            <div className="bg-[#262626] border border-[#393939] p-6 sm:p-8 space-y-6">
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-6 sm:p-8 space-y-6">
               {/* Story Meta Header */}
-              <div className="border-b border-[#393939] pb-5 space-y-3">
+              <div className="border-b border-[var(--cds-border-subtle)] pb-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="carbon-tag-blue uppercase text-[10px] font-mono">
@@ -562,7 +563,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                       <span>{activeStory.modelUsed || activeStory.author || 'AI Engine'}</span>
                     </span>
                     {activeStory.durationMs && (
-                      <span className="text-[11px] font-mono text-[#8d8d8d] flex items-center gap-1">
+                      <span className="text-[11px] font-mono text-[var(--cds-text-03)] flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         <span>{activeStory.durationMs}ms latency</span>
                       </span>
@@ -570,11 +571,11 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   </div>
 
                   {/* Mode Selector (Scrollytelling vs Slides vs Markdown) */}
-                  <div className="flex items-center bg-[#161616] border border-[#393939] p-0.5">
+                  <div className="flex items-center bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-0.5">
                     <button
                       onClick={() => setViewMode('scrolly')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'scrolly' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white'
+                        viewMode === 'scrolly' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <BookOpen className="w-3 h-3" />
@@ -583,7 +584,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <button
                       onClick={() => setViewMode('slides')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'slides' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white'
+                        viewMode === 'slides' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <Presentation className="w-3 h-3" />
@@ -592,7 +593,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <button
                       onClick={() => setViewMode('markdown')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'markdown' ? 'bg-[#0f62fe] text-white' : 'text-[#c6c6c6] hover:text-white'
+                        viewMode === 'markdown' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <FileText className="w-3 h-3" />
@@ -602,7 +603,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 </div>
 
                 <div>
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#f4f4f4] tracking-tight">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--cds-text-01)] tracking-tight">
                     {isAr ? activeStory.titleAr || activeStory.title : activeStory.title}
                   </h1>
                   <p className="text-xs sm:text-sm text-[#33b1ff] font-mono mt-1">
@@ -610,8 +611,8 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-[#8d8d8d] font-mono">
-                  <span>Dataset: <strong className="text-[#c6c6c6]">{activeStory.datasetName || activeDataset.name}</strong></span>
+                <div className="flex items-center gap-4 text-xs text-[var(--cds-text-03)] font-mono">
+                  <span>Dataset: <strong className="text-[var(--cds-text-02)]">{activeStory.datasetName || activeDataset.name}</strong></span>
                   <span>•</span>
                   <span>Generated: {new Date(activeStory.generatedAt).toLocaleString()}</span>
                   {activeStory.qualityScore && (
@@ -627,14 +628,14 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               {viewMode === 'scrolly' && (
                 <div className="space-y-8">
                   {/* Executive Summary Callout */}
-                  <div className="p-5 bg-[#161616] border-s-4 border-s-[#0f62fe] border border-[#393939] space-y-2 shadow-inner">
+                  <div className="p-5 bg-[var(--cds-layer-01)] border-s-4 border-s-[#0f62fe] border border-[var(--cds-border-subtle)] space-y-2 shadow-inner">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#33b1ff] flex items-center gap-1.5">
                         <Layers className="w-4 h-4" />
                         <span>{isAr ? 'الملخص التنفيذي والاستراتيجي' : 'Executive Analytical Summary'}</span>
                       </h3>
                     </div>
-                    <p className="text-xs sm:text-sm text-[#f4f4f4] leading-relaxed font-sans">
+                    <p className="text-xs sm:text-sm text-[var(--cds-text-01)] leading-relaxed font-sans">
                       {isAr ? activeStory.executiveSummaryAr || activeStory.executiveSummary : activeStory.executiveSummary}
                     </p>
                   </div>
@@ -644,26 +645,26 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     {chapters.map((chapter, index) => (
                       <div
                         key={chapter.id || `chapter-${index}`}
-                        className="p-5 sm:p-6 bg-[#1f1f1f] border border-[#393939] space-y-5 transition-all hover:border-[#525252]"
+                        className="p-5 sm:p-6 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-5 transition-all hover:border-[var(--cds-border-strong)]"
                       >
                         {/* Chapter Header with Number Badge */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#333] pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
                           <div className="flex items-center gap-2.5">
                             <span className="w-6 h-6 bg-[#0f62fe] text-white font-mono text-xs font-bold flex items-center justify-center">
                               {chapter.chapterNumber || index + 1}
                             </span>
-                            <h3 className="text-base sm:text-lg font-bold text-[#f4f4f4]">
+                            <h3 className="text-base sm:text-lg font-bold text-[var(--cds-text-01)]">
                               {isAr ? chapter.titleAr || chapter.title : chapter.title}
                             </h3>
                           </div>
 
                           {/* Key Metric Badge if present */}
                           {chapter.keyMetric && (
-                            <div className="bg-[#161616] border border-[#393939] px-3 py-1.5 flex items-center gap-2.5 self-start sm:self-auto">
-                              <span className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+                            <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-3 py-1.5 flex items-center gap-2.5 self-start sm:self-auto">
+                              <span className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                                 {isAr ? chapter.keyMetric.labelAr || chapter.keyMetric.label : chapter.keyMetric.label}:
                               </span>
-                              <span className="text-sm font-bold font-mono text-[#f4f4f4]">
+                              <span className="text-sm font-bold font-mono text-[var(--cds-text-01)]">
                                 {chapter.keyMetric.value}
                               </span>
                               {chapter.keyMetric.trend && (
@@ -682,19 +683,19 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                           {/* Left Column: Narrative Story and Key Takeaway */}
                           <div className="lg:col-span-6 space-y-4">
-                            <div className="prose prose-invert max-w-none text-xs sm:text-sm text-[#c6c6c6] leading-relaxed">
+                            <div className="prose prose-invert max-w-none text-xs sm:text-sm text-[var(--cds-text-02)] leading-relaxed">
                               {isAr ? chapter.narrativeAr || chapter.narrative : chapter.narrative}
                             </div>
 
                             {/* Bullet Insights */}
                             {((isAr ? chapter.insightsAr : chapter.insights) || chapter.insights) && (
                               <div className="space-y-1.5 pt-2">
-                                <span className="text-[10px] font-mono uppercase tracking-wider text-[#8d8d8d]">
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--cds-text-03)]">
                                   {isAr ? 'الرؤى التحليلية المرصودة:' : 'Observed Analytical Insights:'}
                                 </span>
                                 <div className="space-y-1">
                                   {((isAr ? chapter.insightsAr : chapter.insights) || chapter.insights || []).map((ins, i) => (
-                                    <div key={i} className="flex items-start gap-2 text-xs text-[#f4f4f4] bg-[#161616] p-2 border border-[#2a2a2a]">
+                                    <div key={i} className="flex items-start gap-2 text-xs text-[var(--cds-text-01)] bg-[var(--cds-layer-01)] p-2 border border-[var(--cds-border-subtle)]">
                                       <CheckCircle2 className="w-3.5 h-3.5 text-[#42be65] shrink-0 mt-0.5" />
                                       <span>{ins}</span>
                                     </div>
@@ -705,13 +706,13 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
                             {/* Core Action Takeaway Box */}
                             {(chapter.takeaway || chapter.takeawayAr) && (
-                              <div className="p-3 bg-[#161616] border-s-2 border-s-[#24a148] border border-[#393939] flex items-start gap-2 text-xs">
+                              <div className="p-3 bg-[var(--cds-layer-01)] border-s-2 border-s-[#24a148] border border-[var(--cds-border-subtle)] flex items-start gap-2 text-xs">
                                 <Zap className="w-4 h-4 text-[#42be65] shrink-0 mt-0.5" />
                                 <div>
                                   <span className="font-mono font-bold text-[#42be65] uppercase text-[10px] block">
                                     {isAr ? 'الإجراء التنفيذي الموصى به للفصل' : 'Actionable Takeaway'}
                                   </span>
-                                  <span className="text-[#f4f4f4]">
+                                  <span className="text-[var(--cds-text-01)]">
                                     {isAr ? chapter.takeawayAr || chapter.takeaway : chapter.takeaway}
                                   </span>
                                 </div>
@@ -737,14 +738,14 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
                   {/* Strategic Recommendations Final Section */}
                   {((isAr ? activeStory.recommendationsAr : activeStory.recommendations) || activeStory.recommendations) && (
-                    <div className="p-6 bg-[#161616] border border-[#393939] space-y-4">
-                      <div className="flex items-center gap-2 border-b border-[#333] pb-3">
+                    <div className="p-6 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-4">
+                      <div className="flex items-center gap-2 border-b border-[var(--cds-border-subtle)] pb-3">
                         <TrendingUp className="w-5 h-5 text-[#42be65]" />
                         <div>
                           <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-[#42be65]">
                             {isAr ? 'خارطة الطريق والتوصيات الاستراتيجية' : 'Strategic Recommendations & Executive Roadmap'}
                           </h3>
-                          <p className="text-[11px] text-[#8d8d8d] font-mono">
+                          <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
                             {isAr ? 'الإجراءات ذات الأولوية القصوى لتعظيم القيمة التشغيلية والمالية' : 'High-impact interventions to optimize operational and financial velocity'}
                           </p>
                         </div>
@@ -752,11 +753,11 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {((isAr ? activeStory.recommendationsAr : activeStory.recommendations) || activeStory.recommendations || []).map((rec, i) => (
-                          <div key={i} className="p-3.5 bg-[#1f1f1f] border border-[#393939] flex items-start gap-3">
+                          <div key={i} className="p-3.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-start gap-3">
                             <span className="w-5 h-5 bg-[#24a148]/20 text-[#42be65] font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 border border-[#24a148]/30">
                               {i + 1}
                             </span>
-                            <span className="text-xs text-[#f4f4f4] leading-relaxed">
+                            <span className="text-xs text-[var(--cds-text-01)] leading-relaxed">
                               {rec}
                             </span>
                           </div>
@@ -771,7 +772,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               {viewMode === 'slides' && (
                 <div className="space-y-4">
                   {/* Slide Stepper Controls */}
-                  <div className="flex items-center justify-between bg-[#161616] border border-[#393939] p-3">
+                  <div className="flex items-center justify-between bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3">
                     <button
                       onClick={() => setActiveSlideIndex(prev => Math.max(0, prev - 1))}
                       disabled={activeSlideIndex === 0}
@@ -800,17 +801,17 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   {/* Slide Content */}
                   {activeSlideIndex === 0 ? (
                     // Slide 0: Executive Overview
-                    <div className="bg-[#161616] border border-[#0f62fe] p-8 sm:p-12 space-y-6 min-h-[420px] flex flex-col justify-center text-center">
+                    <div className="bg-[var(--cds-layer-01)] border border-[#0f62fe] p-8 sm:p-12 space-y-6 min-h-[420px] flex flex-col justify-center text-center">
                       <span className="text-xs font-mono uppercase tracking-widest text-[#0f62fe]">
                         EXECUTIVE DATA BRIEFING
                       </span>
-                      <h2 className="text-2xl sm:text-4xl font-bold text-[#f4f4f4]">
+                      <h2 className="text-2xl sm:text-4xl font-bold text-[var(--cds-text-01)]">
                         {isAr ? activeStory.titleAr || activeStory.title : activeStory.title}
                       </h2>
-                      <p className="text-sm sm:text-lg text-[#c6c6c6] max-w-3xl mx-auto leading-relaxed">
+                      <p className="text-sm sm:text-lg text-[var(--cds-text-02)] max-w-3xl mx-auto leading-relaxed">
                         {isAr ? activeStory.executiveSummaryAr || activeStory.executiveSummary : activeStory.executiveSummary}
                       </p>
-                      <div className="pt-4 flex items-center justify-center gap-4 text-xs font-mono text-[#8d8d8d]">
+                      <div className="pt-4 flex items-center justify-center gap-4 text-xs font-mono text-[var(--cds-text-03)]">
                         <span>Dataset: {activeStory.datasetName || activeDataset.name}</span>
                         <span>•</span>
                         <span>Model: {activeStory.modelUsed || activeStory.author}</span>
@@ -822,8 +823,8 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                       const ch = chapters[activeSlideIndex - 1];
                       if (!ch) return null;
                       return (
-                        <div className="bg-[#161616] border border-[#393939] p-6 sm:p-8 space-y-6 min-h-[420px]">
-                          <div className="flex items-center justify-between border-b border-[#333] pb-3">
+                        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-6 sm:p-8 space-y-6 min-h-[420px]">
+                          <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
                             <span className="text-xs font-mono uppercase text-[#0f62fe] font-bold">
                               {isAr ? `الفصل ${activeSlideIndex}` : `Chapter ${activeSlideIndex}`}
                             </span>
@@ -834,16 +835,16 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                             )}
                           </div>
 
-                          <h3 className="text-xl sm:text-2xl font-bold text-[#f4f4f4]">
+                          <h3 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)]">
                             {isAr ? ch.titleAr || ch.title : ch.title}
                           </h3>
 
                           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                             <div className="lg:col-span-6 space-y-4">
-                              <p className="text-sm text-[#c6c6c6] leading-relaxed">
+                              <p className="text-sm text-[var(--cds-text-02)] leading-relaxed">
                                 {isAr ? ch.narrativeAr || ch.narrative : ch.narrative}
                               </p>
-                              <div className="p-3 bg-[#1f1f1f] border-s-2 border-s-[#0f62fe] text-xs text-[#f4f4f4]">
+                              <div className="p-3 bg-[var(--cds-layer-01)] border-s-2 border-s-[#0f62fe] text-xs text-[var(--cds-text-01)]">
                                 <strong>Takeaway:</strong> {isAr ? ch.takeawayAr || ch.takeaway : ch.takeaway}
                               </div>
                             </div>
@@ -867,8 +868,8 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
               {/* View Mode 3: Raw Markdown View */}
               {viewMode === 'markdown' && (
-                <div className="bg-[#161616] border border-[#393939] p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono text-[#8d8d8d]">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono text-[var(--cds-text-03)]">
                     <span>Raw Markdown Code Representation</span>
                     <button
                       onClick={handleCopyMarkdown}
@@ -878,7 +879,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                       <span>{copiedMarkdown ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <pre className="text-xs font-mono text-[#c6c6c6] p-4 bg-[#111] overflow-x-auto whitespace-pre-wrap leading-relaxed border border-[#262626]">
+                  <pre className="text-xs font-mono text-[var(--cds-text-02)] p-4 bg-[var(--cds-background)] overflow-x-auto whitespace-pre-wrap leading-relaxed border border-[var(--cds-border-subtle)]">
 {`# ${isAr ? (activeStory.titleAr || activeStory.title) : activeStory.title}
 *${isAr ? (activeStory.subtitleAr || activeStory.subtitle) : activeStory.subtitle}*
 
@@ -902,13 +903,13 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
               )}
             </div>
           ) : (
-            <div className="carbon-tile p-12 text-center text-[#c6c6c6] space-y-4">
+            <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)] space-y-4">
               <FileText className="w-12 h-12 text-[#0f62fe] mx-auto opacity-80" />
               <div className="space-y-1">
-                <p className="text-sm font-bold text-[#f4f4f4]">
+                <p className="text-sm font-bold text-[var(--cds-text-01)]">
                   {isAr ? 'لم يتم توليد قصة بيانات بعد' : 'No Data Story Generated Yet'}
                 </p>
-                <p className="text-xs text-[#8d8d8d] max-w-md mx-auto">
+                <p className="text-xs text-[var(--cds-text-03)] max-w-md mx-auto">
                   {isAr
                     ? 'اختر مزود الذكاء الاصطناعي والنموذج وزاوية التركيز أعلاه ثم انقر "توليد قصة بيانات" لبناء تقرير سردي ذكي مدعوم برسوم بيانية تفاعلية.'
                     : 'Select your preferred AI provider, model, and focus angle above, then click "Generate Story" to synthesize an automated executive analytics brief.'}
@@ -929,10 +930,10 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
         /* Saved Stories Library Tab */
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+            <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
               {isAr ? `قصص البيانات المحفوظة (${dataStories.length})` : `Saved Data Stories (${dataStories.length})`}
             </h3>
-            <span className="text-xs font-mono text-[#8d8d8d]">
+            <span className="text-xs font-mono text-[var(--cds-text-03)]">
               {isAr ? 'انقر على أي قصة لعرض تفاصيلها واستعراض الرسوم البيانية' : 'Click any story to open interactive scrollytelling'}
             </span>
           </div>
@@ -946,29 +947,29 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
                     setActiveStory(story);
                     setActiveTab('studio');
                   }}
-                  className={`p-4 bg-[#262626] border cursor-pointer transition-all hover:border-[#0f62fe] space-y-3 ${
-                    activeStory?.id === story.id ? 'border-[#0f62fe] ring-1 ring-[#0f62fe]' : 'border-[#393939]'
+                  className={`p-4 bg-[var(--cds-layer-02)] border cursor-pointer transition-all hover:border-[#0f62fe] space-y-3 ${
+                    activeStory?.id === story.id ? 'border-[#0f62fe] ring-1 ring-[#0f62fe]' : 'border-[var(--cds-border-subtle)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="carbon-tag-teal text-[10px] font-mono uppercase">
                       {story.modelUsed || story.author || 'AI Model'}
                     </span>
-                    <span className="text-[10px] font-mono text-[#8d8d8d]">
+                    <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
                       {new Date(story.generatedAt).toLocaleDateString()}
                     </span>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-bold text-[#f4f4f4] line-clamp-1">
+                    <h4 className="text-sm font-bold text-[var(--cds-text-01)] line-clamp-1">
                       {isAr ? story.titleAr || story.title : story.title}
                     </h4>
-                    <p className="text-xs text-[#c6c6c6] line-clamp-2 mt-1">
+                    <p className="text-xs text-[var(--cds-text-02)] line-clamp-2 mt-1">
                       {isAr ? story.executiveSummaryAr || story.executiveSummary : story.executiveSummary}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#393939] text-xs font-mono text-[#8d8d8d]">
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--cds-border-subtle)] text-xs font-mono text-[var(--cds-text-03)]">
                     <span>Dataset: {story.datasetName || 'Active'}</span>
                     <span className="text-[#33b1ff] flex items-center gap-1">
                       <span>{isAr ? 'فتح القصة' : 'Open'}</span>
@@ -979,8 +980,8 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
               ))}
             </div>
           ) : (
-            <div className="carbon-tile p-8 text-center text-[#c6c6c6]">
-              <ListFilter className="w-8 h-8 text-[#525252] mx-auto mb-2" />
+            <div className="carbon-tile p-8 text-center text-[var(--cds-text-02)]">
+              <ListFilter className="w-8 h-8 text-[var(--cds-text-03)] mx-auto mb-2" />
               <p className="text-xs font-mono">{isAr ? 'لا توجد قصص محفوظة في هذه الجلسة' : 'No saved stories yet'}</p>
             </div>
           )}

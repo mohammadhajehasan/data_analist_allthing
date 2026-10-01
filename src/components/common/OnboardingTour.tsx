@@ -189,9 +189,9 @@ export const OnboardingTour: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none animate-fade-in">
-      <div className="bg-[#262626] border border-[#0f62fe] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-[var(--cds-layer-02)] border border-[#0f62fe] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Top Header */}
-        <div className="p-4 bg-[#1f1f1f] border-b border-[#393939] flex items-center justify-between">
+        <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center">
               {getStepIcon(currentStepIndex)}
@@ -201,13 +201,13 @@ export const OnboardingTour: React.FC = () => {
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#0f62fe] text-white px-2 py-0.5">
                   {isAr ? currentStep.badgeAr : currentStep.badge}
                 </span>
-                <span className="text-xs font-mono text-[#8d8d8d]">
+                <span className="text-xs font-mono text-[var(--cds-text-03)]">
                   {isAr
                     ? `الخطوة ${currentStepIndex + 1} من ${tourSteps.length}`
                     : `Step ${currentStepIndex + 1} of ${tourSteps.length}`}
                 </span>
               </div>
-              <h3 className="text-sm font-bold text-[#f4f4f4] mt-1">
+              <h3 className="text-sm font-bold text-[var(--cds-text-01)] mt-1">
                 {isAr ? currentStep.titleAr : currentStep.title}
               </h3>
             </div>
@@ -215,7 +215,7 @@ export const OnboardingTour: React.FC = () => {
 
           <button
             onClick={() => setIsTourOpen(false)}
-            className="p-1.5 hover:bg-[#393939] text-[#8d8d8d] hover:text-[#f4f4f4] transition-colors"
+            className="p-1.5 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition-colors"
             title={isAr ? 'إغلاق الجولة' : 'Close Tour'}
           >
             <X className="w-5 h-5" />
@@ -224,19 +224,19 @@ export const OnboardingTour: React.FC = () => {
 
         {/* Step Content */}
         <div className="p-6 space-y-4">
-          <p className="text-xs sm:text-sm text-[#c6c6c6] font-sans leading-relaxed">
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] font-sans leading-relaxed">
             {isAr ? currentStep.contentAr : currentStep.content}
           </p>
 
           {/* Feature Highlights Grid */}
-          <div className="p-3 bg-[#161616] border border-[#393939] space-y-2">
+          <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-2">
             <div className="flex items-center gap-2 text-[11px] font-mono text-[#33b1ff]">
               <Zap className="w-3.5 h-3.5 fill-current" />
               <span className="font-bold">
                 {isAr ? 'الميزات التفاعلية المتاحة في هذه الشاشة:' : 'Interactive Highlights in this View:'}
               </span>
             </div>
-            <ul className="text-xs font-mono text-[#8d8d8d] space-y-1 ps-4 list-disc">
+            <ul className="text-xs font-mono text-[var(--cds-text-03)] space-y-1 ps-4 list-disc">
               {currentStepIndex === 0 && (
                 <>
                   <li>{isAr ? 'واجهة ثنائية اللغة (عربي / إنجليزي) مع دعم كامل للاتجاه RTL.' : 'Bilingual Arabic & English UI with full RTL support.'}</li>
@@ -285,7 +285,7 @@ export const OnboardingTour: React.FC = () => {
                 className={`h-1.5 transition-all duration-200 ${
                   idx === currentStepIndex
                     ? 'w-6 bg-[#0f62fe]'
-                    : 'w-2 bg-[#393939] hover:bg-[#525252]'
+                    : 'w-2 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)]'
                 }`}
                 title={`Step ${idx + 1}`}
               />
@@ -294,10 +294,10 @@ export const OnboardingTour: React.FC = () => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex items-center justify-between">
+        <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between">
           <button
             onClick={() => completeTour()}
-            className="text-xs font-mono text-[#8d8d8d] hover:text-[#c6c6c6] transition-colors"
+            className="text-xs font-mono text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] transition-colors"
           >
             {isAr ? 'تخطي الجولة وإنهاء' : 'Skip & Finish'}
           </button>
@@ -306,7 +306,7 @@ export const OnboardingTour: React.FC = () => {
             {currentStepIndex > 0 && (
               <button
                 onClick={handlePrev}
-                className="px-3 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
               >
                 {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
                 <span>{isAr ? 'السابق' : 'Previous'}</span>

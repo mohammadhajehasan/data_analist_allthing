@@ -258,8 +258,8 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Top Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--cds-layer-01)] p-3 rounded-2xl border border-[var(--cds-border-subtle)] shadow-2xs">
-        <div className="flex items-center gap-1.5 p-1 bg-[var(--cds-layer-02)] rounded-xl border border-[var(--cds-border-subtle)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--cds-layer-01)] p-3 rounded-xl border border-[var(--cds-border-subtle)] shadow-2xs">
+        <div className="flex items-center gap-1.5 p-1 bg-[var(--cds-layer-02)] rounded-lg border border-[var(--cds-border-subtle)]">
           <button
             type="button"
             onClick={() => setActiveCurveTab('validation')}
@@ -318,7 +318,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
 
       {/* Diagnosis Banner */}
       {diagnosis && (
-        <div className={`p-4 rounded-2xl border flex items-start gap-3.5 transition-all shadow-xs ${diagnosis.color}`}>
+        <div className={`p-4 rounded-xl border flex items-start gap-3.5 transition-all shadow-xs ${diagnosis.color}`}>
           {diagnosis.status === 'optimal' ? (
             <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
           ) : diagnosis.status === 'overfitting' ? (
@@ -343,7 +343,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
       )}
 
       {/* Main Recharts Container */}
-      <div className="bg-[var(--cds-layer-01)] p-4 rounded-2xl border border-[var(--cds-border-subtle)] shadow-xs">
+      <div className="bg-[var(--cds-layer-01)] p-4 rounded-xl border border-[var(--cds-border-subtle)] shadow-xs">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h4 className="text-sm font-bold text-[var(--cds-text-01)]">
@@ -358,7 +358,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
             </p>
           </div>
           {optimalPoint && activeCurveTab === 'validation' && (
-            <div className="text-xs px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5">
+            <div className="text-xs px-3 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{isAr ? `الدرجة المثلى إحصائياً: ${optimalPoint.degree}` : `Optimal Degree: ${optimalPoint.degree}`}</span>
             </div>
@@ -552,7 +552,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
 
         {/* Informational Guidance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 pt-4 border-t border-[var(--cds-border-subtle)] text-xs">
-          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-300">
+          <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-300">
             <span className="font-bold block mb-1">1. {isAr ? 'ضعف الملاءمة (Underfitting)' : 'Underfitting (High Bias)'}</span>
             <p className="text-[11px] leading-relaxed opacity-90">
               {isAr
@@ -561,7 +561,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
             </p>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+          <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
             <span className="font-bold block mb-1">2. {isAr ? 'المنطقة المثالية (Sweet Spot)' : 'Optimal Sweet Spot'}</span>
             <p className="text-[11px] leading-relaxed opacity-90">
               {isAr
@@ -570,7 +570,7 @@ export const PerformanceCurves: React.FC<PerformanceCurvesProps> = ({
             </p>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-300">
+          <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-300">
             <span className="font-bold block mb-1">3. {isAr ? 'فرط التخصيص (Overfitting)' : 'Overfitting (High Variance)'}</span>
             <p className="text-[11px] leading-relaxed opacity-90">
               {isAr

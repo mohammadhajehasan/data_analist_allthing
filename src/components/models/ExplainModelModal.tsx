@@ -70,11 +70,11 @@ export const ExplainModelModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4">
       <div
-        className="w-full max-w-3xl bg-[#161616] text-[#f4f4f4] border border-[#393939] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="w-full max-w-3xl bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         id="explain-model-modal"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded bg-[#8a3ffc]/15 text-[#8a3ffc]">
               <BrainCircuit className="w-5 h-5" />
@@ -86,7 +86,7 @@ export const ExplainModelModal: React.FC = () => {
                   {activeAIModelDef?.name || 'AI Copilot'}
                 </span>
               </h3>
-              <p className="text-xs text-[#8d8d8d]">
+              <p className="text-xs text-[var(--cds-text-03)]">
                 {language === 'ar'
                   ? 'ترجمة المعاملات الرياضية والقرارات التنبؤية إلى لغة بشرية واضحة وتوصيات قابلة للتنفيذ'
                   : 'Interpret mathematical coefficients and ML predictions into actionable insights'}
@@ -95,7 +95,7 @@ export const ExplainModelModal: React.FC = () => {
           </div>
           <button
             onClick={() => setIsExplainModalOpen(false)}
-            className="p-1.5 text-[#c6c6c6] hover:text-white hover:bg-[#393939] transition"
+            className="p-1.5 text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)] transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,17 +104,17 @@ export const ExplainModelModal: React.FC = () => {
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Target Model Meta Strip */}
-          <div className="p-3 bg-[#262626] border border-[#393939] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
             <div>
-              <span className="text-[#8d8d8d] block">{language === 'ar' ? 'النموذج:' : 'Model:'}</span>
+              <span className="text-[var(--cds-text-03)] block">{language === 'ar' ? 'النموذج:' : 'Model:'}</span>
               <span className="font-semibold text-white">{defaultReq.modelName}</span>
             </div>
             <div>
-              <span className="text-[#8d8d8d] block">{language === 'ar' ? 'المتغير التابع:' : 'Target:'}</span>
+              <span className="text-[var(--cds-text-03)] block">{language === 'ar' ? 'المتغير التابع:' : 'Target:'}</span>
               <span className="font-semibold text-[#0f62fe]">{defaultReq.targetColumn}</span>
             </div>
             <div>
-              <span className="text-[#8d8d8d] block">{language === 'ar' ? 'معامل التحديد R²:' : 'R² Score:'}</span>
+              <span className="text-[var(--cds-text-03)] block">{language === 'ar' ? 'معامل التحديد R²:' : 'R² Score:'}</span>
               <span className="font-mono font-bold text-emerald-400">
                 {((defaultReq.metrics.r2 ?? 0.88) * 100).toFixed(1)}%
               </span>
@@ -122,7 +122,7 @@ export const ExplainModelModal: React.FC = () => {
             <button
               onClick={loadExplanation}
               disabled={loading}
-              className="px-3 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-white rounded text-xs flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-white rounded text-xs flex items-center gap-1.5 transition"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#8a3ffc]' : ''}`} />
               <span>{language === 'ar' ? 'إعادة التفسير' : 'Re-explain'}</span>
@@ -135,25 +135,25 @@ export const ExplainModelModal: React.FC = () => {
               <p className="text-sm font-semibold text-white">
                 {language === 'ar' ? 'جاري تحليل الأوزان وبناء التفسير الإحصائي...' : 'Analyzing coefficients & generating explanation...'}
               </p>
-              <p className="text-xs text-[#8d8d8d]">
+              <p className="text-xs text-[var(--cds-text-03)]">
                 {language === 'ar' ? 'يتم تفسير العلاقات الخطية ومستويات الدلالة' : 'Computing key drivers, confidence intervals, and what-if cases'}
               </p>
             </div>
           ) : explanation ? (
             <div className="space-y-5">
               {/* Executive Summary Card */}
-              <div className="p-4 bg-[#262626] border-l-4 border-[#8a3ffc]">
+              <div className="p-4 bg-[var(--cds-layer-02)] border-s-4 border-s-[#8a3ffc]">
                 <h4 className="text-sm font-bold text-white mb-1.5">
                   {language === 'ar' ? explanation.headlineAr : explanation.headline}
                 </h4>
-                <p className="text-xs text-[#d1d1d1] leading-relaxed">
+                <p className="text-xs text-[var(--cds-text-01)] leading-relaxed">
                   {language === 'ar' ? explanation.plainLanguageSummaryAr : explanation.plainLanguageSummary}
                 </p>
               </div>
 
               {/* Key Drivers (Feature Importance & Direct Interpretations) */}
               <div>
-                <h4 className="text-xs font-semibold text-[#c6c6c6] uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                <h4 className="text-xs font-semibold text-[var(--cds-text-02)] uppercase tracking-wider mb-2.5 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-[#0f62fe]" />
                   <span>{language === 'ar' ? 'المحركات الأساسية وتأثير المتغيرات' : 'Key Drivers & Feature Impact'}</span>
                 </h4>
@@ -162,7 +162,7 @@ export const ExplainModelModal: React.FC = () => {
                   {explanation.keyDriversExplanation.map((driver, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-[#262626] border border-[#393939] flex items-start justify-between gap-3 text-xs"
+                      className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-start justify-between gap-3 text-xs"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -176,11 +176,11 @@ export const ExplainModelModal: React.FC = () => {
                           >
                             {driver.impact === 'positive' ? '+ أثر إيجابي' : '- أثر سلبي'}
                           </span>
-                          <span className="text-[10px] text-[#8d8d8d] uppercase">
+                          <span className="text-[10px] text-[var(--cds-text-03)] uppercase">
                             {driver.strength}
                           </span>
                         </div>
-                        <p className="text-xs text-[#a8a8a8]">
+                        <p className="text-xs text-[var(--cds-text-02)]">
                           {language === 'ar' ? driver.interpretationAr : driver.interpretation}
                         </p>
                       </div>
@@ -190,21 +190,21 @@ export const ExplainModelModal: React.FC = () => {
               </div>
 
               {/* Statistical Reliability & Confidence */}
-              <div className="p-4 bg-[#262626] border border-[#393939]">
-                <h4 className="text-xs font-semibold text-[#c6c6c6] uppercase tracking-wider mb-2.5 flex items-center gap-2">
+              <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)]">
+                <h4 className="text-xs font-semibold text-[var(--cds-text-02)] uppercase tracking-wider mb-2.5 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>{language === 'ar' ? 'الموثوقية الإحصائية والقيود' : 'Statistical Reliability & Verification'}</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <div className="p-3 bg-[#161616] border border-[#333]">
-                    <span className="text-[10px] text-[#8d8d8d] block">{language === 'ar' ? 'التقييم الإحصائي' : 'Verdict'}</span>
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                    <span className="text-[10px] text-[var(--cds-text-03)] block">{language === 'ar' ? 'التقييم الإحصائي' : 'Verdict'}</span>
                     <span className="text-sm font-bold text-white">
                       {language === 'ar' ? explanation.statisticalReliability.verdictAr : explanation.statisticalReliability.verdict}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#161616] border border-[#333]">
-                    <span className="text-[10px] text-[#8d8d8d] block">{language === 'ar' ? 'مستوى الثقة' : 'Confidence Level'}</span>
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                    <span className="text-[10px] text-[var(--cds-text-03)] block">{language === 'ar' ? 'مستوى الثقة' : 'Confidence Level'}</span>
                     <span className="text-sm font-mono text-emerald-400">
                       {language === 'ar' ? explanation.statisticalReliability.confidenceLevelAr : explanation.statisticalReliability.confidenceLevel}
                     </span>
@@ -213,11 +213,11 @@ export const ExplainModelModal: React.FC = () => {
 
                 {explanation.statisticalReliability.risksOrBiases && (
                   <div className="space-y-1">
-                    <span className="text-[11px] text-[#8d8d8d] block font-medium">
+                    <span className="text-[11px] text-[var(--cds-text-03)] block font-medium">
                       {language === 'ar' ? 'تنبيهات وملاحظات العينة:' : 'Data & Model Caveats:'}
                     </span>
                     {explanation.statisticalReliability.risksOrBiases.map((risk, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs text-[#a8a8a8]">
+                      <div key={idx} className="flex items-start gap-2 text-xs text-[var(--cds-text-02)]">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                         <span>{risk}</span>
                       </div>
@@ -228,7 +228,7 @@ export const ExplainModelModal: React.FC = () => {
 
               {/* Actionable Insights */}
               <div>
-                <h4 className="text-xs font-semibold text-[#c6c6c6] uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h4 className="text-xs font-semibold text-[var(--cds-text-02)] uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Lightbulb className="w-4 h-4 text-amber-400" />
                   <span>{language === 'ar' ? 'التوصيات والقرارات المقترحة' : 'Actionable Recommendations'}</span>
                 </h4>
@@ -237,7 +237,7 @@ export const ExplainModelModal: React.FC = () => {
                     (insight, idx) => (
                       <div
                         key={idx}
-                        className="p-3 bg-[#262626] border-r-4 border-amber-400 text-xs text-white flex items-start gap-2"
+                        className="p-3 bg-[var(--cds-layer-02)] border-s-4 border-s-amber-400 text-xs text-white flex items-start gap-2"
                       >
                         <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                         <span>{insight}</span>
@@ -249,14 +249,14 @@ export const ExplainModelModal: React.FC = () => {
 
               {/* What-If Simulation Scenarios */}
               {explanation.whatIfScenarios && explanation.whatIfScenarios.length > 0 && (
-                <div className="p-3.5 bg-[#1f1f1f] border border-[#393939]">
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                   <h4 className="text-xs font-semibold text-[#009d9a] mb-2 flex items-center gap-2">
                     <Sliders className="w-4 h-4" />
                     <span>{language === 'ar' ? 'محاكاة ماذا لو (What-If Scenario)' : 'What-If Simulation'}</span>
                   </h4>
                   {explanation.whatIfScenarios.map((sc, idx) => (
                     <div key={idx} className="text-xs space-y-1">
-                      <p className="text-[#f4f4f4] font-medium">
+                      <p className="text-[var(--cds-text-01)] font-medium">
                         {language === 'ar' ? sc.changeAr : sc.change}
                       </p>
                       <p className="text-emerald-400 font-mono text-[11px]">
@@ -271,10 +271,10 @@ export const ExplainModelModal: React.FC = () => {
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <button
             onClick={() => setIsExplainModalOpen(false)}
-            className="px-4 py-2 text-xs font-medium text-[#c6c6c6] hover:bg-[#393939] transition"
+            className="px-4 py-2 text-xs font-medium text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] transition"
           >
             {language === 'ar' ? 'إغلاق' : 'Close'}
           </button>

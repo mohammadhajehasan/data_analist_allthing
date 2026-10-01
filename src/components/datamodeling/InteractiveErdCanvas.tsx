@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DataModelTable, DataModelRelationship, RelationshipType } from '../../types';
+import { audio } from '../../utils/audioEngine';
 import {
   Workflow,
   Key,
@@ -19,7 +20,8 @@ import {
   Move,
   Database,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  Magnet
 } from 'lucide-react';
 
 interface InteractiveErdCanvasProps {
@@ -78,6 +80,126 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
   const [newTargetCol, setNewTargetCol] = useState<string>('');
   const [newRelType, setNewRelType] = useState<RelationshipType>('1:M');
   const [newJoinType, setNewJoinType] = useState<'INNER' | 'LEFT' | 'RIGHT' | 'FULL'>('LEFT');
+
+  // ── Magnetic Schema Mode ─────────────────────────────────────────────
+  // Tables behave as living magnets: statistically related tables attract,
+  // unrelated ones keep a respectful distance. The relaxation is computed
+  // as a force-directed simulation and animated via CSS transitions so the
+  // nodes glide (never teleport) into their organic docking positions.
+  const [magneticMode, setMagneticMode] = useState<boolean>(true);
+
+  const computeMagneticLayout = (): Record<string, NodePosition> => {
+    const count = tables.length || 1;
+    const positions: Record<string, NodePosition> = {};
+    const gridCols = Math.ceil(Math.sqrt(count));
+
+    // Seed from current grid positions
+    tables.forEach((tbl, idx) => {
+      const col = idx % gridCols;
+      const row = Math.floor(idx / gridCols);
+      positions[tbl.name] = { ...(nodePositions[tbl.name] || { x: 40 + col * 320, y: 40 + row * 260 }) };
+    });
+
+    if (count < 2) return positions;
+
+    const DOCK_DIST = 290; // ideal resting distance between related tables
+    const MIN_DIST = 250;  // hard personal space between any two tables
+
+    // Force-directed relaxation seeded from the current layout
+    for (let iter = 0; iter < 140; iter += 1) {
+      const fx: Record<string, number> = {};
+      const fy: Record<string, number> = {};
+      tables.forEach(t => { fx[t.name] = 0; fy[t.name] = 0; });
+
+      // Attraction along relationships (spring toward dock distance)
+      relationships.forEach(rel => {
+        const a = positions[rel.sourceTable];
+        const b = positions[rel.targetTable];
+        if (!a || !b) return;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const strength = 0.012 * Math.min(rel.confidence || 100, 100) / 100;
+        const f = strength * (dist - DOCK_DIST);
+        const ux = dx / dist;
+        const uy = dy / dist;
+        fx[rel.sourceTable] += ux * f;
+        fy[rel.sourceTable] += uy * f;
+        fx[rel.targetTable] -= ux * f;
+        fy[rel.targetTable] -= uy * f;
+      });
+
+      // Repulsion between all pairs (keeps unrelated tables apart)
+      for (let i = 0; i < tables.length; i += 1) {
+        for (let j = i + 1; j < tables.length; j += 1) {
+          const a = positions[tables[i].name];
+          const b = positions[tables[j].name];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          if (dist < MIN_DIST) {
+            const f = (MIN_DIST - dist) * 0.06;
+            const ux = dx / dist;
+            const uy = dy / dist;
+            fx[tables[i].name] -= ux * f;
+            fy[tables[i].name] -= uy * f;
+            fx[tables[j].name] += ux * f;
+            fy[tables[j].name] += uy * f;
+          }
+        }
+      }
+
+      // Gentle integration with damping + soft boundary
+      tables.forEach(t => {
+        const p = positions[t.name];
+        p.x = Math.max(20, p.x + Math.max(-24, Math.min(24, fx[t.name])));
+        p.y = Math.max(20, p.y + Math.max(-24, Math.min(24, fy[t.name])));
+      });
+    }
+
+    return positions;
+  };
+
+  // Re-relax whenever the schema graph or the mode changes
+  useEffect(() => {
+    if (!magneticMode || tables.length === 0) return;
+    const relaxed = computeMagneticLayout();
+    setNodePositions(prev => {
+      // Preserve user-dragged exceptions only while actively dragging
+      if (draggingNodeId && prev[draggingNodeId]) {
+        return { ...relaxed, [draggingNodeId]: prev[draggingNodeId] };
+      }
+      return relaxed;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, relationships, magneticMode]);
+
+  // Elastic Snap: on column-drop, dock the tables into a stable orbit
+  useEffect(() => {
+    if (connectingSource) return; // only fire after a connect attempt ends
+  }, [connectingSource]);
+
+  const snapIntoOrbit = (sourceTable: string, targetTable: string) => {
+    const a = nodePositions[sourceTable];
+    const b = nodePositions[targetTable];
+    if (!a || !b) return;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    if (dist < 200 || dist > 420) {
+      // Normalize to the cozy dock distance — the "magnet settles" motion
+      const ux = dx / dist;
+      const uy = dy / dist;
+      setNodePositions(prev => ({
+        ...prev,
+        [targetTable]: {
+          x: Math.max(20, a.x + ux * 300),
+          y: Math.max(20, a.y + uy * 300),
+        },
+      }));
+    }
+    audio.magneticSnap();
+  };
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -198,6 +320,8 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
       if (!exists) {
         onUpdateRelationships([...relationships, newRel]);
+        // Magnetic settle: dock the two tables into a stable orbit + snap sound
+        if (magneticMode) snapIntoOrbit(connectingSource.tableName, tableName);
       }
     }
     setConnectingSource(null);
@@ -315,7 +439,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
   }, [relationships, nodePositions]);
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl overflow-hidden shadow-xl flex flex-col h-[650px] relative">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg overflow-hidden shadow-xl flex flex-col h-[650px] relative">
       {/* Top Toolbar */}
       <div className="bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] p-3 flex flex-wrap items-center justify-between gap-3 z-10">
         <div className="flex items-center gap-2">
@@ -357,7 +481,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
             </button>
             <button
               onClick={() => { setZoom(1); setPan({ x: 20, y: 20 }); }}
-              className="p-1.5 hover:bg-[var(--cds-hover-ui)] text-[var(--cds-text-02)] rounded cursor-pointer border-r border-[var(--cds-border-subtle)] rtl:border-l rtl:border-r-0"
+              className="p-1.5 hover:bg-[var(--cds-hover-ui)] text-[var(--cds-text-02)] rounded cursor-pointer border-e border-[var(--cds-border-subtle)]"
               title={isAr ? 'إعادة ضبط العرض' : 'Reset View'}
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -371,6 +495,20 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#78a9ff]" />
             <span>{isAr ? 'تنظيم تلقائي' : 'Auto Layout'}</span>
+          </button>
+
+          {/* Magnetic Schema Toggle: organic attraction between related tables */}
+          <button
+            onClick={() => setMagneticMode(m => !m)}
+            className={`px-3 py-1.5 border text-xs font-mono flex items-center gap-1.5 rounded-lg transition-colors cursor-pointer ${
+              magneticMode
+                ? 'bg-[#8a3ffc]/20 border-[#8a3ffc] text-[#be95ff]'
+                : 'bg-[var(--cds-layer-01)] hover:bg-[var(--cds-hover-ui)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
+            }`}
+            title={isAr ? 'الجداول كجسيمات مغناطيسية: الجداول المرتبطة تتجاذب وتستقر في مدارات مستقرة' : 'Tables as living magnets: related tables attract and settle into stable orbits'}
+          >
+            <Magnet className={`w-3.5 h-3.5 ${magneticMode ? 'text-[#be95ff]' : ''}`} />
+            <span>{isAr ? 'المغناطيسية العضوية' : 'Magnetic'}</span>
           </button>
 
           {/* Add Relationship Button */}
@@ -392,7 +530,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
-        className="flex-1 relative overflow-hidden bg-[#0d0d0d] select-none cursor-grab active:cursor-grabbing"
+        className="flex-1 relative overflow-hidden bg-[var(--cds-background)] select-none cursor-grab active:cursor-grabbing"
         style={{
           backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
           backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
@@ -445,7 +583,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     strokeWidth="20"
                   />
 
-                  {/* Main Visual Smooth Edge Path */}
+                  {/* Main Visual Smooth Edge Path — magnetic glow pulse on AI edges */}
                   <path
                     d={pathStr}
                     fill="none"
@@ -454,6 +592,11 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     strokeDasharray={rel.isAiGenerated ? '6,4' : undefined}
                     markerEnd={isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)'}
                     className="transition-all group-hover:stroke-[#8a3ffc] group-hover:stroke-3"
+                    style={{
+                      filter: isSelected
+                        ? 'drop-shadow(0 0 6px rgba(138,63,252,0.7))'
+                        : 'drop-shadow(0 0 3px rgba(15,98,254,0.45))',
+                    }}
                   />
 
                   {/* Relationship Cardinality & Join Badge overlay at Midpoint */}
@@ -472,7 +615,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg border flex items-center justify-center gap-1 cursor-pointer transition-transform hover:scale-110 ${
                         isSelected
                           ? 'bg-[#8a3ffc] border-[#be95ff] text-white'
-                          : 'bg-[#1f1f1f] border-[#0f62fe] text-[#78a9ff] hover:bg-[#0f62fe] hover:text-white'
+                          : 'bg-[var(--cds-layer-01)] border-[#0f62fe] text-[#78a9ff] hover:bg-[#0f62fe] hover:text-white'
                       }`}
                       title={isAr ? 'اضغط لتعديل نوع الربط والعلاقة' : 'Click to edit relationship'}
                     >
@@ -508,14 +651,15 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               <div
                 key={tbl.name}
                 onMouseDown={e => handleNodeMouseDown(e, tbl.name)}
-                className="table-node-card absolute left-0 top-0 pointer-events-auto w-[290px] bg-[#1f1f1f] border-2 border-[#393939] hover:border-[#0f62fe] rounded-xl shadow-2xl transition-colors overflow-hidden group"
+                className="table-node-card absolute left-0 top-0 pointer-events-auto w-[290px] bg-[var(--cds-layer-01)] border-2 border-[var(--cds-border-subtle)] hover:border-[#0f62fe] rounded-lg shadow-2xl overflow-hidden group transition-[transform,border-color] duration-700 ease-out"
                 style={{
                   transform: `translate(${pos.x}px, ${pos.y}px)`,
+                  transitionDuration: draggingNodeId === tbl.name ? '0ms' : undefined,
                 }}
               >
                 {/* Node Card Header */}
                 <div
-                  className="p-3 border-b border-[#393939] flex items-center justify-between gap-2 cursor-move"
+                  className="p-3 border-b border-[var(--cds-border-subtle)] flex items-center justify-between gap-2 cursor-move"
                   style={{ backgroundColor: `${tbl.color || '#0f62fe'}15` }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -523,12 +667,12 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: tbl.color || '#0f62fe' }}
                     />
-                    <h4 className="text-xs font-mono font-bold text-[#f4f4f4] truncate">
+                    <h4 className="text-xs font-mono font-bold text-[var(--cds-text-01)] truncate">
                       {tbl.name}
                     </h4>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-[#262626] border border-[#393939] text-[#c6c6c6] rounded">
+                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] rounded">
                       {tbl.rowCount} {isAr ? 'سجل' : 'rows'}
                     </span>
                     <span className="text-[9px] font-mono px-1 bg-[#0f62fe]/20 text-[#78a9ff] rounded">
@@ -548,7 +692,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     return (
                       <div
                         key={col.name}
-                        className="px-2 py-1 bg-[#161616] hover:bg-[#262626] border border-[#262626] rounded flex items-center justify-between gap-2 group/col"
+                        className="px-2 py-1 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded flex items-center justify-between gap-2 group/col"
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           {isPk ? (
@@ -562,7 +706,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                           ) : (
                             <button
                               onClick={e => { e.stopPropagation(); handleTogglePk(tbl.name, col.name); }}
-                              className="text-[#525252] hover:text-[#f1c21b] opacity-0 group-hover/col:opacity-100"
+                              className="text-[var(--cds-text-03)] hover:text-[#f1c21b] opacity-0 group-hover/col:opacity-100"
                               title="Set as PK"
                             >
                               <Key className="w-3 h-3" />
@@ -571,13 +715,13 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
                           {isFk && <span title="Foreign Key (FK)"><LinkIcon className="w-3 h-3 text-[#78a9ff]" /></span>}
 
-                          <span className={`truncate ${isPk ? 'font-bold text-[#f1c21b]' : 'text-[#f4f4f4]'}`}>
+                          <span className={`truncate ${isPk ? 'font-bold text-[#f1c21b]' : 'text-[var(--cds-text-01)]'}`}>
                             {col.name}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] text-[#8d8d8d] uppercase">
+                          <span className="text-[9px] text-[var(--cds-text-03)] uppercase">
                             {col.type}
                           </span>
 
@@ -585,7 +729,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                           <div
                             onMouseDown={e => handlePortMouseDown(e, tbl.name, col.name)}
                             onMouseUp={() => handlePortMouseUp(tbl.name, col.name)}
-                            className="w-3 h-3 rounded-full bg-[#393939] hover:bg-[#8a3ffc] border border-[#525252] hover:border-white cursor-crosshair transition-colors"
+                            className="w-3 h-3 rounded-full bg-[var(--cds-layer-03)] hover:bg-[#8a3ffc] border border-[var(--cds-border-strong)] hover:border-white cursor-crosshair transition-colors"
                             title={isAr ? 'اسحب من هنا لربط عمود مع شيت آخر' : 'Drag port to connect'}
                           />
                         </div>
@@ -602,8 +746,8 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
       {/* Edit Relationship Modal Dialog */}
       {editingRel && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-[#1f1f1f] border border-[#393939] rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div className="flex items-center gap-2 text-[#be95ff]">
                 <Edit3 className="w-5 h-5" />
                 <h3 className="text-sm font-mono font-bold text-white">
@@ -612,28 +756,28 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               </div>
               <button
                 onClick={() => setEditingRel(null)}
-                className="p-1 hover:bg-[#393939] text-[#c6c6c6] rounded"
+                className="p-1 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] rounded"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 font-mono text-xs">
-              <div className="p-2.5 bg-[#161616] border border-[#262626] rounded flex items-center justify-between">
+              <div className="p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded flex items-center justify-between">
                 <div>
-                  <span className="text-[#8d8d8d] block text-[10px]">Source (FK):</span>
+                  <span className="text-[var(--cds-text-03)] block text-[10px]">Source (FK):</span>
                   <span className="text-[#78a9ff] font-bold">{editingRel.sourceTable}.{editingRel.sourceColumn}</span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[#8d8d8d]" />
+                <ArrowRight className="w-4 h-4 text-[var(--cds-text-03)]" />
                 <div>
-                  <span className="text-[#8d8d8d] block text-[10px]">Target (PK):</span>
+                  <span className="text-[var(--cds-text-03)] block text-[10px]">Target (PK):</span>
                   <span className="text-[#42be65] font-bold">{editingRel.targetTable}.{editingRel.targetColumn}</span>
                 </div>
               </div>
 
               {/* Relationship Type Selection (1:1, 1:M, M:1, M:M) */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">
+                <label className="block text-[var(--cds-text-02)] mb-1">
                   {isAr ? 'نوع العلاقة الكاردينالية (Cardinality):' : 'Relationship Type (Cardinality):'}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -645,7 +789,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       className={`p-2 border rounded text-center font-bold cursor-pointer transition-colors ${
                         editingRel.relationshipType === type
                           ? 'bg-[#8a3ffc]/20 border-[#8a3ffc] text-[#be95ff]'
-                          : 'bg-[#161616] border-[#393939] text-[#8d8d8d] hover:text-white'
+                          : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white'
                       }`}
                     >
                       {type}
@@ -656,7 +800,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Join Type Selection (INNER, LEFT, RIGHT, FULL) */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">
+                <label className="block text-[var(--cds-text-02)] mb-1">
                   {isAr ? 'نوع الربط (JOIN Type):' : 'SQL Join Type:'}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -668,7 +812,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       className={`p-2 border rounded text-center font-bold cursor-pointer transition-colors ${
                         (editingRel.joinType || 'LEFT') === jType
                           ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#78a9ff]'
-                          : 'bg-[#161616] border-[#393939] text-[#8d8d8d] hover:text-white'
+                          : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white'
                       }`}
                     >
                       {jType}
@@ -679,7 +823,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Description / Notes */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">
+                <label className="block text-[var(--cds-text-02)] mb-1">
                   {isAr ? 'وصف العلاقة / الملاحظات:' : 'Notes / Description:'}
                 </label>
                 <input
@@ -687,12 +831,12 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                   value={editingRel.description || ''}
                   onChange={e => setEditingRel({ ...editingRel, description: e.target.value })}
                   placeholder={isAr ? 'مثال: ربط طلبات العملاء برقم العميل...' : 'Notes...'}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none focus:border-[#0f62fe]"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-[#393939] pt-3">
+            <div className="flex items-center justify-between border-t border-[var(--cds-border-subtle)] pt-3">
               <button
                 onClick={() => handleDeleteRelationship(editingRel.id)}
                 className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500 text-red-400 text-xs font-mono rounded flex items-center gap-1.5 cursor-pointer"
@@ -704,7 +848,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditingRel(null)}
-                  className="px-3 py-1.5 bg-[#393939] text-white text-xs font-mono rounded cursor-pointer"
+                  className="px-3 py-1.5 bg-[var(--cds-layer-03)] text-white text-xs font-mono rounded cursor-pointer"
                 >
                   {isAr ? 'إلغاء' : 'Cancel'}
                 </button>
@@ -723,8 +867,8 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
       {/* Manual Link Creator Modal Dialog */}
       {showAddRelModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-[#1f1f1f] border border-[#393939] rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg max-w-lg w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div className="flex items-center gap-2 text-[#78a9ff]">
                 <Plus className="w-5 h-5" />
                 <h3 className="text-sm font-mono font-bold text-white">
@@ -733,7 +877,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               </div>
               <button
                 onClick={() => setShowAddRelModal(false)}
-                className="p-1 hover:bg-[#393939] text-[#c6c6c6] rounded"
+                className="p-1 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] rounded"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -742,7 +886,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
             <div className="grid grid-cols-2 gap-3 font-mono text-xs">
               {/* Source Table */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'جدول المصدر (FK Source):' : 'Source Table:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'جدول المصدر (FK Source):' : 'Source Table:'}</label>
                 <select
                   value={newSourceTable}
                   onChange={e => {
@@ -750,7 +894,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     const tbl = tables.find(t => t.name === e.target.value);
                     setNewSourceCol(tbl?.columns[0]?.name || '');
                   }}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   {tables.map(t => (
                     <option key={t.name} value={t.name}>{t.name}</option>
@@ -760,11 +904,11 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Source Column */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'عمود المصدر:' : 'Source Column:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'عمود المصدر:' : 'Source Column:'}</label>
                 <select
                   value={newSourceCol}
                   onChange={e => setNewSourceCol(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   {tables.find(t => t.name === newSourceTable)?.columns.map(c => (
                     <option key={c.name} value={c.name}>{c.name} ({c.type})</option>
@@ -774,7 +918,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Target Table */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'الجدول الهدف (PK Target):' : 'Target Table:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'الجدول الهدف (PK Target):' : 'Target Table:'}</label>
                 <select
                   value={newTargetTable}
                   onChange={e => {
@@ -782,7 +926,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     const tbl = tables.find(t => t.name === e.target.value);
                     setNewTargetCol(tbl?.primaryKey?.[0] || tbl?.columns[0]?.name || '');
                   }}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   {tables.map(t => (
                     <option key={t.name} value={t.name}>{t.name}</option>
@@ -792,11 +936,11 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Target Column */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'العمود الهدف:' : 'Target Column:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'العمود الهدف:' : 'Target Column:'}</label>
                 <select
                   value={newTargetCol}
                   onChange={e => setNewTargetCol(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   {tables.find(t => t.name === newTargetTable)?.columns.map(c => (
                     <option key={c.name} value={c.name}>{c.name} ({c.type})</option>
@@ -806,11 +950,11 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Relationship Type */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'نوع العلاقة:' : 'Cardinality:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'نوع العلاقة:' : 'Cardinality:'}</label>
                 <select
                   value={newRelType}
                   onChange={e => setNewRelType(e.target.value as RelationshipType)}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   <option value="1:1">1:1 (One to One)</option>
                   <option value="1:M">1:M (One to Many)</option>
@@ -821,11 +965,11 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
 
               {/* Join Type */}
               <div>
-                <label className="block text-[#c6c6c6] mb-1">{isAr ? 'نوع الربط SQL:' : 'Join Type:'}</label>
+                <label className="block text-[var(--cds-text-02)] mb-1">{isAr ? 'نوع الربط SQL:' : 'Join Type:'}</label>
                 <select
                   value={newJoinType}
                   onChange={e => setNewJoinType(e.target.value as any)}
-                  className="w-full bg-[#161616] border border-[#393939] rounded p-2 text-white outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none"
                 >
                   <option value="LEFT">LEFT JOIN</option>
                   <option value="INNER">INNER JOIN</option>
@@ -835,10 +979,10 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-[#393939] pt-3">
+            <div className="flex items-center justify-end gap-2 border-t border-[var(--cds-border-subtle)] pt-3">
               <button
                 onClick={() => setShowAddRelModal(false)}
-                className="px-3.5 py-1.5 bg-[#393939] text-white text-xs font-mono rounded cursor-pointer"
+                className="px-3.5 py-1.5 bg-[var(--cds-layer-03)] text-white text-xs font-mono rounded cursor-pointer"
               >
                 {isAr ? 'إلغاء' : 'Cancel'}
               </button>

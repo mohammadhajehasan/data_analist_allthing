@@ -90,11 +90,11 @@ export const DataRefreshScheduleModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4">
       <div
-        className="w-full max-w-3xl bg-[#161616] text-[#f4f4f4] border border-[#393939] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="w-full max-w-3xl bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         id="data-refresh-modal"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded bg-[#009d9a]/15 text-[#009d9a]">
               <Radio className="w-5 h-5" />
@@ -103,7 +103,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
               <h3 className="text-base font-semibold">
                 {language === 'ar' ? 'نظام التحديث التلقائي للبيانات (Data Refresh & Live Sync)' : 'Scheduled Data Refresh & Live API Sync'}
               </h3>
-              <p className="text-xs text-[#8d8d8d]">
+              <p className="text-xs text-[var(--cds-text-03)]">
                 {language === 'ar'
                   ? 'جدولة المزامنة الحية لمصادر البيانات عبر API ومراقبة مؤشرات الاتصال الفوري'
                   : 'Automate periodic API streaming, data ingestion, and monitor live connection health'}
@@ -112,7 +112,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
           </div>
           <button
             onClick={() => setIsRefreshModalOpen(false)}
-            className="p-1.5 text-[#c6c6c6] hover:text-white hover:bg-[#393939] transition"
+            className="p-1.5 text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)] transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -122,21 +122,21 @@ export const DataRefreshScheduleModal: React.FC = () => {
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Active Refreshes Overview Cards */}
           <div>
-            <h4 className="text-xs font-semibold text-[#c6c6c6] uppercase tracking-wider mb-3 flex items-center gap-2">
+            <h4 className="text-xs font-semibold text-[var(--cds-text-02)] uppercase tracking-wider mb-3 flex items-center gap-2">
               <Activity className="w-4 h-4 text-[#009d9a]" />
               <span>{language === 'ar' ? 'حالة المصادر المرتبطة والمجدولة' : 'Active Connected Feeds'}</span>
             </h4>
 
             <div className="space-y-2">
               {scheduledRefreshes.length === 0 ? (
-                <div className="p-4 bg-[#262626] text-center text-xs text-[#8d8d8d]">
+                <div className="p-4 bg-[var(--cds-layer-02)] text-center text-xs text-[var(--cds-text-03)]">
                   {language === 'ar' ? 'لا توجد مصادر مجدولة حالياً.' : 'No active refresh schedules.'}
                 </div>
               ) : (
                 scheduledRefreshes.map(r => (
                   <div
                     key={r.id}
-                    className="p-3.5 bg-[#262626] border border-[#393939] flex items-center justify-between gap-3 text-xs"
+                    className="p-3.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-center gap-3">
                       {/* Connection status indicator */}
@@ -155,11 +155,11 @@ export const DataRefreshScheduleModal: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-white">{r.datasetName}</span>
-                          <span className="px-2 py-0.5 rounded bg-[#161616] text-[#009d9a] font-mono text-[10px] border border-[#393939]">
+                          <span className="px-2 py-0.5 rounded bg-[var(--cds-layer-01)] text-[#009d9a] font-mono text-[10px] border border-[var(--cds-border-subtle)]">
                             {r.interval}
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#8d8d8d] truncate max-w-sm mt-0.5 font-mono">
+                        <p className="text-[11px] text-[var(--cds-text-03)] truncate max-w-sm mt-0.5 font-mono">
                           {r.apiUrl || 'Internal Stream'}
                         </p>
                       </div>
@@ -167,7 +167,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-[10px] text-[#8d8d8d] block">
+                        <span className="text-[10px] text-[var(--cds-text-03)] block">
                           {language === 'ar' ? 'آخر مزامنة' : 'Last sync'}
                         </span>
                         <span className="text-[11px] text-white">
@@ -178,7 +178,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
                       <button
                         onClick={() => handleTestRunNow(r.datasetId)}
                         disabled={isExecuting}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-white rounded text-xs transition"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-white rounded text-xs transition"
                         title={language === 'ar' ? 'تحديث فوري' : 'Sync now'}
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${isExecuting ? 'animate-spin text-[#009d9a]' : ''}`} />
@@ -187,7 +187,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
 
                       <button
                         onClick={() => deleteScheduledRefresh(r.id)}
-                        className="p-1.5 text-[#8d8d8d] hover:text-red-400 transition"
+                        className="p-1.5 text-[var(--cds-text-03)] hover:text-red-400 transition"
                         title={language === 'ar' ? 'إلغاء' : 'Remove'}
                       >
                         <X className="w-4 h-4" />
@@ -200,21 +200,21 @@ export const DataRefreshScheduleModal: React.FC = () => {
           </div>
 
           {/* Schedule Configuration Form */}
-          <div className="p-4 bg-[#262626] border border-[#393939] space-y-4">
-            <h4 className="text-xs font-semibold text-[#f4f4f4] flex items-center gap-2">
+          <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-4">
+            <h4 className="text-xs font-semibold text-[var(--cds-text-01)] flex items-center gap-2">
               <Sliders className="w-4 h-4 text-[#0f62fe]" />
               <span>{language === 'ar' ? 'إنشاء أو تعديل جدولة تحديث لمجموعة بيانات' : 'Configure New Refresh Schedule'}</span>
             </h4>
 
             {/* Target Dataset Selection */}
             <div>
-              <label className="block text-xs font-medium text-[#c6c6c6] mb-1">
+              <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1">
                 {language === 'ar' ? 'مجموعة البيانات المستهدفة' : 'Target Dataset'}
               </label>
               <select
                 value={selectedDatasetId}
                 onChange={e => setSelectedDatasetId(e.target.value)}
-                className="w-full bg-[#161616] border border-[#393939] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
               >
                 {datasets.map(d => (
                   <option key={d.id} value={d.id}>
@@ -227,13 +227,13 @@ export const DataRefreshScheduleModal: React.FC = () => {
             {/* API Endpoint & Method */}
             <div className="grid grid-cols-4 gap-2">
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-[#c6c6c6] mb-1">
+                <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1">
                   {language === 'ar' ? 'البروتوكول' : 'Method'}
                 </label>
                 <select
                   value={method}
                   onChange={e => setMethod(e.target.value as any)}
-                  className="w-full bg-[#161616] border border-[#393939] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
                 >
                   <option value="GET">GET</option>
                   <option value="POST">POST</option>
@@ -241,11 +241,11 @@ export const DataRefreshScheduleModal: React.FC = () => {
               </div>
 
               <div className="col-span-3">
-                <label className="block text-xs font-medium text-[#c6c6c6] mb-1">
+                <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1">
                   {language === 'ar' ? 'رابط الواجهة البرمجية (REST / GraphQL API Endpoint)' : 'API Endpoint URL'}
                 </label>
-                <div className="flex items-center bg-[#161616] border border-[#393939] px-2.5">
-                  <Globe className="w-3.5 h-3.5 text-[#8d8d8d] ml-1 shrink-0" />
+                <div className="flex items-center bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2.5">
+                  <Globe className="w-3.5 h-3.5 text-[var(--cds-text-03)] ml-1 shrink-0" />
                   <input
                     type="text"
                     value={apiUrl}
@@ -259,7 +259,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
 
             {/* Interval Preset Buttons */}
             <div>
-              <label className="block text-xs font-medium text-[#c6c6c6] mb-1.5 flex items-center gap-1.5">
+              <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-[#009d9a]" />
                 <span>{language === 'ar' ? 'تكرار التحديث التلقائي' : 'Refresh Frequency'}</span>
               </label>
@@ -272,7 +272,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
                     className={`py-1.5 px-2 text-xs font-medium rounded-none border transition ${
                       interval === intOption
                         ? 'bg-[#009d9a] text-white border-[#009d9a]'
-                        : 'bg-[#161616] text-[#c6c6c6] border-[#393939] hover:bg-[#333]'
+                        : 'bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
                     }`}
                   >
                     {intOption}
@@ -283,26 +283,26 @@ export const DataRefreshScheduleModal: React.FC = () => {
 
             {/* Advanced Auto Processing Toggles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-[#161616] border border-[#333]">
+              <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <input
                   type="checkbox"
                   checked={autoImpute}
                   onChange={e => setAutoImpute(e.target.checked)}
                   className="rounded text-[#0f62fe] focus:ring-0"
                 />
-                <span className="text-xs text-[#c6c6c6]">
+                <span className="text-xs text-[var(--cds-text-02)]">
                   {language === 'ar' ? 'تنظيف وتعويض القيم المفقودة آلياً' : 'Auto-impute missing values'}
                 </span>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-[#161616] border border-[#333]">
+              <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <input
                   type="checkbox"
                   checked={notifyOnAnomaly}
                   onChange={e => setNotifyOnAnomaly(e.target.checked)}
                   className="rounded text-[#0f62fe] focus:ring-0"
                 />
-                <span className="text-xs text-[#c6c6c6]">
+                <span className="text-xs text-[var(--cds-text-02)]">
                   {language === 'ar' ? 'تنبيه فوري عند اكتشاف شذوذ إحصائي' : 'Alert on anomaly detection'}
                 </span>
               </label>
@@ -311,10 +311,10 @@ export const DataRefreshScheduleModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <button
             onClick={() => setIsRefreshModalOpen(false)}
-            className="px-4 py-2 text-xs font-medium text-[#c6c6c6] hover:bg-[#393939] transition"
+            className="px-4 py-2 text-xs font-medium text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] transition"
           >
             {language === 'ar' ? 'إغلاق' : 'Close'}
           </button>

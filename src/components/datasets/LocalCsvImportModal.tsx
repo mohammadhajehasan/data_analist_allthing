@@ -338,16 +338,16 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none animate-fade-in">
-      <div className="bg-[#262626] border border-[#393939] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Top Header */}
-        <div className="p-4 bg-[#1f1f1f] border-b border-[#393939] flex items-center justify-between">
+        <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff]">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                   {isAr ? 'استيراد ومعالجة ملف CSV محلياً (Zero-Upload)' : 'Local CSV Ingestion Engine'}
                 </h3>
                 <span className="px-2 py-0.5 bg-[#24a148]/20 border border-[#24a148]/40 text-[#42be65] text-[10px] font-mono font-bold flex items-center gap-1">
@@ -355,7 +355,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   <span>{isAr ? 'معالجة محلية بالكامل' : '100% Client-Side'}</span>
                 </span>
               </div>
-              <p className="text-xs text-[#c6c6c6] mt-0.5">
+              <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                 {isAr
                   ? 'معالجة البيانات داخل المتصفح فوراً، استنتاج المخطط، وتغذية لوحات التحكم دون رفع لأي خادم'
                   : 'Instant in-memory schema deduction and dashboard binding with zero external cloud upload'}
@@ -365,7 +365,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-[#393939] text-[#8d8d8d] hover:text-[#f4f4f4] transition-colors"
+            className="p-1.5 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -377,7 +377,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
           {!file ? (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#525252] hover:border-[#0f62fe] bg-[#161616] p-10 text-center cursor-pointer transition-colors space-y-3"
+              className="border-2 border-dashed border-[var(--cds-border-strong)] hover:border-[#0f62fe] bg-[var(--cds-layer-01)] p-10 text-center cursor-pointer transition-colors space-y-3"
             >
               <input
                 ref={fileInputRef}
@@ -388,14 +388,14 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   if (e.target.files?.[0]) handleFileChange(e.target.files[0]);
                 }}
               />
-              <div className="w-12 h-12 bg-[#262626] border border-[#393939] flex items-center justify-center mx-auto text-[#0f62fe]">
+              <div className="w-12 h-12 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center mx-auto text-[#0f62fe]">
                 <UploadCloud className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-mono font-bold text-[#f4f4f4]">
+                <p className="text-sm font-mono font-bold text-[var(--cds-text-01)]">
                   {isAr ? 'انقر لاختيار ملف CSV أو اسحبه هنا' : 'Click to Select CSV/TSV File or Drag & Drop'}
                 </p>
-                <p className="text-xs font-mono text-[#8d8d8d] mt-1">
+                <p className="text-xs font-mono text-[var(--cds-text-03)] mt-1">
                   {isAr ? 'يدعم UTF-8، الفواصل، الفواصل المنقوطة، وعلامات التبويب' : 'Supports RFC 4180 CSV, TSV, Semicolon and Pipe Delimiters'}
                 </p>
               </div>
@@ -403,15 +403,15 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
           ) : (
             <div className="space-y-4">
               {/* File Info & Parser Controls */}
-              <div className="bg-[#1f1f1f] border border-[#393939] p-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3.5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-[#262626] border border-[#393939] flex items-center justify-center text-[#42be65]">
+                  <div className="w-8 h-8 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#42be65]">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-mono font-bold text-[#f4f4f4] flex items-center gap-2">
+                    <div className="text-xs font-mono font-bold text-[var(--cds-text-01)] flex items-center gap-2">
                       <span>{file.name}</span>
-                      <span className="text-[10px] text-[#8d8d8d] font-normal">
+                      <span className="text-[10px] text-[var(--cds-text-03)] font-normal">
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
@@ -425,11 +425,11 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                 <div className="flex items-center gap-3">
                   {/* Delimiter Selection */}
                   <div className="flex items-center gap-1.5 text-xs font-mono">
-                    <span className="text-[#8d8d8d]">{isAr ? 'المحدد:' : 'Delimiter:'}</span>
+                    <span className="text-[var(--cds-text-03)]">{isAr ? 'المحدد:' : 'Delimiter:'}</span>
                     <select
                       value={delimiter}
                       onChange={e => handleDelimiterChange(e.target.value)}
-                      className="bg-[#161616] border border-[#393939] px-2 py-1 text-xs text-[#f4f4f4] outline-none"
+                      className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2 py-1 text-xs text-[var(--cds-text-01)] outline-none"
                     >
                       <option value="auto">{isAr ? 'تلقائي (Auto)' : 'Auto Detect'}</option>
                       <option value=",">Comma (,)</option>
@@ -445,7 +445,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                       setParsedRows([]);
                       setColumnsConfig([]);
                     }}
-                    className="px-2.5 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-xs font-mono text-[#c6c6c6] hover:text-white transition-colors"
+                    className="px-2.5 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-02)] hover:text-white transition-colors"
                   >
                     {isAr ? 'اختيار ملف آخر' : 'Change File'}
                   </button>
@@ -455,37 +455,37 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
               {/* Dataset Metadata Inputs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-mono text-[#8d8d8d] block mb-1">
+                  <label className="text-[11px] font-mono text-[var(--cds-text-03)] block mb-1">
                     {isAr ? 'اسم مجموعة البيانات:' : 'Dataset Name:'}
                   </label>
                   <input
                     type="text"
                     value={datasetName}
                     onChange={e => setDatasetName(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#393939] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[#f4f4f4] outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-mono text-[#8d8d8d] block mb-1">
+                  <label className="text-[11px] font-mono text-[var(--cds-text-03)] block mb-1">
                     {isAr ? 'وصف مختصر:' : 'Description:'}
                   </label>
                   <input
                     type="text"
                     value={datasetDesc}
                     onChange={e => setDatasetDesc(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#393939] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[#f4f4f4] outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
                   />
                 </div>
               </div>
 
               {/* Tabs: Schema Configuration vs. Raw Data Preview */}
-              <div className="flex border-b border-[#393939] gap-1 bg-[#1f1f1f] p-1">
+              <div className="flex border-b border-[var(--cds-border-subtle)] gap-1 bg-[var(--cds-layer-01)] p-1">
                 <button
                   onClick={() => setActiveTabState('schema')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'schema'
                       ? 'bg-[#0f62fe] text-white font-bold'
-                      : 'text-[#c6c6c6] hover:bg-[#393939]'
+                      : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
@@ -496,7 +496,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'preview'
                       ? 'bg-[#0f62fe] text-white font-bold'
-                      : 'text-[#c6c6c6] hover:bg-[#393939]'
+                      : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -506,9 +506,9 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
 
               {/* Schema Configuration Tab */}
               {activeTab === 'schema' && (
-                <div className="bg-[#161616] border border-[#393939] overflow-x-auto">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-x-auto">
                   <table className="w-full text-start text-xs font-mono">
-                    <thead className="bg-[#1f1f1f] border-b border-[#393939] text-[#8d8d8d] text-[11px] uppercase">
+                    <thead className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] text-[11px] uppercase">
                       <tr>
                         <th className="p-2.5 text-center w-10">
                           {isAr ? 'تضمين' : 'Include'}
@@ -519,12 +519,12 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                         <th className="p-2.5 text-start">{isAr ? 'عينة من القيم' : 'Sample Values'}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#262626]">
+                    <tbody className="divide-y divide-[var(--cds-border-subtle)]">
                       {columnsConfig.map((col, idx) => (
                         <tr
                           key={idx}
-                          className={`hover:bg-[#202020] transition-colors ${
-                            !col.included ? 'opacity-40 bg-[#121212]' : ''
+                          className={`hover:bg-[var(--cds-layer-02)] transition-colors ${
+                            !col.included ? 'opacity-40 bg-[var(--cds-background)]' : ''
                           }`}
                         >
                           <td className="p-2.5 text-center">
@@ -541,7 +541,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               value={col.name}
                               disabled={!col.included}
                               onChange={e => updateColumnName(idx, e.target.value)}
-                              className="bg-[#262626] border border-[#393939] focus:border-[#0f62fe] px-2 py-1 text-xs text-[#f4f4f4] outline-none font-bold"
+                              className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-2 py-1 text-xs text-[var(--cds-text-01)] outline-none font-bold"
                             />
                           </td>
                           <td className="p-2.5">
@@ -549,7 +549,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               value={col.type}
                               disabled={!col.included}
                               onChange={e => updateColumnType(idx, e.target.value as any)}
-                              className="bg-[#262626] border border-[#393939] px-2 py-1 text-xs text-[#33b1ff] outline-none"
+                              className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] px-2 py-1 text-xs text-[#33b1ff] outline-none"
                             >
                               <option value="string">String / Text</option>
                               <option value="integer">Integer (123)</option>
@@ -559,7 +559,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               <option value="boolean">Boolean (T/F)</option>
                             </select>
                           </td>
-                          <td className="p-2.5 text-[#8d8d8d] text-[11px]">
+                          <td className="p-2.5 text-[var(--cds-text-03)] text-[11px]">
                             <span>
                               {col.nullCount > 0 ? (
                                 <span className="text-[#f1c21b]">{col.nullCount} nulls</span>
@@ -574,7 +574,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               {col.sampleValues.map((v, i) => (
                                 <span
                                   key={i}
-                                  className="px-1.5 py-0.5 bg-[#262626] border border-[#393939] text-[#c6c6c6] text-[10px] truncate max-w-[100px]"
+                                  className="px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] text-[10px] truncate max-w-[100px]"
                                 >
                                   {String(v)}
                                 </span>
@@ -590,9 +590,9 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
 
               {/* Live Preview Tab */}
               {activeTab === 'preview' && (
-                <div className="bg-[#161616] border border-[#393939] overflow-x-auto max-h-72">
+                <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] overflow-x-auto max-h-72">
                   <table className="w-full text-start text-xs font-mono">
-                    <thead className="bg-[#1f1f1f] border-b border-[#393939] text-[#8d8d8d] text-[11px] uppercase sticky top-0">
+                    <thead className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] text-[11px] uppercase sticky top-0">
                       <tr>
                         {columnsConfig
                           .filter(c => c.included)
@@ -603,16 +603,16 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                           ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#262626]">
+                    <tbody className="divide-y divide-[var(--cds-border-subtle)]">
                       {parsedRows.slice(0, 15).map((row, rIdx) => (
-                        <tr key={rIdx} className="hover:bg-[#202020]">
+                        <tr key={rIdx} className="hover:bg-[var(--cds-layer-02)]">
                           {columnsConfig
                             .filter(c => c.included)
                             .map((col, cIdx) => (
-                              <td key={cIdx} className="p-2.5 text-[#c6c6c6] whitespace-nowrap">
+                              <td key={cIdx} className="p-2.5 text-[var(--cds-text-02)] whitespace-nowrap">
                                 {row[col.originalName] !== undefined && row[col.originalName] !== null
                                   ? String(row[col.originalName])
-                                  : <span className="text-[#8d8d8d] italic">NULL</span>}
+                                  : <span className="text-[var(--cds-text-03)] italic">NULL</span>}
                               </td>
                             ))}
                         </tr>
@@ -633,10 +633,10 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono transition-colors"
+            className="px-3 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono transition-colors"
           >
             {isAr ? 'إلغاء' : 'Cancel'}
           </button>
@@ -646,7 +646,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
               {/* Import as Dataset only */}
               <button
                 onClick={() => finalizeDatasetCreation(false)}
-                className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] border border-[#525252] text-[#f4f4f4] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
               >
                 <Database className="w-3.5 h-3.5 text-[#0f62fe]" />
                 <span>{isAr ? 'استيراد كمجموعة بيانات نشطة' : 'Ingest as Active Dataset'}</span>

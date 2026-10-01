@@ -377,7 +377,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
   };
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-5 space-y-6 shadow-md">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-5 space-y-6 shadow-md">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="space-y-1">
@@ -513,13 +513,13 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
               dragActive
                 ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-interactive-01)]/10 scale-[1.01]'
                 : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] hover:bg-[var(--cds-hover-ui)] hover:border-[var(--cds-interactive-01)]/50'
             }`}
           >
-            <div className="w-14 h-14 rounded-2xl bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)] shadow-sm">
+            <div className="w-14 h-14 rounded-xl bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)] shadow-sm">
               <FileSpreadsheet className="w-7 h-7" />
             </div>
             <div className="space-y-1">
@@ -542,7 +542,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
       {/* Live Preview & Final Import Section */}
       {previewData && previewData.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-[var(--cds-border-subtle)] animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
@@ -621,7 +621,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
           </div>
 
           {/* Table Sample Data (Top 5 rows) */}
-          <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-xl">
+          <div className="overflow-x-auto border border-[var(--cds-border-subtle)] rounded-lg">
             <table className="w-full text-xs font-mono text-left rtl:text-right">
               <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-03)] border-b border-[var(--cds-border-subtle)] text-[11px]">
                 <tr>

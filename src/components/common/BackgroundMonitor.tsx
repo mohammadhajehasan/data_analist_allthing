@@ -55,7 +55,7 @@ export const BackgroundMonitor: React.FC = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="pointer-events-auto w-80 bg-[color-mix(in_srgb,var(--cds-layer-01)_90%,transparent)] backdrop-blur-xl border border-[var(--cds-warning)] rounded-xl p-4 shadow-2xl flex items-start gap-3"
+            className="pointer-events-auto w-80 bg-[color-mix(in_srgb,var(--cds-layer-01)_90%,transparent)] backdrop-blur-xl border border-[var(--cds-warning)] rounded-lg p-4 shadow-2xl flex items-start gap-3"
           >
             <div className="p-2 bg-[var(--cds-warning)]/10 rounded-lg text-[var(--cds-warning)] shrink-0 mt-0.5">
               <Activity className="w-4 h-4" />

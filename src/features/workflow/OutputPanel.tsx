@@ -188,12 +188,12 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   return (
     <div
       id="workflow-output-panel"
-      className={`bg-[#161616] border-t border-[#393939] flex flex-col z-30 shadow-2xl transition-all duration-300 ${
+      className={`bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex flex-col z-30 shadow-2xl transition-all duration-300 ${
         isExpanded ? 'h-[580px]' : 'h-80'
       }`}
     >
       {/* 1. Header Toolbar */}
-      <div className="p-2.5 bg-[#262626] border-b border-[#393939] flex flex-wrap items-center justify-between px-4 gap-2">
+      <div className="p-2.5 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between px-4 gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Main Title Badge */}
           <div className="flex items-center gap-2 text-white font-mono text-xs font-bold">
@@ -202,15 +202,15 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           </div>
 
           {/* Node Selector Dropdown */}
-          <div className="flex items-center gap-1.5 bg-[#161616] border border-[#393939] rounded-lg px-2 py-1 text-xs">
-            <Database className="w-3.5 h-3.5 text-[#8d8d8d]" />
+          <div className="flex items-center gap-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg px-2 py-1 text-xs">
+            <Database className="w-3.5 h-3.5 text-[var(--cds-text-03)]" />
             <select
               value={activeNode?.id || ''}
               onChange={(e) => onSelectNode(e.target.value || null)}
               className="bg-transparent text-white font-mono text-[11px] focus:outline-none cursor-pointer"
             >
               {nodes.map((node) => (
-                <option key={node.id} value={node.id} className="bg-[#262626] text-white">
+                <option key={node.id} value={node.id} className="bg-[var(--cds-layer-02)] text-white">
                   {node.data.status === 'success' ? '✅ ' : node.data.status === 'failed' ? '❌ ' : '⚪ '}
                   {isAr ? (node.data.labelAr || node.data.label) : node.data.label} ({node.data.nodeType})
                 </option>
@@ -226,7 +226,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                   <CheckCircle2 className="w-3 h-3" />
                   <span>{isAr ? 'اكتمل بنجاح' : 'Success'}</span>
                   {executionTimeMs !== undefined && (
-                    <span className="text-[#a8a8a8] text-[10px]">({executionTimeMs}ms)</span>
+                    <span className="text-[var(--cds-text-02)] text-[10px]">({executionTimeMs}ms)</span>
                   )}
                 </span>
               )}
@@ -246,7 +246,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               {status === 'idle' && (
-                <span className="flex items-center gap-1 text-[#8d8d8d] bg-[#393939]/30 px-2 py-0.5 rounded border border-[#393939]">
+                <span className="flex items-center gap-1 text-[var(--cds-text-03)] bg-[var(--cds-layer-03)]/30 px-2 py-0.5 rounded border border-[var(--cds-border-subtle)]">
                   <span>{isAr ? 'جاهز للتشغيل' : 'Idle'}</span>
                 </span>
               )}
@@ -256,11 +256,11 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
 
         {/* View Switcher Tabs & Actions */}
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-[#161616] p-0.5 rounded-lg border border-[#393939] text-[11px] font-mono">
+          <div className="flex gap-1 bg-[var(--cds-layer-01)] p-0.5 rounded-lg border border-[var(--cds-border-subtle)] text-[11px] font-mono">
             <button
               onClick={() => setActiveTab('table')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'table' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#a8a8a8] hover:text-white'
+                activeTab === 'table' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <TableIcon className="w-3.5 h-3.5" />
@@ -271,7 +271,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               onClick={() => setActiveTab('charts')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'charts' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#a8a8a8] hover:text-white'
+                activeTab === 'charts' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -282,7 +282,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               <button
                 onClick={() => setActiveTab('ai')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'ai' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#a8a8a8] hover:text-white'
+                  activeTab === 'ai' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
                 }`}
               >
                 <Bot className="w-3.5 h-3.5 text-[#be95ff]" />
@@ -305,7 +305,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               onClick={() => setActiveTab('raw')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'raw' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[#a8a8a8] hover:text-white'
+                activeTab === 'raw' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <Code2 className="w-3.5 h-3.5" />
@@ -314,11 +314,11 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           </div>
 
           {/* Quick Actions (Expand, Copy, Close) */}
-          <div className="flex items-center gap-1 text-[#8d8d8d]">
+          <div className="flex items-center gap-1 text-[var(--cds-text-03)]">
             {tableRows.length > 0 && activeTab === 'table' && (
               <button
                 onClick={handleExportCSV}
-                className="p-1.5 hover:bg-[#393939] hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-[var(--cds-layer-03)] hover:text-white rounded-lg transition-colors cursor-pointer"
                 title={isAr ? 'تصدير جدول البيانات كملف CSV' : 'Export Table to CSV'}
               >
                 <Download className="w-4 h-4 text-[#42be65]" />
@@ -327,7 +327,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
 
             <button
               onClick={handleCopyRaw}
-              className="p-1.5 hover:bg-[#393939] hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[var(--cds-layer-03)] hover:text-white rounded-lg transition-colors cursor-pointer"
               title={isAr ? 'نسخ مخرجات العقدة' : 'Copy Output JSON'}
             >
               {copied ? <Check className="w-4 h-4 text-[#42be65]" /> : <Copy className="w-4 h-4" />}
@@ -335,7 +335,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
 
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 hover:bg-[#393939] hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[var(--cds-layer-03)] hover:text-white rounded-lg transition-colors cursor-pointer"
               title={isExpanded ? (isAr ? 'تصغير اللوحة' : 'Minimize') : (isAr ? 'تكبير اللوحة' : 'Maximize')}
             >
               {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -353,16 +353,16 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       </div>
 
       {/* 2. Content Body Area */}
-      <div className="flex-1 overflow-auto p-4 bg-[#121212]">
+      <div className="flex-1 overflow-auto p-4 bg-[var(--cds-background)]">
         {/* TAB 1: DATA TABLE VIEW */}
         {activeTab === 'table' && (
           <div className="space-y-3 h-full flex flex-col">
             {tableRows.length > 0 ? (
               <>
                 {/* Search & Stats Bar */}
-                <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#262626]">
+                <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--cds-border-subtle)]">
                   <div className="relative flex-1 min-w-[200px] max-w-sm">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8d8d8d]" />
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--cds-text-03)]" />
                     <input
                       type="text"
                       placeholder={isAr ? 'بحث في سجلات وقيم الجدول...' : 'Search records...'}
@@ -371,15 +371,15 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="w-full bg-[#1e1e1e] border border-[#393939] rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs text-[#a8a8a8] font-mono">
-                    <span className="bg-[#262626] px-2 py-0.5 rounded border border-[#393939]">
+                  <div className="flex items-center gap-3 text-xs text-[var(--cds-text-02)] font-mono">
+                    <span className="bg-[var(--cds-layer-02)] px-2 py-0.5 rounded border border-[var(--cds-border-subtle)]">
                       {isAr ? 'الأعمدة:' : 'Columns:'} <strong className="text-white">{tableColumns.length}</strong>
                     </span>
-                    <span className="bg-[#262626] px-2 py-0.5 rounded border border-[#393939]">
+                    <span className="bg-[var(--cds-layer-02)] px-2 py-0.5 rounded border border-[var(--cds-border-subtle)]">
                       {isAr ? 'السجلات:' : 'Rows:'} <strong className="text-[#42be65]">{filteredRows.length}</strong>
                     </span>
                     {outputData?.stats?.removedRows !== undefined && outputData.stats.removedRows > 0 && (
@@ -391,16 +391,16 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                 </div>
 
                 {/* Interactive Table Container */}
-                <div className="flex-1 overflow-auto border border-[#393939] rounded-xl bg-[#161616]">
+                <div className="flex-1 overflow-auto border border-[var(--cds-border-subtle)] rounded-lg bg-[var(--cds-layer-01)]">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-[#262626] text-[#c6c6c6] font-mono border-b border-[#393939] z-10">
+                    <thead className="sticky top-0 bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] font-mono border-b border-[var(--cds-border-subtle)] z-10">
                       <tr>
-                        <th className="p-2.5 px-3 w-12 text-center text-[#8d8d8d]">#</th>
+                        <th className="p-2.5 px-3 w-12 text-center text-[var(--cds-text-03)]">#</th>
                         {tableColumns.map((col) => (
                           <th key={col.name} className="p-2.5 px-3 font-semibold whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <span>{col.name}</span>
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-[#161616] text-[#78a9ff] border border-[#393939]">
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-[var(--cds-layer-01)] text-[#78a9ff] border border-[var(--cds-border-subtle)]">
                                 {col.type}
                               </span>
                             </div>
@@ -408,12 +408,12 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#262626] text-[#e0e0e0] font-sans">
+                    <tbody className="divide-y divide-[var(--cds-border-subtle)] text-[var(--cds-text-01)] font-sans">
                       {paginatedRows.map((row, rIdx) => {
                         const rowNum = (currentPage - 1) * rowsPerPage + rIdx + 1;
                         return (
-                          <tr key={rIdx} className="hover:bg-[#1f1f1f] transition-colors">
-                            <td className="p-2.5 px-3 text-center text-[11px] font-mono text-[#6f6f6f] bg-[#1a1a1a]/50">
+                          <tr key={rIdx} className="hover:bg-[var(--cds-layer-01)] transition-colors">
+                            <td className="p-2.5 px-3 text-center text-[11px] font-mono text-[var(--cds-text-03)] bg-[var(--cds-layer-01)]/50">
                               {rowNum}
                             </td>
                             {tableColumns.map((col) => {
@@ -449,7 +449,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                 </div>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between text-xs text-[#a8a8a8] pt-1">
+                <div className="flex items-center justify-between text-xs text-[var(--cds-text-02)] pt-1">
                   <div className="flex items-center gap-2">
                     <span>{isAr ? 'عرض لكل صفحة:' : 'Rows per page:'}</span>
                     <select
@@ -458,7 +458,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                         setRowsPerPage(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="bg-[#262626] text-white border border-[#393939] rounded px-2 py-0.5 text-xs focus:outline-none"
+                      className="bg-[var(--cds-layer-02)] text-white border border-[var(--cds-border-subtle)] rounded px-2 py-0.5 text-xs focus:outline-none"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -475,14 +475,14 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                       <button
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
-                        className="p-1 rounded bg-[#262626] border border-[#393939] disabled:opacity-40 hover:bg-[#393939] transition-colors cursor-pointer"
+                        className="p-1 rounded bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] disabled:opacity-40 hover:bg-[var(--cds-layer-03)] transition-colors cursor-pointer"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                         disabled={currentPage >= totalPages}
-                        className="p-1 rounded bg-[#262626] border border-[#393939] disabled:opacity-40 hover:bg-[#393939] transition-colors cursor-pointer"
+                        className="p-1 rounded bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] disabled:opacity-40 hover:bg-[var(--cds-layer-03)] transition-colors cursor-pointer"
                       >
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
@@ -491,8 +491,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-2 text-[#8d8d8d]">
-                <TableIcon className="w-10 h-10 text-[#525252] mb-1" />
+              <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-2 text-[var(--cds-text-03)]">
+                <TableIcon className="w-10 h-10 text-[var(--cds-text-03)] mb-1" />
                 <p className="text-sm font-semibold text-white">
                   {isAr ? 'لا توجد بيانات جدولية لمعاينتها بعد' : 'No tabular output data available yet'}
                 </p>
@@ -511,8 +511,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           <div className="space-y-4 h-full flex flex-col">
             {/* KPI Metrics Cards Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl">
-                <div className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg">
+                <div className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                   {isAr ? 'إجمالي السجلات' : 'Total Records'}
                 </div>
                 <div className="text-xl font-bold text-white mt-1">
@@ -521,8 +521,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               </div>
 
               {outputData?.qualityScore !== undefined && (
-                <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl">
-                  <div className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg">
+                  <div className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                     {isAr ? 'مؤشر الجودة والصحة' : 'Quality Score'}
                   </div>
                   <div className="text-xl font-bold text-[#42be65] mt-1 flex items-center gap-1.5">
@@ -533,8 +533,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               {outputData?.metrics?.sum !== undefined && (
-                <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl">
-                  <div className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg">
+                  <div className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                     {isAr ? 'الإجمالي التراكمي' : 'Metric Sum'}
                   </div>
                   <div className="text-xl font-bold text-[#78a9ff] mt-1">
@@ -544,8 +544,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               {outputData?.metrics?.average !== undefined && (
-                <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl">
-                  <div className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg">
+                  <div className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                     {isAr ? 'المتوسط الحسابي' : 'Metric Average'}
                   </div>
                   <div className="text-xl font-bold text-[#be95ff] mt-1">
@@ -555,8 +555,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               {outputData?.metrics?.projectedFutureSum !== undefined && (
-                <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl">
-                  <div className="text-[10px] font-mono text-[#8d8d8d] uppercase">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg">
+                  <div className="text-[10px] font-mono text-[var(--cds-text-03)] uppercase">
                     {isAr ? 'التقدير المستقبلي (+8%)' : 'Projected Value'}
                   </div>
                   <div className="text-xl font-bold text-[#42be65] mt-1 flex items-center gap-1">
@@ -570,7 +570,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             {/* Charts Visual Container */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[260px]">
               {/* Chart 1: Bar / Area distribution */}
-              <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl flex flex-col">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
                     <BarChart3 className="w-4 h-4 text-[#78a9ff]" />
@@ -602,7 +602,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-full text-xs text-[#8d8d8d]">
+                    <div className="flex items-center justify-center h-full text-xs text-[var(--cds-text-03)]">
                       {isAr ? 'لا توجد بيانات رقمية كافية لرسم المخطط' : 'No numeric distribution available'}
                     </div>
                   )}
@@ -610,7 +610,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               </div>
 
               {/* Chart 2: Trend / Forecast Line Chart or Pie Chart */}
-              <div className="p-3 bg-[#1e1e1e] border border-[#393939] rounded-xl flex flex-col">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
                     <TrendingUp className="w-4 h-4 text-[#42be65]" />
@@ -663,7 +663,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-full text-xs text-[#8d8d8d]">
+                    <div className="flex items-center justify-center h-full text-xs text-[var(--cds-text-03)]">
                       {isAr ? 'لا توجد بيانات زمنية للمعاينة' : 'No time-series data available'}
                     </div>
                   )}
@@ -676,12 +676,12 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
         {/* TAB 3: AI INSIGHTS & EXECUTIVE SUMMARY */}
         {activeTab === 'ai' && (
           <div className="space-y-4 max-w-4xl">
-            <div className="p-4 bg-[#1e1e1e] border border-[#8a3ffc]/30 rounded-xl space-y-3">
+            <div className="p-4 bg-[var(--cds-layer-01)] border border-[#8a3ffc]/30 rounded-lg space-y-3">
               <div className="flex items-center gap-2 text-sm font-bold text-[#be95ff]">
                 <Sparkles className="w-4 h-4" />
                 <span>{isAr ? 'التحليل الاستراتيجي وتوصيات الذكاء الاصطناعي:' : 'AI Strategic Insights:'}</span>
               </div>
-              <p className="text-xs text-[#e0e0e0] leading-relaxed whitespace-pre-wrap bg-[#161616] p-3 rounded-lg border border-[#393939]">
+              <p className="text-xs text-[var(--cds-text-01)] leading-relaxed whitespace-pre-wrap bg-[var(--cds-layer-01)] p-3 rounded-lg border border-[var(--cds-border-subtle)]">
                 {outputData?.summaryText ||
                   lastRunResult?.producedOutputs?.aiSummary ||
                   (isAr
@@ -691,27 +691,27 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             </div>
 
             {/* Zero-Egress Privacy Assurance */}
-            <div className="p-3 bg-[#009d9a]/10 border border-[#009d9a]/30 rounded-xl flex items-center justify-between">
+            <div className="p-3 bg-[#009d9a]/10 border border-[#009d9a]/30 rounded-lg flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-[#08bdba]">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isAr ? 'ضمان الخصوصية التامة (Zero-Egress Data Security)' : 'Zero-Egress Privacy Enforced'}</span>
               </div>
-              <span className="text-[10px] font-mono text-[#a8a8a8]">Local Edge Processing</span>
+              <span className="text-[10px] font-mono text-[var(--cds-text-02)]">Local Edge Processing</span>
             </div>
           </div>
         )}
 
         {/* TAB 4: ERROR DIAGNOSTICS */}
         {activeTab === 'errors' && (
-          <div className="p-4 bg-[#da1e28]/10 border border-[#da1e28]/40 rounded-xl space-y-3 text-xs">
+          <div className="p-4 bg-[#da1e28]/10 border border-[#da1e28]/40 rounded-lg space-y-3 text-xs">
             <div className="flex items-center gap-2 text-[#fa4d56] font-bold">
               <AlertTriangle className="w-5 h-5" />
               <span>{isAr ? 'تفاصيل تعثر المرحلة (Error Diagnostics)' : 'Step Execution Error'}</span>
             </div>
-            <div className="bg-[#161616] p-3 rounded-lg border border-[#da1e28]/30 font-mono text-[#ff8389] text-[11px]">
+            <div className="bg-[var(--cds-layer-01)] p-3 rounded-lg border border-[#da1e28]/30 font-mono text-[#ff8389] text-[11px]">
               {errorMessage || 'Unknown execution exception encountered.'}
             </div>
-            <p className="text-[#c6c6c6]">
+            <p className="text-[var(--cds-text-02)]">
               {isAr
                 ? 'يرجى مراجعة إعدادات العقدة (Config) والتحقق من صحة أسماء الأعمدة وقيم العتبة المحددة.'
                 : 'Please verify node configuration properties, threshold ranges, and dataset column mapping.'}
@@ -722,7 +722,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
         {/* TAB 5: RAW JSON TELEMETRY */}
         {activeTab === 'raw' && (
           <div className="relative">
-            <pre className="p-3 bg-[#0d0d0d] border border-[#393939] rounded-xl text-[11px] font-mono text-[#42be65] overflow-auto max-h-[420px] leading-relaxed">
+            <pre className="p-3 bg-[var(--cds-background)] border border-[var(--cds-border-subtle)] rounded-lg text-[11px] font-mono text-[#42be65] overflow-auto max-h-[420px] leading-relaxed">
               {JSON.stringify(
                 {
                   nodeId: activeNode?.id,

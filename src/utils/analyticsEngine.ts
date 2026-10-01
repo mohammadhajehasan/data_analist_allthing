@@ -314,10 +314,69 @@ export function executeSqlOnDataset(dataset: Dataset, sql: string, startTime: nu
 
       rows = aggRows;
     } else {
-      // Handle SELECT column projection when no GROUP BY
-      const selectClause = cleanSql.match(/SELECT\s+([\s\S]+?)\s+FROM/i)?.[1] || '';
-      if (selectClause && !selectClause.includes('*')) {
-        const rawCols = selectClause.split(',').map(s => s.trim());
+      // No GROUP BY: check for global aggregates (SELECT SUM(x) ... or arithmetic like SUM(a)*100/SUM(b)).
+      // Without this branch, aggregate queries silently returned raw rows instead of aggregated values.
+      const globalSelectClause = cleanSql.match(/SELECT\s+([\s\S]+?)\s+FROM/i)?.[1] || '';
+      const globalAggs = extractSelectAggregations(globalSelectClause);
+
+      if (globalAggs.length > 0 && !/^\s*\*/.test(globalSelectClause.replace(/^SELECT/i, '').trim())) {
+        const computeAgg = (fn: string, col: string): number => {
+          if (fn === 'COUNT') {
+            if (col === '*') return rows.length;
+            return rows.filter(r => parseNumber(r[col]) !== null).length;
+          }
+          const vals = rows.map(r => parseNumber(r[col])).filter((v): v is number => v !== null);
+          if (vals.length === 0) return 0;
+          switch (fn) {
+            case 'SUM': return vals.reduce((a, b) => a + b, 0);
+            case 'AVG': return vals.reduce((a, b) => a + b, 0) / vals.length;
+            case 'MIN': return Math.min(...vals);
+            case 'MAX': return Math.max(...vals);
+            default: return 0;
+          }
+        };
+
+        const aggValueMap = new Map<string, number>();
+        globalAggs.forEach(agg => {
+          aggValueMap.set(`${agg.fn.toUpperCase()}(${agg.col})`, computeAgg(agg.fn, agg.col));
+        });
+
+        const items = globalSelectClause.split(',').map(s => s.trim()).filter(Boolean);
+        const outRow: Record<string, any> = {};
+        items.forEach(item => {
+          const asMatch = item.match(/^([\s\S]+?)\s+AS\s+([a-zA-Z0-9_]+)$/i);
+          const expr = (asMatch ? asMatch[1] : item).trim();
+
+          // Substitute every aggregate call with its computed numeric value
+          let substituted = expr.replace(/(SUM|AVG|MIN|MAX|COUNT)\s*\(\s*([a-zA-Z0-9_*`"']+)\s*\)/gi, (_m, fn: string, col: string) => {
+            const key = `${fn.toUpperCase()}(${col.replace(/^[`"']|[`"']$/g, '')})`;
+            const v = aggValueMap.get(key);
+            return v !== undefined ? String(v) : '0';
+          });
+          // Unwrap CAST(...) AS type wrappers produced by models
+          substituted = substituted.replace(/CAST\s*\(/gi, '(').replace(/\s+AS\s+(REAL|INTEGER|INT|FLOAT|NUMERIC|DECIMAL|DOUBLE)\s*\)/gi, ')');
+
+          const pureAggRe = new RegExp(`^(SUM|AVG|MIN|MAX|COUNT)\\s*\\(\\s*${globalAggs.map(a => a.col).join('|').replace('*', '\\*')}\\s*\\)$`, 'i');
+          const isPureAgg = pureAggRe.test(expr) && !/[+\-*/]/.test(substituted.replace(/^-?\d*\.?\d+$/, ''));
+          const matchedAgg = globalAggs.find(a => new RegExp(`^${a.fn}\\s*\\(\\s*${a.col.replace('*', '\\*')}\\s*\\)$`, 'i').test(expr));
+          const alias = asMatch ? asMatch[2] : (matchedAgg ? matchedAgg.alias : 'result');
+
+          if (matchedAgg && isPureAgg) {
+            outRow[alias] = Number(aggValueMap.get(`${matchedAgg.fn.toUpperCase()}(${matchedAgg.col})`).toFixed(2));
+          } else if (/^[0-9.+\-*/()\s]+$/.test(substituted)) {
+            try {
+              const val = new Function(`return (${substituted})`)() as number;
+              outRow[alias] = Number.isFinite(val) ? Number(val.toFixed(2)) : null;
+            } catch {
+              outRow[alias] = null;
+            }
+          } else {
+            outRow[alias] = null;
+          }
+        });
+        rows = [outRow];
+      } else if (globalSelectClause && !/^\s*\*/.test(globalSelectClause.replace(/^SELECT/i, '').trim())) {
+        const rawCols = globalSelectClause.split(',').map(s => s.trim());
         const projections = rawCols.map(c => {
           const asMatch = c.match(/^([\s\S]+?)\s+(?:AS\s+)?([a-zA-Z0-9_]+)$/i);
           if (asMatch) {

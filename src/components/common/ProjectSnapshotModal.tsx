@@ -108,11 +108,11 @@ export const ProjectSnapshotModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4">
       <div
-        className="w-full max-w-2xl bg-[#161616] text-[#f4f4f4] border border-[#393939] shadow-2xl rounded-none flex flex-col max-h-[90vh] overflow-hidden"
+        className="w-full max-w-2xl bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] shadow-2xl rounded-lg flex flex-col max-h-[90vh] overflow-hidden"
         id="project-snapshot-modal"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded bg-[#0f62fe]/15 text-[#0f62fe]">
               <HardDrive className="w-5 h-5" />
@@ -121,7 +121,7 @@ export const ProjectSnapshotModal: React.FC = () => {
               <h3 className="text-base font-semibold">
                 {language === 'ar' ? 'إدارة لقطة المشروع (Project Snapshot)' : 'Project Snapshot & Full Backup'}
               </h3>
-              <p className="text-xs text-[#8d8d8d]">
+              <p className="text-xs text-[var(--cds-text-03)]">
                 {language === 'ar'
                   ? 'حفظ واستعادة حالة المنصة بالكامل (البيانات، الرسوم، الملاحظات، والإعدادات) في ملف JSON'
                   : 'Export & Restore the complete workspace state in portable JSON format'}
@@ -130,14 +130,14 @@ export const ProjectSnapshotModal: React.FC = () => {
           </div>
           <button
             onClick={() => setIsSnapshotModalOpen(false)}
-            className="p-1.5 text-[#c6c6c6] hover:text-white hover:bg-[#393939] transition"
+            className="p-1.5 text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)] transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-[#393939] bg-[#1a1a1a]">
+        <div className="flex border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
           <button
             onClick={() => {
               setActiveTab('export');
@@ -145,8 +145,8 @@ export const ProjectSnapshotModal: React.FC = () => {
             }}
             className={`flex-1 py-3 px-4 text-xs font-semibold flex items-center justify-center gap-2 border-b-2 transition ${
               activeTab === 'export'
-                ? 'border-[#0f62fe] text-white bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6]'
+                ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)]'
             }`}
             id="snapshot-tab-export"
           >
@@ -160,8 +160,8 @@ export const ProjectSnapshotModal: React.FC = () => {
             }}
             className={`flex-1 py-3 px-4 text-xs font-semibold flex items-center justify-center gap-2 border-b-2 transition ${
               activeTab === 'import'
-                ? 'border-[#0f62fe] text-white bg-[#262626]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#c6c6c6]'
+                ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)]'
             }`}
             id="snapshot-tab-import"
           >
@@ -175,79 +175,79 @@ export const ProjectSnapshotModal: React.FC = () => {
           {activeTab === 'export' ? (
             <div className="space-y-4">
               {/* Snapshot Content Preview Box */}
-              <div className="p-4 bg-[#262626] border border-[#393939]">
-                <h4 className="text-xs font-semibold text-[#c6c6c6] mb-3 flex items-center gap-2">
+              <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)]">
+                <h4 className="text-xs font-semibold text-[var(--cds-text-02)] mb-3 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#0f62fe]" />
                   <span>{language === 'ar' ? 'محتويات اللقطة الحالية للتحزيم' : 'Current Snapshot Payload'}</span>
                 </h4>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#161616] border border-[#333] rounded-xs">
-                    <div className="flex items-center gap-1.5 text-xs text-[#8d8d8d] mb-1">
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xs">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--cds-text-03)] mb-1">
                       <Database className="w-3.5 h-3.5 text-[#0f62fe]" />
                       <span>{language === 'ar' ? 'البيانات' : 'Datasets'}</span>
                     </div>
                     <p className="text-lg font-bold text-white">{datasets.length}</p>
-                    <p className="text-[10px] text-[#8d8d8d]">{totalRows.toLocaleString()} {language === 'ar' ? 'سجل' : 'rows'}</p>
+                    <p className="text-[10px] text-[var(--cds-text-03)]">{totalRows.toLocaleString()} {language === 'ar' ? 'سجل' : 'rows'}</p>
                   </div>
 
-                  <div className="p-3 bg-[#161616] border border-[#333] rounded-xs">
-                    <div className="flex items-center gap-1.5 text-xs text-[#8d8d8d] mb-1">
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xs">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--cds-text-03)] mb-1">
                       <Layers className="w-3.5 h-3.5 text-[#009d9a]" />
                       <span>{language === 'ar' ? 'اللوحات' : 'Dashboards'}</span>
                     </div>
                     <p className="text-lg font-bold text-white">{dashboards.length}</p>
-                    <p className="text-[10px] text-[#8d8d8d]">{totalWidgets} {language === 'ar' ? 'عنصر رسم' : 'widgets'}</p>
+                    <p className="text-[10px] text-[var(--cds-text-03)]">{totalWidgets} {language === 'ar' ? 'عنصر رسم' : 'widgets'}</p>
                   </div>
 
-                  <div className="p-3 bg-[#161616] border border-[#333] rounded-xs">
-                    <div className="flex items-center gap-1.5 text-xs text-[#8d8d8d] mb-1">
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xs">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--cds-text-03)] mb-1">
                       <Sparkles className="w-3.5 h-3.5 text-[#8a3ffc]" />
                       <span>{language === 'ar' ? 'القصص الذكية' : 'Data Stories'}</span>
                     </div>
                     <p className="text-lg font-bold text-white">{dataStories.length}</p>
-                    <p className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'تقارير سردية' : 'stories'}</p>
+                    <p className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'تقارير سردية' : 'stories'}</p>
                   </div>
 
-                  <div className="p-3 bg-[#161616] border border-[#333] rounded-xs">
-                    <div className="flex items-center gap-1.5 text-xs text-[#8d8d8d] mb-1">
+                  <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xs">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--cds-text-03)] mb-1">
                       <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
                       <span>{language === 'ar' ? 'التعليقات' : 'Annotations'}</span>
                     </div>
                     <p className="text-lg font-bold text-white">{comments.length}</p>
-                    <p className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'ملاحظة ومناقشة' : 'comments'}</p>
+                    <p className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'ملاحظة ومناقشة' : 'comments'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Configuration Inputs */}
               <div>
-                <label className="block text-xs font-medium text-[#c6c6c6] mb-1">
+                <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1">
                   {language === 'ar' ? 'اسم اللقطة / النسخة' : 'Snapshot Title'}
                 </label>
                 <input
                   type="text"
                   value={snapshotName}
                   onChange={(e) => setSnapshotName(e.target.value)}
-                  className="w-full bg-[#262626] border border-[#393939] focus:border-[#0f62fe] rounded-none px-3 py-2 text-xs text-white outline-hidden"
+                  className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] rounded-lg px-3 py-2 text-xs text-white outline-hidden"
                   id="snapshot-name-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#c6c6c6] mb-1">
+                <label className="block text-xs font-medium text-[var(--cds-text-02)] mb-1">
                   {language === 'ar' ? 'الوصف والملاحظات' : 'Description'}
                 </label>
                 <textarea
                   value={snapshotDescription}
                   onChange={(e) => setSnapshotDescription(e.target.value)}
                   rows={3}
-                  className="w-full bg-[#262626] border border-[#393939] focus:border-[#0f62fe] rounded-none p-3 text-xs text-white outline-hidden resize-none"
+                  className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] rounded-lg p-3 text-xs text-white outline-hidden resize-none"
                   id="snapshot-desc-input"
                 />
               </div>
 
-              <div className="p-3 bg-[#1f1f1f] border-l-4 border-[#0f62fe] text-xs text-[#a8a8a8]">
+              <div className="p-3 bg-[var(--cds-layer-01)] border-s-4 border-s-[#0f62fe] text-xs text-[var(--cds-text-02)]">
                 <p>
                   {language === 'ar'
                     ? 'سيتم توليد ملف JSON كامل وصالح للمعايير العالمية، يمكنك مشاركته مع زملائك أو تحميله في أي وقت للعودة إلى نفس حالة التحليل بالضبط.'
@@ -260,14 +260,14 @@ export const ProjectSnapshotModal: React.FC = () => {
               {/* File Upload Box */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-[#525252] hover:border-[#0f62fe] bg-[#262626] p-8 text-center cursor-pointer transition flex flex-col items-center justify-center"
+                className="border-2 border-dashed border-[var(--cds-border-strong)] hover:border-[#0f62fe] bg-[var(--cds-layer-02)] p-8 text-center cursor-pointer transition flex flex-col items-center justify-center"
                 id="snapshot-upload-dropzone"
               >
                 <Upload className="w-10 h-10 text-[#0f62fe] mb-3 stroke-1" />
                 <p className="text-sm font-semibold text-white">
                   {language === 'ar' ? 'انقر لاختيار ملف اللقطة (JSON)' : 'Click to select Snapshot JSON file'}
                 </p>
-                <p className="text-xs text-[#8d8d8d] mt-1">
+                <p className="text-xs text-[var(--cds-text-03)] mt-1">
                   {language === 'ar' ? 'أو قم بسحب وإفلات الملف هنا' : 'or drag and drop your project-snapshot.json file'}
                 </p>
                 <input
@@ -290,41 +290,41 @@ export const ProjectSnapshotModal: React.FC = () => {
 
               {/* Parsed Snapshot Details */}
               {importedData && (
-                <div className="p-4 bg-[#262626] border border-[#0f62fe]/40 space-y-3">
+                <div className="p-4 bg-[var(--cds-layer-02)] border border-[#0f62fe]/40 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-[#0f62fe] flex items-center gap-1.5">
                       <CheckCircle className="w-4 h-4" />
                       {language === 'ar' ? 'تم التحقق من صحة ملف اللقطة بنجاح' : 'Snapshot Verified'}
                     </span>
-                    <span className="text-[11px] text-[#8d8d8d] font-mono">v{importedData.version}</span>
+                    <span className="text-[11px] text-[var(--cds-text-03)] font-mono">v{importedData.version}</span>
                   </div>
 
                   <div>
                     <h4 className="text-sm font-bold text-white">{importedData.name || importedData.nameAr}</h4>
-                    <p className="text-xs text-[#a8a8a8] mt-0.5">{importedData.description}</p>
-                    <p className="text-[11px] text-[#8d8d8d] mt-1">
+                    <p className="text-xs text-[var(--cds-text-02)] mt-0.5">{importedData.description}</p>
+                    <p className="text-[11px] text-[var(--cds-text-03)] mt-1">
                       {language === 'ar' ? 'تم التصدير في:' : 'Exported:'}{' '}
                       {formatDate(importedData.exportedAt, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{' '}
                       {language === 'ar' ? 'بواسطة' : 'by'} {importedData.exportedBy?.name || 'User'}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[#393939] text-center">
-                    <div className="p-2 bg-[#161616] rounded-xs">
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[var(--cds-border-subtle)] text-center">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-xs">
                       <span className="block text-xs font-bold text-white">{importedData.datasets?.length || 0}</span>
-                      <span className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'مجموعات بيانات' : 'Datasets'}</span>
+                      <span className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'مجموعات بيانات' : 'Datasets'}</span>
                     </div>
-                    <div className="p-2 bg-[#161616] rounded-xs">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-xs">
                       <span className="block text-xs font-bold text-white">{importedData.dashboards?.length || 0}</span>
-                      <span className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'لوحات تحكم' : 'Dashboards'}</span>
+                      <span className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'لوحات تحكم' : 'Dashboards'}</span>
                     </div>
-                    <div className="p-2 bg-[#161616] rounded-xs">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-xs">
                       <span className="block text-xs font-bold text-white">{importedData.dataStories?.length || 0}</span>
-                      <span className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'قصص سردية' : 'Stories'}</span>
+                      <span className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'قصص سردية' : 'Stories'}</span>
                     </div>
-                    <div className="p-2 bg-[#161616] rounded-xs">
+                    <div className="p-2 bg-[var(--cds-layer-01)] rounded-xs">
                       <span className="block text-xs font-bold text-white">{importedData.comments?.length || 0}</span>
-                      <span className="text-[10px] text-[#8d8d8d]">{language === 'ar' ? 'ملاحظات' : 'Comments'}</span>
+                      <span className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'ملاحظات' : 'Comments'}</span>
                     </div>
                   </div>
                 </div>
@@ -334,10 +334,10 @@ export const ProjectSnapshotModal: React.FC = () => {
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#393939] bg-[#262626]">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <button
             onClick={() => setIsSnapshotModalOpen(false)}
-            className="px-4 py-2 text-xs font-medium text-[#c6c6c6] hover:bg-[#393939] transition"
+            className="px-4 py-2 text-xs font-medium text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] transition"
           >
             {language === 'ar' ? 'إلغاء' : 'Cancel'}
           </button>

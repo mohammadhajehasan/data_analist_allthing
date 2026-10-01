@@ -751,14 +751,14 @@ export const DataModelingStudio: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Carbon Studio Header Banner */}
-      <div className="bg-[#1f1f1f] border border-[#393939] p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-4 min-w-0">
           <div className="w-12 h-12 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff] shrink-0">
             <Workflow className="w-6 h-6" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-mono font-bold uppercase text-[#f4f4f4] truncate">
+              <h1 className="text-xl font-mono font-bold uppercase text-[var(--cds-text-01)] truncate">
                 {isAr ? 'استوديو نمذجة البيانات والعلاقات' : 'Data Modeling & ERD Studio'}
               </h1>
               <span className="px-2 py-0.5 bg-[#0f62fe]/20 border border-[#0f62fe]/40 text-[#78a9ff] text-xs font-mono font-bold">
@@ -768,7 +768,7 @@ export const DataModelingStudio: React.FC = () => {
                 {relationships.length} {isAr ? 'علاقات (PK/FK)' : 'Relationships'}
               </span>
             </div>
-            <p className="text-xs text-[#c6c6c6] mt-1">
+            <p className="text-xs text-[var(--cds-text-02)] mt-1">
               {isAr
                 ? 'استيراد ملفات الأكسيل متعددة الشيتات، بناء علاقات الجداول (1:1، 1:M، M:M)، النمذجة التلقائية بالذكاء الاصطناعي والتصدير المباشر'
                 : 'Import multi-sheet Excel workbooks, design relational constraints (1:1, 1:M, M:M), AI auto-modeling, and export DDL/Excel'}
@@ -823,7 +823,7 @@ export const DataModelingStudio: React.FC = () => {
           <button
             onClick={() => handleOpenAddRelationModal()}
             disabled={tables.length < 2}
-            className="px-3 py-2 bg-[#393939] hover:bg-[#4c4c4c] border border-[#525252] text-[#f4f4f4] text-xs font-mono font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="px-3 py-2 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             <Plus className="w-4 h-4 text-[#78a9ff]" />
             <span>{isAr ? 'إضافة علاقة يدوية' : 'Add Relationship'}</span>
@@ -832,7 +832,7 @@ export const DataModelingStudio: React.FC = () => {
           {/* Import Workspace Datasets */}
           <button
             onClick={handleImportWorkspaceDatasets}
-            className="px-3 py-2 bg-[#262626] hover:bg-[#393939] border border-[#393939] text-[#c6c6c6] hover:text-[#f4f4f4] text-xs font-mono flex items-center gap-2 transition-colors"
+            className="px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-2 transition-colors"
             title={isAr ? 'استيراد مجموعات البيانات المفتوحة في مساحة العمل' : 'Import open workspace datasets'}
           >
             <Database className="w-4 h-4 text-[#007d79]" />
@@ -842,19 +842,19 @@ export const DataModelingStudio: React.FC = () => {
       </div>
 
       {/* Model Sub-Tabs Navigation */}
-      <div className="flex items-center justify-between border-b border-[#393939] bg-[#161616] px-2 text-xs font-mono">
+      <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-2 text-xs font-mono">
         <div className="flex items-center space-x-1 rtl:space-x-reverse">
           <button
             onClick={() => setActiveTab('canvas')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'canvas'
-                ? 'border-[#0f62fe] bg-[#262626] text-[#78a9ff]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
             <Table className="w-4 h-4" />
             <span>{isAr ? 'لوحة الشيتات والجداول (ERD Canvas)' : 'Sheets ERD Canvas'}</span>
-            <span className="px-1.5 py-0.2 bg-[#393939] text-[#f4f4f4] text-[10px]">
+            <span className="px-1.5 py-0.2 bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] text-[10px]">
               {tables.length}
             </span>
           </button>
@@ -863,13 +863,13 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('relationships')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'relationships'
-                ? 'border-[#0f62fe] bg-[#262626] text-[#78a9ff]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
             <LinkIcon className="w-4 h-4" />
             <span>{isAr ? 'سجل العلاقات والمفاتيح (Constraints)' : 'Relationships Matrix'}</span>
-            <span className="px-1.5 py-0.2 bg-[#393939] text-[#f4f4f4] text-[10px]">
+            <span className="px-1.5 py-0.2 bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] text-[10px]">
               {relationships.length}
             </span>
           </button>
@@ -878,8 +878,8 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('preview')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'preview'
-                ? 'border-[#0f62fe] bg-[#262626] text-[#78a9ff]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
             <Eye className="w-4 h-4" />
@@ -890,8 +890,8 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('export')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'export'
-                ? 'border-[#0f62fe] bg-[#262626] text-[#78a9ff]'
-                : 'border-transparent text-[#8d8d8d] hover:text-[#f4f4f4]'
+                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
             <Download className="w-4 h-4" />
@@ -900,20 +900,20 @@ export const DataModelingStudio: React.FC = () => {
         </div>
 
         {/* Active AI Model Badge & Selector */}
-        <div className="flex items-center gap-2 py-1 px-3 bg-[#1f1f1f] border border-[#393939]">
+        <div className="flex items-center gap-2 py-1 px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
           {currentModelDef.isLocal ? (
             <Lock className="w-3.5 h-3.5 text-[#42be65]" />
           ) : (
             <Cloud className="w-3.5 h-3.5 text-[#78a9ff]" />
           )}
-          <span className="text-[#8d8d8d] hidden sm:inline">{isAr ? 'محرك النمذجة:' : 'Modeling AI:'}</span>
+          <span className="text-[var(--cds-text-03)] hidden sm:inline">{isAr ? 'محرك النمذجة:' : 'Modeling AI:'}</span>
           <select
             value={selectedModelId}
             onChange={e => setSelectedModelId(e.target.value)}
-            className="bg-transparent text-[#f4f4f4] font-bold outline-none cursor-pointer text-xs"
+            className="bg-transparent text-[var(--cds-text-01)] font-bold outline-none cursor-pointer text-xs"
           >
             {availableAIModels.map(m => (
-              <option key={m.id} value={m.id} className="bg-[#262626] text-white">
+              <option key={m.id} value={m.id} className="bg-[var(--cds-layer-02)] text-white">
                 {m.isLocal ? '🔒 ' : '☁️ '} {m.name}
               </option>
             ))}
@@ -923,22 +923,22 @@ export const DataModelingStudio: React.FC = () => {
 
       {/* AI Discovered Recommendations Panel (if available) */}
       {aiReport && (
-        <div className="p-4 bg-[#1f1f1f] border border-[#8a3ffc]/50 space-y-4 animate-fade-in shadow-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#393939] pb-3">
+        <div className="p-4 bg-[var(--cds-layer-01)] border border-[#8a3ffc]/50 space-y-4 animate-fade-in shadow-2xl">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-[#8a3ffc]/20 border border-[#8a3ffc] flex items-center justify-center text-[#be95ff]">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-mono font-bold text-[#f4f4f4]">
+                  <h4 className="text-sm font-mono font-bold text-[var(--cds-text-01)]">
                     {isAr ? 'تقرير اقتراحات العلاقات والمفاتيح (AI PK/FK Schema Analysis)' : 'AI Schema Analysis & Key Suggestions'}
                   </h4>
                   <span className="px-2 py-0.5 bg-[#8a3ffc]/30 border border-[#8a3ffc]/50 text-[#be95ff] text-[10px] font-mono font-bold">
                     {aiReport.model}
                   </span>
                 </div>
-                <p className="text-xs text-[#c6c6c6] mt-0.5">
+                <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                   {isAr ? aiReport.summaryAr : aiReport.summaryEn}
                 </p>
               </div>
@@ -954,7 +954,7 @@ export const DataModelingStudio: React.FC = () => {
               </button>
               <button
                 onClick={() => setAiReport(null)}
-                className="p-1.5 hover:bg-[#393939] text-[#c6c6c6]"
+                className="p-1.5 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -965,15 +965,15 @@ export const DataModelingStudio: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
             {/* Primary Key Suggestions */}
             {aiReport.primaryKeySuggestions && Object.keys(aiReport.primaryKeySuggestions).length > 0 && (
-              <div className="p-3 bg-[#161616] border border-[#393939] space-y-2">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-2">
                 <div className="flex items-center gap-1.5 text-[#f1c21b] font-bold">
                   <Key className="w-4 h-4" />
                   <span>{isAr ? 'المفاتيح الرئيسية المقترحة (Primary Keys):' : 'Suggested Primary Keys:'}</span>
                 </div>
                 <div className="space-y-1">
                   {Object.entries(aiReport.primaryKeySuggestions).map(([tblName, pkCols]) => (
-                    <div key={tblName} className="p-1.5 bg-[#1f1f1f] border border-[#262626] flex items-center justify-between">
-                      <span className="text-[#f4f4f4] font-semibold">{tblName}</span>
+                    <div key={tblName} className="p-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-between">
+                      <span className="text-[var(--cds-text-01)] font-semibold">{tblName}</span>
                       <span className="px-2 py-0.5 bg-[#f1c21b]/10 border border-[#f1c21b]/40 text-[#f1c21b] text-[11px]">
                         PK: {Array.isArray(pkCols) ? pkCols.join(', ') : String(pkCols)}
                       </span>
@@ -985,16 +985,16 @@ export const DataModelingStudio: React.FC = () => {
 
             {/* Foreign Key Link Mappings with Confidence Scores */}
             {aiReport.detectedRelationships && aiReport.detectedRelationships.length > 0 && (
-              <div className="p-3 bg-[#161616] border border-[#393939] space-y-2 md:col-span-2">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] space-y-2 md:col-span-2">
                 <div className="flex items-center gap-1.5 text-[#78a9ff] font-bold">
                   <LinkIcon className="w-4 h-4" />
                   <span>{isAr ? 'روابط المفاتيح الأجنبية ونسبة الثقة (Foreign Key Mappings & Confidence):' : 'Foreign Key Link Mappings & Confidence Scores:'}</span>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {aiReport.detectedRelationships.map((r: any, idx: number) => (
-                    <div key={idx} className="p-2.5 bg-[#1f1f1f] border border-[#262626] hover:border-[#8a3ffc]/40 transition-colors space-y-1">
+                    <div key={idx} className="p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#8a3ffc]/40 transition-colors space-y-1">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 font-bold text-[#f4f4f4]">
+                        <div className="flex items-center gap-1.5 font-bold text-[var(--cds-text-01)]">
                           <span className="text-[#78a9ff]">{r.sourceTable}.{r.sourceColumn}</span>
                           <span className="text-[#be95ff]">➔ [{r.relationshipType || '1:M'}] ➔</span>
                           <span className="text-[#42be65]">{r.targetTable}.{r.targetColumn}</span>
@@ -1003,7 +1003,7 @@ export const DataModelingStudio: React.FC = () => {
                           {r.confidence || 90}% {isAr ? 'ثقة' : 'Confidence'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#8d8d8d] leading-normal">
+                      <p className="text-[11px] text-[var(--cds-text-03)] leading-normal">
                         {isAr ? (r.descriptionAr || r.description) : (r.description || r.descriptionAr)}
                       </p>
                     </div>
@@ -1019,14 +1019,14 @@ export const DataModelingStudio: React.FC = () => {
       {activeTab === 'canvas' && (
         <div className="space-y-6">
           {tables.length === 0 ? (
-            <div className="p-12 border-2 border-dashed border-[#393939] bg-[#161616] text-center space-y-4">
+            <div className="p-12 border-2 border-dashed border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-center space-y-4">
               <div className="w-16 h-16 bg-[#0f62fe]/10 border border-[#0f62fe]/40 flex items-center justify-center mx-auto text-[#78a9ff]">
                 <FileSpreadsheet className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-mono font-bold text-[#f4f4f4]">
+              <h3 className="text-base font-mono font-bold text-[var(--cds-text-01)]">
                 {isAr ? 'لا توجد شيتات أو جداول محملة حالياً' : 'No Sheets or Tables Loaded Yet'}
               </h3>
-              <p className="text-xs text-[#8d8d8d] max-w-md mx-auto">
+              <p className="text-xs text-[var(--cds-text-03)] max-w-md mx-auto">
                 {isAr
                   ? 'يرجى رفع ملف أكسيل يحتوي على عدة ورقات عمل (Sheets)، أو استيراد الجداول من مساحة العمل لبدء ربط العلاقات وتحديد المفاتيح الأساسية والأجنبية.'
                   : 'Please upload a multi-sheet Excel workbook or import workspace datasets to begin visual ERD data modeling.'}
@@ -1044,7 +1044,7 @@ export const DataModelingStudio: React.FC = () => {
                 </label>
                 <button
                   onClick={handleImportWorkspaceDatasets}
-                  className="px-4 py-2 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono font-bold flex items-center gap-2 transition-colors"
+                  className="px-4 py-2 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono font-bold flex items-center gap-2 transition-colors"
                 >
                   <Database className="w-4 h-4 text-[#007d79]" />
                   <span>{isAr ? 'استيراد جداول مساحة العمل' : 'Import Workspace Tables'}</span>
@@ -1061,18 +1061,18 @@ export const DataModelingStudio: React.FC = () => {
                 return (
                   <div
                     key={tbl.id}
-                    className="bg-[#1f1f1f] border border-[#393939] hover:border-[#0f62fe] transition-all duration-200 shadow-xl flex flex-col overflow-hidden group"
+                    className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-all duration-200 shadow-xl flex flex-col overflow-hidden group"
                   >
                     {/* Table Header Accent */}
                     <div
-                      className="p-3 text-white flex items-center justify-between border-b border-[#393939]"
+                      className="p-3 text-white flex items-center justify-between border-b border-[var(--cds-border-subtle)]"
                       style={{ backgroundColor: `${tbl.color || '#0f62fe'}20`, borderColor: tbl.color || '#0f62fe' }}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <Table className="w-4 h-4 shrink-0" style={{ color: tbl.color || '#78a9ff' }} />
-                        <span className="font-mono font-bold text-sm truncate text-[#f4f4f4]">{tbl.name}</span>
+                        <span className="font-mono font-bold text-sm truncate text-[var(--cds-text-01)]">{tbl.name}</span>
                       </div>
-                      <span className="px-1.5 py-0.5 bg-[#161616] text-[#c6c6c6] text-[10px] font-mono border border-[#393939] shrink-0">
+                      <span className="px-1.5 py-0.5 bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] text-[10px] font-mono border border-[var(--cds-border-subtle)] shrink-0">
                         {tbl.rowCount} {isAr ? 'صف' : 'rows'}
                       </span>
                     </div>
@@ -1093,7 +1093,7 @@ export const DataModelingStudio: React.FC = () => {
                                 ? 'bg-[#f1c21b]/10 border-[#f1c21b]/40 text-[#f1c21b]'
                                 : isFk
                                 ? 'bg-[#0f62fe]/10 border-[#0f62fe]/40 text-[#78a9ff]'
-                                : 'bg-[#161616] border-[#262626] text-[#c6c6c6] hover:border-[#393939]'
+                                : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-subtle)]'
                             }`}
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -1101,7 +1101,7 @@ export const DataModelingStudio: React.FC = () => {
                               <button
                                 onClick={() => handleTogglePrimaryKey(tbl.name, col.name)}
                                 title={isPk ? (isAr ? 'إلغاء تعيين كمفتاح رئيسي' : 'Remove Primary Key') : (isAr ? 'تعيين كمفتاح رئيسي PK' : 'Set as Primary Key')}
-                                className={`p-0.5 hover:scale-110 transition-transform ${isPk ? 'text-[#f1c21b]' : 'text-[#525252] hover:text-[#f4f4f4]'}`}
+                                className={`p-0.5 hover:scale-110 transition-transform ${isPk ? 'text-[#f1c21b]' : 'text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'}`}
                               >
                                 <Key className="w-3.5 h-3.5" />
                               </button>
@@ -1113,13 +1113,13 @@ export const DataModelingStudio: React.FC = () => {
                               {/* Quick Connect FK Trigger */}
                               <button
                                 onClick={() => handleOpenAddRelationModal(tbl.name, col.name)}
-                                className="p-0.5 text-[#525252] hover:text-[#78a9ff] transition-colors"
+                                className="p-0.5 text-[var(--cds-text-03)] hover:text-[#78a9ff] transition-colors"
                                 title={isAr ? 'ربط هذا العمود بجدول آخر' : 'Connect column as Foreign Key'}
                               >
                                 <LinkIcon className="w-3 h-3" />
                               </button>
 
-                              <span className="px-1 py-0.2 bg-[#262626] text-[#8d8d8d] text-[9px] uppercase border border-[#393939]">
+                              <span className="px-1 py-0.2 bg-[var(--cds-layer-02)] text-[var(--cds-text-03)] text-[9px] uppercase border border-[var(--cds-border-subtle)]">
                                 {col.type}
                               </span>
                             </div>
@@ -1129,7 +1129,7 @@ export const DataModelingStudio: React.FC = () => {
                     </div>
 
                     {/* Footer Relations Count */}
-                    <div className="p-2.5 bg-[#161616] border-t border-[#393939] flex items-center justify-between text-[11px] font-mono text-[#8d8d8d]">
+                    <div className="p-2.5 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between text-[11px] font-mono text-[var(--cds-text-03)]">
                       <div className="flex items-center gap-1">
                         <LinkIcon className="w-3 h-3 text-[#0f62fe]" />
                         <span>{tableRels.length} {isAr ? 'علاقات' : 'linked'}</span>
@@ -1151,13 +1151,13 @@ export const DataModelingStudio: React.FC = () => {
 
       {/* VIEW TAB 2: Relationships Matrix List */}
       {activeTab === 'relationships' && (
-        <div className="bg-[#1f1f1f] border border-[#393939] p-5 space-y-4">
+        <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+              <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                 {isAr ? 'جدول العلاقات والقيود الهيكلية (Relational Constraints)' : 'Relational Constraint Matrix'}
               </h3>
-              <p className="text-xs text-[#c6c6c6] mt-0.5">
+              <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                 {isAr ? 'جميع القيود والعلاقات المحددة بين الشيتات يدوياً أو المكتشفة بالذكاء الاصطناعي' : 'All foreign key relationships and cardinalities across sheets.'}
               </p>
             </div>
@@ -1173,18 +1173,18 @@ export const DataModelingStudio: React.FC = () => {
           </div>
 
           {relationships.length === 0 ? (
-            <div className="p-8 border border-[#393939] bg-[#161616] text-center text-[#8d8d8d] font-mono text-xs space-y-2">
-              <LinkIcon className="w-8 h-8 text-[#525252] mx-auto" />
+            <div className="p-8 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-center text-[var(--cds-text-03)] font-mono text-xs space-y-2">
+              <LinkIcon className="w-8 h-8 text-[var(--cds-text-03)] mx-auto" />
               <p>{isAr ? 'لم يتم إنشاؤ أي علاقات بين الشيتات بعد.' : 'No relationships created yet.'}</p>
-              <p className="text-[11px] text-[#525252]">
+              <p className="text-[11px] text-[var(--cds-text-03)]">
                 {isAr ? 'اضغط "نمذجة بالذكاء الاصطناعي" للاكتشاف التلقائي، أو أضف علاقات يدوياً.' : 'Click "Data Modeling with AI" or add relationships manually.'}
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto border border-[#393939]">
+            <div className="overflow-x-auto border border-[var(--cds-border-subtle)]">
               <table className="w-full text-start border-collapse text-xs font-mono">
                 <thead>
-                  <tr className="bg-[#161616] border-b border-[#393939] text-[#8d8d8d]">
+                  <tr className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] text-[var(--cds-text-03)]">
                     <th className="p-3 text-start">#</th>
                     <th className="p-3 text-start">{isAr ? 'الجدول المصدر (FK Table)' : 'Source Table'}</th>
                     <th className="p-3 text-start">{isAr ? 'العمود المفتاح (FK)' : 'Source FK Column'}</th>
@@ -1192,13 +1192,13 @@ export const DataModelingStudio: React.FC = () => {
                     <th className="p-3 text-start">{isAr ? 'الجدول المستهدف (PK Table)' : 'Target Table'}</th>
                     <th className="p-3 text-start">{isAr ? 'المفتاح الرئيسي (PK)' : 'Target PK Column'}</th>
                     <th className="p-3 text-center">{isAr ? 'المصدر' : 'Source'}</th>
-                    <th className="p-3 text-[#393939] text-center">{isAr ? 'إجراءات' : 'Actions'}</th>
+                    <th className="p-3 text-[var(--cds-text-03)] text-center">{isAr ? 'إجراءات' : 'Actions'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#393939] text-[#f4f4f4]">
+                <tbody className="divide-y divide-[var(--cds-border-subtle)] text-[var(--cds-text-01)]">
                   {relationships.map((r, idx) => (
-                    <tr key={r.id} className="hover:bg-[#262626] transition-colors">
-                      <td className="p-3 text-[#8d8d8d]">{idx + 1}</td>
+                    <tr key={r.id} className="hover:bg-[var(--cds-layer-02)] transition-colors">
+                      <td className="p-3 text-[var(--cds-text-03)]">{idx + 1}</td>
                       <td className="p-3 font-bold text-[#78a9ff]">{r.sourceTable}</td>
                       <td className="p-3">
                         <span className="px-2 py-0.5 bg-[#0f62fe]/10 border border-[#0f62fe]/30 text-[#78a9ff]">
@@ -1223,7 +1223,7 @@ export const DataModelingStudio: React.FC = () => {
                             <span>AI ({r.confidence}%)</span>
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 bg-[#393939] text-[#c6c6c6] text-[10px]">
+                          <span className="px-2 py-0.5 bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] text-[10px]">
                             Manual
                           </span>
                         )}
@@ -1262,26 +1262,26 @@ export const DataModelingStudio: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 1. Relational Excel Export */}
-            <div className="bg-[#1f1f1f] border border-[#393939] p-5 space-y-4 shadow-xl flex flex-col justify-between">
+            <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4 shadow-xl flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#24a148]/20 border border-[#24a148] flex items-center justify-center text-[#42be65]">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                    <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                       {isAr ? 'تصدير كملف أكسيل مترابط (.xlsx)' : 'Export Relational Excel (.xlsx)'}
                     </h3>
-                    <p className="text-xs text-[#c6c6c6] mt-0.5">
+                    <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                       {isAr ? 'يتضمن شيتات البيانات بالإضافة لشيت خاص بالبيانات الوصفية والعلاقات (_Schema_Relationships)' : 'Exports multi-sheet workbook with _Schema_Relationships schema sheet.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#161616] border border-[#393939] text-xs font-mono space-y-1.5 text-[#c6c6c6]">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono space-y-1.5 text-[var(--cds-text-02)]">
                   <div className="flex justify-between">
                     <span>{isAr ? 'اسم الملف:' : 'Filename:'}</span>
-                    <span className="text-[#f4f4f4] font-bold truncate max-w-[150px]">{schemaTitle}_Relational_Model.xlsx</span>
+                    <span className="text-[var(--cds-text-01)] font-bold truncate max-w-[150px]">{schemaTitle}_Relational_Model.xlsx</span>
                   </div>
                   <div className="flex justify-between">
                     <span>{isAr ? 'الشيتات:' : 'Worksheets:'}</span>
@@ -1305,23 +1305,23 @@ export const DataModelingStudio: React.FC = () => {
             </div>
 
             {/* 2. Full Relational Schema JSON Metadata Export */}
-            <div className="bg-[#1f1f1f] border border-[#393939] p-5 space-y-4 shadow-xl flex flex-col justify-between">
+            <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4 shadow-xl flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#8a3ffc]/20 border border-[#8a3ffc] flex items-center justify-center text-[#be95ff]">
                     <FileCode className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                    <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                       {isAr ? 'تصدير المخطط بنمط JSON (.json)' : 'Export Schema Metadata JSON (.json)'}
                     </h3>
-                    <p className="text-xs text-[#c6c6c6] mt-0.5">
+                    <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                       {isAr ? 'بيانات هيكلية شاملة للمفاهيم، الجداول، والمفاتيح الخارجية للاستخدام الخارجي' : 'Export standard JSON schema definition including tables & constraints.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#161616] border border-[#393939] text-xs font-mono space-y-1.5 text-[#c6c6c6]">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono space-y-1.5 text-[var(--cds-text-02)]">
                   <div className="flex justify-between">
                     <span>{isAr ? 'نمط Schema:' : 'Schema Version:'}</span>
                     <span className="text-[#be95ff] font-bold">v1.0 (Carbon Standard)</span>
@@ -1349,7 +1349,7 @@ export const DataModelingStudio: React.FC = () => {
 
                 <button
                   onClick={() => handleCopyCode(generatedJsonMetadata)}
-                  className="py-2.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  className="py-2.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Copy className="w-4 h-4" />
                   <span>{isAr ? 'نسخ JSON' : 'Copy JSON'}</span>
@@ -1358,7 +1358,7 @@ export const DataModelingStudio: React.FC = () => {
             </div>
 
             {/* 3. Multi-Dialect SQL Script Download */}
-            <div className="bg-[#1f1f1f] border border-[#393939] p-5 space-y-4 shadow-xl flex flex-col justify-between">
+            <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4 shadow-xl flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1366,23 +1366,23 @@ export const DataModelingStudio: React.FC = () => {
                       <Database className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                      <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                         {isAr ? 'تحميل سكريبت SQL DDL' : 'Download SQL DDL Script'}
                       </h3>
-                      <p className="text-xs text-[#c6c6c6] mt-0.5">
+                      <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                         {isAr ? 'توليد سكريبت إنشاء الجداول والقيود جاهز للتنفيذ' : 'Generates CREATE TABLE & foreign keys DDL script.'}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#161616] border border-[#393939] text-xs font-mono space-y-1.5 text-[#c6c6c6]">
+                <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono space-y-1.5 text-[var(--cds-text-02)]">
                   <div className="flex justify-between items-center">
                     <span>{isAr ? 'لهجة SQL:' : 'SQL Dialect:'}</span>
                     <select
                       value={exportSqlDialect}
                       onChange={e => setExportSqlDialect(e.target.value as any)}
-                      className="bg-[#262626] border border-[#393939] text-[#78a9ff] font-bold px-2 py-0.5 text-[11px] outline-none"
+                      className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[#78a9ff] font-bold px-2 py-0.5 text-[11px] outline-none"
                     >
                       <option value="postgres">PostgreSQL</option>
                       <option value="mysql">MySQL / MariaDB</option>
@@ -1410,7 +1410,7 @@ export const DataModelingStudio: React.FC = () => {
 
                 <button
                   onClick={() => handleCopyCode(generatedSqlDdl)}
-                  className="py-2.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  className="py-2.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Copy className="w-4 h-4" />
                   <span>{isAr ? 'نسخ SQL' : 'Copy DDL'}</span>
@@ -1420,25 +1420,25 @@ export const DataModelingStudio: React.FC = () => {
           </div>
 
           {/* 4. Schema Mapping Code Generators (Prisma, Drizzle, SQL DDL, JSON) */}
-          <div className="bg-[#1f1f1f] border border-[#393939] p-5 space-y-4 shadow-xl">
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#007d79]/20 border border-[#007d79] flex items-center justify-center text-[#007d79]">
                   <Code className="w-5 h-5 text-[#6fdc8c]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                  <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                     {isAr ? 'كود تعيين المخطط والهيكلية (Schema Mapping Code)' : 'Schema Mapping Code Generator'}
                   </h3>
-                  <p className="text-xs text-[#c6c6c6] mt-0.5">
+                  <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
                     {isAr ? 'توليد تلقائي لكود تعيين النماذج للغات البرمجة وأطر العمل (Prisma, Drizzle, TypeScript, DDL)' : 'Auto-generated schema code for Prisma, Drizzle ORM, TypeScript interfaces, and SQL.'}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="border border-[#393939] bg-[#161616]">
-              <div className="flex items-center border-b border-[#393939] bg-[#1f1f1f] px-2 text-xs font-mono">
+            <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+              <div className="flex items-center border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-2 text-xs font-mono">
                 <button
                   onClick={() => setExportSqlDialect('postgres')}
                   className="px-3 py-2 text-[#78a9ff] border-b-2 border-[#0f62fe] font-bold"
@@ -1460,12 +1460,12 @@ export const DataModelingStudio: React.FC = () => {
               </div>
 
               <div className="relative p-3 max-h-80 overflow-y-auto">
-                <pre className="text-[#f4f4f4] font-mono text-[11px] whitespace-pre">
+                <pre className="text-[var(--cds-text-01)] font-mono text-[11px] whitespace-pre">
                   {generatedSchemaMappingCode.prisma}
                 </pre>
                 <button
                   onClick={() => handleCopyCode(generatedSchemaMappingCode.prisma)}
-                  className="absolute top-2 right-2 rtl:right-auto rtl:left-2 px-2.5 py-1 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-[10px] font-mono flex items-center gap-1 transition-colors"
+                  className="absolute top-2 right-2 rtl:right-auto rtl:left-2 px-2.5 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-[10px] font-mono flex items-center gap-1 transition-colors"
                 >
                   {copiedCode ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedCode ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ Prisma' : 'Copy Prisma')}</span>
@@ -1479,11 +1479,11 @@ export const DataModelingStudio: React.FC = () => {
       {/* MANUAL RELATIONSHIP MODAL */}
       {showRelationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#262626] border border-[#393939] w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="p-4 bg-[#1f1f1f] border-b border-[#393939] flex items-center justify-between">
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <LinkIcon className="w-4 h-4 text-[#0f62fe]" />
-                <h3 className="text-sm font-mono font-bold uppercase text-[#f4f4f4]">
+                <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                   {editingRelId
                     ? (isAr ? 'تعديل علاقة هيكلية' : 'Edit Relationship')
                     : (isAr ? 'إضافة علاقة جديدة بين شيتين' : 'Create New Foreign Key Relationship')}
@@ -1491,7 +1491,7 @@ export const DataModelingStudio: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowRelationModal(false)}
-                className="p-1 hover:bg-[#393939] text-[#c6c6c6]"
+                className="p-1 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1499,7 +1499,7 @@ export const DataModelingStudio: React.FC = () => {
 
             <div className="p-5 space-y-4 text-xs font-mono">
               {/* Source Table & Column (FK) */}
-              <div className="space-y-2 p-3 bg-[#1f1f1f] border border-[#393939]">
+              <div className="space-y-2 p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <label className="text-[#78a9ff] font-bold block uppercase">
                   1. {isAr ? 'الجدول المصدر (حاوي المفتاح الأجنبي FK)' : 'Source Table (Contains Foreign Key)'}
                 </label>
@@ -1512,7 +1512,7 @@ export const DataModelingStudio: React.FC = () => {
                       const tObj = tables.find(t => t.name === tName);
                       setRelSourceCol(tObj?.columns[0]?.name || '');
                     }}
-                    className="bg-[#262626] border border-[#393939] text-[#f4f4f4] p-2 outline-none"
+                    className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none"
                   >
                     {tables.map(t => (
                       <option key={t.id} value={t.name}>{t.name}</option>
@@ -1522,7 +1522,7 @@ export const DataModelingStudio: React.FC = () => {
                   <select
                     value={relSourceCol}
                     onChange={e => setRelSourceCol(e.target.value)}
-                    className="bg-[#262626] border border-[#393939] text-[#f4f4f4] p-2 outline-none"
+                    className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none"
                   >
                     {tables.find(t => t.name === relSourceTable)?.columns.map(c => (
                       <option key={c.name} value={c.name}>{c.name} ({c.type})</option>
@@ -1533,11 +1533,11 @@ export const DataModelingStudio: React.FC = () => {
 
               {/* Cardinality Selector */}
               <div className="space-y-1">
-                <label className="text-[#8d8d8d] block">{isAr ? 'نوع العلاقة (Cardinality):' : 'Relationship Type:'}</label>
+                <label className="text-[var(--cds-text-03)] block">{isAr ? 'نوع العلاقة (Cardinality):' : 'Relationship Type:'}</label>
                 <select
                   value={relType}
                   onChange={e => setRelType(e.target.value as RelationshipType)}
-                  className="w-full bg-[#1f1f1f] border border-[#393939] text-[#f4f4f4] p-2 outline-none font-bold text-[#be95ff]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none font-bold text-[#be95ff]"
                 >
                   <option value="1:M">1:M (One-to-Many / واحد لمتعدد - الشائع)</option>
                   <option value="1:1">1:1 (One-to-One / واحد لواحد)</option>
@@ -1546,7 +1546,7 @@ export const DataModelingStudio: React.FC = () => {
               </div>
 
               {/* Target Table & Column (PK) */}
-              <div className="space-y-2 p-3 bg-[#1f1f1f] border border-[#393939]">
+              <div className="space-y-2 p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <label className="text-[#42be65] font-bold block uppercase">
                   2. {isAr ? 'الجدول المستهدف (المستند إليه - المفتاح الرئيسي PK)' : 'Target Table (Referenced Primary Key)'}
                 </label>
@@ -1559,7 +1559,7 @@ export const DataModelingStudio: React.FC = () => {
                       const tObj = tables.find(t => t.name === tName);
                       setRelTargetCol(tObj?.primaryKey?.[0] || tObj?.columns[0]?.name || '');
                     }}
-                    className="bg-[#262626] border border-[#393939] text-[#f4f4f4] p-2 outline-none"
+                    className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none"
                   >
                     {tables.map(t => (
                       <option key={t.id} value={t.name}>{t.name}</option>
@@ -1569,7 +1569,7 @@ export const DataModelingStudio: React.FC = () => {
                   <select
                     value={relTargetCol}
                     onChange={e => setRelTargetCol(e.target.value)}
-                    className="bg-[#262626] border border-[#393939] text-[#f4f4f4] p-2 outline-none"
+                    className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none"
                   >
                     {tables.find(t => t.name === relTargetTable)?.columns.map(c => (
                       <option key={c.name} value={c.name}>{c.name} ({c.type})</option>
@@ -1580,21 +1580,21 @@ export const DataModelingStudio: React.FC = () => {
 
               {/* Description / Notes */}
               <div className="space-y-1">
-                <label className="text-[#8d8d8d] block">{isAr ? 'ملاحظات وصفية:' : 'Description / Notes:'}</label>
+                <label className="text-[var(--cds-text-03)] block">{isAr ? 'ملاحظات وصفية:' : 'Description / Notes:'}</label>
                 <input
                   type="text"
                   value={relDesc}
                   onChange={e => setRelDesc(e.target.value)}
                   placeholder={isAr ? 'مثال: ربط الطلبات بالعملاء عبر رقم العميل' : 'e.g. Orders linked to Customers via customer_id'}
-                  className="w-full bg-[#1f1f1f] border border-[#393939] text-[#f4f4f4] p-2 outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-2 outline-none"
                 />
               </div>
             </div>
 
-            <div className="p-4 bg-[#1f1f1f] border-t border-[#393939] flex items-center justify-end gap-2 font-mono text-xs">
+            <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-end gap-2 font-mono text-xs">
               <button
                 onClick={() => setShowRelationModal(false)}
-                className="px-3 py-1.5 bg-[#393939] text-[#c6c6c6] hover:text-[#f4f4f4]"
+                className="px-3 py-1.5 bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)]"
               >
                 {isAr ? 'إلغاء' : 'Cancel'}
               </button>
@@ -1614,22 +1614,22 @@ export const DataModelingStudio: React.FC = () => {
       {/* Download Schema Modal */}
       {showDownloadSchemaModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-[#161616] border border-[#393939] w-full max-w-xl shadow-2xl space-y-0">
-            <div className="p-4 bg-[#1f1f1f] border-b border-[#393939] flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[#f4f4f4] font-mono font-bold text-sm">
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] w-full max-w-xl shadow-2xl space-y-0">
+            <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[var(--cds-text-01)] font-mono font-bold text-sm">
                 <Download className="w-4 h-4 text-[#42be65]" />
                 <span>{isAr ? 'تحميل مخطط العلاقات (Download Schema)' : 'Download Relational Schema'}</span>
               </div>
               <button
                 onClick={() => setShowDownloadSchemaModal(false)}
-                className="text-[#8d8d8d] hover:text-white"
+                className="text-[var(--cds-text-03)] hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
-              <p className="text-xs text-[#c6c6c6] font-mono leading-relaxed">
+              <p className="text-xs text-[var(--cds-text-02)] font-mono leading-relaxed">
                 {isAr
                   ? 'تصدير تعيين العلاقات الحالية (العلاقات، المفاتيح الرئيسية والغريبة، وأنواع البيانات) بتنسيق قابل للتحميل:'
                   : 'Export current relational mapping (relationships, primary/foreign keys, and data types) as a downloadable file:'}
@@ -1637,13 +1637,13 @@ export const DataModelingStudio: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Download SQL DDL Option */}
-                <div className="p-4 bg-[#1f1f1f] border border-[#0f62fe] space-y-3 flex flex-col justify-between">
+                <div className="p-4 bg-[var(--cds-layer-01)] border border-[#0f62fe] space-y-3 flex flex-col justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[#78a9ff] font-mono font-bold text-xs">
                       <Database className="w-4 h-4" />
                       <span>{isAr ? 'سكريبت SQL DDL Script' : 'SQL DDL Script (.sql)'}</span>
                     </div>
-                    <p className="text-[11px] text-[#a8a8a8]">
+                    <p className="text-[11px] text-[var(--cds-text-02)]">
                       {isAr ? 'أوامر CREATE TABLE والـ Foreign Keys للهجة ' + exportSqlDialect.toUpperCase() : 'DDL statements for ' + exportSqlDialect.toUpperCase() + ' dialect.'}
                     </p>
                   </div>
@@ -1661,13 +1661,13 @@ export const DataModelingStudio: React.FC = () => {
                 </div>
 
                 {/* Download JSON Metadata Option */}
-                <div className="p-4 bg-[#1f1f1f] border border-[#8a3ffc] space-y-3 flex flex-col justify-between">
+                <div className="p-4 bg-[var(--cds-layer-01)] border border-[#8a3ffc] space-y-3 flex flex-col justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[#be95ff] font-mono font-bold text-xs">
                       <FileCode className="w-4 h-4" />
                       <span>{isAr ? 'ملف وصف JSON Metadata' : 'JSON Metadata (.json)'}</span>
                     </div>
-                    <p className="text-[11px] text-[#a8a8a8]">
+                    <p className="text-[11px] text-[var(--cds-text-02)]">
                       {isAr ? 'مخزن بيانات المخطط والجداول والعلاقات بنمط JSON القياسي' : 'Export complete structured metadata JSON object.'}
                     </p>
                   </div>
@@ -1686,10 +1686,10 @@ export const DataModelingStudio: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-3 bg-[#1f1f1f] border-t border-[#393939] flex justify-end">
+            <div className="p-3 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex justify-end">
               <button
                 onClick={() => setShowDownloadSchemaModal(false)}
-                className="px-4 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono"
+                className="px-4 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono"
               >
                 {isAr ? 'إغلاق' : 'Close'}
               </button>

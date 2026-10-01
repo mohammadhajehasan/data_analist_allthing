@@ -171,7 +171,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#393939] text-[#c6c6c6] text-[9px] font-mono uppercase">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] text-[9px] font-mono uppercase">
             {String(type)}
           </span>
         );
@@ -246,7 +246,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
   const renderCellContent = (value: any, col: DatasetColumn) => {
     if (value === null || value === undefined || value === '') {
       return (
-        <span className="text-[#6f6f6f] italic text-[10px] bg-[#222222] px-1 py-0.5 border border-[#393939]">
+        <span className="text-[var(--cds-text-03)] italic text-[10px] bg-[var(--cds-layer-02)] px-1 py-0.5 border border-[var(--cds-border-subtle)]">
           NULL
         </span>
       );
@@ -254,13 +254,13 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
 
     if (col.type === 'integer' || col.type === 'float') {
       const num = Number(value);
-      if (isNaN(num)) return <span className="font-mono text-[#f4f4f4]">{String(value)}</span>;
+      if (isNaN(num)) return <span className="font-mono text-[var(--cds-text-01)]">{String(value)}</span>;
       
       const isNegative = num < 0;
       const formatted = col.type === 'float' ? num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : num.toLocaleString();
 
       return (
-        <span className={`font-mono font-medium ${isNegative ? 'text-[#ff8389]' : 'text-[#f4f4f4]'}`}>
+        <span className={`font-mono font-medium ${isNegative ? 'text-[#ff8389]' : 'text-[var(--cds-text-01)]'}`}>
           {formatted}
         </span>
       );
@@ -286,37 +286,37 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
           </span>
         );
       }
-      return <span className="text-[#c6c6c6]">{strVal}</span>;
+      return <span className="text-[var(--cds-text-02)]">{strVal}</span>;
     }
 
-    return <span className="text-[#f4f4f4] truncate max-w-xs">{String(value)}</span>;
+    return <span className="text-[var(--cds-text-01)] truncate max-w-xs">{String(value)}</span>;
   };
 
   const containerClasses = isFullscreen
-    ? 'fixed inset-0 z-50 bg-[#161616] p-6 flex flex-col overflow-hidden animate-in fade-in duration-150'
-    : 'carbon-tile overflow-hidden shadow-none border border-[#393939] transition-all';
+    ? 'fixed inset-0 z-50 bg-[var(--cds-layer-01)] p-6 flex flex-col overflow-hidden animate-in fade-in duration-150'
+    : 'carbon-tile overflow-hidden shadow-none border border-[var(--cds-border-subtle)] transition-all';
 
   return (
     <div className={containerClasses} id={`data-preview-${dataset.id}`}>
       {/* Header Toolbar */}
-      <div className="bg-[#262626] p-4 border-b border-[#393939] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-[var(--cds-layer-02)] p-4 border-b border-[var(--cds-border-subtle)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#4589ff]">
             <Table className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-[#f4f4f4] tracking-tight">
+              <h3 className="text-sm font-bold text-[var(--cds-text-01)] tracking-tight">
                 {isAr ? 'معاينة البيانات الحية' : 'Data Preview'} — {dataset.name}
               </h3>
               <span className="carbon-tag-blue text-[10px] uppercase font-mono">
                 {dataset.format}
               </span>
-              <span className="bg-[#393939] text-[#4589ff] px-2 py-0.5 text-[10px] font-mono font-bold">
+              <span className="bg-[var(--cds-layer-03)] text-[#4589ff] px-2 py-0.5 text-[10px] font-mono font-bold">
                 {isAr ? `عرض أول ${previewRows.length} صف` : `First ${previewRows.length} Rows`}
               </span>
             </div>
-            <p className="text-[11px] text-[#8d8d8d] mt-0.5">
+            <p className="text-[11px] text-[var(--cds-text-03)] mt-0.5">
               {isAr
                 ? `إجمالي السجلات: ${dataset.rowCount.toLocaleString()} صف | ${dataset.columns.length} عمود مع مؤشرات الأنواع والتنسيق التلقائي`
                 : `Total: ${dataset.rowCount.toLocaleString()} records across ${dataset.columns.length} columns with type indicators and live sample grid`}
@@ -328,18 +328,18 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
         <div className="flex flex-wrap items-center gap-2">
           {/* Real-time In-Preview Search */}
           <div className="relative min-w-[180px] sm:min-w-[220px]">
-            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[#8d8d8d]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--cds-text-03)]" />
             <input
               type="text"
               placeholder={isAr ? 'بحث في الـ 50 صفاً...' : 'Search preview sample...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-[#161616] border border-[#525252] text-[#f4f4f4] text-xs ps-8 pe-6 py-1.5 focus:border-[#0f62fe] focus:outline-none font-mono placeholder:text-[#6f6f6f]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-6 py-1.5 focus:border-[#0f62fe] focus:outline-none font-mono placeholder:text-[var(--cds-text-03)]"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute end-2 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-white text-xs"
+                className="absolute end-2 top-1/2 -translate-y-1/2 text-[var(--cds-text-03)] hover:text-white text-xs"
               >
                 ✕
               </button>
@@ -347,25 +347,25 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
           </div>
 
           {/* Type Filter */}
-          <div className="flex items-center border border-[#525252] bg-[#161616] px-1 py-0.5">
-            <Filter className="w-3 h-3 text-[#8d8d8d] ms-1 me-1.5" />
+          <div className="flex items-center border border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] px-1 py-0.5">
+            <Filter className="w-3 h-3 text-[var(--cds-text-03)] ms-1 me-1.5" />
             <select
               value={selectedTypeFilter}
               onChange={e => setSelectedTypeFilter(e.target.value)}
-              className="bg-transparent text-xs text-[#c6c6c6] font-mono focus:outline-none cursor-pointer py-1"
+              className="bg-transparent text-xs text-[var(--cds-text-02)] font-mono focus:outline-none cursor-pointer py-1"
             >
-              <option value="all" className="bg-[#262626]">{isAr ? 'جميع الحقول' : 'All Types'}</option>
-              <option value="numeric" className="bg-[#262626]">{isAr ? 'أرقام (#)' : 'Numeric'}</option>
-              <option value="text" className="bg-[#262626]">{isAr ? 'نصوص (Aa)' : 'Text/String'}</option>
-              <option value="date" className="bg-[#262626]">{isAr ? 'تواريخ (📅)' : 'Dates'}</option>
-              <option value="category" className="bg-[#262626]">{isAr ? 'فئات وقيم منطقية' : 'Categories'}</option>
+              <option value="all" className="bg-[var(--cds-layer-02)]">{isAr ? 'جميع الحقول' : 'All Types'}</option>
+              <option value="numeric" className="bg-[var(--cds-layer-02)]">{isAr ? 'أرقام (#)' : 'Numeric'}</option>
+              <option value="text" className="bg-[var(--cds-layer-02)]">{isAr ? 'نصوص (Aa)' : 'Text/String'}</option>
+              <option value="date" className="bg-[var(--cds-layer-02)]">{isAr ? 'تواريخ (📅)' : 'Dates'}</option>
+              <option value="category" className="bg-[var(--cds-layer-02)]">{isAr ? 'فئات وقيم منطقية' : 'Categories'}</option>
             </select>
           </div>
 
           {/* Export Full Dataset CSV */}
           <button
             onClick={exportFullDatasetCsv}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono transition-colors cursor-pointer"
             title={isAr ? 'تصدير مجموعة البيانات الكاملة بصيغة CSV' : 'Export full dataset object to CSV'}
           >
             <Download className="w-3.5 h-3.5 text-[#4589ff]" />
@@ -388,7 +388,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
               setActiveDatasetId(dataset.id);
               setActiveTab('explorer');
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono transition-colors"
             title={isAr ? 'فتح في مستكشف الاستعلامات الكامل' : 'Open in SQL Explorer'}
           >
             <Eye className="w-3.5 h-3.5 text-[#08bdba]" />
@@ -401,7 +401,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
               setActiveDatasetId(dataset.id);
               setActiveTab('profiling');
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#f4f4f4] text-xs font-mono transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono transition-colors"
             title={isAr ? 'فتح التوصيف الإحصائي الشامل' : 'Open statistical profiling'}
           >
             <BarChart2 className="w-3.5 h-3.5 text-[#f1c21b]" />
@@ -411,7 +411,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
           {/* Fullscreen Toggle */}
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 bg-[#393939] hover:bg-[#4c4c4c] text-[#c6c6c6] hover:text-white transition-colors"
+            className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white transition-colors"
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Grid'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -421,7 +421,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 bg-[#393939] hover:bg-[#da1e28] text-[#8d8d8d] hover:text-white transition-colors"
+              className="p-1.5 bg-[var(--cds-layer-03)] hover:bg-[#da1e28] text-[var(--cds-text-03)] hover:text-white transition-colors"
               title="Close Preview"
             >
               <X className="w-3.5 h-3.5" />
@@ -431,15 +431,15 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
       </div>
 
       {/* Grid Meta Information Bar */}
-      <div className="bg-[#1f1f1f] px-4 py-2 border-b border-[#393939] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#8d8d8d]">
+      <div className="bg-[var(--cds-layer-01)] px-4 py-2 border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--cds-text-03)]">
         <div className="flex items-center gap-4 flex-wrap">
           <span>
             {isAr ? 'الصفوف المعروضة:' : 'Visible Rows:'}{' '}
-            <strong className="text-[#f4f4f4]">{filteredAndSortedRows.length}</strong> / {previewRows.length}
+            <strong className="text-[var(--cds-text-01)]">{filteredAndSortedRows.length}</strong> / {previewRows.length}
           </span>
           <span>
             {isAr ? 'الأعمدة المعروضة:' : 'Columns:'}{' '}
-            <strong className="text-[#f4f4f4]">{visibleColumns.length}</strong> / {dataset.columns.length}
+            <strong className="text-[var(--cds-text-01)]">{visibleColumns.length}</strong> / {dataset.columns.length}
           </span>
           {sortColumn && (
             <span className="text-[#4589ff] flex items-center gap-1">
@@ -450,13 +450,13 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[#8d8d8d] hidden sm:inline">
+          <span className="text-[var(--cds-text-03)] hidden sm:inline">
             {isAr ? 'انقر على رأس العمود للترتيب • مرر أفقياً لتصفح بقية الحقول' : 'Click header to sort • Scroll horizontally for more columns'}
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
-              className="text-[10px] px-2 py-0.5 bg-[#333333] hover:bg-[#444444] text-[#c6c6c6] uppercase"
+              className="text-[10px] px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-02)] uppercase"
             >
               {density === 'compact' ? 'Compact' : 'Comfortable'}
             </button>
@@ -465,12 +465,12 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
       </div>
 
       {/* Scrollable Data Grid Container */}
-      <div className={`overflow-x-auto overflow-y-auto ${isFullscreen ? 'flex-1 max-h-none' : 'max-h-[480px]'} bg-[#161616]`}>
+      <div className={`overflow-x-auto overflow-y-auto ${isFullscreen ? 'flex-1 max-h-none' : 'max-h-[480px]'} bg-[var(--cds-layer-01)]`}>
         <table className="w-full text-start text-xs border-collapse font-sans min-w-[700px]">
-          <thead className="bg-[#1a1a1a] sticky top-0 z-20 shadow-xs border-b border-[#393939]">
+          <thead className="bg-[var(--cds-layer-01)] sticky top-0 z-20 shadow-xs border-b border-[var(--cds-border-subtle)]">
             <tr>
               {/* Row Index Header (Sticky Left) */}
-              <th className="sticky start-0 z-30 bg-[#1f1f1f] text-[#8d8d8d] font-mono text-[10px] px-3 py-3 text-center border-e border-b border-[#393939] w-12 select-none">
+              <th className="sticky start-0 z-30 bg-[var(--cds-layer-01)] text-[var(--cds-text-03)] font-mono text-[10px] px-3 py-3 text-center border-e border-b border-[var(--cds-border-subtle)] w-12 select-none">
                 #
               </th>
 
@@ -481,8 +481,8 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
                   <th
                     key={col.name}
                     onClick={() => handleSort(col.name)}
-                    className={`px-4 py-2.5 text-start font-mono text-xs border-e border-b border-[#393939] cursor-pointer select-none transition-colors group ${
-                      isSorted ? 'bg-[#262626] text-[#4589ff]' : 'hover:bg-[#262626] text-[#f4f4f4]'
+                    className={`px-4 py-2.5 text-start font-mono text-xs border-e border-b border-[var(--cds-border-subtle)] cursor-pointer select-none transition-colors group ${
+                      isSorted ? 'bg-[var(--cds-layer-02)] text-[#4589ff]' : 'hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-01)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -491,17 +491,17 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
                         {getTypeBadge(col.type)}
                         <ArrowUpDown
                           className={`w-3 h-3 transition-opacity ${
-                            isSorted ? 'opacity-100 text-[#0f62fe]' : 'opacity-0 group-hover:opacity-40 text-[#8d8d8d]'
+                            isSorted ? 'opacity-100 text-[#0f62fe]' : 'opacity-0 group-hover:opacity-40 text-[var(--cds-text-03)]'
                           }`}
                         />
                       </div>
                     </div>
 
                     {/* Column meta snippet */}
-                    <div className="flex items-center justify-between text-[9px] font-normal text-[#8d8d8d] mt-1">
+                    <div className="flex items-center justify-between text-[9px] font-normal text-[var(--cds-text-03)] mt-1">
                       <span>{col.nullable ? (isAr ? 'يقبل NULL' : 'Nullable') : (isAr ? 'إلزامي' : 'Not Null')}</span>
                       {col.sampleValues && col.sampleValues.length > 0 && (
-                        <span className="truncate max-w-[90px] text-[#6f6f6f] hidden xl:inline">
+                        <span className="truncate max-w-[90px] text-[var(--cds-text-03)] hidden xl:inline">
                           e.g. {String(col.sampleValues[0])}
                         </span>
                       )}
@@ -512,16 +512,16 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-[#2a2a2a] font-mono text-[11px]">
+          <tbody className="divide-y divide-[var(--cds-border-subtle)] font-mono text-[11px]">
             {filteredAndSortedRows.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#8d8d8d] font-mono">
+                <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[var(--cds-text-03)] font-mono">
                   <div className="max-w-xs mx-auto space-y-2">
-                    <Table className="w-8 h-8 text-[#525252] mx-auto" />
-                    <p className="font-bold text-[#f4f4f4]">
+                    <Table className="w-8 h-8 text-[var(--cds-text-03)] mx-auto" />
+                    <p className="font-bold text-[var(--cds-text-01)]">
                       {isAr ? 'لم يتم العثور على سجلات مطابقة' : 'No records match search'}
                     </p>
-                    <p className="text-xs text-[#8d8d8d]">
+                    <p className="text-xs text-[var(--cds-text-03)]">
                       {isAr ? 'جرّب تغيير عبارة البحث أو إزالة المرشحات.' : 'Try adjusting the search query or reset type filter.'}
                     </p>
                   </div>
@@ -533,10 +533,10 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
                 return (
                   <tr
                     key={rowIdx}
-                    className={`transition-colors hover:bg-[#2c2c2c] ${isEven ? 'bg-[#161616]' : 'bg-[#1a1a1a]'}`}
+                    className={`transition-colors hover:bg-[#2c2c2c] ${isEven ? 'bg-[var(--cds-layer-01)]' : 'bg-[var(--cds-layer-01)]'}`}
                   >
                     {/* Row Index (Sticky Left) */}
-                    <td className={`sticky start-0 z-10 font-mono text-[10px] text-[#8d8d8d] px-3 ${density === 'compact' ? 'py-1.5' : 'py-3'} text-center border-e border-[#393939] select-none ${isEven ? 'bg-[#1c1c1c]' : 'bg-[#202020]'}`}>
+                    <td className={`sticky start-0 z-10 font-mono text-[10px] text-[var(--cds-text-03)] px-3 ${density === 'compact' ? 'py-1.5' : 'py-3'} text-center border-e border-[var(--cds-border-subtle)] select-none ${isEven ? 'bg-[var(--cds-layer-02)]' : 'bg-[var(--cds-layer-02)]'}`}>
                       {rowIdx + 1}
                     </td>
 
@@ -547,7 +547,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
                       return (
                         <td
                           key={col.name}
-                          className={`px-4 ${density === 'compact' ? 'py-1.5' : 'py-2.5'} border-e border-[#262626] whitespace-nowrap ${
+                          className={`px-4 ${density === 'compact' ? 'py-1.5' : 'py-2.5'} border-e border-[var(--cds-border-subtle)] whitespace-nowrap ${
                             isNumeric ? 'text-end' : 'text-start'
                           }`}
                         >
@@ -564,22 +564,22 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
       </div>
 
       {/* Footer Summary Ribbon */}
-      <div className="bg-[#262626] px-4 py-2.5 border-t border-[#393939] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-        <div className="flex items-center gap-3 text-[#c6c6c6] text-[11px]">
+      <div className="bg-[var(--cds-layer-02)] px-4 py-2.5 border-t border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="flex items-center gap-3 text-[var(--cds-text-02)] text-[11px]">
           <span className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-[#0f62fe]" />
             <span>{isAr ? 'عينة المعاينة المباشرة (50 صف)' : 'Live 50-Row Active Preview'}</span>
           </span>
-          <span className="text-[#525252]">|</span>
+          <span className="text-[var(--cds-text-03)]">|</span>
           <span>
             {isAr ? `إجمالي البيانات: ${dataset.rowCount.toLocaleString()} صف` : `Dataset Total: ${dataset.rowCount.toLocaleString()} records`}
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[11px] text-[#8d8d8d]">
+        <div className="flex items-center gap-4 text-[11px] text-[var(--cds-text-03)]">
           <span>
             {isAr ? 'الحجم التقديري:' : 'Size:'}{' '}
-            <strong className="text-[#f4f4f4]">{Math.round(dataset.sizeBytes / 1024)} KB</strong>
+            <strong className="text-[var(--cds-text-01)]">{Math.round(dataset.sizeBytes / 1024)} KB</strong>
           </span>
           <span>
             {isAr ? 'جودة البيانات:' : 'Health:'}{' '}

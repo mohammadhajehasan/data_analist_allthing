@@ -152,9 +152,9 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-[#1f1f1f] border border-[#393939] rounded-xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
+      <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg max-w-2xl w-full p-5 space-y-4 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#393939] pb-3">
+        <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
           <div className="flex items-center gap-2 text-[#78a9ff]">
             <Code2 className="w-5 h-5" />
             <h3 className="text-sm font-mono font-bold text-white uppercase">
@@ -163,21 +163,21 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-[#393939] text-[#c6c6c6] rounded"
+            className="p-1 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] rounded"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Format Switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-[#161616] p-2 rounded-lg border border-[#262626]">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--cds-layer-01)] p-2 rounded-lg border border-[var(--cds-border-subtle)]">
           <div className="flex items-center gap-1 font-mono text-xs">
             <button
               onClick={() => setExportFormat('json')}
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'json'
                   ? 'bg-[#0f62fe] text-white'
-                  : 'text-[#8d8d8d] hover:text-white'
+                  : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <FileJson className="w-3.5 h-3.5" />
@@ -188,7 +188,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'sql'
                   ? 'bg-[#0f62fe] text-white'
-                  : 'text-[#8d8d8d] hover:text-white'
+                  : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Database className="w-3.5 h-3.5" />
@@ -199,7 +199,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'mermaid'
                   ? 'bg-[#0f62fe] text-white'
-                  : 'text-[#8d8d8d] hover:text-white'
+                  : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
             <select
               value={sqlDialect}
               onChange={e => setSqlDialect(e.target.value as any)}
-              className="bg-[#262626] border border-[#393939] text-xs font-mono font-bold text-white rounded p-1 outline-none"
+              className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-xs font-mono font-bold text-white rounded p-1 outline-none"
             >
               <option value="postgres">PostgreSQL</option>
               <option value="mysql">MySQL</option>
@@ -223,22 +223,22 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
         </div>
 
         {/* Code Preview Box */}
-        <div className="relative border border-[#393939] rounded-lg bg-[#0d0d0d] overflow-hidden">
+        <div className="relative border border-[var(--cds-border-subtle)] rounded-lg bg-[var(--cds-background)] overflow-hidden">
           <pre className="p-4 text-xs font-mono text-[#a6c8ff] max-h-[300px] overflow-y-auto custom-scrollbar leading-relaxed whitespace-pre">
             {activeContent}
           </pre>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between border-t border-[#393939] pt-3">
-          <span className="text-[11px] font-mono text-[#8d8d8d]">
+        <div className="flex items-center justify-between border-t border-[var(--cds-border-subtle)] pt-3">
+          <span className="text-[11px] font-mono text-[var(--cds-text-03)]">
             {isAr ? `${tables.length} جداول | ${relationships.length} روابط` : `${tables.length} tables | ${relationships.length} relationships`}
           </span>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
-              className="px-3.5 py-1.5 bg-[#262626] hover:bg-[#393939] text-white text-xs font-mono flex items-center gap-1.5 rounded border border-[#393939] cursor-pointer"
+              className="px-3.5 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-white text-xs font-mono flex items-center gap-1.5 rounded border border-[var(--cds-border-subtle)] cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ الكود' : 'Copy')}</span>

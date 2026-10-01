@@ -256,7 +256,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl p-5 space-y-6 shadow-md">
+    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-5 space-y-6 shadow-md">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="space-y-1">
@@ -287,7 +287,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
       </div>
 
       {/* Gateway Connection Settings */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] font-mono text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] font-mono text-xs">
         <div className="md:col-span-2 space-y-1">
           <label className="text-[var(--cds-text-03)] text-[11px] block font-semibold flex items-center gap-1">
             <Server className="w-3.5 h-3.5 text-[#78a9ff]" />
@@ -344,7 +344,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
       {/* RPC Payload Editor & Response Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Request Payload Editor */}
-        <div className="space-y-2 bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] font-mono text-xs">
+        <div className="space-y-2 bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] font-mono text-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[var(--cds-text-01)] font-bold">
               <Code2 className="w-4 h-4 text-[#78a9ff]" />
@@ -369,7 +369,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
               rows={8}
               value={paramsJson}
               onChange={(e) => setParamsJson(e.target.value)}
-              className="w-full bg-[#161616] border border-[#393939] text-[#42be65] p-3 rounded-lg font-mono text-xs outline-hidden focus:border-[#78a9ff]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[#42be65] p-3 rounded-lg font-mono text-xs outline-hidden focus:border-[#78a9ff]"
             />
           </div>
 
@@ -399,7 +399,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
         </div>
 
         {/* Response Viewer */}
-        <div className="space-y-2 bg-[var(--cds-layer-02)] p-4 rounded-xl border border-[var(--cds-border-subtle)] font-mono text-xs flex flex-col">
+        <div className="space-y-2 bg-[var(--cds-layer-02)] p-4 rounded-lg border border-[var(--cds-border-subtle)] font-mono text-xs flex flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[var(--cds-text-01)] font-bold">
               <Terminal className="w-4 h-4 text-emerald-400" />
@@ -432,7 +432,7 @@ export const JsonRpcGatewayPanel: React.FC = () => {
           </div>
 
           <div className="grow">
-            <pre className="h-[260px] overflow-auto bg-[#161616] border border-[#393939] text-[#f4f4f4] p-3 rounded-lg font-mono text-xs leading-relaxed">
+            <pre className="h-[260px] overflow-auto bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] p-3 rounded-lg font-mono text-xs leading-relaxed">
               {responsePayload
                 ? JSON.stringify(responsePayload, null, 2)
                 : `// Waiting for JSON-RPC execution...\n// Click "Execute JSON-RPC" to send payload to ${endpointUrl}`}

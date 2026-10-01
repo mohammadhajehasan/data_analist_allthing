@@ -998,9 +998,9 @@ const WorkflowStudioContent: React.FC = () => {
   return (
     <div className="h-full bg-[var(--cds-background)] flex flex-col animate-in fade-in duration-200 overflow-hidden select-none" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Top Studio Header */}
-      <div className="bg-[#161616] border-b border-[#393939] px-6 py-3.5 shrink-0 flex flex-wrap items-center justify-between gap-4 z-10 shadow-lg relative">
+      <div className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] px-6 py-3.5 shrink-0 flex flex-wrap items-center justify-between gap-4 z-10 shadow-lg relative">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-[#0f62fe]/15 text-[#78a9ff] border border-[#0f62fe]/30">
+          <div className="p-2.5 rounded-lg bg-[#0f62fe]/15 text-[#78a9ff] border border-[#0f62fe]/30">
             <Workflow className="w-5 h-5" />
           </div>
           <div>
@@ -1014,14 +1014,14 @@ const WorkflowStudioContent: React.FC = () => {
                 className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold border transition-all cursor-pointer ${
                   activeWorkflow.isActive
                     ? 'bg-[#24a148]/15 text-[#42be65] border-[#24a148]/40 shadow-[0_0_10px_rgba(36,161,72,0.3)]'
-                    : 'bg-[#525252]/20 text-[#a8a8a8] border-[#525252]/40'
+                    : 'bg-[var(--cds-border-strong)]/20 text-[var(--cds-text-02)] border-[var(--cds-border-strong)]/40'
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full ${activeWorkflow.isActive ? 'bg-[#24a148] animate-ping' : 'bg-[#a8a8a8]'}`} />
                 <span>{activeWorkflow.isActive ? (isAr ? '🟢 نشط ويعمل تلقائياً' : '🟢 Active & Monitoring') : (isAr ? '⚪ متوقف مؤقتاً' : '⚪ Paused')}</span>
               </button>
             </div>
-            <p className="text-xs text-[#a8a8a8] mt-0.5">
+            <p className="text-xs text-[var(--cds-text-02)] mt-0.5">
               {isAr
                 ? 'بناء وربط سلاسل الوكلاء والأدوات الذكية لمعالجة وتنظيف وفحص وتوليد التقارير تلقائياً'
                 : 'Construct and connect agentic AI toolchains for automated data quality, cleaning & reporting'}
@@ -1034,7 +1034,7 @@ const WorkflowStudioContent: React.FC = () => {
           {/* User Guide Interactive Manual Button */}
           <button
             onClick={() => setIsGuideModalOpen(true)}
-            className="px-3.5 py-1.5 bg-[#009d9a]/15 hover:bg-[#009d9a]/25 text-[#08bdba] border border-[#009d9a]/40 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            className="px-3.5 py-1.5 bg-[#009d9a]/15 hover:bg-[#009d9a]/25 text-[#08bdba] border border-[#009d9a]/40 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
             title={isAr ? 'فتح دليل الاستخدام المفصل وشرح كافة العناصر' : 'Open Comprehensive User Guide'}
           >
             <BookOpen className="w-3.5 h-3.5 text-[#08bdba]" />
@@ -1044,7 +1044,7 @@ const WorkflowStudioContent: React.FC = () => {
           {/* Templates Gallery Button */}
           <button
             onClick={() => setIsTemplateModalOpen(true)}
-            className="px-3.5 py-1.5 bg-[#8a3ffc]/15 hover:bg-[#8a3ffc]/25 text-[#be95ff] border border-[#8a3ffc]/40 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className="px-3.5 py-1.5 bg-[#8a3ffc]/15 hover:bg-[#8a3ffc]/25 text-[#be95ff] border border-[#8a3ffc]/40 rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{isAr ? 'مكتبة القوالب الجاهزة' : 'Templates Library'}</span>
@@ -1058,7 +1058,7 @@ const WorkflowStudioContent: React.FC = () => {
             <select
               value={activeWorkflowId}
               onChange={(e) => setActiveWorkflowId(e.target.value)}
-              className="bg-[#262626] text-white border border-[#525252] rounded-xl px-3 py-1.5 text-xs font-mono font-bold appearance-none pr-8 focus:outline-none focus:border-[#0f62fe] cursor-pointer"
+              className="bg-[var(--cds-layer-02)] text-white border border-[var(--cds-border-strong)] rounded-lg px-3 py-1.5 text-xs font-mono font-bold appearance-none pr-8 focus:outline-none focus:border-[#0f62fe] cursor-pointer"
             >
               {workflows.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -1066,14 +1066,14 @@ const WorkflowStudioContent: React.FC = () => {
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#a8a8a8] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-[var(--cds-text-02)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Reset button */}
           <button
             onClick={handleResetWorkflow}
             title={isAr ? 'إعادة تعيين إلى القالب الأصلي' : 'Reset to template'}
-            className="p-2 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] hover:text-white rounded-xl border border-[#393939] transition-colors cursor-pointer"
+            className="p-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-white rounded-lg border border-[var(--cds-border-subtle)] transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -1081,10 +1081,10 @@ const WorkflowStudioContent: React.FC = () => {
           {/* Toggle Output Panel */}
           <button
             onClick={() => setIsOutputPanelOpen(!isOutputPanelOpen)}
-            className={`px-3 py-1.5 text-xs font-mono font-bold rounded-xl border flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-mono font-bold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
               isOutputPanelOpen
                 ? 'bg-[#0f62fe]/20 text-[#78a9ff] border-[#0f62fe]/50 shadow-[0_0_12px_rgba(15,98,254,0.25)]'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:text-white'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:text-white'
             }`}
             title={isAr ? 'عرض / إخفاء لوحة معاينة المخرجات والنتائج' : 'Toggle Output Inspector Panel'}
           >
@@ -1095,10 +1095,10 @@ const WorkflowStudioContent: React.FC = () => {
           {/* Toggle Logs Console */}
           <button
             onClick={() => setIsLogsOpen(!isLogsOpen)}
-            className={`px-3 py-1.5 text-xs font-mono font-bold rounded-xl border flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-mono font-bold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
               isLogsOpen
                 ? 'bg-[#0f62fe]/20 text-[#78a9ff] border-[#0f62fe]/50'
-                : 'bg-[#262626] text-[#c6c6c6] border-[#393939] hover:text-white'
+                : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:text-white'
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
@@ -1118,16 +1118,16 @@ const WorkflowStudioContent: React.FC = () => {
                 setSelectedNodeId(null);
               }
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm border ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm border ${
               isVersionHistoryOpen
                 ? 'bg-[#0f62fe]/25 text-[#78a9ff] border-[#0f62fe]/60 shadow-[0_0_12px_rgba(15,98,254,0.3)]'
-                : 'bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] hover:text-white border-[#525252]'
+                : 'bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-white border-[var(--cds-border-strong)]'
             }`}
             title={isAr ? 'سجل النسخ والإصدارات واستعادة الحالات السابقة' : 'Pipeline Version History & Snapshots'}
           >
             <History className="w-3.5 h-3.5 text-[#78a9ff]" />
             <span>{isAr ? 'سجل النسخ' : 'Version History'}</span>
-            <span className="px-1.5 py-0.2 bg-[#161616] text-[#78a9ff] text-[10px] rounded-full border border-[#393939]">
+            <span className="px-1.5 py-0.2 bg-[var(--cds-layer-01)] text-[#78a9ff] text-[10px] rounded-full border border-[var(--cds-border-subtle)]">
               {versions.filter((v) => v.workflowId === activeWorkflow.id).length}
             </span>
           </button>
@@ -1135,7 +1135,7 @@ const WorkflowStudioContent: React.FC = () => {
           {/* Save Workflow */}
           <button
             onClick={handleSaveWorkflow}
-            className="px-3.5 py-1.5 bg-[#262626] hover:bg-[#393939] text-[#f4f4f4] border border-[#525252] rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4 text-[#78a9ff]" />
             <span>{isAr ? 'حفظ السلسلة' : 'Save'}</span>
@@ -1145,7 +1145,7 @@ const WorkflowStudioContent: React.FC = () => {
           <button
             onClick={handleRunWorkflow}
             disabled={isRunning}
-            className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] active:bg-[#002d9c] text-white rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-md disabled:opacity-50 cursor-pointer"
+            className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] active:bg-[#002d9c] text-white rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-md disabled:opacity-50 cursor-pointer"
           >
             <Play className={`w-4 h-4 fill-current ${isRunning ? 'animate-spin' : ''}`} />
             <span>{isRunning ? (isAr ? 'جاري المعالجة...' : 'Running...') : (isAr ? 'تشغيل السلسلة الآن' : 'Run Pipeline')}</span>
@@ -1156,14 +1156,14 @@ const WorkflowStudioContent: React.FC = () => {
       {/* Main Workspace Layout (Sidebar + Canvas + Drawer) */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar: Node Library / Palette (Supports Drag & Drop) */}
-        <div className="w-64 md:w-72 bg-[#161616] border-r border-[#393939] flex flex-col shrink-0 z-10 shadow-md">
-          <div className="p-3 border-b border-[#393939] space-y-2">
+        <div className="w-64 md:w-72 bg-[var(--cds-layer-01)] border-e border-[var(--cds-border-subtle)] flex flex-col shrink-0 z-10 shadow-md">
+          <div className="p-3 border-b border-[var(--cds-border-subtle)] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-[#c6c6c6] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-[#0f62fe]" />
                 {isAr ? 'مكتبة الأدوات والعناصر' : 'Tool & Node Palette'}
               </span>
-              <span className="text-[10px] text-[#8d8d8d] font-mono">
+              <span className="text-[10px] text-[var(--cds-text-03)] font-mono">
                 {filteredPalette.length} {isAr ? 'عنصر' : 'nodes'}
               </span>
             </div>
@@ -1175,13 +1175,13 @@ const WorkflowStudioContent: React.FC = () => {
 
             {/* Search filter */}
             <div className="relative">
-              <Search className={`w-3.5 h-3.5 text-[#8d8d8d] absolute top-1/2 -translate-y-1/2 ${isAr ? 'right-2.5' : 'left-2.5'}`} />
+              <Search className={`w-3.5 h-3.5 text-[var(--cds-text-03)] absolute top-1/2 -translate-y-1/2 ${isAr ? 'right-2.5' : 'left-2.5'}`} />
               <input
                 type="text"
                 placeholder={isAr ? 'بحث في الأدوات والعمليات...' : 'Search nodes...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full bg-[#262626] border border-[#393939] rounded-xl py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[#0f62fe] ${
+                className={`w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[#0f62fe] ${
                   isAr ? 'pr-8 pl-2.5' : 'pl-8 pr-2.5'
                 }`}
               />
@@ -1201,7 +1201,7 @@ const WorkflowStudioContent: React.FC = () => {
                   className={`py-1 rounded-lg text-center transition-colors cursor-pointer ${
                     selectedCategory === c.id
                       ? 'bg-[#0f62fe] text-white font-bold'
-                      : 'bg-[#262626] text-[#a8a8a8] hover:text-white'
+                      : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-white'
                   }`}
                 >
                   {c.label}
@@ -1220,10 +1220,10 @@ const WorkflowStudioContent: React.FC = () => {
                   draggable={true}
                   onDragStart={(e) => onDragStart(e, item)}
                   onClick={() => handleAddNode(item)}
-                  className="group p-2.5 bg-[#262626] hover:bg-[#333333] border border-[#393939] hover:border-[#0f62fe] rounded-xl cursor-grab active:cursor-grabbing transition-all duration-150 flex items-start gap-2.5 shadow-sm select-none"
+                  className="group p-2.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] rounded-lg cursor-grab active:cursor-grabbing transition-all duration-150 flex items-start gap-2.5 shadow-sm select-none"
                   title={isAr ? 'اسحب إلى اللوحة أو انقر للإضافة' : 'Drag to canvas or click to add'}
                 >
-                  <div className="p-2 rounded-lg bg-[#161616] border border-[#393939] group-hover:border-[#0f62fe] text-[#78a9ff] shrink-0">
+                  <div className="p-2 rounded-lg bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] group-hover:border-[#0f62fe] text-[#78a9ff] shrink-0">
                     <IconComp className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1231,9 +1231,9 @@ const WorkflowStudioContent: React.FC = () => {
                       <h4 className="text-xs font-bold text-white truncate">
                         {isAr ? item.labelAr : item.label}
                       </h4>
-                      <Plus className="w-3.5 h-3.5 text-[#8d8d8d] group-hover:text-[#0f62fe] transition-colors shrink-0" />
+                      <Plus className="w-3.5 h-3.5 text-[var(--cds-text-03)] group-hover:text-[#0f62fe] transition-colors shrink-0" />
                     </div>
-                    <p className="text-[10px] text-[#a8a8a8] line-clamp-2 mt-0.5 leading-tight">
+                    <p className="text-[10px] text-[var(--cds-text-02)] line-clamp-2 mt-0.5 leading-tight">
                       {isAr ? item.descAr : item.desc}
                     </p>
                   </div>
@@ -1243,7 +1243,7 @@ const WorkflowStudioContent: React.FC = () => {
           </div>
 
           {/* Quick Stats Footer */}
-          <div className="p-3 bg-[#1e1e1e] border-t border-[#393939] text-[10px] font-mono text-[#a8a8a8] space-y-1">
+          <div className="p-3 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] text-[10px] font-mono text-[var(--cds-text-02)] space-y-1">
             <div className="flex justify-between">
               <span>{isAr ? 'إجمالي العقد على اللوحة:' : 'Total Nodes:'}</span>
               <span className="text-white font-bold">{nodes.length}</span>
@@ -1262,7 +1262,7 @@ const WorkflowStudioContent: React.FC = () => {
         {/* Center: React Flow Interactive Canvas (with Drag & Drop Dropzone) */}
         <div 
           ref={reactFlowWrapper}
-          className="flex-1 relative bg-[#0d0d0d] overflow-hidden flex flex-col"
+          className="flex-1 relative bg-[var(--cds-background)] overflow-hidden flex flex-col"
           onDragOver={onDragOver}
           onDrop={onDrop}
         >
@@ -1289,9 +1289,9 @@ const WorkflowStudioContent: React.FC = () => {
             }}
           >
             <Background variant={BackgroundVariant.Dots} gap={16} size={1.2} color="#333333" />
-            <Controls className="!bg-[#262626] !border-[#393939] !text-white !rounded-xl !shadow-xl" />
+            <Controls className="!bg-[var(--cds-layer-02)] !border-[var(--cds-border-subtle)] !text-white !rounded-lg !shadow-xl" />
             <MiniMap
-              className="!bg-[#161616] !border-[#393939] !rounded-xl overflow-hidden"
+              className="!bg-[var(--cds-layer-01)] !border-[var(--cds-border-subtle)] !rounded-lg overflow-hidden"
               nodeColor={(n) => {
                 const cat = (n.data as any)?.category;
                 if (cat === 'trigger') return '#0f62fe';
@@ -1304,7 +1304,7 @@ const WorkflowStudioContent: React.FC = () => {
             />
 
             {/* Floating Quick Helper Banner */}
-            <Panel position="top-right" className="bg-[#161616]/90 backdrop-blur border border-[#393939] rounded-xl p-2.5 text-xs text-[#c6c6c6] shadow-xl flex items-center gap-3">
+            <Panel position="top-right" className="bg-[var(--cds-layer-01)]/90 backdrop-blur border border-[var(--cds-border-subtle)] rounded-lg p-2.5 text-xs text-[var(--cds-text-02)] shadow-xl flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-[#78a9ff] font-mono text-[11px]">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isAr ? '🔗 اسحب المنافذ للتوصيل أو انقر على العقدة للربط والمعاينة' : '🔗 Drag ports to connect or click a node for inspector'}</span>
@@ -1325,9 +1325,9 @@ const WorkflowStudioContent: React.FC = () => {
 
           {/* Bottom Execution Logs & Results Console Drawer */}
           {isLogsOpen && (
-            <div className="h-72 bg-[#161616] border-t border-[#393939] flex flex-col z-20 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="h-72 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex flex-col z-20 shadow-2xl animate-in slide-in-from-bottom duration-200">
               {/* Console Header */}
-              <div className="p-2.5 bg-[#262626] border-b border-[#393939] flex flex-wrap items-center justify-between px-4 gap-2">
+              <div className="p-2.5 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between px-4 gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2 text-white font-mono text-xs font-bold">
                     <Terminal className="w-4 h-4 text-[#78a9ff]" />
@@ -1335,13 +1335,13 @@ const WorkflowStudioContent: React.FC = () => {
                   </div>
 
                   {/* Main Tab Switcher */}
-                  <div className="flex gap-1 bg-[#161616] p-0.5 rounded-lg border border-[#393939] text-[11px] font-mono">
+                  <div className="flex gap-1 bg-[var(--cds-layer-01)] p-0.5 rounded-lg border border-[var(--cds-border-subtle)] text-[11px] font-mono">
                     <button
                       onClick={() => setActiveLogTab('logs')}
                       className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
                         activeLogTab === 'logs'
                           ? 'bg-[#0f62fe] text-white font-bold'
-                          : 'text-[#a8a8a8] hover:text-white'
+                          : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       {isAr ? 'سجل الأحداث' : 'Logs'} ({filteredLogs.length})
@@ -1351,7 +1351,7 @@ const WorkflowStudioContent: React.FC = () => {
                       className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
                         activeLogTab === 'results'
                           ? 'bg-[#0f62fe] text-white font-bold'
-                          : 'text-[#a8a8a8] hover:text-white'
+                          : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       {isAr ? 'المخرجات والنتائج' : 'Output Summary'}
@@ -1372,8 +1372,8 @@ const WorkflowStudioContent: React.FC = () => {
                           onClick={() => setLogFilterLevel(lvl.id)}
                           className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
                             logFilterLevel === lvl.id
-                              ? 'bg-[#393939] text-white font-bold border border-[#525252]'
-                              : 'text-[#8d8d8d] hover:text-white'
+                              ? 'bg-[var(--cds-layer-03)] text-white font-bold border border-[var(--cds-border-strong)]'
+                              : 'text-[var(--cds-text-03)] hover:text-white'
                           }`}
                         >
                           {lvl.label}
@@ -1387,7 +1387,7 @@ const WorkflowStudioContent: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleCopyLogs}
-                    className="p-1.5 bg-[#161616] hover:bg-[#393939] text-[#c6c6c6] hover:text-white rounded-lg border border-[#393939] text-xs flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                    className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-white rounded-lg border border-[var(--cds-border-subtle)] text-xs flex items-center gap-1 font-mono transition-colors cursor-pointer"
                     title={isAr ? 'نسخ السجلات' : 'Copy Logs'}
                   >
                     {copiedLogs ? <Check className="w-3.5 h-3.5 text-[#42be65]" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1396,7 +1396,7 @@ const WorkflowStudioContent: React.FC = () => {
 
                   <button
                     onClick={handleDownloadLogs}
-                    className="p-1.5 bg-[#161616] hover:bg-[#393939] text-[#c6c6c6] hover:text-white rounded-lg border border-[#393939] text-xs flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                    className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-white rounded-lg border border-[var(--cds-border-subtle)] text-xs flex items-center gap-1 font-mono transition-colors cursor-pointer"
                     title={isAr ? 'تحميل كملف JSON' : 'Export JSON'}
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -1405,7 +1405,7 @@ const WorkflowStudioContent: React.FC = () => {
 
                   <button
                     onClick={() => setIsLogsOpen(false)}
-                    className="text-xs text-[#a8a8a8] hover:text-white px-2.5 py-1 bg-[#161616] rounded-lg border border-[#393939] cursor-pointer"
+                    className="text-xs text-[var(--cds-text-02)] hover:text-white px-2.5 py-1 bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] cursor-pointer"
                   >
                     {isAr ? 'إغلاق ✕' : 'Close ✕'}
                   </button>
@@ -1413,10 +1413,10 @@ const WorkflowStudioContent: React.FC = () => {
               </div>
 
               {/* Console Body */}
-              <div className="flex-1 overflow-y-auto p-3 font-mono text-[11px] space-y-1.5 bg-[#111111]">
+              <div className="flex-1 overflow-y-auto p-3 font-mono text-[11px] space-y-1.5 bg-[var(--cds-background)]">
                 {activeLogTab === 'logs' ? (
                   filteredLogs.length === 0 ? (
-                    <div className="text-center py-10 text-[#6f6f6f] space-y-1">
+                    <div className="text-center py-10 text-[var(--cds-text-03)] space-y-1">
                       <Terminal className="w-6 h-6 mx-auto opacity-30 text-[#0f62fe]" />
                       <p>{isAr ? 'لا توجد سجلات تطابق البحث. انقر على "تشغيل السلسلة الآن" لبدء التنفيذ.' : 'No logs yet. Click "Run Pipeline" to execute.'}</p>
                     </div>
@@ -1431,18 +1431,18 @@ const WorkflowStudioContent: React.FC = () => {
                             ? 'bg-[#f1c21b]/10 border-[#f1c21b]/30 text-[#f1c21b]'
                             : log.level === 'success'
                             ? 'bg-[#24a148]/10 border-[#24a148]/30 text-[#42be65]'
-                            : 'bg-[#262626]/40 border-[#393939] text-[#c6c6c6]'
+                            : 'bg-[var(--cds-layer-02)]/40 border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
                         }`}
                       >
-                        <span className="text-[#8d8d8d] shrink-0 text-[10px]">{log.timestamp}</span>
+                        <span className="text-[var(--cds-text-03)] shrink-0 text-[10px]">{log.timestamp}</span>
                         {log.nodeLabel && (
-                          <span className="px-1.5 py-0.2 rounded bg-[#262626] border border-[#525252] text-white font-bold shrink-0">
+                          <span className="px-1.5 py-0.2 rounded bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-white font-bold shrink-0">
                             {log.nodeLabel}
                           </span>
                         )}
                         <span className="flex-1">{log.message}</span>
                         {log.details && (
-                          <span className="text-[10px] text-[#8d8d8d] bg-[#161616] px-1.5 py-0.5 rounded border border-[#393939] shrink-0">
+                          <span className="text-[10px] text-[var(--cds-text-03)] bg-[var(--cds-layer-01)] px-1.5 py-0.5 rounded border border-[var(--cds-border-subtle)] shrink-0">
                             {JSON.stringify(log.details).substring(0, 35)}...
                           </span>
                         )}
@@ -1454,39 +1454,39 @@ const WorkflowStudioContent: React.FC = () => {
                   <div className="p-2 space-y-3">
                     {lastRunResult ? (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="p-3 bg-[#1e1e1e] rounded-xl border border-[#393939]">
-                          <span className="text-[#a8a8a8] text-[10px] block">{isAr ? 'حالة السلسلة الكلية' : 'Execution Status'}</span>
+                        <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)]">
+                          <span className="text-[var(--cds-text-02)] text-[10px] block">{isAr ? 'حالة السلسلة الكلية' : 'Execution Status'}</span>
                           <span className={`text-base font-bold ${lastRunResult.status === 'success' ? 'text-[#42be65]' : 'text-[#fa4d56]'}`}>
                             {lastRunResult.status === 'success' ? (isAr ? 'ناجح 100% ✅' : 'Success') : (isAr ? 'تعثر في التنفيذ ❌' : 'Failed')}
                           </span>
-                          <span className="text-[10px] text-[#8d8d8d] block mt-1">
+                          <span className="text-[10px] text-[var(--cds-text-03)] block mt-1">
                             {isAr ? 'المدة الزمنية:' : 'Duration:'} {lastRunResult.totalDurationMs}ms
                           </span>
                         </div>
 
                         {lastRunResult.producedOutputs.cleanedDatasetName && (
-                          <div className="p-3 bg-[#1e1e1e] rounded-xl border border-[#24a148]/40">
+                          <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-[#24a148]/40">
                             <span className="text-[#42be65] text-[10px] block">{isAr ? 'الجدول المنشأ تلقائياً' : 'Created Dataset'}</span>
                             <span className="text-xs font-bold text-white block truncate">
                               {lastRunResult.producedOutputs.cleanedDatasetName}
                             </span>
-                            <span className="text-[10px] text-[#8d8d8d] block mt-1">
+                            <span className="text-[10px] text-[var(--cds-text-03)] block mt-1">
                               {isAr ? 'أضيف إلى قائمة المجموعات' : 'Added to active datasets'}
                             </span>
                           </div>
                         )}
 
                         {lastRunResult.producedOutputs.aiSummary && (
-                          <div className="p-3 bg-[#1e1e1e] rounded-xl border border-[#8a3ffc]/40 md:col-span-3">
+                          <div className="p-3 bg-[var(--cds-layer-01)] rounded-lg border border-[#8a3ffc]/40 md:col-span-3">
                             <span className="text-[#be95ff] text-[10px] block font-bold mb-1">{isAr ? 'الرؤى والتحليل الذكي المستخلص' : 'AI Generated Insights'}</span>
-                            <p className="text-xs text-[#f4f4f4] leading-relaxed whitespace-pre-wrap">
+                            <p className="text-xs text-[var(--cds-text-01)] leading-relaxed whitespace-pre-wrap">
                               {lastRunResult.producedOutputs.aiSummary}
                             </p>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="text-center py-6 text-[#6f6f6f]">
+                      <div className="text-center py-6 text-[var(--cds-text-03)]">
                         {isAr ? 'لم يتم تشغيل السلسلة بعد.' : 'No run results available.'}
                       </div>
                     )}

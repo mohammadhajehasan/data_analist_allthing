@@ -70,7 +70,7 @@ export const WorkflowCustomEdge: React.FC<EdgeProps> = ({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
           }}
-          className="nodrag nopan group flex items-center gap-1 bg-[#161616]/95 backdrop-blur-md px-2 py-0.5 rounded-full border shadow-xl transition-all duration-200 hover:scale-110"
+          className="nodrag nopan group flex items-center gap-1 bg-[var(--cds-layer-01)]/95 backdrop-blur-md px-2 py-0.5 rounded-full border shadow-xl transition-all duration-200 hover:scale-110"
           css-border-color={strokeColor}
         >
           {isPass && (
@@ -102,7 +102,7 @@ export const WorkflowCustomEdge: React.FC<EdgeProps> = ({
                 e.stopPropagation();
                 onDelete(id);
               }}
-              className="ml-1 p-0.5 rounded-full text-[#8d8d8d] hover:text-white hover:bg-[#da1e28] transition-colors cursor-pointer"
+              className="ml-1 p-0.5 rounded-full text-[var(--cds-text-03)] hover:text-white hover:bg-[#da1e28] transition-colors cursor-pointer"
               title={isArabic ? 'حذف خط التوصيل' : 'Delete Connection'}
             >
               <X className="w-2.5 h-2.5" />

@@ -270,24 +270,26 @@ export function analyzeSqlErrors(sql: string, dataset: Dataset, executionError?:
   ]);
 
   let tokenMatch;
-  const unknownTokens: string[] = [];
+  const unknownTokens = new Set<string>();
   while ((tokenMatch = tokenRegex.exec(trimmed)) !== null) {
     const rawToken = tokenMatch[1];
     const lower = rawToken.toLowerCase();
     if (!sqlReservedWords.has(lower) && !datasetColsLower.includes(lower)) {
       // Check if it's a numeric literal or function name
       if (!/^\d+$/.test(rawToken)) {
-        unknownTokens.push(rawToken);
+        unknownTokens.add(rawToken);
       }
     }
   }
 
-  for (const unknown of unknownTokens) {
+  const unknownTokensList = Array.from(unknownTokens);
+  for (let uIdx = 0; uIdx < unknownTokensList.length; uIdx++) {
+    const unknown = unknownTokensList[uIdx];
     const fuzzy = findClosestColumn(unknown, datasetCols);
     if (fuzzy) {
       const fixed = trimmed.replace(new RegExp(`\\b${unknown}\\b`, 'g'), fuzzy.match);
       suggestions.push({
-        id: `sug-fix-col-${unknown}`,
+        id: `sug-fix-col-${uIdx}-${unknown}`,
         title: `Replace unknown column "${unknown}" with "${fuzzy.match}"`,
         titleAr: `استبدال العمود غير المعروف "${unknown}" بـ "${fuzzy.match}"`,
         explanation: `Column "${unknown}" does not exist in schema. Auto-detected closest schema column is "${fuzzy.match}".`,
@@ -303,9 +305,9 @@ export function analyzeSqlErrors(sql: string, dataset: Dataset, executionError?:
     return {
       hasError: true,
       errorCategory: 'UNKNOWN_COLUMN',
-      messageEn: `Schema reference warning: Unrecognized column "${unknownTokens[0]}". Closest match found in dataset schema.`,
-      messageAr: `تنبيه في مطابقة المخطط: العمود "${unknownTokens[0]}" غير موجود بالمخطط. تم العثور على بديل مطابق.`,
-      highlightedSnippet: unknownTokens[0],
+      messageEn: `Schema reference warning: Unrecognized column "${unknownTokensList[0]}". Closest match found in dataset schema.`,
+      messageAr: `تنبيه في مطابقة المخطط: العمود "${unknownTokensList[0]}" غير موجود بالمخطط. تم العثور على بديل مطابق.`,
+      highlightedSnippet: unknownTokensList[0],
       suggestions,
     };
   }

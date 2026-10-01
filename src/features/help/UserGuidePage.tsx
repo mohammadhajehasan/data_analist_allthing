@@ -258,7 +258,7 @@ export const UserGuidePage: React.FC = () => {
               return (
                 <div 
                   key={section.id} 
-                  className="bg-[var(--cds-layer-01)] border-2 border-[var(--cds-interactive-01)]/40 p-6 sm:p-8 rounded-xl shadow-lg relative overflow-hidden flex flex-col"
+                  className="bg-[var(--cds-layer-01)] border-2 border-[var(--cds-interactive-01)]/40 p-6 sm:p-8 rounded-lg shadow-lg relative overflow-hidden flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">

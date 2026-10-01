@@ -22,12 +22,14 @@ import {
   Moon,
   SlidersHorizontal,
   HardDrive,
-  MessageSquare,
   Radio,
+  LogOut,
 } from 'lucide-react';
 import { THEME_OPTIONS, DashboardLayoutModal } from '../dashboards/DashboardLayoutModal';
 import { LocalCsvImportModal } from '../datasets/LocalCsvImportModal';
 import { AIModelSelector } from '../ai/AIModelSelector';
+import { SonificationToggle } from '../common/SonificationToggle';
+import { NotificationBell } from './NotificationBell';
 
 export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) => {
   const {
@@ -45,11 +47,10 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
     setTheme,
     startTour,
     t,
-    comments,
-    setIsCommentsDrawerOpen,
     setIsSnapshotModalOpen,
     setIsRefreshModalOpen,
     scheduledRefreshes,
+    logout,
   } = useApp();
 
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
@@ -57,6 +58,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showLayoutModal, setShowLayoutModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
   
   const [committedTheme, setCommittedTheme] = useState(theme);
   
@@ -67,6 +69,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const themeDropdownRef = useRef<HTMLDivElement>(null);
   const datasetDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const quickActionsRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -80,6 +83,9 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target as Node)) {
+        setShowQuickActionsMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -139,7 +145,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
           {showDatasetMenu && (
             <div
-              className={`absolute top-full mt-1.5 w-80 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-2xl p-2 z-50 animate-in fade-in duration-100 ${
+              className={`absolute top-full mt-1.5 w-80 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2 z-50 animate-in fade-in duration-100 ${
                 language === 'ar' ? 'left-0' : 'right-0'
               }`}
             >
@@ -208,7 +214,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.15 }}
               onMouseLeave={() => setTheme(committedTheme)}
-              className={`absolute top-full mt-1.5 w-76 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-2xl p-2 z-50 ${
+              className={`absolute top-full mt-1.5 w-76 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2 z-50 ${
                 language === 'ar' ? 'left-0' : 'right-0'
               }`}
             >
@@ -297,87 +303,140 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
         </div>
       </div>
 
-      {/* Right Side: Quick Ingest, Snapshot, Refresh, Comments, Tour, Settings, User */}
+      {/* Right Side: Quick Actions, Comments, Overflow Menu, Settings, User */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Project Snapshot (Save/Load Workspace State) */}
+        {/* Secondary actions grouped and hidden below xl (moved into overflow menu) */}
+        <div className="hidden xl:flex items-center gap-1.5 sm:gap-2">
+          {/* Project Snapshot (Save/Load Workspace State) */}
+          <button
+            onClick={() => setIsSnapshotModalOpen(true)}
+            className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
+            title={language === 'ar' ? 'لقطة حالة المشروع - تصدير واستعادة ملف JSON' : 'Project Snapshot (JSON Export & Import)'}
+            id="header-project-snapshot-btn"
+          >
+            <HardDrive className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+            <span>{language === 'ar' ? 'لقطة المشروع' : 'Snapshot'}</span>
+          </button>
+
+          {/* Live Data Refresh & API Scheduling Indicator */}
+          <button
+            onClick={() => setIsRefreshModalOpen(true)}
+            className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#009d9a] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors relative"
+            title={language === 'ar' ? 'نظام التحديث التلقائي وجدولة API' : 'Scheduled Data Refresh & Live API Feeds'}
+            id="header-data-refresh-btn"
+          >
+            <Radio className="w-4 h-4 text-[#009d9a]" />
+            {scheduledRefreshes.some(r => r.status === 'connected') && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+            <span>{language === 'ar' ? 'التحديث الحي' : 'Live Sync'}</span>
+          </button>
+
+          {/* Quick CSV Local Ingestion Shortcut */}
+          <button
+            onClick={() => setShowCsvModal(true)}
+            className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
+            title={language === 'ar' ? 'استيراد ومعالجة ملف CSV محلياً دون رفع للخادم' : 'Local In-Memory CSV Ingestion (Zero-Upload)'}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+            <span>{language === 'ar' ? 'استيراد CSV' : 'Import CSV'}</span>
+          </button>
+
+          {/* Onboarding Tour Trigger Button */}
+          <button
+            onClick={startTour}
+            className="h-9 px-2.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-medium text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] flex items-center gap-1.5 transition-colors"
+            title={language === 'ar' ? 'بدء الجولة التعريفية التفاعلية للمنصة' : 'Start Platform Interactive Tour'}
+          >
+            <HelpCircle className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+            <span>{language === 'ar' ? 'جولة' : 'Tour'}</span>
+          </button>
+
+          {/* Layout & Display Preferences Quick Trigger */}
+          <button
+            onClick={() => setShowLayoutModal(true)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
+            title={language === 'ar' ? 'تخصيص التخطيط والمظهر وحفظ التفضيلات' : 'Layout & Display Preferences'}
+          >
+            <LayoutGrid className="w-4 h-4 text-emerald-500" />
+          </button>
+        </div>
+
+        {/* Ambient Data Sonification Toggle */}
+        <div className="hidden sm:block">
+          <SonificationToggle compact />
+        </div>
+
+        {/* Zen Focus Mode Trigger */}
         <button
-          onClick={() => setIsSnapshotModalOpen(true)}
-          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
-          title={language === 'ar' ? 'لقطة حالة المشروع - تصدير واستعادة ملف JSON' : 'Project Snapshot (JSON Export & Import)'}
-          id="header-project-snapshot-btn"
+          onClick={() => window.dispatchEvent(new CustomEvent('carbon-open-zen'))}
+          className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#8a3ffc] text-[var(--cds-text-02)] hover:text-[#be95ff] transition-colors"
+          title={language === 'ar' ? 'نمط الزن — مساحة تحليلية هادئة بلا مشتتات' : 'Zen Focus Mode — distraction-free analytical space'}
         >
-          <HardDrive className="w-4 h-4 text-[#0f62fe]" />
-          <span className="hidden xl:inline">
-            {language === 'ar' ? 'لقطة المشروع' : 'Snapshot'}
-          </span>
+          <Moon className="w-4 h-4" />
         </button>
 
-        {/* Live Data Refresh & API Scheduling Indicator */}
-        <button
-          onClick={() => setIsRefreshModalOpen(true)}
-          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#009d9a] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors relative"
-          title={language === 'ar' ? 'نظام التحديث التلقائي وجدولة API' : 'Scheduled Data Refresh & Live API Feeds'}
-          id="header-data-refresh-btn"
-        >
-          <Radio className="w-4 h-4 text-[#009d9a]" />
-          {scheduledRefreshes.some(r => r.status === 'connected') && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        {/* Team Comments drawer removed from header — group discussions live in the sidebar tab */}
+
+        {/* Overflow "More Options" menu for medium/small screens (below xl) */}
+        <div className="xl:hidden relative" ref={quickActionsRef}>
+          <button
+            onClick={() => setShowQuickActionsMenu(!showQuickActionsMenu)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+            title={language === 'ar' ? 'خيارات إضافية' : 'Quick Actions'}
+            aria-label={language === 'ar' ? 'خيارات إضافية' : 'Quick Actions'}
+            aria-expanded={showQuickActionsMenu}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+
+          {showQuickActionsMenu && (
+            <div
+              className={`absolute top-full mt-1.5 w-60 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2 z-50 ${
+                language === 'ar' ? 'left-0' : 'right-0'
+              }`}
+            >
+              <div className="px-2 py-1.5 text-[10px] font-semibold text-[var(--cds-text-03)] uppercase tracking-wider border-b border-[var(--cds-border-subtle)] mb-1">
+                {language === 'ar' ? 'خيارات سريعة' : 'Quick Actions'}
+              </div>
+              <button
+                onClick={() => { setIsSnapshotModalOpen(true); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <HardDrive className="w-4 h-4 text-[var(--cds-interactive-01)] shrink-0" />
+                {language === 'ar' ? 'لقطة المشروع' : 'Snapshot'}
+              </button>
+              <button
+                onClick={() => { setIsRefreshModalOpen(true); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <Radio className="w-4 h-4 text-[#009d9a] shrink-0" />
+                {language === 'ar' ? 'التحديث الحي' : 'Live Sync'}
+              </button>
+              <button
+                onClick={() => { setShowCsvModal(true); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-500 shrink-0" />
+                {language === 'ar' ? 'استيراد CSV' : 'Import CSV'}
+              </button>
+              <button
+                onClick={() => { startTour(); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <HelpCircle className="w-4 h-4 text-[var(--cds-interactive-01)] shrink-0" />
+                {language === 'ar' ? 'الجولة التعريفية' : 'Onboarding Tour'}
+              </button>
+              <button
+                onClick={() => { setShowLayoutModal(true); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <LayoutGrid className="w-4 h-4 text-emerald-500 shrink-0" />
+                {language === 'ar' ? 'تخصيص التخطيط' : 'Layout Preferences'}
+              </button>
+            </div>
           )}
-          <span className="hidden xl:inline">
-            {language === 'ar' ? 'التحديث الحي' : 'Live Sync'}
-          </span>
-        </button>
-
-        {/* Team Comments & Annotations Drawer Trigger */}
-        <button
-          onClick={() => setIsCommentsDrawerOpen(true)}
-          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-amber-400 rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors relative"
-          title={language === 'ar' ? 'التعليقات والملاحظات التعاونية للفريق' : 'Team Comments & Annotations'}
-          id="header-comments-drawer-btn"
-        >
-          <MessageSquare className="w-4 h-4 text-amber-400" />
-          {comments.filter(c => !c.resolved).length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-[#0f62fe] text-white text-[10px] font-bold font-mono">
-              {comments.filter(c => !c.resolved).length}
-            </span>
-          )}
-          <span className="hidden xl:inline">
-            {language === 'ar' ? 'المناقشات' : 'Comments'}
-          </span>
-        </button>
-
-        {/* Quick CSV Local Ingestion Shortcut */}
-        <button
-          onClick={() => setShowCsvModal(true)}
-          className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-semibold text-[var(--cds-text-01)] transition-colors"
-          title={language === 'ar' ? 'استيراد ومعالجة ملف CSV محلياً دون رفع للخادم' : 'Local In-Memory CSV Ingestion (Zero-Upload)'}
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-          <span className="hidden md:inline">
-            {language === 'ar' ? 'استيراد CSV' : 'Import CSV'}
-          </span>
-        </button>
-
-        {/* Onboarding Tour Trigger Button */}
-        <button
-          onClick={startTour}
-          className="h-9 px-2.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-medium text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] flex items-center gap-1.5 transition-colors"
-          title={language === 'ar' ? 'بدء الجولة التعريفية التفاعلية للمنصة' : 'Start Platform Interactive Tour'}
-        >
-          <HelpCircle className="w-4 h-4 text-[var(--cds-interactive-01)]" />
-          <span className="hidden lg:inline">
-            {language === 'ar' ? 'جولة' : 'Tour'}
-          </span>
-        </button>
-
-        {/* Layout & Display Preferences Quick Trigger */}
-        <button
-          onClick={() => setShowLayoutModal(true)}
-          className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
-          title={language === 'ar' ? 'تخصيص التخطيط والمظهر وحفظ التفضيلات' : 'Layout & Display Preferences'}
-        >
-          <LayoutGrid className="w-4 h-4 text-emerald-500" />
-        </button>
+        </div>
 
         {/* Feature Flags Button */}
         <button
@@ -387,6 +446,9 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
         >
           <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)]" />
         </button>
+
+        {/* Notifications (live via SSE) */}
+        <NotificationBell />
 
         {/* Language Switcher */}
         <button
@@ -418,7 +480,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
           {showUserMenu && (
             <div
-              className={`absolute top-full mt-1.5 w-64 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl shadow-2xl p-2 z-50 animate-in fade-in duration-100 ${
+              className={`absolute top-full mt-1.5 w-64 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2 z-50 animate-in fade-in duration-100 ${
                 language === 'ar' ? 'left-0' : 'right-0'
               }`}
             >
@@ -429,24 +491,16 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
               </div>
 
               <div className="p-1 space-y-0.5">
-                <div className="text-[10px] font-semibold uppercase text-[var(--cds-text-03)] px-2 py-1">
-                  Switch Active Role
-                </div>
-                {usersList.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      setUser(u);
-                      setShowUserMenu(false);
-                    }}
-                    className={`w-full text-start px-2 py-1.5 text-xs font-mono flex items-center justify-between transition-colors ${
-                      u.id === user.id ? 'bg-[var(--cds-interactive-01,#0f62fe)] text-white font-bold' : 'text-[var(--cds-text-02,#c6c6c6)] hover:bg-[var(--cds-layer-02,#353535)] hover:text-[var(--cds-text-01)]'
-                    }`}
-                  >
-                    <span>{u.name} ({u.role})</span>
-                    {u.id === user.id && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    logout();
+                  }}
+                  className="w-full text-start px-2 py-2 text-xs font-semibold text-[#ff8389] hover:bg-[#da1e28]/15 rounded-md flex items-center gap-2 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  {language === 'ar' ? 'تسجيل الخروج' : 'Log Out'}
+                </button>
               </div>
             </div>
           )}

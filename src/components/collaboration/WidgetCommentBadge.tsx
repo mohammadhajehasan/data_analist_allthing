@@ -45,7 +45,7 @@ export const WidgetCommentBadge: React.FC<WidgetCommentBadgeProps> = ({
           ? 'إضافة تعليق أو ملاحظة'
           : 'Add comment'
       }
-      className={`relative inline-flex items-center justify-center p-1 rounded hover:bg-[#393939] text-[#8d8d8d] hover:text-[#f4f4f4] transition ${className}`}
+      className={`relative inline-flex items-center justify-center p-1 rounded hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition ${className}`}
       id={`comment-badge-${targetId}`}
     >
       <MessageSquare className="w-4 h-4" />

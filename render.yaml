@@ -1,0 +1,39 @@
+# Render.com Blueprint (must live at repo root to be detected).
+# Free tier — for trial/demo use: SQLite resets on restart (ephemeral disk)
+# and outbound SMTP is blocked (invitation emails use BREVO_API_KEY /
+# RESEND_API_KEY over HTTPS automatically).
+services:
+  - type: web
+    name: analytics-platform
+    runtime: node
+    plan: free
+    region: frankfurt        # closest free region to the Middle East
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/server.cjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically — the server reads process.env.PORT
+      - key: PUBLIC_BASE_URL
+        sync: false         # set in the dashboard, e.g. https://analytics-platform.onrender.com
+      # ---- Email: HTTP APIs first (SMTP is blocked on Render's free plan) ----
+      - key: BREVO_API_KEY
+        sync: false         # free tier: 300 emails/day, works with a verified Gmail sender
+      - key: RESEND_API_KEY
+        sync: false         # optional — needs a verified domain
+      # ---- SMTP fallback (works on VPS/Oracle only, kept for parity) ----
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        sync: false         # set in the dashboard (never commit)
+      - key: SMTP_PASS
+        sync: false         # set in the dashboard (never commit)
+      - key: SMTP_FROM
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

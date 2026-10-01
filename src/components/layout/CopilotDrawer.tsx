@@ -235,7 +235,7 @@ export const CopilotDrawer: React.FC = () => {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed top-0 right-0 w-96 h-full bg-[var(--cds-layer-01)] border-l border-[var(--cds-border-subtle)] shadow-2xl z-50 flex flex-col font-sans"
+          className="fixed top-0 end-0 w-96 h-full bg-[var(--cds-layer-01)] border-s border-[var(--cds-border-subtle)] shadow-2xl z-50 flex flex-col font-sans"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
@@ -247,7 +247,7 @@ export const CopilotDrawer: React.FC = () => {
                 </h2>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-[10px] font-mono text-[#8d8d8d]">
+                  <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
                     {aiSettings.activeModel}
                   </span>
                 </div>
@@ -289,7 +289,7 @@ export const CopilotDrawer: React.FC = () => {
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-[var(--cds-interactive-01)] text-white' : 'bg-[var(--cds-layer-03)] text-[var(--cds-interactive-01)]'}`}>
                     {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                   </div>
-                  <div className={`p-3 rounded-2xl text-xs leading-relaxed ${isUser ? 'bg-[var(--cds-interactive-01)]/10 text-[var(--cds-text-01)] rounded-tr-sm' : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] rounded-tl-sm'}`}>
+                  <div className={`p-3 rounded-xl text-xs leading-relaxed ${isUser ? 'bg-[var(--cds-interactive-01)]/10 text-[var(--cds-text-01)] rounded-tr-sm' : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] rounded-tl-sm'}`}>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                     {msg.sqlSnippet && (
                       <div className="mt-2 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2 rounded-md font-mono text-[10px]">
@@ -308,7 +308,7 @@ export const CopilotDrawer: React.FC = () => {
                 <div className="w-6 h-6 rounded-full bg-[var(--cds-layer-03)] text-[var(--cds-interactive-01)] flex items-center justify-center shrink-0">
                   <Bot className="w-3 h-3" />
                 </div>
-                <div className="p-3 bg-[var(--cds-layer-02)] rounded-2xl rounded-tl-sm flex items-center gap-1">
+                <div className="p-3 bg-[var(--cds-layer-02)] rounded-xl rounded-tl-sm flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--cds-interactive-01)] animate-bounce" />
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--cds-interactive-01)] animate-bounce delay-150" />
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--cds-interactive-01)] animate-bounce delay-300" />
@@ -327,12 +327,12 @@ export const CopilotDrawer: React.FC = () => {
                 onChange={e => setInputPrompt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                 placeholder={isAr ? 'اسأل الوكيل عن الشاشة الحالية...' : 'Ask agent about the current view...'}
-                className="flex-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--cds-text-01)] focus:outline-none focus:border-[var(--cds-interactive-01)]"
+                className="flex-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--cds-text-01)] focus:outline-none focus:border-[var(--cds-interactive-01)]"
               />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputPrompt.trim() || isThinking}
-                className="w-8 h-8 rounded-xl bg-[var(--cds-interactive-01)] hover:bg-[#0053e6] disabled:opacity-50 text-white flex items-center justify-center transition-colors shrink-0"
+                className="w-8 h-8 rounded-lg bg-[var(--cds-interactive-01)] hover:bg-[#0053e6] disabled:opacity-50 text-white flex items-center justify-center transition-colors shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>

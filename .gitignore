@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# SQLite database — live data, never commit
+/data/
