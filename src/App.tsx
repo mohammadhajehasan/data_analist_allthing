@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginPage, getStoredToken, clearStoredToken } from './features/auth/LoginPage';
@@ -6,21 +6,37 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { FeatureFlagsModal } from './components/layout/FeatureFlagsModal';
 import { LandingPage } from './features/landing/LandingPage';
-import { DatasetsPage } from './features/datasets/DatasetsPage';
-import { ProfilingPage } from './features/profiling/ProfilingPage';
-import { ExplorerPage } from './features/explorer/ExplorerPage';
-import { DashboardBuilder } from './features/dashboards/DashboardBuilder';
-import { NL2SQLPage } from './features/nl2sql/NL2SQLPage';
-import { AssistantPage } from './features/assistant/AssistantPage';
-import { ReportsPage } from './features/reports/ReportsPage';
-import { AuditPage } from './features/audit/AuditPage';
-import { AdminPage } from './features/admin/AdminPage';
-import { ModelConfigPage } from './features/models/ModelConfigPage';
-import { AdvancedModelingPage } from './features/datamodeling/AdvancedModelingPage';
-import { UserGuidePage } from './features/help/UserGuidePage';
-import { WorkflowStudio } from './features/workflow/WorkflowStudio';
-import { DiscussionsPage } from './features/discussions/DiscussionsPage';
-import { JoinGroupPage } from './features/discussions/JoinGroupPage';
+
+// ---------------------------------------------------------------------------
+// Code-splitting: feature pages are loaded on demand. The initial tab is
+// 'landing' (kept eager above) and the login page is the first guest screen —
+// everything else — and the heavy charting/export libraries each page pulls
+// (Plotly, xlsx, jspdf, d3, xyflow, ...) — ships in its own async chunk.
+// ---------------------------------------------------------------------------
+const DatasetsPage = lazy(() => import('./features/datasets/DatasetsPage').then(m => ({ default: m.DatasetsPage })));
+const ProfilingPage = lazy(() => import('./features/profiling/ProfilingPage').then(m => ({ default: m.ProfilingPage })));
+const ExplorerPage = lazy(() => import('./features/explorer/ExplorerPage').then(m => ({ default: m.ExplorerPage })));
+const DashboardBuilder = lazy(() => import('./features/dashboards/DashboardBuilder').then(m => ({ default: m.DashboardBuilder })));
+const NL2SQLPage = lazy(() => import('./features/nl2sql/NL2SQLPage').then(m => ({ default: m.NL2SQLPage })));
+const AssistantPage = lazy(() => import('./features/assistant/AssistantPage').then(m => ({ default: m.AssistantPage })));
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const AuditPage = lazy(() => import('./features/audit/AuditPage').then(m => ({ default: m.AuditPage })));
+const AdminPage = lazy(() => import('./features/admin/AdminPage').then(m => ({ default: m.AdminPage })));
+const ModelConfigPage = lazy(() => import('./features/models/ModelConfigPage').then(m => ({ default: m.ModelConfigPage })));
+const AdvancedModelingPage = lazy(() => import('./features/datamodeling/AdvancedModelingPage').then(m => ({ default: m.AdvancedModelingPage })));
+const UserGuidePage = lazy(() => import('./features/help/UserGuidePage').then(m => ({ default: m.UserGuidePage })));
+const WorkflowStudio = lazy(() => import('./features/workflow/WorkflowStudio').then(m => ({ default: m.WorkflowStudio })));
+const DiscussionsPage = lazy(() => import('./features/discussions/DiscussionsPage').then(m => ({ default: m.DiscussionsPage })));
+const JoinGroupPage = lazy(() => import('./features/discussions/JoinGroupPage').then(m => ({ default: m.JoinGroupPage })));
+
+const ViewFallback: React.FC = () => (
+  <div className="flex items-center justify-center py-24" dir="rtl">
+    <div className="text-center space-y-3">
+      <div className="w-8 h-8 mx-auto border-2 border-[#0f62fe] border-t-transparent rounded-full animate-spin" />
+      <p className="text-xs text-[var(--cds-text-03,#8d8d8d)]">جاري تحميل القسم...</p>
+    </div>
+  </div>
+);
 import { ToastContainer } from './components/common/ToastContainer';
 import { BackgroundMonitor } from './components/common/BackgroundMonitor';
 import { CopilotDrawer } from './components/layout/CopilotDrawer';
@@ -135,7 +151,9 @@ const MainLayout: React.FC = () => {
         {/* Dynamic View Canvas */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[var(--cds-background)] transition-colors duration-150">
           <div className="max-w-7xl mx-auto">
-            {renderActiveView()}
+            <Suspense fallback={<ViewFallback />}>
+              {renderActiveView()}
+            </Suspense>
           </div>
         </main>
       </div>
@@ -229,6 +247,7 @@ export default function App() {
   if (pendingInviteCode && authState === 'authed') {
     return (
       <AppProvider authUser={authUser}>
+        <Suspense fallback={<ViewFallback />}>
         <JoinGroupPage
           code={pendingInviteCode}
           onJoined={() => {
@@ -238,6 +257,7 @@ export default function App() {
             window.dispatchEvent(new CustomEvent('carbon-open-discussions'));
           }}
         />
+        </Suspense>
       </AppProvider>
     );
   }

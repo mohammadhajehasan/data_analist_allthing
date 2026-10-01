@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import Plot from 'react-plotly.js';
+import LazyPlot from './common/LazyPlot';
 import {
   X,
   Sparkles,
@@ -949,7 +949,7 @@ recommended="R² (Validation)"
                   </div>
 
                   <div className="h-[320px] w-full">
-                    <Plot
+                    <LazyPlot
                       key={`grid-plot-${isDark}`}
                       data={[
                         {

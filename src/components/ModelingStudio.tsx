@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useImperativeHandle } from 'react';
-import Plot from 'react-plotly.js';
+import LazyPlot from './common/LazyPlot';
 import * as ss from 'simple-statistics';
 import { kmeans } from 'ml-kmeans';
 import MultivariateLinearRegression from 'ml-regression-multivariate-linear';
@@ -4244,7 +4244,7 @@ language === 'ar'
                           : 'Checks linearity. Points should be scattered randomly around the zero line with no distinct pattern.'}
                       </div>
                       <div className="h-[220px]">
-                        <Plot
+                        <LazyPlot
                           key={`diag-fit-${isDark}`}
                           data={[
                             {
@@ -4301,7 +4301,7 @@ language === 'ar'
                           const minQ = Math.min(...theoreticalQ);
                           const maxQ = Math.max(...theoreticalQ);
                           return (
-                            <Plot
+                            <LazyPlot
                               key={`diag-qq-${isDark}`}
                               data={[
                                 {
@@ -4354,7 +4354,7 @@ language === 'ar'
                           const stdRes = residuals.map(r => sdRes > 0 ? r/sdRes : 0);
                           const sqrtAbsStdRes = stdRes.map(r => Math.sqrt(Math.abs(r)));
                           return (
-                            <Plot
+                            <LazyPlot
                               key={`diag-scale-${isDark}`}
                               data={[
                                 {
@@ -4393,7 +4393,7 @@ language === 'ar'
                           : 'Direct distribution of prediction error. Ideally fits a bell curve with zero skewness.'}
                       </div>
                       <div className="h-[220px]">
-                        <Plot
+                        <LazyPlot
                           key={`diag-hist-${isDark}`}
                           data={[
                             {
@@ -4465,7 +4465,7 @@ language === 'ar'
                 )
               ) : activeVizTab !== 'table' && activeVizTab !== 'comparator' ? (
                 <div className="w-full h-[430px]">
-                  <Plot
+                  <LazyPlot
                     key={JSON.stringify(data.length) + selectedType + activeVizTab + (result ? result.equation : '') + (isDark ? 'dark' : 'light')}
                     data={plotData as any}
                     layout={plotLayout as any}
@@ -4585,7 +4585,7 @@ language === 'ar'
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     {/* Visualizer Chart */}
                     <div className="lg:col-span-7 border border-[var(--cds-border-subtle)] rounded-lg overflow-hidden bg-[var(--cds-layer-02)] p-2 h-[380px]">
-                      <Plot
+                      <LazyPlot
                         key={JSON.stringify(data.length) + selectedCompModelAId + selectedCompModelBId + activeVizTab + (isDark ? 'dark' : 'light')}
                         data={plotData as any}
                         layout={{
@@ -5294,7 +5294,7 @@ language === 'ar'
                   {language === 'ar' ? 'مصفوفة الارتباط الحرارية التفاعلية (Pearson Correlation Heatmap)' : 'Pearson Correlation Heatmap'}
                 </h3>
                 <div className="w-full h-[450px]">
-                  <Plot
+                  <LazyPlot
                     data={[{
                       z: correlationAnalysis.matrixResult.matrix,
                       x: correlationAnalysis.matrixResult.columns,
