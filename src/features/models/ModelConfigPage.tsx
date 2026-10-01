@@ -39,6 +39,7 @@ import { useApp } from '../../context/AppContext';
 import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
 import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 
 // Interface for Token Consumption Tracking
 interface TokenUsageEntry {
@@ -219,6 +220,61 @@ export const ModelConfigPage: React.FC = () => {
     }
   }, [selectedProviderId, aiSettings.providers.ollama.endpointUrl]);
 
+  // يترجم أخطاء الاتصال الخام القادمة من الخادم إلى رسائل عربية واضحة قابلة للتنفيذ
+  const translateTestError = (msg: string): string => {
+    const m = msg || '';
+    if (/placeholder|تجريبي وهمي|my[_-]?gemini/i.test(m))
+      return isAr
+        ? 'مفتاح الخادم الحالي تجريبي وهمي — أدخل مفتاحك الحقيقي في الحقل أعلاه ثم اضغط "حفظ واختبار"'
+        : 'Server key is a placeholder — enter your real key above and press "Save & Test"';
+    if (/401|403|invalid|API[_ ]?key|API_KEY_INVALID|permission|denied|unregistered/i.test(m))
+      return isAr
+        ? 'المفتاح غير صالح أو لا يملك صلاحية — انسخه كاملاً من صفحة المزود وتأكد أنه مُفعل'
+        : 'Invalid or unauthorized key — copy it fully from the provider console';
+    if (/429|quota|rate|exceeded|exhausted/i.test(m))
+      return isAr
+        ? 'تم تجاوز حد الاستخدام لهذا المفتاح — انتظر قليلاً أو استخدم مفتاحاً آخر'
+        : 'Rate limit exceeded — wait a moment or use another key';
+    if (/ENOTFOUND|ECONNREFUSED|fetch|network|timeout|aborted/i.test(m))
+      return isAr
+        ? 'تعذر الوصول للمزود — تحقق من اتصال الإنترنت أو من عنوان نقطة النهاية'
+        : 'Cannot reach the provider — check your network or the endpoint URL';
+    return m;
+  };
+
+  // يحفظ المفتاح في المتصفح (localStorage) ثم يطلق اختبار الاتصال تلقائياً
+  const handleSaveKey = async (providerId: AIProviderId) => {
+    const cfg = aiSettings.providers[providerId];
+    const key = (cfg?.apiKey || '').trim();
+    if (providerId !== 'ollama' && !key) {
+      toast.warning(
+        isAr ? 'المفتاح فارغ' : 'Empty Key',
+        isAr ? 'أدخل مفتاح API أولاً — يمكنك الحصول عليه من صفحة المزود الخاص به.' : 'Enter an API key first — get one from the provider console.'
+      );
+      return;
+    }
+    if (providerId === 'custom_openai' && !(cfg?.endpointUrl || '').trim()) {
+      toast.warning(
+        isAr ? 'عنوان النقطة مطلوب' : 'Endpoint Required',
+        isAr ? 'أدخل عنوان نقطة النهاية المتوافقة مع OpenAI قبل الحفظ.' : 'Enter an OpenAI-compatible endpoint URL before saving.'
+      );
+      return;
+    }
+    if (key && /demo|xxxx|your[_-]?api|my[_-]?gemini|placeholder/i.test(key)) {
+      toast.error(
+        isAr ? 'هذا ليس مفتاحاً حقيقياً' : 'Not a Real Key',
+        isAr ? 'القيمة المدخلة تبدو نصاً توضيحياً — الصق المفتاح الفعلي من صفحة المزود.' : 'That looks like placeholder text — paste the real key from the provider.'
+      );
+      return;
+    }
+    updateProviderConfig(providerId, { apiKey: key });
+    toast.success(
+      isAr ? 'تم حفظ المفتاح' : 'Key Saved',
+      isAr ? 'حُفظ المفتاح في متصفحك فقط — جاري اختبار الاتصال الآن...' : 'Stored in your browser only — testing connection now...'
+    );
+    await handleTestConnection(providerId);
+  };
+
   const handleTestConnection = async (providerId: AIProviderId) => {
     setTestingId(providerId);
     const res = await testProviderConnection(providerId);
@@ -229,12 +285,15 @@ export const ModelConfigPage: React.FC = () => {
     if (res.status === 'connected') {
       toast.success(
         isAr ? 'تم التحقق من الاتصال بنجاح' : 'Connection Verified',
-        isAr ? `المزود ${providerId} متصل بزمن استجابة ${res.latencyMs || 0}ms.` : `Connected in ${res.latencyMs || 0}ms.`
+        isAr ? `المزود ${providerId} متصل بزمن استجابة ${res.latencyMs || 0}ms — ميزات الذكاء الاصطناعي جاهزة.` : `Connected in ${res.latencyMs || 0}ms — AI features are ready.`
       );
     } else {
+      const friendly = translateTestError(res.message || '');
+      // اعرض الرسالة المترجمة في لافتة الحالة أيضاً بدل الخطأ الخام
+      updateProviderConfig(providerId, { status: 'error', errorMessage: friendly });
       toast.error(
         isAr ? 'تعذر الاتصال بالمزود' : 'Connection Failed',
-        res.message || (isAr ? 'يرجى مراجعة الرابط أو مفتاح الـ API.' : 'Verify Base URL or API Key.')
+        friendly || (isAr ? 'يرجى مراجعة الرابط أو مفتاح الـ API.' : 'Verify Base URL or API Key.')
       );
     }
   };
@@ -285,6 +344,13 @@ export const ModelConfigPage: React.FC = () => {
 
     const selectedModelDef = availableAIModels.find(m => m.id === sandboxModelId) || availableAIModels[0];
     const providerConfig = aiSettings.providers[selectedModelDef.provider];
+
+    const access = checkAiAccess(selectedModelDef.provider, providerConfig);
+    if (!access.ok) {
+      const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, selectedModelDef.providerName || String(selectedModelDef.provider));
+      toast.warning(title, description);
+      return;
+    }
 
     setSandboxIsRunning(true);
     setSandboxResponse(null);
@@ -698,6 +764,19 @@ export const ModelConfigPage: React.FC = () => {
                       : (isAr ? 'اختبار الاتصال' : 'Test Connection')}
                   </button>
 
+                  {!currentProvider.isLocalOnly && (
+                    <button
+                      onClick={() => handleSaveKey(currentProvider.providerId)}
+                      disabled={testingId === currentProvider.providerId}
+                      className="h-9 px-3.5 text-xs font-semibold bg-[#0f62fe]/15 hover:bg-[#0f62fe]/25 text-[#78a9ff] border border-[#0f62fe]/40 flex items-center gap-2 transition-all rounded-xs disabled:opacity-50 cursor-pointer"
+                    >
+                      <Save className={`w-3.5 h-3.5 ${testingId === currentProvider.providerId ? 'animate-pulse' : ''}`} />
+                      {testingId === currentProvider.providerId
+                        ? (isAr ? 'جاري الحفظ والفحص...' : 'Saving & Testing...')
+                        : (isAr ? 'حفظ واختبار' : 'Save & Test')}
+                    </button>
+                  )}
+
                   {aiSettings.activeProvider !== currentProvider.providerId ? (
                     <button
                       onClick={() => {
@@ -741,7 +820,13 @@ export const ModelConfigPage: React.FC = () => {
                       ? (isAr ? `الاتصال جاهز ومفعل (زمن الاستجابة: ${currentProvider.lastPingMs || 8}ms)` : `Connected and verified (${currentProvider.lastPingMs || 8}ms latency)`)
                       : currentProvider.status === 'error'
                       ? (currentProvider.errorMessage || (isAr ? 'فشل الاتصال بالمزود، تحقق من الإعدادات' : 'Connection failed'))
-                      : (isAr ? 'لم يتم فحص الاتصال بعد' : 'Not verified yet')}
+                      : (isAr
+                        ? (!currentProvider.apiKey && currentProvider.providerId !== 'ollama'
+                          ? 'لم يُدخل مفتاح بعد — أدخل مفتاحك في الحقل أدناه ثم اضغط "حفظ واختبار"'
+                          : 'لم يتم فحص الاتصال بعد — اضغط "حفظ واختبار"')
+                        : (!currentProvider.apiKey && currentProvider.providerId !== 'ollama'
+                          ? 'No key yet — enter your key below then press "Save & Test"'
+                          : 'Not verified yet — press "Save & Test"'))}
                   </span>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { Bot, User, X, Sparkles, Send, Terminal, ChevronRight, LayoutDashboard, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,6 +22,7 @@ export const CopilotDrawer: React.FC = () => {
     saveDashboard,
     setActiveDashboardId,
     setActiveTab,
+    toast,
   } = useApp();
 
   const [inputPrompt, setInputPrompt] = useState('');
@@ -62,6 +64,15 @@ export const CopilotDrawer: React.FC = () => {
       }));
 
       const activeProviderConf = aiSettings.providers[aiSettings.activeProvider] || ({} as any);
+      const access = checkAiAccess(aiSettings.activeProvider, activeProviderConf);
+      if (!access.ok) {
+        setIsThinking(false);
+        const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', language === 'ar', activeProviderConf?.nameAr || activeProviderConf?.name || 'المزود النشط');
+        toast.warning(title, description);
+        setActiveTab('models');
+        setIsCopilotOpen(false);
+        return;
+      }
 
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',

@@ -46,6 +46,7 @@ import {
   PolarRadiusAxis,
 } from 'recharts';
 import { useApp } from '../../context/AppContext';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 import {
   AIModelDefinition,
   ModelBenchmarkResult,
@@ -68,6 +69,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
     aiSettings,
     testProviderConnection,
     toast,
+    setActiveTab: navigateToTab,
   } = useApp();
 
   const isAr = language === 'ar';
@@ -228,6 +230,17 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
         isAr ? 'يرجى إدخال السؤال' : 'Enter a query',
         isAr ? 'اكتب السؤال التحليلي الذي ترغب في مقارنة أداء النماذج عليه.' : 'Provide the analytical prompt to benchmark.'
       );
+      return;
+    }
+
+    // الحرس: النماذج السحابية المختارة تحتاج مفاتيح — تحقق قبل إطلاق الطلبات المتوازية
+    const missingKeyModel = selectedModelIds
+      .map(id => availableAIModels.find(m => m.id === id))
+      .find(def => def && !checkAiAccess(def.provider, aiSettings.providers[def.provider]).ok);
+    if (missingKeyModel) {
+      const { title, description } = aiAccessBlockMessage('no-key', isAr, missingKeyModel.providerName || missingKeyModel.provider);
+      toast.warning(title, isAr ? `${description} (النموذج الناقص: ${missingKeyModel.name})` : `${description} (missing: ${missingKeyModel.name})`);
+      navigateToTab('models');
       return;
     }
 

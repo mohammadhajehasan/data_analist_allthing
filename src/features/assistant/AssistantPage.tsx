@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { ExecutionDebugger } from '../../components/assistant/ExecutionDebugger';
 import { AIModelSelector } from '../../components/ai/AIModelSelector';
@@ -28,6 +29,7 @@ export const AssistantPage: React.FC = () => {
     saveDashboard,
     setActiveDashboardId,
     setActiveTab,
+    toast,
     activeTab,
     activeDashboard,
     setIsExplainModalOpen,
@@ -74,7 +76,15 @@ export const AssistantPage: React.FC = () => {
         parts: [{ text: m.content }],
       }));
 
-      const activeProviderConf = aiSettings.providers[aiSettings.activeProvider] || ({} as any);
+      const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider]);
+      if (!access.ok) {
+      setIsThinking(false);
+      const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', language === 'ar', aiSettings.providers[aiSettings.activeProvider]?.nameAr || aiSettings.providers[aiSettings.activeProvider]?.name || 'المزود النشط');
+      toast.warning(title, description);
+      setActiveTab('models');
+      return;
+    }
+    const activeProviderConf = aiSettings.providers[aiSettings.activeProvider] || ({} as any);
 
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',

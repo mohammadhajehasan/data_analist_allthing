@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -39,7 +40,7 @@ interface JsonRpcResponse {
 }
 
 export const JsonRpcGatewayPanel: React.FC = () => {
-  const { language, toast, aiSettings } = useApp();
+  const { language, toast, aiSettings, setActiveTab } = useApp();
   const isAr = language === 'ar';
 
   // Gateway Configuration State
@@ -161,6 +162,15 @@ export const JsonRpcGatewayPanel: React.FC = () => {
       params: parsedParams,
       id: requestId,
     };
+
+    // الحرس: بوابة JSON-RPC تستدعي المزود النشط — تأكد من توفر المفتاح أولاً
+    const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider]);
+    if (!access.ok) {
+      const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, aiSettings.providers[aiSettings.activeProvider]?.nameAr || aiSettings.providers[aiSettings.activeProvider]?.name || 'المزود النشط');
+      toast.warning(title, description);
+      setActiveTab('models');
+      return;
+    }
 
     setIsLoading(true);
     setResponsePayload(null);

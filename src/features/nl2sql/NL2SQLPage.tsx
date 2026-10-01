@@ -4,6 +4,7 @@ import { validateSqlWithNineLayers } from '../../utils/sqlValidator';
 import { executeAnalyticalQuery } from '../../utils/analyticsEngine';
 import { analyzeSqlErrors } from '../../utils/sqlErrorParser';
 import { generateExecutionPlan } from '../../utils/sqlPlanGenerator';
+import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
 import { SQLValidationReport, QueryResult, SqlOptimizationResult, ExecutionPlanNode } from '../../types';
 import { ChartFactory } from '../../components/charts/ChartFactory';
 import { CarbonDataTable } from '../../components/common/CarbonDataTable';
@@ -49,7 +50,7 @@ import {
 } from 'lucide-react';
 
 export const NL2SQLPage: React.FC = () => {
-  const { activeDataset, user, workspace, addAuditLog, toast, language, t, activeAIModelDef, aiSettings } = useApp();
+  const { activeDataset, user, workspace, addAuditLog, toast, language, t, activeAIModelDef, aiSettings, setActiveTab } = useApp();
   const isAr = language === 'ar';
 
   const [activeSubTab, setActiveSubTab] = useState<'editor' | 'arena' | 'config'>('editor');
@@ -143,6 +144,13 @@ export const NL2SQLPage: React.FC = () => {
 
   const handleGenerateSql = async () => {
     if (!question.trim() || !activeDataset) return;
+    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider]);
+    if (!access.ok) {
+      const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, activeAIModelDef.providerName || String(activeAIModelDef.provider));
+      toast.warning(title, description);
+      setActiveTab('models');
+      return;
+    }
     setIsGenerating(true);
     try {
       const res = await fetch('/api/nl2sql/generate', {
@@ -199,6 +207,13 @@ export const NL2SQLPage: React.FC = () => {
 
   const handleOptimizeSql = async () => {
     if (!sqlCode.trim() || !activeDataset) return;
+    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider]);
+    if (!access.ok) {
+      const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, activeAIModelDef.providerName || String(activeAIModelDef.provider));
+      toast.warning(title, description);
+      setActiveTab('models');
+      return;
+    }
     setIsOptimizerOpen(true);
     setIsOptimizing(true);
     try {
