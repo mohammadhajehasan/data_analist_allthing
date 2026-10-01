@@ -28,7 +28,6 @@ export const ProjectSnapshotModal: React.FC = () => {
     datasets,
     dashboards,
     dataStories,
-    comments,
     scheduledRefreshes,
     language,
     formatDate,
@@ -214,7 +213,7 @@ export const ProjectSnapshotModal: React.FC = () => {
                       <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
                       <span>{language === 'ar' ? 'التعليقات' : 'Annotations'}</span>
                     </div>
-                    <p className="text-lg font-bold text-white">{comments.length}</p>
+                    <p className="text-lg font-bold text-white">{importedData ? (importedData.comments?.length || 0) : 0}</p>
                     <p className="text-[10px] text-[var(--cds-text-03)]">{language === 'ar' ? 'ملاحظة ومناقشة' : 'comments'}</p>
                   </div>
                 </div>

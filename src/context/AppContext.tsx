@@ -22,8 +22,6 @@ import {
   AIModelCapability,
   AVAILABLE_AI_MODELS,
   INITIAL_AI_SETTINGS,
-  CommentItem,
-  CommentReply,
   ProjectSnapshot,
   ScheduledDataRefresh,
   ModelExplanationRequest,
@@ -31,7 +29,7 @@ import {
 } from '../types';
 
 import { INITIAL_DATASETS, generateProfile } from '../data/seedDatasets';
-import { INITIAL_COMMENTS, INITIAL_SCHEDULED_REFRESHES } from '../data/seedCollaboration';
+import { INITIAL_SCHEDULED_REFRESHES } from '../data/seedCollaboration';
 import { translations, Language } from '../i18n/translations';
 import { checkOllamaEngineHealth } from '../services/aiService';
 
@@ -126,17 +124,6 @@ interface AppContextType {
     refreshCloudModels: (providerId: AIProviderId, apiKey: string, endpointUrl?: string) => Promise<any[]>;
     // Authentication
     logout: () => void;
-    // Comments & Annotations Collaboration
-   comments: CommentItem[];
-   addComment: (comment: Omit<CommentItem, 'id' | 'createdAt'>) => CommentItem;
-   addCommentReply: (commentId: string, reply: Omit<CommentReply, 'id' | 'createdAt'>) => void;
-   toggleCommentResolved: (commentId: string) => void;
-   deleteComment: (commentId: string) => void;
-   getCommentsForTarget: (targetType: string, targetId: string) => CommentItem[];
-   activeCommentTarget: { type: string; id: string; title?: string } | null;
-   setActiveCommentTarget: (target: { type: string; id: string; title?: string } | null) => void;
-   isCommentsDrawerOpen: boolean;
-   setIsCommentsDrawerOpen: (open: boolean) => void;
    // Project Snapshot Management
    exportProjectSnapshot: (customName?: string, customDesc?: string) => ProjectSnapshot;
    restoreProjectSnapshot: (snapshot: ProjectSnapshot) => { success: boolean; message: string };
@@ -520,30 +507,6 @@ export const AppProvider: React.FC<{
   const [modelingResult, setModelingResult] = useState<any | null>(null);
 
   // ----------------------------------------------------
-  // Collaboration & Comments State
-  // ----------------------------------------------------
-  const [comments, setComments] = useState<CommentItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('carbon_comments');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return INITIAL_COMMENTS;
-  });
-
-  const [activeCommentTarget, setActiveCommentTarget] = useState<{ type: string; id: string; title?: string } | null>(null);
-  const [isCommentsDrawerOpen, setIsCommentsDrawerOpen] = useState(false);
-
-  // Sync comments to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('carbon_comments', JSON.stringify(comments));
-    } catch (e) {}
-  }, [comments]);
-
-  // ----------------------------------------------------
   // Project Snapshot State
   // ----------------------------------------------------
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
@@ -893,77 +856,6 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     aiSettings.providers.custom_openai.apiKey,
   ]);
 
-   // ----------------------------------------------------
-  // Collaboration & Comments Methods
-  // ----------------------------------------------------
-  const addComment = (commentData: Omit<CommentItem, 'id' | 'createdAt'>): CommentItem => {
-    const newComment: CommentItem = {
-      ...commentData,
-      id: `cmt-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      resolved: false,
-      replies: [],
-    };
-    setComments(prev => [newComment, ...prev]);
-    toast.success(
-      language === 'ar' ? 'تمت إضافة التعليق بنجاح' : 'Comment Posted',
-      language === 'ar' ? 'تم حفظ ملاحظتك ومشاركتها مع فريق العمل.' : 'Your annotation has been shared with the team.'
-    );
-    return newComment;
-  };
-
-  const addCommentReply = (commentId: string, replyData: Omit<CommentReply, 'id' | 'createdAt'>) => {
-    const newReply: CommentReply = {
-      ...replyData,
-      id: `rep-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setComments(prev =>
-      prev.map(c => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            replies: [...(c.replies || []), newReply],
-          };
-        }
-        return c;
-      })
-    );
-    toast.success(
-      language === 'ar' ? 'تم إرسال الرد' : 'Reply Added',
-      language === 'ar' ? 'تمت إضافة ردك إلى النقاش.' : 'Your reply has been added.'
-    );
-  };
-
-  const toggleCommentResolved = (commentId: string) => {
-    setComments(prev =>
-      prev.map(c => {
-        if (c.id === commentId) {
-          const nextResolved = !c.resolved;
-          return {
-            ...c,
-            resolved: nextResolved,
-            resolvedBy: nextResolved ? user.name : undefined,
-            resolvedAt: nextResolved ? new Date().toISOString() : undefined,
-          };
-        }
-        return c;
-      })
-    );
-  };
-
-  const deleteComment = (commentId: string) => {
-    setComments(prev => prev.filter(c => c.id !== commentId));
-    toast.info(
-      language === 'ar' ? 'تم حذف التعليق' : 'Comment Deleted',
-      language === 'ar' ? 'تمت إزالة الملاحظة من لوحة القيادة.' : 'Comment has been removed.'
-    );
-  };
-
-  const getCommentsForTarget = (targetType: string, targetId: string): CommentItem[] => {
-    return comments.filter(c => c.targetType === targetType && c.targetId === targetId);
-  };
-
   // ----------------------------------------------------
   // Project Snapshot Management Methods
   // ----------------------------------------------------
@@ -994,7 +886,6 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       datasets,
       dashboards,
       dataStories,
-      comments,
       reports,
       scheduledRefreshes,
       workflows: savedWorkflows,
@@ -1009,7 +900,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         dashboardCount: dashboards.length,
         widgetCount: totalWidgets,
         dataStoryCount: dataStories.length,
-        commentCount: comments.length,
+        commentCount: 0,
         workflowCount: savedWorkflows.length,
       },
     };
@@ -1061,10 +952,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       if (Array.isArray(snapshot.dataStories)) {
         setDataStories(snapshot.dataStories);
       }
-      if (Array.isArray(snapshot.comments)) {
-        setComments(snapshot.comments);
-        localStorage.setItem('carbon_comments', JSON.stringify(snapshot.comments));
-      }
+      // لقطات قديمة قد تحمل تعليقات — تُتجاهل بأمان (نظام التعليقات أُزيل لصالح صفحة المناقشات)
       if (Array.isArray(snapshot.reports)) {
         setReports(snapshot.reports);
       }
@@ -1773,16 +1661,6 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         refreshOllamaModels,
         refreshCloudModels,
         logout: () => { onLogout?.(); },
-        comments,
-        addComment,
-        addCommentReply,
-        toggleCommentResolved,
-        deleteComment,
-        getCommentsForTarget,
-        activeCommentTarget,
-        setActiveCommentTarget,
-        isCommentsDrawerOpen,
-        setIsCommentsDrawerOpen,
         exportProjectSnapshot,
         restoreProjectSnapshot,
         isSnapshotModalOpen,

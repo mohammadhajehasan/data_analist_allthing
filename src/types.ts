@@ -688,7 +688,8 @@ export interface ProjectSnapshot {
   datasets: Dataset[];
   dashboards: Dashboard[];
   dataStories: DataStory[];
-  comments: CommentItem[];
+  /** @deprecated نُظام التعليقات أُزيل — الحقل مقبول في اللقطات القديمة ويُتجاهل */
+  comments?: CommentItem[];
   reports?: Report[];
   scheduledRefreshes?: ScheduledDataRefresh[];
   workflows?: any[];

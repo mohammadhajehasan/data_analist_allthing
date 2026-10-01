@@ -20,7 +20,6 @@ import { DashboardLayoutModal } from '../../components/dashboards/DashboardLayou
 import { LocalCsvImportModal } from '../../components/datasets/LocalCsvImportModal';
 import { ExportModal } from '../../components/common/ExportModal';
 import { VISUALIZATION_THEMES } from '../../utils/visualizationThemes';
-import { WidgetCommentBadge } from '../../components/collaboration/WidgetCommentBadge';
 import { AiAgentPanel } from './AiAgentPanel';
 import { ForecastingPanel } from './ForecastingPanel';
 import { AudioBriefingPanel } from './AudioBriefingPanel';
@@ -897,13 +896,6 @@ export const DashboardBuilder: React.FC = () => {
 
                     {/* Actions & Type Badge */}
                     <div className="flex items-center gap-1.5 shrink-0" data-export-ignore="true">
-                      {/* Comments & Discussion Badge */}
-                      <WidgetCommentBadge
-                        targetType="dashboard_widget"
-                        targetId={w.id}
-                        targetTitle={widgetDisplayName}
-                        className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]"
-                      />
 
                       {layoutSettings.showCardBadges && (
                         <span className="text-[10px] font-mono uppercase bg-[var(--cds-layer-01)] text-[#0f62fe] border border-[var(--cds-border-subtle)] px-2 py-0.5 font-bold">

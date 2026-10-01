@@ -43,7 +43,6 @@ import { CopilotDrawer } from './components/layout/CopilotDrawer';
 import { LiquidCopilotOrb } from './components/ai/LiquidCopilotOrb';
 import { ZenFocusMode } from './components/common/ZenFocusMode';
 import { OnboardingTour } from './components/common/OnboardingTour';
-import { CommentsDrawer } from './components/collaboration/CommentsDrawer';
 import { ProjectSnapshotModal } from './components/common/ProjectSnapshotModal';
 import { DataRefreshScheduleModal } from './components/datasets/DataRefreshScheduleModal';
 import { ExplainModelModal } from './components/models/ExplainModelModal';
@@ -171,9 +170,6 @@ const MainLayout: React.FC = () => {
       <ToastContainer />
       <BackgroundMonitor />
       <CopilotDrawer />
-
-      {/* Team Comments Drawer */}
-      <CommentsDrawer />
 
       {/* Project Snapshot (Export/Import State JSON) */}
       <ProjectSnapshotModal />

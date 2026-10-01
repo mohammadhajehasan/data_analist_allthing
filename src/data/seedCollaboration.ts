@@ -1,6 +1,8 @@
-import { CommentItem, ScheduledDataRefresh } from '../types';
+import { ScheduledDataRefresh } from '../types';
 
-export const INITIAL_COMMENTS: CommentItem[] = [
+// تمت إزالة بذور التعليقات — نظام التعليقات على الرسوم أُزيل لصالح صفحة المناقشات
+
+const _removedCommentsSeed = [
   {
     id: 'cmt-1',
     targetType: 'dashboard_widget',
@@ -67,6 +69,8 @@ export const INITIAL_COMMENTS: CommentItem[] = [
     resolved: false,
   },
 ];
+
+void _removedCommentsSeed; // يمنع تحذير المتغير غير المستخدم دون تشغيل أي منطق
 
 export const INITIAL_SCHEDULED_REFRESHES: ScheduledDataRefresh[] = [
   {
