@@ -18,6 +18,8 @@
     "@types/plotly.js": "^3.0.13",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.11.6",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
     "d3": "^7.9.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

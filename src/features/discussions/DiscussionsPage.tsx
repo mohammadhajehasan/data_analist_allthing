@@ -1026,7 +1026,7 @@ export const DiscussionsPage: React.FC = () => {
                   </span>
                   <span>
                     {(() => {
-                      const names = Object.values(typingUsers).map(u => u.name);
+                      const names = Object.values(typingUsers).map((u: { name: string }) => u.name);
                       if (names.length === 1) return isAr ? `${names[0]} يكتب الآن...` : `${names[0]} is typing...`;
                       if (names.length === 2) return isAr ? `${names[0]} و ${names[1]} يكتبان الآن...` : `${names[0]} and ${names[1]} are typing...`;
                       return isAr ? `${names.length} أعضاء يكتبون الآن...` : `${names.length} people are typing...`;
