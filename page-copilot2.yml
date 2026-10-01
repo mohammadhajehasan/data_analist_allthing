@@ -1,0 +1,87 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: منصة ذكاء وتحليل البيانات
+        - generic [ref=e14]: enterprise
+      - generic [ref=e15]: Enterprise Analytics Hub
+    - generic [ref=e16]:
+      - button "Gemini 3.8 Flash" [ref=e18]
+      - button "Global E-Commerce & Retail 2025" [ref=e27]
+      - button "Theme Selector" [ref=e36] [cursor=pointer]:
+        - generic [ref=e42]: كاربون
+    - generic [ref=e45]:
+      - button "لقطة حالة المشروع - تصدير واستعادة ملف JSON" [ref=e46]
+      - button "نظام التحديث التلقائي وجدولة API" [ref=e49]
+      - button "2" [ref=e57]
+      - button "استيراد CSV" [ref=e61]
+      - button "جولة" [ref=e66]
+      - button "تخصيص التخطيط والمظهر وحفظ التفضيلات" [ref=e71]
+      - button "Feature Flags & Governance" [ref=e77]
+      - button "تبديل لغة الواجهة" [ref=e79] [cursor=pointer]:
+        - generic [ref=e83]: English
+      - button "أ أحمد الفرحات admin" [ref=e85]:
+        - generic [ref=e86]: أ
+        - generic [ref=e87]: أحمد الفرحات
+        - generic [ref=e88]: admin
+  - generic [ref=e89]:
+    - complementary [ref=e90]:
+      - generic [ref=e91]:
+        - generic [ref=e92]: WORKSPACE NAVIGATION
+        - button "نظرة عامة" [ref=e93]
+        - button "مجموعات البيانات" [ref=e99]
+        - button "نمذجة البيانات والعلاقات AI ERD" [ref=e106]:
+          - generic [ref=e107]: نمذجة البيانات والعلاقات
+          - generic [ref=e113]: AI ERD
+        - button "التوصيف الإحصائي والجودة" [ref=e114]
+        - button "مستكشف البيانات والاستعلامات" [ref=e118]
+        - button "لوحات التحكم التفاعلية" [ref=e123]
+        - button "مختبر NL2SQL الذكي 9-Layer" [ref=e131]:
+          - generic [ref=e132]: مختبر NL2SQL الذكي
+          - generic [ref=e136]: 9-Layer
+        - button "إعدادات النماذج والذكاء Ollama" [ref=e137]:
+          - generic [ref=e138]: إعدادات النماذج والذكاء
+          - generic [ref=e143]: Ollama
+        - button "دليل المستخدم والتوثيق New" [ref=e144]:
+          - generic [ref=e145]: دليل المستخدم والتوثيق
+          - generic [ref=e150]: New
+        - button "المساعد الذكي (AI Copilot) AI" [active] [ref=e151]:
+          - generic [ref=e152]: المساعد الذكي (AI Copilot)
+          - generic [ref=e157]: AI
+        - button "سير العمل والأتمتة Agent" [ref=e158]:
+          - generic [ref=e159]: سير العمل والأتمتة
+          - generic [ref=e165]: Agent
+        - button "التقارير وقصص البيانات" [ref=e166]
+        - button "سجل العمليات والأمان" [ref=e172]
+        - button "لوحة الإدارة والإعدادات" [ref=e177]
+      - generic [ref=e183]:
+        - button "جولة تعريفية" [ref=e184]
+        - generic [ref=e193]:
+          - generic [ref=e194]: OLAP Engine
+          - generic [ref=e197]: < 5ms
+        - button "طي القائمة" [ref=e198]
+    - main [ref=e204]:
+      - generic [ref=e270]:
+        - generic [ref=e271]:
+          - generic [ref=e272]:
+            - generic [ref=e273]: IBM CARBON / AI ANALYTICS AGENT
+            - heading "المساعد الذكي (AI Copilot)" [level=2] [ref=e275]
+          - generic [ref=e276]:
+            - button "اختيار مزود ونموذج الذكاء الاصطناعي" [ref=e278]
+            - button "تفسير النموذج" [ref=e285] [cursor=pointer]
+            - button "جلسة جديدة" [ref=e299] [cursor=pointer]
+        - generic [ref=e302]:
+          - generic [ref=e304] [cursor=pointer]:
+            - generic [ref=e305]: "GEMINI : gemini-3.8-flash"
+            - generic [ref=e308]: idle
+          - generic [ref=e318]:
+            - generic [ref=e319]: أهلاً بك! أنا المساعد التحليلي الذكي لمنصة البيانات. كيف يمكنني مساعدتك اليوم في استكشاف مجموعة البيانات، كشف القيم الشاذة، أو إنشاء استعلامات ولوحات تحكم مخصصة؟
+            - generic [ref=e321]: 18:46:30
+          - generic [ref=e322]:
+            - generic [ref=e323]: "Quick Queries:"
+            - button "ما هي أكثر 3 فئات مساهمة في الأرباح؟" [ref=e324]
+            - button "هل توجد أي قيم شاذة في المبيعات؟" [ref=e325]
+            - button "لخص الأداء الشهري مع اقتراح رسم بياني" [ref=e326]
+          - generic [ref=e327]:
+            - textbox "اسأل المساعد عن الأنماط في البيانات، أو اطلب إنشاء لوحة تحكم..." [ref=e328]
+            - button "إرسال" [disabled] [ref=e329] [cursor=pointer]

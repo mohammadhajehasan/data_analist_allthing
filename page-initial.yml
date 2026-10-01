@@ -1,0 +1,102 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: منصة ذكاء وتحليل البيانات
+        - generic [ref=e14]: enterprise
+      - generic [ref=e15]: Enterprise Analytics Hub
+    - generic [ref=e16]:
+      - button "Gemini 3.8 Flash" [ref=e18]
+      - button "Global E-Commerce & Retail 2025" [ref=e27]
+      - button "Theme Selector" [ref=e36] [cursor=pointer]:
+        - generic [ref=e42]: كاربون
+    - generic [ref=e45]:
+      - button "لقطة حالة المشروع - تصدير واستعادة ملف JSON" [ref=e46]
+      - button "نظام التحديث التلقائي وجدولة API" [ref=e49]
+      - button "2" [ref=e57]
+      - button "استيراد CSV" [ref=e61]
+      - button "جولة" [ref=e66]
+      - button "تخصيص التخطيط والمظهر وحفظ التفضيلات" [ref=e71]
+      - button "Feature Flags & Governance" [ref=e77]
+      - button "تبديل لغة الواجهة" [ref=e79] [cursor=pointer]:
+        - generic [ref=e83]: English
+      - button "أ أحمد الفرحات admin" [ref=e85]:
+        - generic [ref=e86]: أ
+        - generic [ref=e87]: أحمد الفرحات
+        - generic [ref=e88]: admin
+  - generic [ref=e89]:
+    - complementary [ref=e90]:
+      - generic [ref=e91]:
+        - generic [ref=e92]: WORKSPACE NAVIGATION
+        - button "نظرة عامة" [ref=e93]
+        - button "مجموعات البيانات" [ref=e99]
+        - button "نمذجة البيانات والعلاقات AI ERD" [ref=e106]:
+          - generic [ref=e107]: نمذجة البيانات والعلاقات
+          - generic [ref=e113]: AI ERD
+        - button "التوصيف الإحصائي والجودة" [ref=e114]
+        - button "مستكشف البيانات والاستعلامات" [ref=e118]
+        - button "لوحات التحكم التفاعلية" [ref=e123]
+        - button "مختبر NL2SQL الذكي 9-Layer" [ref=e131]:
+          - generic [ref=e132]: مختبر NL2SQL الذكي
+          - generic [ref=e136]: 9-Layer
+        - button "إعدادات النماذج والذكاء Ollama" [ref=e137]:
+          - generic [ref=e138]: إعدادات النماذج والذكاء
+          - generic [ref=e143]: Ollama
+        - button "دليل المستخدم والتوثيق New" [ref=e144]:
+          - generic [ref=e145]: دليل المستخدم والتوثيق
+          - generic [ref=e150]: New
+        - button "المساعد الذكي (AI Copilot) AI" [ref=e151]:
+          - generic [ref=e152]: المساعد الذكي (AI Copilot)
+          - generic [ref=e157]: AI
+        - button "سير العمل والأتمتة Agent" [ref=e158]:
+          - generic [ref=e159]: سير العمل والأتمتة
+          - generic [ref=e165]: Agent
+        - button "التقارير وقصص البيانات" [ref=e166]
+        - button "سجل العمليات والأمان" [ref=e172]
+        - button "لوحة الإدارة والإعدادات" [ref=e177]
+      - generic [ref=e183]:
+        - button "جولة تعريفية" [ref=e184]
+        - generic [ref=e193]:
+          - generic [ref=e194]: OLAP Engine
+          - generic [ref=e197]: < 5ms
+        - button "طي القائمة" [ref=e198]
+    - main [ref=e204]:
+      - generic [ref=e206]:
+        - generic [ref=e207]:
+          - generic [ref=e208]:
+            - generic [ref=e209]: الجيل القادم من تحليلات الذكاء الاصطناعي
+            - heading "تحليل أسرع للبيانات مع الذكاء الاصطناعي الفوري و استعلامات SQL الطبيعية" [level=1] [ref=e214]
+            - paragraph [ref=e215]: حوّل بياناتك الضخمة إلى رؤى استراتيجية فورية مع محرك OLAP في الذاكرة، والتوصيف الإحصائي الآلي، وحماية الساندبوكس من 9 طبقات.
+            - generic [ref=e216]:
+              - button "بدء الاستكشاف الفوري" [ref=e217] [cursor=pointer]
+              - button "تجربة NL2SQL" [ref=e221] [cursor=pointer]
+          - generic [ref=e225]:
+            - generic [ref=e226]:
+              - generic [ref=e227]: 100K+
+              - generic [ref=e228]: معالجة فورية
+            - generic [ref=e229]:
+              - generic [ref=e230]: < 5ms
+              - generic [ref=e231]: سرعة التحليل
+            - generic [ref=e232]:
+              - generic [ref=e233]: 9 Layers
+              - generic [ref=e234]: طبقات أمان SQL
+            - generic [ref=e235]:
+              - generic [ref=e236]: 99.4%
+              - generic [ref=e237]: دقة الاستعلام
+        - generic [ref=e238]:
+          - generic [ref=e239]:
+            - heading "قدرات معمارية متكاملة لفرق البيانات" [level=2] [ref=e240]
+            - paragraph [ref=e241]: معمارية متكاملة مصممة لفرق البيانات والمحللين وصناع القرار
+          - generic [ref=e242]:
+            - generic [ref=e243] [cursor=pointer]:
+              - heading "محرك استعلامات سريع OLAP" [level=3] [ref=e249]
+              - paragraph [ref=e250]: تجميع وحساب فوري في الذاكرة للبيانات ومطابقة التوزيعات الإحصائية بأقل من 10ms.
+            - generic [ref=e251] [cursor=pointer]:
+              - heading "توليد SQL ذكي وساندبوكس 9 طبقات" [level=3] [ref=e255]
+              - paragraph [ref=e256]: تحويل لغة البشر الطبيعية إلى SQL دقيق مع تحقق نحوي وأمني وتقدير الكلفة قبل التنفيذ.
+            - generic [ref=e257] [cursor=pointer]:
+              - heading "التوصيف الإحصائي وفحص الجودة" [level=3] [ref=e261]
+              - paragraph [ref=e262]: كشف القيم الشاذة، حساب المتوسطات والانحراف المعياري، وتحليل التوزيعات التكرارية.
+            - generic [ref=e263] [cursor=pointer]:
+              - heading "المساعد الذكي (AI Copilot)" [level=3] [ref=e268]
+              - paragraph [ref=e269]: محادثة تفاعلية مدعومة بنماذج Gemini لاستخراج الرؤى وتوليد الرسوم البيانية آلياً.
