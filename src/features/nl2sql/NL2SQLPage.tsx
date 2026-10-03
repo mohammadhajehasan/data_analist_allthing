@@ -4,7 +4,7 @@ import { validateSqlWithNineLayers } from '../../utils/sqlValidator';
 import { executeAnalyticalQuery } from '../../utils/analyticsEngine';
 import { analyzeSqlErrors } from '../../utils/sqlErrorParser';
 import { generateExecutionPlan } from '../../utils/sqlPlanGenerator';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 import { SQLValidationReport, QueryResult, SqlOptimizationResult, ExecutionPlanNode } from '../../types';
 import { ChartFactory } from '../../components/charts/ChartFactory';
 import { CarbonDataTable } from '../../components/common/CarbonDataTable';
@@ -144,7 +144,8 @@ export const NL2SQLPage: React.FC = () => {
 
   const handleGenerateSql = async () => {
     if (!question.trim() || !activeDataset) return;
-    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider]);
+    const serverProviders = await fetchServerAiProviders();
+    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider], serverProviders);
     if (!access.ok) {
       const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, activeAIModelDef.providerName || String(activeAIModelDef.provider));
       toast.warning(title, description);
@@ -207,7 +208,8 @@ export const NL2SQLPage: React.FC = () => {
 
   const handleOptimizeSql = async () => {
     if (!sqlCode.trim() || !activeDataset) return;
-    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider]);
+    const serverProviders = await fetchServerAiProviders();
+    const access = checkAiAccess(activeAIModelDef.provider, aiSettings.providers[activeAIModelDef.provider], serverProviders);
     if (!access.ok) {
       const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, activeAIModelDef.providerName || String(activeAIModelDef.provider));
       toast.warning(title, description);

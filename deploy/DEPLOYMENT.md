@@ -29,7 +29,7 @@
    - **Build Command:** `npm ci && npm run build`
    - **Start Command:** `node dist/server.cjs`
    - **Health Check Path:** `/api/health`
-4. أضف متغيرات البيئة (Environment): `BREVO_API_KEY` (أو `RESEND_API_KEY` — **ضروري على Render لأنها تحظر SMTP الصادر**)، `GEMINI_API_KEY`, `PUBLIC_BASE_URL` (رابط Render الذي سيعطيك إياه)، إلخ.
+4. أضف متغيرات البيئة (Environment): `BREVO_API_KEY` (أو `RESEND_API_KEY` — **ضروري على Render لأنها تحظر SMTP الصادر**)، `OPENROUTER_API_KEY` (مفتاح الخادم الجماعي — يفعّل ميزات AI وشارة «AI جاهز» لكل المستخدمين حتى بلا مفاتيح شخصية)، `GEMINI_API_KEY`, `PUBLIC_BASE_URL` (رابط Render الذي سيعطيك إياه)، إلخ.
 5. اضغط **Create Web Service** — بعد الدقيقتين ستحصل على رابط `https://your-app.onrender.com` يعمل من أي متصفح.
 
 > ملاحظة: الخطة المجانية "تنام" بعد 15 دقيقة خمول — أول زائر بعد النوم ينتظر ~50 ثانية.

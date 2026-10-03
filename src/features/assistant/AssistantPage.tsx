@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { ExecutionDebugger } from '../../components/assistant/ExecutionDebugger';
 import { AIModelSelector } from '../../components/ai/AIModelSelector';
@@ -76,7 +76,8 @@ export const AssistantPage: React.FC = () => {
         parts: [{ text: m.content }],
       }));
 
-      const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider]);
+      const serverProviders = await fetchServerAiProviders();
+      const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider], serverProviders);
       if (!access.ok) {
       setIsThinking(false);
       const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', language === 'ar', aiSettings.providers[aiSettings.activeProvider]?.nameAr || aiSettings.providers[aiSettings.activeProvider]?.name || 'المزود النشط');

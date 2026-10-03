@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -164,7 +164,8 @@ export const JsonRpcGatewayPanel: React.FC = () => {
     };
 
     // الحرس: بوابة JSON-RPC تستدعي المزود النشط — تأكد من توفر المفتاح أولاً
-    const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider]);
+    const serverProviders = await fetchServerAiProviders();
+    const access = checkAiAccess(aiSettings.activeProvider, aiSettings.providers[aiSettings.activeProvider], serverProviders);
     if (!access.ok) {
       const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, aiSettings.providers[aiSettings.activeProvider]?.nameAr || aiSettings.providers[aiSettings.activeProvider]?.name || 'المزود النشط');
       toast.warning(title, description);

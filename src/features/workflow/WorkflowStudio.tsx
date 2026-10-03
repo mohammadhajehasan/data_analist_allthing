@@ -80,7 +80,7 @@ import { WorkflowTemplateModal } from './WorkflowTemplateModal';
 import { WorkflowGuideModal } from './WorkflowGuideModal';
 import { WorkflowVersionHistoryDrawer } from './WorkflowVersionHistoryDrawer';
 import { executeWorkflowPipeline } from './workflowExecutor';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 
 const STORAGE_KEY = 'carbon_ai_workflows_v3';
 const VERSIONS_STORAGE_KEY = 'carbon_workflow_versions_v1';
@@ -821,7 +821,8 @@ const WorkflowStudioContent: React.FC = () => {
   const handleRunWorkflow = async () => {
     if (isRunning) return;
     // الحرس: خطوات AI في سير العمل تستدعي المزود النشط — تأكد من المفتاح قبل الإطلاق
-    const wfAccess = checkAiAccess(aiSettings.activeProvider, activeProviderConf);
+    const serverProviders = await fetchServerAiProviders();
+    const wfAccess = checkAiAccess(aiSettings.activeProvider, activeProviderConf, serverProviders);
     if (!wfAccess.ok && nodes.some(n => String(n.data?.nodeType || '').startsWith('ai_'))) {
       const { title, description } = aiAccessBlockMessage(wfAccess.reason || 'no-key', isAr, activeProviderConf?.nameAr || activeProviderConf?.name || 'المزود النشط');
       toast.warning(title, description);

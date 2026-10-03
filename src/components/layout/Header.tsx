@@ -30,6 +30,7 @@ import { LocalCsvImportModal } from '../datasets/LocalCsvImportModal';
 import { AIModelSelector } from '../ai/AIModelSelector';
 import { SonificationToggle } from '../common/SonificationToggle';
 import { NotificationBell } from './NotificationBell';
+import { useAiReadiness } from '../../hooks/useAiReadiness';
 
 export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) => {
   const {
@@ -51,7 +52,29 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
     setIsRefreshModalOpen,
     scheduledRefreshes,
     logout,
+    aiSettings,
+    activeAIModelDef,
+    setActiveTab,
   } = useApp();
+
+  // شارة جاهزية AI الدائمة: مفتاح المستخدم أو مفتاح الخادم الاحتياطي
+  const aiReadiness = useAiReadiness(aiSettings, activeAIModelDef);
+  const activeProviderCfg = aiSettings.providers[aiReadiness.providerId];
+  const aiProviderLabel =
+    language === 'ar'
+      ? activeProviderCfg?.nameAr || activeAIModelDef.providerName
+      : activeProviderCfg?.name || activeAIModelDef.providerName;
+  const aiBadgeTooltip = aiReadiness.ready
+    ? (language === 'ar'
+        ? `الذكاء الاصطناعي جاهز عبر ${aiProviderLabel}${
+            aiReadiness.reason === 'server-key' ? ' (مفتاح الخادم)' : aiReadiness.reason === 'local' ? ' (محرك محلي)' : ''
+          } — انقر لفتح صفحة النماذج`
+        : `AI ready via ${aiProviderLabel} — click to open Model Config`)
+    : (language === 'ar'
+        ? aiReadiness.reason === 'no-endpoint'
+          ? `مزوّد ${aiProviderLabel} يحتاج عنوان نقطة نهاية — انقر لإعداده من صفحة النماذج`
+          : `مفتاح ${aiProviderLabel} غير مُعد — انقر لإضافته من صفحة النماذج (حفظ واختبار)`
+        : `${aiProviderLabel} key is missing — click to add it in Model Config`);
 
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -127,6 +150,28 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
       {/* AI Model & Dataset Selector Center Cluster */}
       <div className="flex items-center gap-2">
+        {/* شارة جاهزية AI الدائمة (أخضر/أحمر) — تنقل لصفحة النماذج */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('models')}
+          title={aiBadgeTooltip}
+          aria-label={aiBadgeTooltip}
+          className={`h-9 px-3 hidden md:flex items-center gap-2 text-xs font-semibold border rounded-xs transition-all cursor-pointer shrink-0 ${
+            aiReadiness.ready
+              ? 'bg-[#24a148]/10 hover:bg-[#24a148]/20 text-[#42be65] border-[#24a148]/40'
+              : 'bg-[#da1e28]/10 hover:bg-[#da1e28]/20 text-[#ff8389] border-[#da1e28]/40'
+          }`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              aiReadiness.ready ? 'bg-[#42be65]' : 'bg-[#ff8389] animate-pulse'
+            }`}
+          />
+          {aiReadiness.ready
+            ? (language === 'ar' ? 'AI جاهز' : 'AI Ready')
+            : (language === 'ar' ? 'AI غير مُفعّل' : 'AI Off')}
+        </button>
+
         {/* Global AI Engine Selector */}
         <AIModelSelector />
 

@@ -7,31 +7,71 @@ export interface AiAccessCheck {
   reason?: 'no-key' | 'no-endpoint';
 }
 
+// ---------------------------------------------------------------------------
+// Server-side AI providers — مزوّدو AI المفعّلون بمفاتيح بيئة الخادم.
+// يُستعلم /api/health مرة واحدة لكل جلسة (ذاكرة على مستوى الوحدة) وتشترك في
+// النتيجة شارة الهيدر (useAiReadiness) ونقاط الحرس كلها.
+// ---------------------------------------------------------------------------
+
+let cachedServerProviders: AIProviderId[] | null = null;
+let inflight: Promise<AIProviderId[]> | null = null;
+
+export function fetchServerAiProviders(): Promise<AIProviderId[]> {
+  if (cachedServerProviders) return Promise.resolve(cachedServerProviders);
+  if (!inflight) {
+    inflight = fetch('/api/health', { cache: 'no-store' })
+      .then(r => r.json())
+      .then((d: { aiProvidersEnabled?: unknown; aiEnabled?: boolean }) => {
+        cachedServerProviders = Array.isArray(d.aiProvidersEnabled)
+          ? (d.aiProvidersEnabled.filter((p): p is AIProviderId => typeof p === 'string'))
+          : d.aiEnabled
+            ? (['gemini'] as AIProviderId[])
+            : [];
+        return cachedServerProviders;
+      })
+      .catch(() => {
+        // لا نخزّن قائمة فارغة عند فشل الفحص — المحاولة التالية تعيد المحاولة
+        inflight = null;
+        return cachedServerProviders || [];
+      });
+  }
+  return inflight;
+}
+
 /**
  * Single source of truth for "can this browser send AI requests?".
- * Cloud providers require a non-empty key that does not look like placeholder
- * text; Ollama (local) needs no key. Server-side env keys still work as a
- * fallback, so the UI mirrors the server rule: user key first, else allowed
- * (the server answers definitively and this guard avoids pointless round-trips
- * when we already know the browser has nothing to send).
+ * نسخة مطابقة لقاعدة الخادم (مفتاح المستخدم أولاً ثم مفتاح البيئة):
+ *   1. المحركات المحلية (Ollama) — مسموحة دائماً بلا مفتاح.
+ *   2. مفتاح المستخدم الحقيقي (BYOK، محفوظ في متصفحه) — مسموح.
+ *   3. لا مفتاح للمستخدم لكن الخادم يُعلن عن المزوّد عبر مفاتيح بيئته
+ *      (/api/health → aiProvidersEnabled) — مسموح: الطلب يمتطي مفتاح الخادم
+ *      والخادم هو من يجيب نهائياً.
+ *   4. غير ذلك — يُمنع برسالة إرشادية بدل رحلة شبكة بلا فائدة.
+ * مرّر ناتج `await fetchServerAiProviders()` في الوسيط الثالث؛ عند إغفاله
+ * تُطبَّق القواعد 1/2/4 فقط (فشل مغلق لمن لا مفتاح له).
  */
 export function checkAiAccess(
   providerId: AIProviderId,
   config: AIProviderConfig | undefined,
-  opts?: { skipServerFallbackHint?: boolean }
+  serverProviders?: readonly AIProviderId[]
 ): AiAccessCheck {
   const isLocal = providerId === 'ollama' || Boolean(config?.isLocalOnly);
   if (isLocal) return { ok: true, isLocal: true };
 
   const key = (config?.apiKey || '').trim();
   const looksPlaceholder = /demo|xxxx|your[_-]?api|my[_-]?gemini|placeholder/i.test(key);
-  if (!key || looksPlaceholder) {
-    return { ok: false, isLocal: false, reason: 'no-key' };
+  if (key && !looksPlaceholder) {
+    if (providerId === 'custom_openai' && !(config?.endpointUrl || '').trim()) {
+      return { ok: false, isLocal: false, reason: 'no-endpoint' };
+    }
+    return { ok: true, isLocal: false };
   }
-  if (providerId === 'custom_openai' && !(config?.endpointUrl || '').trim()) {
-    return { ok: false, isLocal: false, reason: 'no-endpoint' };
+
+  // بلا مفتاح صالح للمستخدم → يُعتمد مفتاح الخادم إن أعلن /api/health عن المزوّد
+  if (serverProviders?.includes(providerId)) {
+    return { ok: true, isLocal: false };
   }
-  return { ok: true, isLocal: false };
+  return { ok: false, isLocal: false, reason: 'no-key' };
 }
 
 /** Message + routing payload for the blocked state. */

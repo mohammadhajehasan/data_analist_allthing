@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { Bot, User, X, Sparkles, Send, Terminal, ChevronRight, LayoutDashboard, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -64,7 +64,8 @@ export const CopilotDrawer: React.FC = () => {
       }));
 
       const activeProviderConf = aiSettings.providers[aiSettings.activeProvider] || ({} as any);
-      const access = checkAiAccess(aiSettings.activeProvider, activeProviderConf);
+      const serverProviders = await fetchServerAiProviders();
+      const access = checkAiAccess(aiSettings.activeProvider, activeProviderConf, serverProviders);
       if (!access.ok) {
         setIsThinking(false);
         const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', language === 'ar', activeProviderConf?.nameAr || activeProviderConf?.name || 'المزود النشط');

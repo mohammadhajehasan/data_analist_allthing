@@ -39,7 +39,7 @@ import { useApp } from '../../context/AppContext';
 import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
 import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 
 // Interface for Token Consumption Tracking
 interface TokenUsageEntry {
@@ -345,7 +345,8 @@ export const ModelConfigPage: React.FC = () => {
     const selectedModelDef = availableAIModels.find(m => m.id === sandboxModelId) || availableAIModels[0];
     const providerConfig = aiSettings.providers[selectedModelDef.provider];
 
-    const access = checkAiAccess(selectedModelDef.provider, providerConfig);
+    const serverProviders = await fetchServerAiProviders();
+    const access = checkAiAccess(selectedModelDef.provider, providerConfig, serverProviders);
     if (!access.ok) {
       const { title, description } = aiAccessBlockMessage(access.reason || 'no-key', isAr, selectedModelDef.providerName || String(selectedModelDef.provider));
       toast.warning(title, description);

@@ -30,7 +30,9 @@ function isPlaceholderApiKey(key: string): boolean {
 let aiClient: GoogleGenAI | null = null;
 
 function getAiClient(customKey?: string): GoogleGenAI | null {
-  const apiKey = customKey || process.env.GEMINI_API_KEY;
+  // مفتاح وهمي مخزّن قديماً في متصفح المستخدم يُتجاهل ليعمل مفتاح الخادم الاحتياطي
+  const userKey = customKey && !isPlaceholderApiKey(customKey) ? customKey : '';
+  const apiKey = userKey || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.warn('GEMINI_API_KEY is not set. AI features will use deterministic fallbacks.');
     return null;
@@ -39,9 +41,9 @@ function getAiClient(customKey?: string): GoogleGenAI | null {
     console.warn('GEMINI_API_KEY looks like a placeholder/demo value. Replace it with a real key from https://aistudio.google.com/apikey');
     return null;
   }
-  if (customKey) {
+  if (userKey) {
     return new GoogleGenAI({
-      apiKey: customKey,
+      apiKey: userKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -218,10 +220,12 @@ async function callUniversalAI(params: {
   // 2. OpenAI-Compatible Providers (OpenRouter, Qwen DashScope, DeepSeek, Custom OpenAI)
   if (['openrouter', 'qwen', 'deepseek', 'custom_openai'].includes(provider)) {
     let baseUrl = params.endpointUrl;
-    let authHeader = params.apiKey ? `Bearer ${params.apiKey}` : '';
+    // مفتاح وهمي/فارغ من المتصفح يُعامل كغياب — ليعمل مفتاح الخادم الاحتياطي للجميع
+    const userApiKey = params.apiKey && !isPlaceholderApiKey(params.apiKey) ? params.apiKey.trim() : '';
+    let authHeader = userApiKey ? `Bearer ${userApiKey}` : '';
 
     // Use environment variables as fallback for API keys
-    if (!params.apiKey) {
+    if (!userApiKey) {
       if (provider === 'openrouter' && process.env.OPENROUTER_API_KEY) {
         authHeader = `Bearer ${process.env.OPENROUTER_API_KEY}`;
       } else if (provider === 'deepseek' && process.env.DEEPSEEK_API_KEY) {
@@ -400,10 +404,20 @@ const serverAuditLogs: any[] = [];
 app.get('/api/health', (_req, res) => {
   const envKey = process.env.GEMINI_API_KEY || '';
   const keyIsPlaceholder = Boolean(envKey) && isPlaceholderApiKey(envKey);
+  // مزوّدو AI المفعّلون خادمياً (مفاتيح حقيقية في البيئة) — لعرض جاهزية AI في الواجهة
+  const envKeyIsReal = (k?: string) => Boolean(k && k.trim()) && !isPlaceholderApiKey(k);
+  const aiProvidersEnabled = [
+    envKeyIsReal(process.env.GEMINI_API_KEY) ? 'gemini' : '',
+    envKeyIsReal(process.env.DEEPSEEK_API_KEY) ? 'deepseek' : '',
+    envKeyIsReal(process.env.OPENROUTER_API_KEY) ? 'openrouter' : '',
+    envKeyIsReal(process.env.QWEN_API_KEY) ? 'qwen' : '',
+    (envKeyIsReal(process.env.CUSTOM_OPENAI_API_KEY) && process.env.CUSTOM_OPENAI_ENDPOINT) ? 'custom_openai' : '',
+  ].filter(Boolean);
   res.json({
     status: 'ok',
     version: '1.0.0',
     aiEnabled: Boolean(envKey) && !keyIsPlaceholder,
+    aiProvidersEnabled,
     aiKeyWarning: keyIsPlaceholder
       ? 'GEMINI_API_KEY في .env هو مفتاح تجريبي وهمي (placeholder). استبدله بمفتاح حقيقي من https://aistudio.google.com/apikey'
       : (!envKey ? 'GEMINI_API_KEY غير مضبوط في .env' : undefined),

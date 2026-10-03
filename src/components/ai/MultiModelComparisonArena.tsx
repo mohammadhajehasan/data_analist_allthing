@@ -46,7 +46,7 @@ import {
   PolarRadiusAxis,
 } from 'recharts';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 import {
   AIModelDefinition,
   ModelBenchmarkResult,
@@ -234,9 +234,10 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
     }
 
     // الحرس: النماذج السحابية المختارة تحتاج مفاتيح — تحقق قبل إطلاق الطلبات المتوازية
+    const serverProviders = await fetchServerAiProviders();
     const missingKeyModel = selectedModelIds
       .map(id => availableAIModels.find(m => m.id === id))
-      .find(def => def && !checkAiAccess(def.provider, aiSettings.providers[def.provider]).ok);
+      .find(def => def && !checkAiAccess(def.provider, aiSettings.providers[def.provider], serverProviders).ok);
     if (missingKeyModel) {
       const { title, description } = aiAccessBlockMessage('no-key', isAr, missingKeyModel.providerName || missingKeyModel.provider);
       toast.warning(title, isAr ? `${description} (النموذج الناقص: ${missingKeyModel.name})` : `${description} (missing: ${missingKeyModel.name})`);

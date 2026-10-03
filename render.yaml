@@ -16,7 +16,7 @@ services:
         value: production
       # Render injects PORT automatically — the server reads process.env.PORT
       - key: PUBLIC_BASE_URL
-        sync: false         # set in the dashboard, e.g. https://analytics-platform.onrender.com
+        sync: false         # set in the dashboard, e.g. https://data-analist-allthing.onrender.com
       # ---- Email: HTTP APIs first (SMTP is blocked on Render's free plan) ----
       - key: BREVO_API_KEY
         sync: false         # free tier: 300 emails/day, works with a verified Gmail sender
@@ -36,4 +36,8 @@ services:
       - key: SMTP_FROM
         sync: false
       - key: GEMINI_API_KEY
+        sync: false
+      # Server-wide AI key: enables AI features for every user without their
+      # own key (server-key fallback). Get one at https://openrouter.ai/keys
+      - key: OPENROUTER_API_KEY
         sync: false
