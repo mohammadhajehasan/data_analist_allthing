@@ -24,13 +24,16 @@ import {
   HardDrive,
   Radio,
   LogOut,
+  KeyRound,
 } from 'lucide-react';
 import { THEME_OPTIONS, DashboardLayoutModal } from '../dashboards/DashboardLayoutModal';
 import { LocalCsvImportModal } from '../datasets/LocalCsvImportModal';
 import { AIModelSelector } from '../ai/AIModelSelector';
 import { SonificationToggle } from '../common/SonificationToggle';
 import { NotificationBell } from './NotificationBell';
-import { useAiReadiness } from '../../hooks/useAiReadiness';
+import { useAiReadiness, type AiReadiness } from '../../hooks/useAiReadiness';
+import { requestAiKeyFocus } from '../../utils/aiKeyFocus';
+import type { AIProviderId } from '../../types/aiProviders';
 
 export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) => {
   const {
@@ -57,24 +60,22 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
     setActiveTab,
   } = useApp();
 
-  // شارة جاهزية AI الدائمة: مفتاح المستخدم أو مفتاح الخادم الاحتياطي
+  // شارة جاهزية AI: قائمة منسدلة تعرض حالة كل مزوّد مع انتقال لحقل المفتاح
   const aiReadiness = useAiReadiness(aiSettings, activeAIModelDef);
-  const activeProviderCfg = aiSettings.providers[aiReadiness.providerId];
-  const aiProviderLabel =
-    language === 'ar'
-      ? activeProviderCfg?.nameAr || activeAIModelDef.providerName
-      : activeProviderCfg?.name || activeAIModelDef.providerName;
-  const aiBadgeTooltip = aiReadiness.ready
-    ? (language === 'ar'
-        ? `الذكاء الاصطناعي جاهز عبر ${aiProviderLabel}${
-            aiReadiness.reason === 'server-key' ? ' (مفتاح الخادم)' : aiReadiness.reason === 'local' ? ' (محرك محلي)' : ''
-          } — انقر لفتح صفحة النماذج`
-        : `AI ready via ${aiProviderLabel} — click to open Model Config`)
-    : (language === 'ar'
-        ? aiReadiness.reason === 'no-endpoint'
-          ? `مزوّد ${aiProviderLabel} يحتاج عنوان نقطة نهاية — انقر لإعداده من صفحة النماذج`
-          : `مفتاح ${aiProviderLabel} غير مُعد — انقر لإضافته من صفحة النماذج (حفظ واختبار)`
-        : `${aiProviderLabel} key is missing — click to add it in Model Config`);
+  const isArLang = language === 'ar';
+  const aiReasonLabel: Record<AiReadiness['reason'], string> = isArLang
+    ? { 'user-key': 'مفتاحك الخاص', 'server-key': 'مفتاح الخادم', 'local': 'محلي — يعمل دائماً', 'no-key': 'بلا مفتاح', 'no-endpoint': 'ينقص عنوان النهاية' }
+    : { 'user-key': 'Your key', 'server-key': 'Server key', 'local': 'Local — always on', 'no-key': 'No key', 'no-endpoint': 'Endpoint missing' };
+  const aiReadyCount = aiReadiness.providers.filter(p => p.ready).length;
+  const aiBadgeTooltip = isArLang
+    ? `جاهزية مزوّدي AI: ${aiReadyCount}/${aiReadiness.providers.length} جاهز — انقر لعرض القائمة`
+    : `AI provider readiness: ${aiReadyCount}/${aiReadiness.providers.length} ready — click for details`;
+
+  const goToKeyField = (providerId: AIProviderId) => {
+    setShowAiMenu(false);
+    requestAiKeyFocus(providerId);
+    setActiveTab('models');
+  };
 
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -82,6 +83,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const [showLayoutModal, setShowLayoutModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
+  const [showAiMenu, setShowAiMenu] = useState(false);
   
   const [committedTheme, setCommittedTheme] = useState(theme);
   
@@ -93,6 +95,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const datasetDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const quickActionsRef = useRef<HTMLDivElement>(null);
+  const aiBadgeRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -109,6 +112,9 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
       }
       if (quickActionsRef.current && !quickActionsRef.current.contains(event.target as Node)) {
         setShowQuickActionsMenu(false);
+      }
+      if (aiBadgeRef.current && !aiBadgeRef.current.contains(event.target as Node)) {
+        setShowAiMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -150,27 +156,107 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
       {/* AI Model & Dataset Selector Center Cluster */}
       <div className="flex items-center gap-2">
-        {/* شارة جاهزية AI الدائمة (أخضر/أحمر) — تنقل لصفحة النماذج */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('models')}
-          title={aiBadgeTooltip}
-          aria-label={aiBadgeTooltip}
-          className={`h-9 px-3 hidden md:flex items-center gap-2 text-xs font-semibold border rounded-xs transition-all cursor-pointer shrink-0 ${
-            aiReadiness.ready
-              ? 'bg-[#24a148]/10 hover:bg-[#24a148]/20 text-[#42be65] border-[#24a148]/40'
-              : 'bg-[#da1e28]/10 hover:bg-[#da1e28]/20 text-[#ff8389] border-[#da1e28]/40'
-          }`}
-        >
-          <span
-            className={`w-2 h-2 rounded-full shrink-0 ${
-              aiReadiness.ready ? 'bg-[#42be65]' : 'bg-[#ff8389] animate-pulse'
+        {/* شارة جاهزية AI (أخضر/أحمر) — قائمة منسدلة بجاهزية كل مزوّد + انتقال لحقل المفتاح */}
+        <div className="relative hidden md:block shrink-0" ref={aiBadgeRef}>
+          <button
+            type="button"
+            onClick={() => setShowAiMenu(v => !v)}
+            title={aiBadgeTooltip}
+            aria-label={aiBadgeTooltip}
+            aria-expanded={showAiMenu}
+            className={`h-9 px-3 flex items-center gap-2 text-xs font-semibold border rounded-xs transition-all cursor-pointer ${
+              aiReadiness.ready
+                ? 'bg-[#24a148]/10 hover:bg-[#24a148]/20 text-[#42be65] border-[#24a148]/40'
+                : 'bg-[#da1e28]/10 hover:bg-[#da1e28]/20 text-[#ff8389] border-[#da1e28]/40'
             }`}
-          />
-          {aiReadiness.ready
-            ? (language === 'ar' ? 'AI جاهز' : 'AI Ready')
-            : (language === 'ar' ? 'AI غير مُفعّل' : 'AI Off')}
-        </button>
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                aiReadiness.ready ? 'bg-[#42be65]' : 'bg-[#ff8389] animate-pulse'
+              }`}
+            />
+            {aiReadiness.ready
+              ? (isArLang ? 'AI جاهز' : 'AI Ready')
+              : (isArLang ? 'AI غير مُفعّل' : 'AI Off')}
+            <ChevronDown className={`w-3 h-3 opacity-70 transition-transform ${showAiMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {showAiMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className={`absolute top-full mt-1.5 w-72 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-2xl p-2 z-50 ${
+                  isArLang ? 'left-0' : 'right-0'
+                }`}
+              >
+                <div className="px-2.5 py-1.5 text-[10px] font-semibold text-[var(--cds-text-03)] uppercase tracking-wider border-b border-[var(--cds-border-subtle)] mb-1 flex items-center justify-between">
+                  <span>{isArLang ? 'جاهزية مزوّدي الذكاء الاصطناعي' : 'AI Provider Readiness'}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      aiReadyCount === aiReadiness.providers.length
+                        ? 'bg-[#24a148]/15 text-[#42be65]'
+                        : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)]'
+                    }`}
+                  >
+                    {aiReadyCount}/{aiReadiness.providers.length}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  {aiReadiness.providers.map(p => {
+                    const cfg = aiSettings.providers[p.providerId];
+                    const label = isArLang ? cfg?.nameAr || p.providerId : cfg?.name || p.providerId;
+                    const isLocalProvider = p.reason === 'local';
+                    return (
+                      <div
+                        key={p.providerId}
+                        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs ${
+                          p.providerId === aiReadiness.providerId ? 'bg-[var(--cds-layer-02)]' : ''
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            p.ready ? 'bg-[#42be65]' : 'bg-[#ff8389] animate-pulse'
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-[var(--cds-text-01)] truncate">{label}</div>
+                          <div className={`text-[10px] font-medium ${p.ready ? 'text-[#42be65]' : 'text-[#ff8389]'}`}>
+                            {aiReasonLabel[p.reason]}
+                          </div>
+                        </div>
+                        {!isLocalProvider && (
+                          <button
+                            type="button"
+                            onClick={() => goToKeyField(p.providerId)}
+                            title={isArLang ? 'الانتقال لحقل مفتاح هذا المزوّد في صفحة النماذج' : 'Jump to this provider key field in Model Config'}
+                            aria-label={isArLang ? `فتح حقل مفتاح ${label}` : `Open ${label} key field`}
+                            className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--cds-text-03)] hover:text-[var(--cds-interactive-01)] hover:bg-[var(--cds-layer-03)] transition-colors cursor-pointer shrink-0"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 mt-1.5 border-t border-[var(--cds-border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => { setShowAiMenu(false); setActiveTab('models'); }}
+                    className="w-full text-center py-1.5 text-xs text-[var(--cds-interactive-01)] hover:bg-[var(--cds-layer-02)] rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {isArLang ? 'فتح صفحة النماذج' : 'Open Model Config'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Global AI Engine Selector */}
         <AIModelSelector />

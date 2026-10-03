@@ -15,6 +15,49 @@ export interface AiReadiness {
   ready: boolean;
   reason: 'user-key' | 'server-key' | 'local' | 'no-key' | 'no-endpoint';
   providerId: AIProviderId;
+  /** جاهزية كل مزوّد على حدة — لقائمة الهيدر المنسدلة. */
+  providers: ProviderReadiness[];
+}
+
+export interface ProviderReadiness {
+  providerId: AIProviderId;
+  ready: boolean;
+  reason: AiReadiness['reason'];
+}
+
+/** ترتيب العرض في القائمة: السحابية أولاً (حيث المفاتيح) ثم المحلي. */
+export const AI_PROVIDER_ORDER: AIProviderId[] = [
+  'gemini',
+  'openrouter',
+  'deepseek',
+  'qwen',
+  'custom_openai',
+  'ollama',
+];
+
+/** قاعدة واحدة للمزوّد الواحد: مفتاح المستخدم ← مفتاح الخادم ← محلي. */
+export function computeProviderReadiness(
+  providerId: AIProviderId,
+  aiSettings: AISettings,
+  serverProviders: readonly AIProviderId[]
+): ProviderReadiness {
+  const cfg = aiSettings.providers[providerId];
+  const key = (cfg?.apiKey || '').trim();
+  const hasUserKey = Boolean(key) && !KEY_LOOKS_PLACEHOLDER.test(key);
+  const isLocal = providerId === 'ollama' || Boolean(cfg?.isLocalOnly);
+
+  if (isLocal) {
+    return { providerId, ready: true, reason: 'local' };
+  }
+  if (hasUserKey) {
+    const endpointOk =
+      providerId !== 'custom_openai' || Boolean((cfg?.endpointUrl || '').trim());
+    return { providerId, ready: endpointOk, reason: endpointOk ? 'user-key' : 'no-endpoint' };
+  }
+  if (serverProviders.includes(providerId)) {
+    return { providerId, ready: true, reason: 'server-key' };
+  }
+  return { providerId, ready: false, reason: 'no-key' };
 }
 
 export function useAiReadiness(
@@ -34,27 +77,17 @@ export function useAiReadiness(
     };
   }, []);
 
-  const providerId = activeModelDef.provider;
-  const cfg = aiSettings.providers[providerId];
-  const key = (cfg?.apiKey || '').trim();
-  const hasUserKey = Boolean(key) && !KEY_LOOKS_PLACEHOLDER.test(key);
-  const isLocal = providerId === 'ollama' || Boolean(cfg?.isLocalOnly);
+  const providers = AI_PROVIDER_ORDER.map(id =>
+    computeProviderReadiness(id, aiSettings, serverProviders)
+  );
 
-  let ready = false;
-  let reason: AiReadiness['reason'] = 'no-key';
+  // جاهزية المزوّد النشط تأتي من نفس الحساب لضمان التطابق مع القائمة
+  const active = computeProviderReadiness(activeModelDef.provider, aiSettings, serverProviders);
 
-  if (isLocal) {
-    ready = true;
-    reason = 'local';
-  } else if (hasUserKey) {
-    const endpointOk =
-      providerId !== 'custom_openai' || Boolean((cfg?.endpointUrl || '').trim());
-    ready = endpointOk;
-    reason = endpointOk ? 'user-key' : 'no-endpoint';
-  } else if (serverProviders.includes(providerId)) {
-    ready = true;
-    reason = 'server-key';
-  }
-
-  return { ready, reason, providerId };
+  return {
+    ready: active.ready,
+    reason: active.reason,
+    providerId: active.providerId,
+    providers,
+  };
 }

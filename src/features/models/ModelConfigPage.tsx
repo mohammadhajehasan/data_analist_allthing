@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Cpu,
   Shield,
@@ -40,6 +40,7 @@ import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
 import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
 import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { AI_KEY_FOCUS_EVENT, consumePendingAiKeyFocus } from '../../utils/aiKeyFocus';
 
 // Interface for Token Consumption Tracking
 interface TokenUsageEntry {
@@ -90,8 +91,40 @@ export const ModelConfigPage: React.FC = () => {
   const [selectedProviderId, setSelectedProviderId] = useState<AIProviderId>('ollama');
   const [testingId, setTestingId] = useState<AIProviderId | null>(null);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+
+  // "انتقال عميق" من قائمة جاهزية AI في الهيدر: افتح المزوّد المطلوب وركّز حقل مفتاحه
+  const apiKeyInputRef = useRef<HTMLInputElement | null>(null);
+  const [keyFocusTick, setKeyFocusTick] = useState(0);
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [isRefreshingOllama, setIsRefreshingOllama] = useState(false);
+
+  useEffect(() => {
+    const focusKeyField = (providerId: AIProviderId) => {
+      setActiveTab('providers');
+      setSelectedProviderId(providerId);
+      setKeyFocusTick(t => t + 1);
+    };
+    // طلب معلق وصل قبل تحميل الصفحة (الصفحة كسولة التحميل)
+    const pending = consumePendingAiKeyFocus();
+    if (pending) focusKeyField(pending);
+    const onFocusRequest = (e: Event) => {
+      const pid = (e as CustomEvent<AIProviderId>).detail;
+      if (pid) focusKeyField(pid);
+    };
+    window.addEventListener(AI_KEY_FOCUS_EVENT, onFocusRequest);
+    return () => window.removeEventListener(AI_KEY_FOCUS_EVENT, onFocusRequest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ركّز حقل المفتاح بعد اكتمال الرندر (بعد تغيير المزوّد أو تبويب الصفحة)
+  useEffect(() => {
+    if (!keyFocusTick) return;
+    const timer = setTimeout(() => {
+      apiKeyInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      apiKeyInputRef.current?.focus({ preventScroll: true });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [keyFocusTick, selectedProviderId, activeTab]);
 
   // Ollama Health Ping State
   const [ollamaPing, setOllamaPing] = useState<OllamaHealthResult>({
@@ -967,6 +1000,7 @@ export const ModelConfigPage: React.FC = () => {
                       </button>
                     </div>
                     <input
+                      ref={apiKeyInputRef}
                       type={showKeys.gemini ? 'text' : 'password'}
                       value={currentProvider.apiKey || ''}
                       onChange={(e) => updateProviderConfig('gemini', { apiKey: e.target.value })}
@@ -997,6 +1031,7 @@ export const ModelConfigPage: React.FC = () => {
                       </button>
                     </div>
                     <input
+                      ref={apiKeyInputRef}
                       type={showKeys[currentProvider.providerId] ? 'text' : 'password'}
                       value={currentProvider.apiKey || ''}
                       onChange={(e) => updateProviderConfig(currentProvider.providerId, { apiKey: e.target.value })}
