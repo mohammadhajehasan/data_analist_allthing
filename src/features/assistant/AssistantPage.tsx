@@ -41,13 +41,18 @@ export const AssistantPage: React.FC = () => {
   const [lastError, setLastError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // أنشئ جلسة تحليلية تلقائياً عند فتح المساعد إن لم توجد جلسات
+  useEffect(() => {
+    if (!activeChatSession) createNewChatSession();
+  }, [activeChatSession, createNewChatSession]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeChatSession.messages, isThinking]);
+  }, [activeChatSession?.messages, isThinking]);
 
   const targetDataset = activeDataset || (datasets && datasets.length > 0 ? datasets[0] : null);
 
@@ -55,7 +60,7 @@ export const AssistantPage: React.FC = () => {
     setLastError(null);
     const text = textToSend || inputPrompt;
     
-    if (!text.trim() || isThinking) {
+    if (!text.trim() || isThinking || !activeChatSession) {
         return;
     }
 
@@ -303,7 +308,7 @@ export const AssistantPage: React.FC = () => {
         />
         {/* Messages List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans text-xs">
-          {activeChatSession.messages.map(msg => {
+          {activeChatSession?.messages.map(msg => {
             const isUser = msg.sender === 'user';
             return (
               <div

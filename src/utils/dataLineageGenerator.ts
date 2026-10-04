@@ -23,92 +23,9 @@ export function generateDatasetLineage(
   reports: Report[] = [],
   auditLogs: AuditLogEntry[] = []
 ): DatasetLineageManifest {
-  const isRetail = dataset.id === 'ds-retail-2025';
-  const isSaas = dataset.id === 'ds-saas-mrr';
-
   // 1. Upstream Data Sources (Origins)
   const sources: LineageSourceNode[] = [];
 
-  if (isRetail) {
-    sources.push(
-      {
-        id: 'src-pg-erp',
-        name: 'SAP Enterprise ERP (PostgreSQL 16)',
-        nameAr: 'نظام إدارة الموارد SAP ERP (قاعدة بيانات PostgreSQL 16)',
-        type: 'database',
-        sourceSystem: 'PostgreSQL Production Cluster (us-east-1)',
-        ingestionMode: 'cdc',
-        connectionStatus: 'healthy',
-        rawRecordCount: 48500,
-        extractedAt: dataset.updatedAt || '2025-02-05T14:30:00.000Z',
-        sourceHost: 'db-orders.internal.enterprise.cloud:5432',
-        sourceTableOrPath: 'public.ecommerce_transactions_v2',
-        schemaFieldsCount: 15,
-        description: 'Transactional database capturing global order checkouts, payment settlements, and regional fulfillments.',
-        descriptionAr: 'قاعدة بيانات المعاملات التي ترصد عمليات الدفع والشحن وسجلات الطلبات العالمية.',
-        sourceColumns: [
-          { name: 'order_id', type: 'VARCHAR(64)', isPrimaryKey: true },
-          { name: 'customer_id', type: 'VARCHAR(32)' },
-          { name: 'order_timestamp', type: 'TIMESTAMPTZ' },
-          { name: 'gross_amount', type: 'NUMERIC(12,2)' },
-          { name: 'cogs_cost', type: 'NUMERIC(12,2)' },
-          { name: 'category_code', type: 'VARCHAR(40)' },
-          { name: 'dest_country', type: 'CHAR(2)' },
-        ],
-      },
-      {
-        id: 'src-logistics-api',
-        name: 'DHL / FedEx Logistics Telemetry Stream',
-        nameAr: 'واجهة تتبع الشحن واللوجستيات (DHL / FedEx)',
-        type: 'stream',
-        sourceSystem: 'Apache Kafka Event Bus (topic: logistics.tracking.events)',
-        ingestionMode: 'streaming',
-        connectionStatus: 'synced',
-        rawRecordCount: 12200,
-        extractedAt: new Date(Date.now() - 3600000).toISOString(),
-        sourceHost: 'kafka-broker-01.data.internal:9092',
-        sourceTableOrPath: 'topic://logistics-events-v1',
-        schemaFieldsCount: 6,
-        description: 'Live parcel status events feeding transit days, delivery timestamps, and customer return flags.',
-        descriptionAr: 'بث حي لأحداث الشحن يغذي أوقات التوصيل وحالات المرتجعات.',
-      }
-    );
-  } else if (isSaas) {
-    sources.push(
-      {
-        id: 'src-stripe-billing',
-        name: 'Stripe Billing & Subscriptions API',
-        nameAr: 'منظومة الفوترة والاشتراكات Stripe',
-        type: 'api',
-        sourceSystem: 'Stripe Webhooks & Billing Engine v2024-09',
-        ingestionMode: 'batch',
-        connectionStatus: 'connected',
-        rawRecordCount: 3200,
-        extractedAt: dataset.updatedAt || '2025-02-01T11:20:00.000Z',
-        sourceHost: 'api.stripe.com/v1/subscriptions',
-        sourceTableOrPath: 'invoices_and_mrr_snapshots',
-        schemaFieldsCount: 12,
-        description: 'Syncs MRR, plan tiers, active user seats, and billing cycles.',
-        descriptionAr: 'مزامنة الإيرادات الشهرية المتكررة MRR وباقات الاشتراكات وعدد المقاعد.',
-      },
-      {
-        id: 'src-hubspot-crm',
-        name: 'HubSpot Enterprise CRM & Zendesk',
-        nameAr: 'نظام إدارة علاقات العملاء HubSpot والدعم الفني',
-        type: 'crm',
-        sourceSystem: 'HubSpot CRM Sync Service',
-        ingestionMode: 'batch',
-        connectionStatus: 'healthy',
-        rawRecordCount: 2800,
-        extractedAt: dataset.updatedAt || '2025-02-01T10:00:00.000Z',
-        sourceHost: 'api.hubapi.com/crm/v3/objects/companies',
-        sourceTableOrPath: 'company_health_nps_tickets',
-        schemaFieldsCount: 9,
-        description: 'Feeds NPS survey responses, support ticket volume, and churn risk tags.',
-        descriptionAr: 'يغذي تقييمات رضا العملاء NPS، وتذاكر الدعم الفني ومؤشرات خطر إلغاء الاشتراك.',
-      }
-    );
-  } else {
     // Dynamically generate for uploaded / custom datasets
     const fmt = dataset.format.toUpperCase();
     sources.push({
@@ -131,7 +48,6 @@ export function generateDatasetLineage(
         type: c.type,
       })),
     });
-  }
 
   // 2. Transformations & Processing Pipeline
   const transformations: LineageTransformNode[] = [

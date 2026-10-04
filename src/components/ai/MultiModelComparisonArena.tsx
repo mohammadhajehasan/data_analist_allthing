@@ -245,6 +245,14 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
       return;
     }
 
+    if (!activeDataset) {
+      toast.warning(
+        isAr ? 'لا توجد مجموعة بيانات نشطة' : 'No active dataset',
+        isAr ? 'استورد مجموعة بيانات أولاً من صفحة البيانات لتشغيل المقارنة.' : 'Import a dataset first from the Datasets page to run the comparison.'
+      );
+      return;
+    }
+
     setIsRunning(true);
     const toastId = toast.info(
       isAr ? 'جاري تشغيل حلبة المقارنة المتعددة...' : 'Running Multi-Model Benchmark Arena...',
@@ -330,7 +338,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
 -- IBM Carbon Analytics Studio - Multi-Model Benchmark Generated Query
 -- Model: ${modelId}
 -- Prompt: ${question}
--- Dataset: ${activeDataset.name}
+-- Dataset: ${activeDataset?.name || 'N/A'}
 -- Generated At: ${new Date().toISOString()}
 -- =====================================================================\n\n`;
     const blob = new Blob([`${headerComment}${sql.trim()}\n`], { type: 'application/sql;charset=utf-8;' });

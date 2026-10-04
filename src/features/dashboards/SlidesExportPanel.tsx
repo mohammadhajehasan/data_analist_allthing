@@ -18,70 +18,36 @@ export const SlidesExportPanel: React.FC = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Default multi-slide deck representation
+  // قالب عرض محايد فارغ — يملؤه المستخدم من لوحته الحقيقية (لا بيانات تجريبية)
   const [slides, setSlides] = useState<Slide[]>([
     {
       id: 'slide-1',
-      title: 'Executive Performance Briefing',
-      titleAr: 'الموجز التنفيذي لمؤشرات الأداء المالي',
+      title: 'Executive Briefing',
+      titleAr: 'الموجز التنفيذي',
       type: 'cover',
       bullets: [
-        'Prepared by: Ahmad Al-Farahat',
-        'Confidential - Internal Strategy Board Only',
-        'Date: September 2026',
+        'Prepared by: —',
+        'Date: —',
       ],
       bulletsAr: [
-        'إعداد: أحمد الفرحات',
-        'سري للغاية - للعرض على مجلس الإدارة فقط',
-        'التاريخ: سبتمبر ٢٠٢٦',
+        'إعداد: —',
+        'التاريخ: —',
       ],
     },
     {
       id: 'slide-2',
-      title: 'Gross Revenue & Performance Highlights',
-      titleAr: 'أبرز إنجازات الإيرادات والأداء المالي',
+      title: 'Key Highlights',
+      titleAr: 'أبرز النتائج',
       type: 'summary',
       bullets: [
-        'Gross revenue registers strong +18.4% growth to reach $23,450',
-        'Net Operating Profit stabilized at $7,840 yielding a robust 33.4% profit margin',
-        'Western and Central regions represent over 60% of total revenue share',
+        'Add your first key finding here',
+        'Add your second key finding here',
+        'Add your third key finding here',
       ],
       bulletsAr: [
-        'تسجيل نمو قوي في الإيرادات الإجمالية بنسبة +١٨.٤٪ لتصل إلى ٢٣,٤٥٠ دولار',
-        'استقرار صافي الأرباح التشغيلية عند ٧,٨٤٠ دولار محققاً هامش ربح بنسبة ٣٣.٤٪',
-        'تستحوذ المنطقة الغربية والوسطى على أكثر من ٦٠٪ من إجمالي حصة الإيرادات',
-      ],
-    },
-    {
-      id: 'slide-3',
-      title: 'Data Governance & Operational Health',
-      titleAr: 'حوكمة البيانات والجاهزية التشغيلية للمنصة',
-      type: 'stats',
-      bullets: [
-        'Overall Data Health is maintained at an exceptional 98.5% score',
-        'Automated IQRs identified minor skews in Electronics category',
-        'Action recommended: Apply outlier cap normalizations before launching predictive models',
-      ],
-      bulletsAr: [
-        'تم الحفاظ على مؤشر جودة وصحة البيانات العام عند درجة ممتازة تبلغ ٩٨.٥٪',
-        'حددت خوارزميات IQR انحرافات طفيفة في تصنيف الإلكترونيات',
-        'الإجراء الموصى به: تطبيق حدود قصوى لتنظيف القيم الشاذة قبل تشغيل نماذج التنبؤ',
-      ],
-    },
-    {
-      id: 'slide-4',
-      title: 'Strategic Roadmap & Next Steps',
-      titleAr: 'خارطة الطريق الاستراتيجية والخطوات القادمة',
-      type: 'conclusion',
-      bullets: [
-        'Deploy Holt-Winters forecasting models to predict Q4 seasonal spikes',
-        'Integrate live cloud database connectors to ensure continuous synchronization',
-        'Distribute PDF summary report to division leads on a weekly schedule',
-      ],
-      bulletsAr: [
-        'اعتماد نماذج التنبؤ التلقائية لرصد الطفرات الموسمية للربع الرابع',
-        'ربط مستودع البيانات الحية لضمان التزامن الفوري والمستمر',
-        'توزيع التقارير التحليلية والملخصات على مدراء الأقسام بصفة دورية',
+        'أضف نتيجتك الرئيسية الأولى هنا',
+        'أضف نتيجتك الرئيسية الثانية هنا',
+        'أضف نتيجتك الرئيسية الثالثة هنا',
       ],
     },
   ]);

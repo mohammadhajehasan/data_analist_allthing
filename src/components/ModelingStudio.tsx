@@ -2694,6 +2694,7 @@ metrics: {
   };
 
   const sendToAssistant = () => {
+    if (!activeChatSession) return;
     if (!result) {
       addChatMessage(activeChatSession.id, {
         id: `msg-${Date.now()}`,

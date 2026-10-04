@@ -28,8 +28,7 @@ import {
   ModelExplanationResult,
 } from '../types';
 
-import { INITIAL_DATASETS, generateProfile } from '../data/seedDatasets';
-import { INITIAL_SCHEDULED_REFRESHES } from '../data/seedCollaboration';
+import { generateProfile } from '../data/datasetProfiling';
 import { translations, Language } from '../i18n/translations';
 import { checkOllamaEngineHealth } from '../services/aiService';
 
@@ -49,7 +48,7 @@ interface AppContextType {
    workspace: Workspace;
    setWorkspace: (w: Workspace) => void;
   datasets: Dataset[];
-  activeDataset: Dataset;
+  activeDataset: Dataset | null;
   setActiveDatasetId: (id: string) => void;
   setActiveDataset: (dataset: Dataset) => void;
   addDataset: (dataset: Omit<Dataset, 'profile'>) => void;
@@ -64,7 +63,7 @@ interface AppContextType {
    updateWidgetInDashboard: (dashboardId: string, widget: WidgetConfig) => void;
    deleteWidgetFromDashboard: (dashboardId: string, widgetId: string) => void;
    chatSessions: ChatSession[];
-   activeChatSession: ChatSession;
+   activeChatSession: ChatSession | null;
    addChatMessage: (sessionId: string, message: any) => void;
    createNewChatSession: () => void;
    reports: Report[];
@@ -198,10 +197,11 @@ const getInitialDashboards = (): Dashboard[] => {
     const saved = localStorage.getItem('carbon_dashboards');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      // تجاهل لوحة العرض التجريبية المزروعة سابقاً (dash-main)
+      if (Array.isArray(parsed)) return parsed.filter((d: Dashboard) => d?.id !== 'dash-main');
     }
   } catch (e) {}
-  return [DEFAULT_DASHBOARD];
+  return [];
 };
 
 const MODEL_ID_ALIASES: Record<string, string> = {
@@ -266,23 +266,14 @@ const getInitialAISettings = (): AISettings => {
 };
 
 
-const DEFAULT_USER: User = {
-  id: 'usr-1',
-  name: 'أحمد الفرحات',
-  email: 'ahmad.farahat@enterprise-analytics.ai',
-  role: 'admin',
-  workspaceId: 'ws-main',
-  createdAt: '2025-01-01T00:00:00.000Z',
-};
-
 const DEFAULT_WORKSPACE: Workspace = {
   id: 'ws-main',
-  name: 'Enterprise Analytics Hub',
-  slug: 'enterprise-hub',
-  description: 'المساحة الرئيسية لتحليلات المؤسسة وعمليات البيانات الذكية',
+  name: 'مساحة العمل الرئيسية',
+  slug: 'main-workspace',
+  description: 'مساحتك الخاصة لتحليل البيانات واستيراد المصادر وبناء اللوحات',
   createdAt: '2025-01-01T00:00:00.000Z',
   plan: 'enterprise',
-  datasetCount: INITIAL_DATASETS.length,
+  datasetCount: 0,
 };
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -294,145 +285,6 @@ const DEFAULT_FLAGS: FeatureFlags = {
   FF_EXPORT_PDF_ENABLED: true,
   FF_SQL_SANDBOX_STRICT: true,
 };
-
-const DEFAULT_DASHBOARD: Dashboard = {
-  id: 'dash-main',
-  workspaceId: 'ws-main',
-  title: 'Executive Sales & Performance Cockpit',
-  titleAr: 'لوحة القيادة التنفيذية للمبيعات والأداء',
-  description: 'مؤشرات الأداء الرئيسية للإيرادات وتوزيع المبيعات والأرباح الإقليمية',
-  updatedAt: new Date().toISOString(),
-  createdAt: '2025-01-20T10:00:00.000Z',
-  widgets: [
-    {
-      id: 'w-kpi-1',
-      title: 'Total Revenue',
-      titleAr: 'إجمالي الإيرادات المحققة',
-      type: 'kpi',
-      datasetId: 'ds-retail-2025',
-      w: 3,
-      h: 1,
-      kpiMetric: {
-        value: '$23,450.49',
-        label: 'Gross Sales Volume',
-        trendPercentage: 18.4,
-        trendDirection: 'up',
-        prefix: '$',
-      },
-    },
-    {
-      id: 'w-kpi-2',
-      title: 'Operating Profit',
-      titleAr: 'صافي الأرباح التشغيلية',
-      type: 'kpi',
-      datasetId: 'ds-retail-2025',
-      w: 3,
-      h: 1,
-      kpiMetric: {
-        value: '$7,840.49',
-        label: 'Profit Margin (33.4%)',
-        trendPercentage: 12.1,
-        trendDirection: 'up',
-      },
-    },
-    {
-      id: 'w-kpi-3',
-      title: 'Avg Shipping Time',
-      titleAr: 'متوسط زمن الشحن والتوصيل',
-      type: 'kpi',
-      datasetId: 'ds-retail-2025',
-      w: 3,
-      h: 1,
-      kpiMetric: {
-        value: '3.1 Days',
-        label: 'Global Fulfillment',
-        trendPercentage: -8.5,
-        trendDirection: 'up',
-      },
-    },
-    {
-      id: 'w-kpi-4',
-      title: 'Data Health Score',
-      titleAr: 'مؤشر جودة البيانات',
-      type: 'kpi',
-      datasetId: 'ds-retail-2025',
-      w: 3,
-      h: 1,
-      kpiMetric: {
-        value: '98.5%',
-        label: 'Completeness & Validity',
-        trendPercentage: 2.3,
-        trendDirection: 'up',
-      },
-    },
-    {
-      id: 'w-chart-1',
-      title: 'Revenue & Profit by Category',
-      titleAr: 'الإيرادات والأرباح حسب التصنيف',
-      type: 'bar',
-      datasetId: 'ds-retail-2025',
-      xAxis: 'category',
-      yAxis: 'revenue',
-      w: 6,
-      h: 2,
-    },
-    {
-      id: 'w-chart-2',
-      title: 'Regional Revenue Share',
-      titleAr: 'الحصة السوقية للإيرادات حسب المنطقة',
-      type: 'pie',
-      datasetId: 'ds-retail-2025',
-      categoryField: 'region',
-      yAxis: 'revenue',
-      w: 6,
-      h: 2,
-    },
-  ],
-};
-
-const DEFAULT_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: 'audit-101',
-    userId: 'usr-1',
-    userName: 'أحمد الفرحات',
-    workspaceId: 'ws-main',
-    action: 'DATASET_INGEST',
-    resourceType: 'dataset',
-    resourceId: 'ds-retail-2025',
-    status: 'SUCCESS',
-    durationMs: 45,
-    timestamp: '2025-02-05T14:30:00.000Z',
-    payloadSummary: 'Ingested Global E-Commerce & Retail 2025 (21 records, 13 columns)',
-    riskLevel: 'LOW',
-  },
-  {
-    id: 'audit-102',
-    userId: 'usr-1',
-    userName: 'أحمد الفرحات',
-    workspaceId: 'ws-main',
-    action: 'NL2SQL_SANDBOX_EVAL',
-    resourceType: 'sql_query',
-    status: 'SUCCESS',
-    durationMs: 12,
-    timestamp: '2025-02-05T14:35:10.000Z',
-    payloadSummary: 'Executed 9-layer security audit on query: "SELECT category, SUM(revenue) ..."',
-    riskLevel: 'MEDIUM',
-  },
-  {
-    id: 'audit-103',
-    userId: 'usr-1',
-    userName: 'أحمد الفرحات',
-    workspaceId: 'ws-main',
-    action: 'PROFILING_ANOMALY_RUN',
-    resourceType: 'dataset',
-    resourceId: 'ds-retail-2025',
-    status: 'SUCCESS',
-    durationMs: 28,
-    timestamp: '2025-02-05T14:36:00.000Z',
-    payloadSummary: 'Computed IQR & Z-Score anomaly scan on revenue column',
-    riskLevel: 'LOW',
-  },
-];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -453,7 +305,7 @@ export const AppProvider: React.FC<{
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [theme, setThemeState] = useState<ThemeVariant>(getInitialTheme);
   const [layoutSettings, setLayoutSettings] = useState<LayoutSettings>(getInitialLayout);
-  // Authenticated user from the SQLite-backed session (falls back to demo default)
+  // Authenticated user from the SQLite-backed session — no demo fallback account
   const [user, setUser] = useState<User>(
     authUser
       ? {
@@ -464,45 +316,50 @@ export const AppProvider: React.FC<{
           workspaceId: 'ws-main',
           createdAt: new Date().toISOString(),
         }
-      : DEFAULT_USER
+      : {
+          // غير قابل للوصول عملياً: التطبيق لا يُعرض إلا بعد تسجيل الدخول
+          id: 'usr-guest',
+          name: 'زائر',
+          email: '',
+          role: 'viewer',
+          workspaceId: 'ws-main',
+          createdAt: new Date().toISOString(),
+        }
   );
-  const [usersList, setUsersList] = useState<User[]>([
-    DEFAULT_USER,
-    {
-      id: 'usr-2',
-      name: 'سارة المنصور',
-      email: 'sara.almansoor@enterprise.ai',
-      role: 'analyst',
-      workspaceId: 'ws-main',
-      createdAt: '2025-01-05T00:00:00.000Z',
-    },
-    {
-      id: 'usr-3',
-      name: 'طارق الزهراني',
-      email: 'tariq.zahrani@enterprise.ai',
-      role: 'engineer',
-      workspaceId: 'ws-main',
-      createdAt: '2025-01-10T00:00:00.000Z',
-    },
-    {
-      id: 'usr-4',
-      name: 'مها الشمري',
-      email: 'maha.shammari@enterprise.ai',
-      role: 'viewer',
-      workspaceId: 'ws-main',
-      createdAt: '2025-01-15T00:00:00.000Z',
-    },
-  ]);
+  // لا حسابات تجريبية: القائمة تبدأ فارغة ويملؤها المدير من قاعدة البيانات عبر الخادم
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [workspace, setWorkspace] = useState<Workspace>(DEFAULT_WORKSPACE);
-  const [datasets, setDatasets] = useState<Dataset[]>(INITIAL_DATASETS);
-  const [activeDatasetId, setActiveDatasetId] = useState<string>(INITIAL_DATASETS[0].id);
+
+  // جلب المستخدمين الحقيقيين من الخادم للمدير فقط (بدل البذور الوهمية)
+  useEffect(() => {
+    if (user.role !== 'admin') return;
+    const token = localStorage.getItem('carbon_auth_token');
+    fetch('/api/auth/users', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(res => (res.ok ? res.json() : { users: [] }))
+      .then((data: { users?: any[] }) => {
+        const rows = Array.isArray(data?.users) ? data.users : [];
+        setUsersList(rows.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: (u.role as User['role']) || 'viewer',
+          workspaceId: workspace.id,
+          createdAt: u.createdAt || new Date().toISOString(),
+        })));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.role]);
+  // لا مجموعات بيانات تجريبية: تبدأ فارغة ويضيفها المستخدم عبر الاستيراد
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [activeDatasetId, setActiveDatasetId] = useState<string>('');
   const [dashboards, setDashboards] = useState<Dashboard[]>(getInitialDashboards);
   const [activeDashboardId, setActiveDashboardId] = useState<string>(
-    getInitialDashboards()[0]?.id || DEFAULT_DASHBOARD.id
+    getInitialDashboards()[0]?.id || ''
   );
   const [reports, setReports] = useState<Report[]>([]);
   const [dataStories, setDataStories] = useState<DataStory[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(DEFAULT_AUDIT_LOGS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FLAGS);
   const [modelingResult, setModelingResult] = useState<any | null>(null);
 
@@ -519,10 +376,11 @@ export const AppProvider: React.FC<{
       const saved = localStorage.getItem('carbon_scheduled_refreshes');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        // تجاهل جداول التحديث التجريبية المزروعة سابقاً (ref-1 / ref-2)
+        if (Array.isArray(parsed)) return parsed.filter((r: ScheduledDataRefresh) => r?.id !== 'ref-1' && r?.id !== 'ref-2');
       }
     } catch (e) {}
-    return INITIAL_SCHEDULED_REFRESHES;
+    return [];
   });
 
   const [isRefreshModalOpen, setIsRefreshModalOpen] = useState(false);
@@ -550,28 +408,9 @@ export const AppProvider: React.FC<{
     } catch (e) {}
   }, [aiSettings]);
 
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([
-    {
-      id: 'sess-1',
-      title: 'استكشاف الأنماط والتوصيف العام',
-      datasetId: INITIAL_DATASETS[0].id,
-      createdAt: new Date().toISOString(),
-      messages: [
-        {
-          id: 'm-1',
-          sender: 'assistant',
-          content: 'أهلاً بك! أنا المساعد التحليلي الذكي لمنصة البيانات. كيف يمكنني مساعدتك اليوم في استكشاف مجموعة البيانات، كشف القيم الشاذة، أو إنشاء استعلامات ولوحات تحكم مخصصة؟',
-          timestamp: new Date().toISOString(),
-          suggestions: [
-            'ما هي أعلى المنتجات والأقسام ربحية؟',
-            'هل توجد قيم شاذة في تكاليف الشحن؟',
-            'أنشئ استعلام SQL لتوزيع المبيعات حسب الدولة',
-          ],
-        },
-      ],
-    },
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState<string>('sess-1');
+  // لا جلسة محادثة تجريبية: تبدأ فارغة وتُنشأ جلسة جديدة عند فتح المساعد
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
 
   // Event Bus
   const [eventHandlers, setEventHandlers] = useState<Record<string, Array<(data?: any) => void>>>({});
@@ -1450,7 +1289,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     const newSess: ChatSession = {
       id: newId,
       title: language === 'ar' ? 'جلسة تحليلية جديدة' : 'New Analytical Session',
-      datasetId: activeDataset.id,
+      datasetId: activeDataset?.id || '',
       createdAt: new Date().toISOString(),
       messages: [
         {

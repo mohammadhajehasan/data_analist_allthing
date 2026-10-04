@@ -70,7 +70,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             منصة تحليل البيانات الذكية
           </h1>
           <p className="text-xs text-[var(--cds-text-03,#8d8d8d)] mt-1.5">
-            Enterprise Analytics Hub — سجّل الدخول للوصول إلى مساحة عملك
+            منصة ذكاء وتحليل البيانات — سجّل الدخول للوصول إلى مساحة عملك
           </p>
         </div>
 

@@ -39,7 +39,6 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const {
     user,
     setUser,
-    usersList,
     workspace,
     datasets,
     activeDataset,
@@ -292,18 +291,18 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
                       setShowDatasetMenu(false);
                     }}
                     className={`w-full text-start px-3 py-2 text-xs rounded-lg flex items-center justify-between transition-colors ${
-                      ds.id === activeDataset.id
+                      ds.id === activeDataset?.id
                         ? 'bg-[var(--cds-interactive-01)] text-white font-semibold'
                         : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)] hover:text-[var(--cds-text-01)]'
                     }`}
                   >
                     <div className="truncate">
                       <div className="font-medium truncate">{ds.name}</div>
-                      <div className={`text-[10px] ${ds.id === activeDataset.id ? 'text-white/80' : 'text-[var(--cds-text-03)]'}`}>
+                      <div className={`text-[10px] ${ds.id === activeDataset?.id ? 'text-white/80' : 'text-[var(--cds-text-03)]'}`}>
                         {ds.format.toUpperCase()} • {ds.rowCount.toLocaleString()} {t.common.rows} • {ds.columnCount} {t.common.columns}
                       </div>
                     </div>
-                    {ds.id === activeDataset.id && <Check className="w-4 h-4 text-white shrink-0" />}
+                    {ds.id === activeDataset?.id && <Check className="w-4 h-4 text-white shrink-0" />}
                   </button>
                 ))}
               </div>

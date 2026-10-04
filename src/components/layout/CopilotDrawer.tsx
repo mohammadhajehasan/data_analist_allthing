@@ -11,6 +11,7 @@ export const CopilotDrawer: React.FC = () => {
     setIsCopilotOpen,
     activeChatSession,
     addChatMessage,
+    createNewChatSession,
     activeDataset,
     datasets,
     aiSettings,
@@ -30,6 +31,11 @@ export const CopilotDrawer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isAr = language === 'ar';
+
+  // أنشئ جلسة تلقائياً عند فتح الكوبايلوت إن لم توجد جلسات
+  useEffect(() => {
+    if (isCopilotOpen && !activeChatSession) createNewChatSession();
+  }, [isCopilotOpen, activeChatSession, createNewChatSession]);
   const targetDataset = activeDataset || (datasets && datasets.length > 0 ? datasets[0] : null);
 
   const scrollToBottom = () => {
@@ -40,11 +46,11 @@ export const CopilotDrawer: React.FC = () => {
     if (isCopilotOpen) {
       scrollToBottom();
     }
-  }, [activeChatSession.messages, isThinking, isCopilotOpen]);
+  }, [activeChatSession?.messages, isThinking, isCopilotOpen]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputPrompt;
-    if (!text.trim() || isThinking) return;
+    if (!text.trim() || isThinking || !activeChatSession) return;
 
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -283,7 +289,7 @@ export const CopilotDrawer: React.FC = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {activeChatSession.messages.length === 0 && (
+            {activeChatSession?.messages.length === 0 && (
               <div className="text-center text-[var(--cds-text-02)] text-xs mt-10 space-y-3">
                 <BrainCircuit className="w-8 h-8 mx-auto opacity-50" />
                 <p>
@@ -294,7 +300,7 @@ export const CopilotDrawer: React.FC = () => {
               </div>
             )}
             
-            {activeChatSession.messages.map(msg => {
+            {activeChatSession?.messages.map(msg => {
               const isUser = msg.sender === 'user';
               return (
                 <div key={msg.id} className={`flex gap-3 ${isUser ? 'ms-auto flex-row-reverse' : 'me-auto'}`}>
