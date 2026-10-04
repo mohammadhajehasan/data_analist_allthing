@@ -31,6 +31,7 @@ import {
 import { generateProfile } from '../data/datasetProfiling';
 import { translations, Language } from '../i18n/translations';
 import { checkOllamaEngineHealth } from '../services/aiService';
+import { aiAuthHeaders } from '../utils/aiAccessGuard';
 
 export type ToastMethods = {
   (options: { title: string; description?: string; message?: string; variant?: 'success' | 'error' | 'warning' | 'info'; type?: 'success' | 'error' | 'warning' | 'info'; duration?: number }): string;
@@ -554,7 +555,7 @@ export const AppProvider: React.FC<{
       updateProviderConfig(providerId, { status: 'checking' });
       const res = await fetch('/api/ai/test-connection', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           provider: providerId,
           endpointUrl: config?.endpointUrl,
@@ -952,7 +953,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       const activeProviderConf = aiSettings.providers[aiSettings.activeProvider];
       const res = await fetch('/api/models/explain', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           ...request,
           language,

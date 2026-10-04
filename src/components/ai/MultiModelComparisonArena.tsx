@@ -46,7 +46,7 @@ import {
   PolarRadiusAxis,
 } from 'recharts';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import {
   AIModelDefinition,
   ModelBenchmarkResult,
@@ -277,7 +277,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
 
       const res = await fetch('/api/nl2sql/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           question,
           datasetSchema: activeDataset,

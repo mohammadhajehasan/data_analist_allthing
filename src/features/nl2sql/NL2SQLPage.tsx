@@ -4,7 +4,7 @@ import { validateSqlWithNineLayers } from '../../utils/sqlValidator';
 import { executeAnalyticalQuery } from '../../utils/analyticsEngine';
 import { analyzeSqlErrors } from '../../utils/sqlErrorParser';
 import { generateExecutionPlan } from '../../utils/sqlPlanGenerator';
-import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { SQLValidationReport, QueryResult, SqlOptimizationResult, ExecutionPlanNode } from '../../types';
 import { ChartFactory } from '../../components/charts/ChartFactory';
 import { CarbonDataTable } from '../../components/common/CarbonDataTable';
@@ -156,7 +156,7 @@ export const NL2SQLPage: React.FC = () => {
     try {
       const res = await fetch('/api/nl2sql/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           question,
           datasetSchema: {

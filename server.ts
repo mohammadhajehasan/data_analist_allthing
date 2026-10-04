@@ -10,6 +10,9 @@ import {
   createUser, verifyLogin, getUserByToken, revokeSession,
   roleForFirstUser, listUsers, type Role,
 } from './server/auth';
+import {
+  consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
+} from './server/aiQuota';
 
 dotenv.config();
 
@@ -24,6 +27,58 @@ const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemin
 
 function isPlaceholderApiKey(key: string): boolean {
   return PLACEHOLDER_KEY_PATTERNS.test(key);
+}
+
+// ---------------------------------------------------------------------------
+// Daily per-user quota on SERVER-KEY AI usage — protects the shared balance
+// (OPENROUTER_API_KEY & friends in .env) from being drained by heavy users.
+// Requests carrying the user's OWN real key (or hitting local Ollama) are
+// never counted. Authenticated callers get a per-user bucket; anonymous
+// callers fall back to a per-IP bucket. Admins are unlimited by default
+// (AI_SERVER_ADMIN_DAILY_LIMIT=0), regular users: AI_SERVER_DAILY_LIMIT (100).
+// ---------------------------------------------------------------------------
+const SERVER_KEY_ENV_VARS = ['GEMINI_API_KEY', 'OPENROUTER_API_KEY', 'DEEPSEEK_API_KEY', 'QWEN_API_KEY', 'CUSTOM_OPENAI_API_KEY'];
+
+function hasRealServerAiKey(): boolean {
+  return SERVER_KEY_ENV_VARS.some((name) => {
+    const v = process.env[name];
+    return Boolean(v && v.trim()) && !isPlaceholderApiKey(v);
+  });
+}
+
+function aiServerKeyQuotaGuard(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    // Ollama محلي ومجاني — لا يُحسب أبداً
+    if (String(req.body?.provider || '').toLowerCase() === 'ollama') return next();
+    // مفتاح المستخدم الخاص الحقيقي → رصيده هو، لا الحصة المشتركة
+    const bodyKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : '';
+    if (bodyKey && bodyKey.trim() && !isPlaceholderApiKey(bodyKey)) return next();
+    // لا مفاتيح خادم مكوّنة → لا شيء يحميه
+    if (!hasRealServerAiKey()) return next();
+
+    const caller = authUserFromReq(req);
+    const isAdmin = caller?.role === 'admin';
+    const limit = isAdmin ? getAdminDailyLimit() : getUserDailyLimit();
+    if (limit <= 0) return next(); // 0 = غير محدود
+
+    const callerId = caller ? `user:${caller.id}` : `ip:${req.ip || 'unknown'}`;
+    // حلبة المقارنة تستدعي N نماذج في الطلب الواحد — احسب كل نموذج على حدة
+    const cost = Array.isArray(req.body?.models) && req.body.models.length > 0
+      ? Math.min(req.body.models.length, 10)
+      : 1;
+    const result = consumeAiQuota({ callerId, cost, limit });
+    if (!result.ok) {
+      return res.status(429).json({
+        error: `وصلت الحد اليومي لاستخدام مفتاح الخادم (${result.used}/${result.limit} طلب). يتجدد الحد تلقائياً بعد منتصف الليل بتوقيت UTC — أو أضف مفتاحك الخاص من إعدادات النماذج لاستخدام غير محدود.`,
+        quota: { used: result.used, limit: result.limit, remaining: 0, resetAt: result.resetAt },
+      });
+    }
+    res.setHeader('X-AI-Quota-Remaining', String(result.remaining));
+    return next();
+  } catch {
+    // أعطال الحصة لا تُسقط ميزات الذكاء الاصطناعي أبداً
+    return next();
+  }
 }
 
 // Lazy initialize Gemini API client with required User-Agent
@@ -426,7 +481,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // 1b. Test Connection for any AI Provider (Ollama ping, Gemini, OpenRouter, Qwen, etc.)
-app.post('/api/ai/test-connection', async (req, res) => {
+app.post('/api/ai/test-connection', aiServerKeyQuotaGuard, async (req, res) => {
   const { provider, endpointUrl, apiKey, model } = req.body;
   const startTime = Date.now();
 
@@ -564,7 +619,7 @@ app.post('/api/ai/test-connection', async (req, res) => {
 });
 
 // 1b-2. AI Sandbox Execution Endpoint
-app.post('/api/ai/sandbox/query', async (req, res) => {
+app.post('/api/ai/sandbox/query', aiServerKeyQuotaGuard, async (req, res) => {
   const { provider = 'gemini', model = 'gemini-3.8-flash', prompt, systemInstruction, endpointUrl, apiKey, temperature, maxTokens } = req.body;
   const startTime = Date.now();
 
@@ -844,6 +899,16 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
 });
 
 // 1d. Get Ollama Installed Tags
+// رصيد حصة مفتاح الخادم للمتصل الحالي — لعرضها في الواجهة
+app.get('/api/ai/quota', (req, res) => {
+  const caller = authUserFromReq(req);
+  const isAdmin = caller?.role === 'admin';
+  const limit = isAdmin ? getAdminDailyLimit() : getUserDailyLimit();
+  const callerId = caller ? `user:${caller.id}` : `ip:${req.ip || 'unknown'}`;
+  const status = getAiQuotaStatus({ callerId, limit });
+  res.json({ ...status, unlimited: limit <= 0, authenticated: Boolean(caller) });
+});
+
 app.get('/api/ai/ollama/tags', async (req, res) => {
   const host = (req.query.host as string) || 'http://localhost:11434';
   try {
@@ -1286,7 +1351,7 @@ function extractCleanSQL(raw: string): { sql: string; explanation?: string } {
   return { sql: text.replace(/;+$/, '').trim(), explanation };
 }
 
-app.post('/api/nl2sql/generate', async (req, res) => {
+app.post('/api/nl2sql/generate', aiServerKeyQuotaGuard, async (req, res) => {
   const { question, datasetSchema, language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey } = req.body;
   const startTime = Date.now();
 
@@ -1363,7 +1428,7 @@ EXPLANATION: [Brief explanation]`;
 });
 
 // 2b. Multi-Model Side-by-Side Comparison Arena Endpoint
-app.post('/api/nl2sql/compare', async (req, res) => {
+app.post('/api/nl2sql/compare', aiServerKeyQuotaGuard, async (req, res) => {
   const { question, datasetSchema, language = 'ar', models = [] } = req.body;
   const startTime = Date.now();
 
@@ -1504,7 +1569,7 @@ EXPLANATION: [1-sentence explanation in ${language === 'ar' ? 'Arabic' : 'Englis
 
 
 // 2b. NL2SQL Query Optimizer Endpoint (Multi-Provider & Dynamic Provider-Specific Prompts)
-app.post('/api/nl2sql/optimize', async (req, res) => {
+app.post('/api/nl2sql/optimize', aiServerKeyQuotaGuard, async (req, res) => {
   const {
     sql,
     datasetSchema,
@@ -1796,7 +1861,7 @@ Respond strictly in raw valid JSON matching this exact JSON schema:
 
 
 // 3. AI Assistant Chat Stream & SSE Endpoint (Multi-Provider Aware)
-app.post('/api/assistant/chat', async (req, res) => {
+app.post('/api/assistant/chat', aiServerKeyQuotaGuard, async (req, res) => {
   const { message, dataset, datasetContext, history = [], language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey, activeView, activeDashboardContext } = req.body;
   const targetDataset = dataset || datasetContext;
   const startTime = Date.now();
@@ -2161,8 +2226,8 @@ Respond STRICTLY in valid JSON matching this schema:
   }
 }
 
-app.post('/api/reports/generate', handleStoryGeneration);
-app.post('/api/datastory/generate', handleStoryGeneration);
+app.post('/api/reports/generate', aiServerKeyQuotaGuard, handleStoryGeneration);
+app.post('/api/datastory/generate', aiServerKeyQuotaGuard, handleStoryGeneration);
 
 // 5. Profiling AI Summary Generator (Multi-Provider Aware — works with any provider the user selects)
 app.post('/api/profiling/summarize', async (req, res) => {
@@ -2204,7 +2269,7 @@ Language: ${language}`;
 });
 
 // 5b. Model Explain Engine API (Statistical & Natural Language Interpretation)
-app.post('/api/models/explain', async (req, res) => {
+app.post('/api/models/explain', aiServerKeyQuotaGuard, async (req, res) => {
   const {
     modelName,
     modelType,

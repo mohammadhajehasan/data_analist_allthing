@@ -41,3 +41,9 @@ services:
       # own key (server-key fallback). Get one at https://openrouter.ai/keys
       - key: OPENROUTER_API_KEY
         sync: false
+      # Daily per-user cap on server-key AI usage (protects the shared credit);
+      # users with their own key and local Ollama are never counted. 0 = unlimited.
+      - key: AI_SERVER_DAILY_LIMIT
+        value: "100"
+      - key: AI_SERVER_ADMIN_DAILY_LIMIT
+        value: "0"

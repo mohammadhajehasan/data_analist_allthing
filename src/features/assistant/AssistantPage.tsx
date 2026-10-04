@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { ExecutionDebugger } from '../../components/assistant/ExecutionDebugger';
 import { AIModelSelector } from '../../components/ai/AIModelSelector';
@@ -94,7 +94,7 @@ export const AssistantPage: React.FC = () => {
 
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           message: text,
           history: historyPayload,

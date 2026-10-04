@@ -1,4 +1,5 @@
 import { fetchOllamaTags } from './OllamaProxy';
+import { aiAuthHeaders } from '../utils/aiAccessGuard';
 
 /**
  * AI Service Layer - Proxy Wrapper & Health Check Utilities
@@ -196,7 +197,7 @@ export async function optimizeSqlQuery(req: OptimizeQueryRequest) {
 
   const res = await fetch('/api/nl2sql/optimize', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
     body: JSON.stringify({
       ...req,
       provider,

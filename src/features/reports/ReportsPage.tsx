@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DataStory, DataStoryChapter } from '../../types';
+import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { StoryChartRenderer } from '../../components/reports/StoryChartRenderer';
 import {
   FileText,
@@ -205,7 +206,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const res = await fetch('/api/datastory/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           dataset: activeDataset,
           language,

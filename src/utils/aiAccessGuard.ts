@@ -1,4 +1,5 @@
 import type { AIProviderConfig, AIProviderId } from '../types/aiProviders';
+import { getStoredToken } from '../features/auth/LoginPage';
 
 export interface AiAccessCheck {
   ok: boolean;
@@ -12,6 +13,15 @@ export interface AiAccessCheck {
 // يُستعلم /api/health مرة واحدة لكل جلسة (ذاكرة على مستوى الوحدة) وتشترك في
 // النتيجة شارة الهيدر (useAiReadiness) ونقاط الحرس كلها.
 // ---------------------------------------------------------------------------
+
+/**
+ * ترويسات المصادقة لنداءات AI — تربط الطلب بحساب المستخدم ليُحسب ضمن
+ * حصته اليومية من مفتاح الخادم (بدل العدّ بعنوان IP).
+ */
+export function aiAuthHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 let cachedServerProviders: AIProviderId[] | null = null;
 let inflight: Promise<AIProviderId[]> | null = null;

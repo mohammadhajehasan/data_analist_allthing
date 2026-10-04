@@ -39,7 +39,7 @@ import { useApp } from '../../context/AppContext';
 import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
 import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
-import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { AI_KEY_FOCUS_EVENT, consumePendingAiKeyFocus } from '../../utils/aiKeyFocus';
 
 // Interface for Token Consumption Tracking
@@ -392,7 +392,7 @@ export const ModelConfigPage: React.FC = () => {
     try {
       const res = await fetch('/api/ai/sandbox/query', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
         body: JSON.stringify({
           provider: selectedModelDef.provider,
           model: selectedModelDef.id,

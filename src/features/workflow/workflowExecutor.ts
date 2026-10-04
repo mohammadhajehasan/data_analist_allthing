@@ -1,6 +1,7 @@
 import { CustomWorkflowNode, WorkflowExecutionLog, ExecutionRunResult, WorkflowNodeOutputData } from './types';
 import { Edge } from '@xyflow/react';
 import { Dataset, Report } from '../../types';
+import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 
 interface WorkflowExecutorOptions {
   nodes: CustomWorkflowNode[];
@@ -633,7 +634,7 @@ export async function executeWorkflowPipeline(options: WorkflowExecutorOptions):
             const aiPrompt = `قدم ملخصاً تحليلياً استراتيجياً باللغة العربية للجدول (${currentDataset.name}) الذي يحتوي على ${pipelineDataRows.length} سجل. اذكر 2 من الرؤى الاستراتيجية و1 توصية تنفيذية.`;
             const resp = await fetch('/api/assistant/chat', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
               body: JSON.stringify({
                 message: aiPrompt,
                 provider: aiProviderConfig?.provider || 'gemini',
