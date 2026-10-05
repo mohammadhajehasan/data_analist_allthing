@@ -60,6 +60,8 @@ interface AppContextType {
    activeDashboard: Dashboard | null;
    setActiveDashboardId: (id: string) => void;
    saveDashboard: (dashboard: Dashboard) => void;
+   createDashboard: (nameAr: string, descriptionAr?: string) => Dashboard;
+   deleteDashboard: (id: string) => void;
    addWidgetToDashboard: (dashboardId: string, widget: WidgetConfig) => void;
    updateWidgetInDashboard: (dashboardId: string, widget: WidgetConfig) => void;
    deleteWidgetFromDashboard: (dashboardId: string, widgetId: string) => void;
@@ -1226,6 +1228,37 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     });
   };
 
+  // إنشاء لوحة تحكم جديدة فارغة (زر "لوحة جديدة" في باني اللوحات) وتفعيلها فوراً
+  const createDashboard = (nameAr: string, descriptionAr?: string): Dashboard => {
+    const now = new Date().toISOString();
+    const dash: Dashboard = {
+      id: `dash-${Date.now()}`,
+      workspaceId: workspace.id,
+      name: nameAr,
+      nameAr: nameAr,
+      title: nameAr,
+      titleAr: nameAr,
+      description: descriptionAr || '',
+      descriptionAr: descriptionAr || '',
+      widgets: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setDashboards(prev => [dash, ...prev]);
+    setActiveDashboardId(dash.id);
+    return dash;
+  };
+
+  const deleteDashboard = (id: string) => {
+    setDashboards(prev => {
+      const remaining = prev.filter(d => d.id !== id);
+      if (activeDashboardId === id) {
+        setActiveDashboardId(remaining[0]?.id || '');
+      }
+      return remaining;
+    });
+  };
+
   const addWidgetToDashboard = (dashboardId: string, widget: WidgetConfig) => {
     setDashboards(prev =>
       prev.map(d => {
@@ -1443,6 +1476,8 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         activeDashboard,
         setActiveDashboardId,
         saveDashboard,
+        createDashboard,
+        deleteDashboard,
         addWidgetToDashboard,
         updateWidgetInDashboard,
         deleteWidgetFromDashboard,
