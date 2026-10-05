@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Presentation, ChevronLeft, ChevronRight, FileDown, Edit3, Plus, Trash2,
-  CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText,
+  CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText, FileSpreadsheet,
 } from 'lucide-react';
 import { WidgetConfig } from '../../types';
 import { ChartFactory, getAggregationLabel } from '../../components/charts/ChartFactory';
@@ -137,10 +137,17 @@ export const SlidesExportPanel: React.FC = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingPptx, setIsExportingPptx] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+
+  // عناصر الالتقاط المخفية لصور الرسوم البيانية في PPTX (خارج الشاشة)
+  const hiddenCaptureRef = useRef<HTMLDivElement>(null);
+  const [captureWidgetId, setCaptureWidgetId] = useState<string | null>(null);
+  const captureWidget = captureWidgetId ? activeDashboard?.widgets.find(w => w.id === captureWidgetId) : undefined;
+  const captureWidgetDataset = captureWidget ? datasets.find(d => d.id === captureWidget.datasetId) || activeDataset : undefined;
 
   const datasetNameOf = (w: WidgetConfig) =>
     datasets.find(d => d.id === w.datasetId)?.name || activeDataset?.name || '—';
@@ -318,6 +325,117 @@ export const SlidesExportPanel: React.FC = () => {
     }, 900);
   };
 
+  // PPTX قابل للتحرير في PowerPoint: النصوص عناصر أصلية (وليست صوراً) + صورة
+  // الرسم البياني مضمّنة في الشرائح الرسومية. يدعم الاتجاه العربي RTL.
+  const handleExportDeckPptx = async () => {
+    setIsExportingPptx(true);
+    try {
+      const PptxGenJS = (await import('pptxgenjs')).default;
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9';
+      pptx.rtlMode = isAr;
+      const W = pptx.presLayout.width;
+      const H = pptx.presLayout.height;
+      const BG = '161616';
+      const TXT = 'f4f4f4';
+      const SUB = 'a8a8a8';
+      const ACC = '33b1ff';
+      const bodyFont = isAr ? 'Arial' : 'Segoe UI';
+
+      const addBackground = (slide: any) => {
+        slide.background = { color: BG };
+      };
+
+      const addFooter = (slide: any, idx: number) => {
+        slide.addText(
+          `${isAr ? `الشريحة ${idx + 1} / ${slides.length}` : `Slide ${idx + 1} / ${slides.length}`}`,
+          { x: W - 1.4, y: H - 0.42, w: 1.2, h: 0.3, fontSize: 9, fontFace: 'Consolas', color: SUB, align: 'right' }
+        );
+      };
+
+      // صورة الرسم البياني للشريحة إن وُجد — من اللوحة النشطة عبر العنصر المخفي خارج الشاشة
+      const captureChartImage = async (widgetId: string): Promise<string | null> => {
+        const widget = activeDashboard?.widgets.find(w => w.id === widgetId);
+        if (!widget) return null;
+        const host = hiddenCaptureRef.current;
+        if (!host) return null;
+        setCaptureWidgetId(widgetId);
+        await new Promise(r => setTimeout(r, 600)); // مهلة رسم ChartFactory
+        try {
+          const canvas = await captureElementToCanvas(host, { backgroundColor: BG, scale: 2 });
+          return canvas.toDataURL('image/png');
+        } catch {
+          return null;
+        } finally {
+          setCaptureWidgetId(null);
+        }
+      };
+
+      for (let i = 0; i < slides.length; i++) {
+        const s = slides[i];
+        const slide = pptx.addSlide();
+        addBackground(slide);
+
+        const title = isAr ? s.titleAr || s.title : s.title;
+        const bullets = (isAr ? s.bulletsAr : s.bullets).filter(b => b.trim());
+        const rtl = isAr;
+
+        // شارة نوع الشريحة
+        const badgeColor: Record<Slide['type'], string> = {
+          cover: '8a3ffc', summary: '0f62fe', stats: '24a148', conclusion: '33b1ff',
+        };
+        slide.addText(s.type.toUpperCase(), {
+          x: rtl ? W - 2.0 : 0.5, y: 0.45, w: 1.5, h: 0.3,
+          fontSize: 9, bold: true, fontFace: 'Consolas', color: badgeColor[s.type], align: rtl ? 'right' : 'left',
+        });
+
+        // العنوان الرئيسي — نص أصلي قابل للتحرير
+        slide.addText(title || ' ', {
+          x: rtl ? 0.5 : 0.5, y: 0.85, w: W - 1.0, h: 0.9,
+          fontSize: s.type === 'cover' ? 32 : 24, bold: true, fontFace: bodyFont, color: TXT,
+          align: rtl ? 'right' : 'left', rtlMode: rtl,
+        });
+
+        // نقاط المحتوى — نصوص أصلية قابلة للتحرير
+        if (bullets.length > 0) {
+          const hasChart = !!s.chartWidgetId;
+          const boxH = hasChart ? 1.6 : H - 2.6;
+          slide.addText(
+            bullets.map(b => ({ text: b, options: { bullet: { characterCode: '25AA' }, breakLine: true } })),
+            {
+              x: rtl ? W / 2 : 0.6, y: 1.9, w: hasChart ? W / 2 - 1.0 : W - 1.2, h: boxH,
+              fontSize: 13, fontFace: bodyFont, color: SUB, align: rtl ? 'right' : 'left',
+              rtlMode: rtl, lineSpacingMultiple: 1.3, valign: 'top',
+            }
+          );
+        }
+
+        // صورة الرسم البياني (شريحة الرسوم) — على النصف الآخر
+        if (s.chartWidgetId) {
+          const img = await captureChartImage(s.chartWidgetId);
+          if (img) {
+            slide.addImage({ data: img, x: rtl ? 0.6 : W / 2, y: 1.9, w: W / 2 - 0.6, h: 2.6, sizing: { type: 'contain', w: W / 2 - 0.6, h: 2.6 } });
+          }
+        }
+
+        // شريط سفلي بلون الهوية
+        slide.addShape(pptx.ShapeType.rect, { x: 0, y: H - 0.12, w: W, h: 0.12, fill: { color: '0f62fe' } });
+        addFooter(slide, i);
+      }
+
+      await pptx.writeFile({ fileName: `${deckFilename}.pptx` });
+      toast.success(
+        isAr ? 'تم تصدير PPTX!' : 'PPTX Exported!',
+        isAr ? 'عرض PowerPoint قابل للتحرير بالكامل — النصوص عناصر أصلية قابلة للتعديل.' : 'Fully editable PowerPoint — all text is native, editable content.'
+      );
+    } catch (err) {
+      console.error('PPTX export error:', err);
+      toast.error(isAr ? 'فشل تصدير PPTX' : 'PPTX Export Failed', isAr ? 'حدث خطأ أثناء بناء ملف PowerPoint.' : 'An error occurred while building the PowerPoint file.');
+    } finally {
+      setIsExportingPptx(false);
+    }
+  };
+
   // لقطة PNG للشريحة الحالية كما تظهر على المسرح (مع الرسم البياني إن وجد)
   const handleExportSlidePng = async () => {
     if (!stageRef.current) return;
@@ -412,6 +530,16 @@ export const SlidesExportPanel: React.FC = () => {
           >
             {isExportingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
             <span>{isAr ? 'PDF كامل' : 'Export PDF'}</span>
+          </button>
+
+          <button
+            onClick={handleExportDeckPptx}
+            disabled={isExportingPptx}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d04a02] hover:bg-[#ba4a00] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
+            title={isAr ? 'ملف PowerPoint (.pptx) بنصوص أصلية قابلة للتحرير بالكامل' : 'Editable PowerPoint (.pptx) with native text elements'}
+          >
+            {isExportingPptx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+            <span>{isAr ? 'PowerPoint (PPTX)' : 'Export PPTX'}</span>
           </button>
 
           <button
@@ -657,6 +785,19 @@ export const SlidesExportPanel: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* حاضنة الالتقاط المخفية: ترسم الشريحة الرسومية مؤقتاً لالتقاطها كصورة داخل PPTX */}
+      <div
+        ref={hiddenCaptureRef}
+        style={{ position: 'fixed', left: -10000, top: 0, width: 800, height: 480, background: '#161616' }}
+        aria-hidden
+      >
+        {captureWidget && (
+          <div style={{ width: '100%', height: '100%', padding: 16 }}>
+            <ChartFactory widget={captureWidget} dataset={captureWidgetDataset} activeTheme="professional" />
+          </div>
+        )}
       </div>
     </div>
   );
