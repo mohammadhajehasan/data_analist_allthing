@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import {
   Presentation, ChevronLeft, ChevronRight, FileDown, Edit3, Plus, Trash2,
   CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText, FileSpreadsheet,
+  MonitorPlay, Play, Pause,
 } from 'lucide-react';
 import { WidgetConfig } from '../../types';
 import { ChartFactory, getAggregationLabel } from '../../components/charts/ChartFactory';
@@ -174,6 +175,89 @@ export const SlidesExportPanel: React.FC = () => {
     setActiveSlideIndex(prev => Math.min(prev, Math.max(0, next.length - 1)));
   };
 
+  // ---------- وضع العرض بملء الشاشة (تنقل بالأسهم + مؤقت تلقائي) ----------
+
+  const [presenting, setPresenting] = useState(false);
+  const [autoplay, setAutoplay] = useState(false);
+  const [autoplaySecs, setAutoplaySecs] = useState(8);
+  const [secondsLeft, setSecondsLeft] = useState(8);
+  const presentStageRef = useRef<HTMLDivElement>(null);
+
+  const gotoSlide = (idx: number) => {
+    if (slides.length === 0) return;
+    setActiveSlideIndex(((idx % slides.length) + slides.length) % slides.length);
+  };
+
+  const startPresenting = () => {
+    setPresenting(true);
+  };
+
+  const stopPresenting = () => {
+    setPresenting(false);
+    setAutoplay(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  };
+
+  // ملء الشاشة الحقيقي (أفضل جهد — إن رُفض يبقى الغلاف يغطي الشاشة)
+  useEffect(() => {
+    if (!presenting) return;
+    const el = presentStageRef.current;
+    if (el && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  }, [presenting]);
+
+  // التنقل بلوحة المفاتيح — الأسهم تتبع اتجاه القراءة (عربي: اليسار = التالي)
+  useEffect(() => {
+    if (!presenting) return;
+    const nextKey = isAr ? 'ArrowLeft' : 'ArrowRight';
+    const prevKey = isAr ? 'ArrowRight' : 'ArrowLeft';
+    const onKey = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case nextKey:
+        case 'PageDown':
+        case ' ':
+          e.preventDefault();
+          gotoSlide(activeSlideIndex + 1);
+          break;
+        case prevKey:
+        case 'PageUp':
+          e.preventDefault();
+          gotoSlide(activeSlideIndex - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          gotoSlide(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          gotoSlide(slides.length - 1);
+          break;
+        case 'Escape':
+          stopPresenting();
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presenting, activeSlideIndex, slides.length, isAr]);
+
+  // المؤقت التلقائي: عدّاد تنازلي مرئي يتقدم شريحة كل N ثانية ويعود للأولى (نمط العرض في القاعات)
+  useEffect(() => {
+    if (!presenting || !autoplay || slides.length === 0) return;
+    let left = autoplaySecs;
+    setSecondsLeft(left);
+    const id = setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        left = autoplaySecs;
+        setActiveSlideIndex(prev => (prev + 1) % slides.length);
+      }
+      setSecondsLeft(left);
+    }, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presenting, autoplay, autoplaySecs, slides.length, activeSlideIndex]);
+
   // ---------- إدارة الشرائح: إضافة / حذف / إعادة ترتيب ----------
 
   const handleAddSlide = () => {
@@ -334,8 +418,10 @@ export const SlidesExportPanel: React.FC = () => {
       const pptx = new PptxGenJS();
       pptx.layout = 'LAYOUT_16x9';
       pptx.rtlMode = isAr;
-      const W = pptx.presLayout.width;
-      const H = pptx.presLayout.height;
+      // presLayout يعود بوحدات EMU — نحوّلها لبوحات كي تتوافق بقية القيم (<100 = بوصات)
+      // وتُصدَّر جميع الإحداثيات كأعداد EMU صحيحة (PowerPoint يرفض الكسور)
+      const W = pptx.presLayout.width / 914400;
+      const H = pptx.presLayout.height / 914400;
       const BG = '161616';
       const TXT = 'f4f4f4';
       const SUB = 'a8a8a8';
@@ -457,7 +543,12 @@ export const SlidesExportPanel: React.FC = () => {
     if (!stageRef.current) return;
     setIsExportingPdf(true);
     try {
+      toast.info(
+        isAr ? 'جاري بناء PDF…' : 'Building PDF…',
+        isAr ? `يتم التقاط ${slides.length} شرائح — قد يستغرق ثوانٍ قليلة في أول تشغيل.` : `Capturing ${slides.length} slides — the first run may take a moment.`
+      );
       const { jsPDF } = await import('jspdf');
+      console.log('[pdf-export] jsPDF loaded');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [960, 540] });
       for (let i = 0; i < slides.length; i++) {
         setActiveSlideIndex(i);
@@ -465,7 +556,9 @@ export const SlidesExportPanel: React.FC = () => {
         await new Promise(r => setTimeout(r, 350));
         const el = stageRef.current;
         if (!el) continue;
+        console.log(`[pdf-export] capturing slide ${i + 1}/${slides.length}...`);
         const canvas = await captureElementToCanvas(el, { backgroundColor: '#161616', scale: 2 });
+        console.log(`[pdf-export] slide ${i + 1} captured in ${(performance.now() / 1000).toFixed(1)}s`);
         const img = canvas.toDataURL('image/png');
         if (i > 0) pdf.addPage();
         pdf.addImage(img, 'PNG', 0, 0, 960, 540);
@@ -512,6 +605,15 @@ export const SlidesExportPanel: React.FC = () => {
 
         {/* Primary Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={startPresenting}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#24a148] hover:bg-[#1e8a3d] text-white text-xs font-mono font-bold uppercase transition-colors"
+            title={isAr ? 'عرض ملء الشاشة مع تنقل بالأسهم ومؤقت تلقائي للعرض أمام الإدارة' : 'Fullscreen presentation with arrow navigation and autoplay timer'}
+          >
+            <MonitorPlay className="w-3.5 h-3.5" />
+            <span>{isAr ? 'وضع العرض' : 'Present'}</span>
+          </button>
+
           <button
             onClick={handleGenerateFromDashboard}
             disabled={isGenerating}
@@ -799,6 +901,128 @@ export const SlidesExportPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ───────────── وضع العرض بملء الشاشة أمام الإدارة ───────────── */}
+      {presenting && activeSlide && (
+        <div
+          ref={presentStageRef}
+          className="fixed inset-0 z-[100] bg-[#161616] flex flex-col select-none"
+          dir={isAr ? 'rtl' : 'ltr'}
+        >
+          {/* الشريط العلوي: نوع الشريحة + اسم اللوحة + خروج */}
+          <div className="flex items-center justify-between px-8 pt-5 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 uppercase ${typeBadgeClass[activeSlide.type]}`}>
+                {activeSlide.type}
+              </span>
+              <span className="text-xs font-mono text-[var(--cds-text-03)] truncate">
+                {isAr ? (activeDashboard?.nameAr || activeDashboard?.name || '') : (activeDashboard?.name || '')}
+              </span>
+            </div>
+            <button
+              onClick={stopPresenting}
+              className="p-2 text-[var(--cds-text-03)] hover:text-white hover:bg-[#da1e28] transition-colors"
+              title={isAr ? 'خروج (Esc)' : 'Exit (Esc)'}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* محتوى الشريحة — النقر للتقدم */}
+          <div
+            className="flex-1 min-h-0 flex flex-col justify-center px-16 py-6 cursor-pointer"
+            onClick={() => gotoSlide(activeSlideIndex + 1)}
+            title={isAr ? 'انقر للتقدم للشريحة التالية' : 'Click to advance'}
+          >
+            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
+              {isAr ? activeSlide.titleAr || activeSlide.title : activeSlide.title}
+            </h1>
+            <ul className="space-y-4 text-xl lg:text-2xl text-[var(--cds-text-02)] leading-relaxed list-disc ps-8 max-w-4xl">
+              {bulletCollection.filter(b => b.trim()).map((b, i) => (
+                <li key={i} className="marker:text-[#33b1ff]">{b}</li>
+              ))}
+            </ul>
+            {chartWidget && (
+              <div className="flex-1 min-h-[200px] mt-6 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] p-3">
+                <ChartFactory widget={chartWidget} dataset={chartWidgetDataset} activeTheme="professional" />
+              </div>
+            )}
+          </div>
+
+          {/* شريط التحكم السفلي */}
+          <div className="shrink-0 border-t border-[var(--cds-border-subtle)] px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => gotoSlide(activeSlideIndex - 1)}
+                disabled={activeSlideIndex === 0}
+                className="p-2 border border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-02)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title={isAr ? 'الشريحة السابقة' : 'Previous slide'}
+              >
+                <ChevronRight className="w-5 h-5 rtl:rotate-180" />
+              </button>
+              <span className="font-mono text-sm text-[var(--cds-text-02)] px-2">
+                {isAr ? `الشريحة ${activeSlideIndex + 1} من ${slides.length}` : `Slide ${activeSlideIndex + 1} of ${slides.length}`}
+              </span>
+              <button
+                onClick={() => gotoSlide(activeSlideIndex + 1)}
+                disabled={activeSlideIndex === slides.length - 1}
+                className="p-2 border border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-02)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title={isAr ? 'الشريحة التالية' : 'Next slide'}
+              >
+                <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAutoplay(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold uppercase transition-colors border ${
+                  autoplay
+                    ? 'bg-[#24a148]/20 border-[#24a148] text-[#42be65]'
+                    : 'border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-02)]'
+                }`}
+                title={isAr ? 'تشغيل تلقائي: تتقدم الشرائح كل N ثانية وتعود للأولى' : 'Autoplay: slides advance every N seconds and loop'}
+              >
+                {autoplay ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                <span>{isAr ? (autoplay ? 'إيقاف التلقائي' : 'عرض تلقائي') : (autoplay ? 'Pause' : 'Autoplay')}</span>
+              </button>
+
+              {autoplay && (
+                <>
+                  <select
+                    value={autoplaySecs}
+                    onChange={e => setAutoplaySecs(Number(e.target.value))}
+                    className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs font-mono py-1.5 px-2 outline-none cursor-pointer"
+                    title={isAr ? 'مدة بقاء كل شريحة' : 'Seconds per slide'}
+                  >
+                    {[3, 5, 8, 10, 15, 30].map(s => (
+                      <option key={s} value={s}>{s} ث</option>
+                    ))}
+                  </select>
+                  <span
+                    className="font-mono text-lg text-[#42be65] w-9 text-center tabular-nums"
+                    title={isAr ? 'العدّاد للشريحة التالية' : 'Countdown to next slide'}
+                  >
+                    {secondsLeft}
+                  </span>
+                </>
+              )}
+
+              <span className="text-[10px] font-mono text-[var(--cds-text-03)] hidden xl:inline">
+                {isAr ? 'الأسهم للتنقل • Esc للخروج' : 'Arrow keys navigate • Esc to exit'}
+              </span>
+            </div>
+          </div>
+
+          {/* شريط التقدم الكلي */}
+          <div className="h-1 bg-[var(--cds-layer-02)] shrink-0">
+            <div
+              className="h-full bg-[#0f62fe] transition-all duration-300"
+              style={{ width: `${((activeSlideIndex + 1) / Math.max(1, slides.length)) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
