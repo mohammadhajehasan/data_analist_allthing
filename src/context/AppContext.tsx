@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   User,
   Workspace,
@@ -356,6 +356,63 @@ export const AppProvider: React.FC<{
   // لا مجموعات بيانات تجريبية: تبدأ فارغة ويضيفها المستخدم عبر الاستيراد
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [activeDatasetId, setActiveDatasetId] = useState<string>('');
+
+  // ----------------------------------------------------
+  // Server-side dataset persistence (تحميل مرة واحدة عند الدخول + حفظ أحادي الاتجاه)
+  // ----------------------------------------------------
+  const datasetsSyncedRef = useRef(false);
+  const authUserRef = useRef(authUser);
+  useEffect(() => { authUserRef.current = authUser; }, [authUser]);
+
+  const authHeaders = useCallback((): Record<string, string> => {
+    const token = localStorage.getItem('carbon_auth_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
+  // حفظ/تحديث مجموعة على الخادم (fire-and-forget — لا يبطئ الاستيراد)
+  const syncDatasetToServer = useCallback((ds: Dataset) => {
+    if (!authUserRef.current) return;
+    try {
+      fetch(`/api/datasets/${encodeURIComponent(ds.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(ds),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* الاستمرارية تحسين — لا تُعطّل الواجهة أبداً */ }
+  }, [authHeaders]);
+
+  // حذف مجموعة من الخادم (fire-and-forget)
+  const deleteDatasetOnServer = useCallback((id: string) => {
+    if (!authUserRef.current) return;
+    try {
+      fetch(`/api/datasets/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* noop */ }
+  }, [authHeaders]);
+
+  // تحميل المجموعات المحفوظة خادمياً مرة واحدة عند أول دخول صالح
+  useEffect(() => {
+    if (!authUser || datasetsSyncedRef.current) return;
+    datasetsSyncedRef.current = true;
+    fetch('/api/datasets', { headers: authHeaders() })
+      .then(res => (res.ok ? res.json() : { datasets: [] }))
+      .then((resp: { datasets?: Dataset[] }) => {
+        const serverRows = Array.isArray(resp?.datasets) ? resp.datasets : [];
+        if (serverRows.length === 0) return;
+        setDatasets(prev => {
+          // دمج بدون فقدان أي شيء أُضيف محلياً قبل اكتمال الجلب
+          const byId = new Map(prev.map(d => [d.id, d]));
+          for (const row of serverRows) byId.set(row.id, row);
+          return Array.from(byId.values());
+        });
+      })
+      .catch(() => { /* تعذر الجلب — الواجهة تعمل محلياً كالمعتاد */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
   const [dashboards, setDashboards] = useState<Dashboard[]>(getInitialDashboards);
   const [activeDashboardId, setActiveDashboardId] = useState<string>(
     getInitialDashboards()[0]?.id || ''
@@ -785,6 +842,17 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       if (Array.isArray(snapshot.datasets) && snapshot.datasets.length > 0) {
         setDatasets(snapshot.datasets);
         setActiveDatasetId(snapshot.datasets[0].id);
+        // استبدال خادمي كامل: احذف غير الموجود في اللقطة واحفظ محتواها
+        if (authUser) {
+          try {
+            fetch('/api/datasets/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders() },
+              body: JSON.stringify({ datasets: snapshot.datasets }),
+              keepalive: true,
+            }).catch(() => {});
+          } catch { /* noop */ }
+        }
       }
       if (Array.isArray(snapshot.dashboards) && snapshot.dashboards.length > 0) {
         setDashboards(snapshot.dashboards);
@@ -1167,6 +1235,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
      };
      setDatasets(prev => [profiled, ...prev]);
      setActiveDatasetId(profiled.id);
+     syncDatasetToServer(profiled);
      addAuditLog({
        userId: user.id,
        userName: user.name,
@@ -1183,10 +1252,12 @@ const refreshOllamaModels = async (): Promise<string[]> => {
 
    const updateDataset = (updated: Dataset) => {
      setDatasets(prev => prev.map(d => d.id === updated.id ? updated : d));
+     syncDatasetToServer(updated);
    };
 
   const deleteDataset = (id: string) => {
     setDatasets(prev => prev.filter(d => d.id !== id));
+    deleteDatasetOnServer(id);
     if (activeDatasetId === id && datasets.length > 1) {
       const remaining = datasets.filter(d => d.id !== id);
       setActiveDatasetId(remaining[0].id);
@@ -1202,6 +1273,16 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       }
       return remaining;
     });
+    if (authUser) {
+      try {
+        fetch('/api/datasets/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ ids }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch { /* noop */ }
+    }
     addAuditLog({
       userId: user.id,
       userName: user.name,

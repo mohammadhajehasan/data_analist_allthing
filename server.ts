@@ -13,6 +13,11 @@ import {
 import {
   consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
 } from './server/aiQuota';
+import {
+  listUserDatasets, upsertUserDataset, deleteUserDataset, deleteUserDatasets,
+  keepOnlyUserDatasets, getDatasetsStats, getDatasetSizeLimitBytes,
+} from './server/datasetsStore';
+
 
 dotenv.config();
 
@@ -2624,6 +2629,76 @@ function authUserFromReq(req: express.Request) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   return getUserByToken(token);
 }
+
+// ---------------------------------------------------------------------------
+// Server-side dataset persistence — imported datasets survive page reloads.
+// Write-through JSON blobs in data/auth.db (جدول datasets)، ملكية لكل مستخدم.
+// الواجهة تبقى تعمل من الذاكرة للأداء؛ الخادم مجرد مخزن استمرارية.
+// ---------------------------------------------------------------------------
+app.get('/api/datasets', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const rows = listUserDatasets(user.id);
+  res.json({ datasets: rows.map(r => JSON.parse(r.payload)) });
+});
+
+app.put('/api/datasets/:id', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const dataset = req.body;
+  if (!dataset || typeof dataset !== 'object' || !dataset.id) {
+    return res.status(400).json({ error: 'جسم المجموعة غير صالح' });
+  }
+  if (dataset.id !== req.params.id) {
+    return res.status(400).json({ error: 'معرّف المجموعة في المسار لا يطابق الجسم' });
+  }
+  const result = upsertUserDataset(user.id, dataset);
+  if (!result.ok) return res.status(413).json({ error: result.error });
+  res.json({ ok: true });
+});
+
+app.delete('/api/datasets/:id', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const removed = deleteUserDataset(user.id, req.params.id);
+  res.json({ ok: true, removed });
+});
+
+// حذف دفعي — يستخدمه حذف مجموعات متعددة من الواجهة
+app.post('/api/datasets/bulk-delete', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'قائمة المعرفات مطلوبة' });
+  }
+  const removed = deleteUserDatasets(user.id, ids.map(String));
+  res.json({ ok: true, removed });
+});
+
+// استعادة لقطة مشروع: استبدال كل مجموعات المستخدم بمحتوى اللقطة دفعة واحدة
+app.post('/api/datasets/restore', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const datasets = req.body?.datasets;
+  if (!Array.isArray(datasets)) return res.status(400).json({ error: 'قائمة المجموعات مطلوبة' });
+  const ids = datasets.map((d: any) => String(d?.id || '')).filter(Boolean);
+  let replaced = keepOnlyUserDatasets(user.id, ids);
+  let saved = 0;
+  const errors: string[] = [];
+  for (const ds of datasets) {
+    const r = upsertUserDataset(user.id, ds);
+    if (r.ok) saved++; else errors.push(r.error || 'خطأ غير معروف');
+  }
+  res.json({ ok: errors.length === 0, saved, replaced, errors: errors.slice(0, 3) });
+});
+
+// معلومات التخزين الخادمي (تظهر في لوحة الإدارة مستقبلاً)
+app.get('/api/datasets/_stats', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ ...getDatasetsStats(), perDatasetLimitBytes: getDatasetSizeLimitBytes() });
+});
 
 // The current user's groups — strictly members-only, no discovery.
 // ?light=1 strips image payloads from lastMessage (fast chat list).

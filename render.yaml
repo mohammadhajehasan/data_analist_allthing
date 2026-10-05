@@ -47,3 +47,7 @@ services:
         value: "100"
       - key: AI_SERVER_ADMIN_DAILY_LIMIT
         value: "0"
+      # Imported datasets persist to SQLite (data/auth.db) so they survive page
+      # reloads. Per-dataset upload cap in MB — keep within the free 512MB disk.
+      - key: DATASET_SERVER_LIMIT_MB
+        value: "10"
