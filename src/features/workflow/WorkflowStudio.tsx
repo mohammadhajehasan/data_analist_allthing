@@ -85,6 +85,10 @@ import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../
 const STORAGE_KEY = 'carbon_ai_workflows_v3';
 const VERSIONS_STORAGE_KEY = 'carbon_workflow_versions_v1';
 
+// مفاتيح لكل مستخدم: سير العمل ونسخه تخص صاحب الحساب فقط — لا تبادل بين الحسابات على نفس المتصفح
+const workflowsKeyFor = (uid?: string) => (uid ? `${STORAGE_KEY}:${uid}` : '');
+const versionsKeyFor = (uid?: string) => (uid ? `${VERSIONS_STORAGE_KEY}:${uid}` : '');
+
 const getInitialVersions = (): WorkflowVersion[] => {
   return WORKFLOW_TEMPLATES.map((tpl, idx) => ({
     id: `ver_init_${tpl.id}`,
@@ -293,13 +297,26 @@ const WorkflowStudioContent: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
-  // Load workflows from storage or use templates
+  // Load workflows from storage or use templates (مفاتيح معزولة لكل مستخدم)
+  const workflowsKey = workflowsKeyFor(user?.id);
+  const versionsKey = versionsKeyFor(user?.id);
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(workflowsKeyFor(user?.id));
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // ترحيل بيانات المفتاح المشترك القديم إلى مفتاح المستخدم ثم إزالتها
+      const legacy = localStorage.getItem(STORAGE_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localStorage.setItem(workflowsKeyFor(user?.id), legacy);
+          localStorage.removeItem(STORAGE_KEY);
+          return parsed;
+        }
+        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (e) {}
     return WORKFLOW_TEMPLATES;
@@ -336,20 +353,30 @@ const WorkflowStudioContent: React.FC = () => {
   // Workflow version history state
   const [versions, setVersions] = useState<WorkflowVersion[]>(() => {
     try {
-      const saved = localStorage.getItem(VERSIONS_STORAGE_KEY);
+      const saved = localStorage.getItem(versionsKeyFor(user?.id));
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const legacy = localStorage.getItem(VERSIONS_STORAGE_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localStorage.setItem(versionsKeyFor(user?.id), legacy);
+          localStorage.removeItem(VERSIONS_STORAGE_KEY);
+          return parsed;
+        }
+        localStorage.removeItem(VERSIONS_STORAGE_KEY);
       }
     } catch (e) {}
     return getInitialVersions();
   });
 
-  // Persist versions to localStorage
+  // Persist versions to localStorage (مفتاح لكل مستخدم)
   const saveVersionsToStorage = (updatedVersions: WorkflowVersion[]) => {
     setVersions(updatedVersions);
     try {
-      localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(updatedVersions));
+      localStorage.setItem(versionsKey, JSON.stringify(updatedVersions));
     } catch (e) {}
   };
 
@@ -367,11 +394,11 @@ const WorkflowStudioContent: React.FC = () => {
     }
   }, [activeWorkflowId]);
 
-  // Persist workflows to localStorage
+  // Persist workflows to localStorage (مفتاح لكل مستخدم)
   const saveCurrentWorkflows = (updatedWorkflows: WorkflowDefinition[]) => {
     setWorkflows(updatedWorkflows);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedWorkflows));
+      localStorage.setItem(workflowsKey, JSON.stringify(updatedWorkflows));
     } catch (e) {}
   };
 

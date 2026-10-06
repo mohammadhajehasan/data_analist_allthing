@@ -195,17 +195,39 @@ const getInitialLanguage = (): Language => {
   return 'ar';
 };
 
-const getInitialDashboards = (): Dashboard[] => {
+// ---------------------------------------------------------------------------
+// خصوصية اللوحات: لم تعد تُقرأ من localStorage المشترك — كانت تُظهر لوحات
+// الحساب القديم لأي حساب جديد على نفس المتصفح. تُحمَّل الآن خادمياً لكل مستخدم.
+// البيانات القديمة الموجودة في المتصفح تُرحَّل مرة واحدة إلى حساب المالك ثم تُمحى.
+// ---------------------------------------------------------------------------
+const LEGACY_DASHBOARDS_KEY = 'carbon_dashboards';
+
+function readLegacyDashboardsOnce(): Dashboard[] {
   try {
-    const saved = localStorage.getItem('carbon_dashboards');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // تجاهل لوحة العرض التجريبية المزروعة سابقاً (dash-main)
-      if (Array.isArray(parsed)) return parsed.filter((d: Dashboard) => d?.id !== 'dash-main');
+    const saved = localStorage.getItem(LEGACY_DASHBOARDS_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) {
+      localStorage.removeItem(LEGACY_DASHBOARDS_KEY);
+      return [];
     }
-  } catch (e) {}
-  return [];
-};
+    const rows = (parsed as Dashboard[]).filter((d: Dashboard) => d?.id && d.id !== 'dash-main');
+    localStorage.removeItem(LEGACY_DASHBOARDS_KEY); // أزل الأثر المحلي فوراً — لا قراءة ثانية
+    return rows;
+  } catch (e) {
+    try { localStorage.removeItem(LEGACY_DASHBOARDS_KEY); } catch {}
+    return [];
+  }
+}
+
+const legacyMigrationRef = { done: false, rows: [] as Dashboard[] };
+
+function takeLegacyDashboardsForMigration(): Dashboard[] {
+  if (legacyMigrationRef.done) return [];
+  legacyMigrationRef.done = true;
+  legacyMigrationRef.rows = readLegacyDashboardsOnce();
+  return legacyMigrationRef.rows;
+}
 
 const MODEL_ID_ALIASES: Record<string, string> = {
   'openrouter/anthropic/claude-3.7-sonnet': 'openrouter/anthropic/claude-sonnet-5.5',
@@ -232,9 +254,9 @@ const sanitizeStoredModel = (modelId?: string): string => {
   return modelId;
 };
 
-const getInitialAISettings = (): AISettings => {
+// مفسر إعدادات الذكاء الاصطناعي — يُستخدم للمفتاح القديم المشترك ومفاتيح المستخدمين
+const parseAISettings = (saved: string | null): AISettings => {
   try {
-    const saved = localStorage.getItem('carbon_ai_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
       const activeModel = sanitizeStoredModel(parsed.activeModel);
@@ -267,6 +289,9 @@ const getInitialAISettings = (): AISettings => {
   } catch (e) {}
   return INITIAL_AI_SETTINGS;
 };
+
+// يُقرأ عند البدء من المفتاح القديم المشترك فقط — ثم يُرحَّل إلى مفتاح كل مستخدم
+const getInitialAISettings = (): AISettings => parseAISettings(localStorage.getItem('carbon_ai_settings'));
 
 
 const DEFAULT_WORKSPACE: Workspace = {
@@ -358,9 +383,11 @@ export const AppProvider: React.FC<{
   const [activeDatasetId, setActiveDatasetId] = useState<string>('');
 
   // ----------------------------------------------------
-  // Server-side dataset persistence (تحميل مرة واحدة عند الدخول + حفظ أحادي الاتجاه)
+  // Server-side persistence (تحميل عند كل دخول + حفظ أحادي الاتجاه)
+  // syncKeyRef يضمن إعادة التحميل عند تبديل الحساب داخل نفس الجلسة (وليس مرة واحدة فقط)
   // ----------------------------------------------------
-  const datasetsSyncedRef = useRef(false);
+  const syncKeyRef = useRef<string | null>(null);
+  const workspaceLoadedRef = useRef(false); // يمنع مزامنة حالة فارغة قبل اكتمال الجلب (يحمي بيانات الخادم)
   const authUserRef = useRef(authUser);
   useEffect(() => { authUserRef.current = authUser; }, [authUser]);
 
@@ -394,29 +421,136 @@ export const AppProvider: React.FC<{
     } catch { /* noop */ }
   }, [authHeaders]);
 
-  // تحميل المجموعات المحفوظة خادمياً مرة واحدة عند أول دخول صالح
+  // حفظ/تحديث لوحة تحكم على الخادم (fire-and-forget) — ملكية صريحة لصاحب الحساب
+  const syncDashboardToServer = useCallback((dash: Dashboard) => {
+    if (!authUserRef.current) return;
+    try {
+      fetch(`/api/dashboards/${encodeURIComponent(dash.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(dash),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* noop */ }
+  }, [authHeaders]);
+
+  // حذف لوحة من الخادم (fire-and-forget)
+  const deleteDashboardOnServer = useCallback((id: string) => {
+    if (!authUserRef.current) return;
+    try {
+      fetch(`/api/dashboards/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* noop */ }
+  }, [authHeaders]);
+
+  // حفظ جزء من حالة مساحة العمل على الخادم (تقارير/قصص/جداول تحديث) — fire-and-forget
+  const syncStateToServer = useCallback((kind: 'reports' | 'data_stories' | 'scheduled_refreshes', value: any) => {
+    if (!authUserRef.current || !workspaceLoadedRef.current) return;
+    try {
+      fetch('/api/workspace/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ kind, value }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* noop */ }
+  }, [authHeaders]);
+
+  // تحميل بيانات المستخدم من الخادم عند كل دخول صالح (وليس مرة واحدة فقط):
+  // المجموعات + اللوحات + حالة مساحة العمل. عند تبديل الحساب داخل نفس الجلسة
+  // تُستبدل الحالة كلياً بمحتوى الحساب الجديد (عزل صارم بين الحسابات).
   useEffect(() => {
-    if (!authUser || datasetsSyncedRef.current) return;
-    datasetsSyncedRef.current = true;
+    if (!authUser) return;
+    if (syncKeyRef.current === authUser.id) return; // نفس الحساب — لا إعادة تحميل
+    syncKeyRef.current = authUser.id;
+    workspaceLoadedRef.current = false; // لا مزامنة صادرة قبل اكتمال الجلب
+
+    // بقايا المفتاح المشترك القديم لجداول التحديث — تُرحَّل لاحقاً إن كان الخادم فارغاً
+    let legacyScheduled: ScheduledDataRefresh[] = [];
+    try {
+      const legacyRaw = localStorage.getItem('carbon_scheduled_refreshes');
+      if (legacyRaw) {
+        const parsed = JSON.parse(legacyRaw);
+        if (Array.isArray(parsed)) legacyScheduled = parsed;
+        localStorage.removeItem('carbon_scheduled_refreshes');
+      }
+    } catch {}
+
+    // 1) المجموعات (دمج آمن لا يفقد ما أُضيف محلياً قبل اكتمال الجلب)
     fetch('/api/datasets', { headers: authHeaders() })
       .then(res => (res.ok ? res.json() : { datasets: [] }))
       .then((resp: { datasets?: Dataset[] }) => {
         const serverRows = Array.isArray(resp?.datasets) ? resp.datasets : [];
         if (serverRows.length === 0) return;
         setDatasets(prev => {
-          // دمج بدون فقدان أي شيء أُضيف محلياً قبل اكتمال الجلب
           const byId = new Map(prev.map(d => [d.id, d]));
           for (const row of serverRows) byId.set(row.id, row);
           return Array.from(byId.values());
         });
       })
       .catch(() => { /* تعذر الجلب — الواجهة تعمل محلياً كالمعتاد */ });
+
+    // 2) اللوحات (استبدال كامل بمحتوى الحساب) + ترحيل بيانات localStorage القديمة لمرة واحدة
+    const legacyRows = takeLegacyDashboardsForMigration();
+    fetch('/api/dashboards', { headers: authHeaders() })
+      .then(res => (res.ok ? res.json() : { dashboards: [] }))
+      .then((resp: { dashboards?: Dashboard[] }) => {
+        const serverRows = Array.isArray(resp?.dashboards) ? resp.dashboards : [];
+        if (legacyRows.length > 0 && serverRows.length === 0) {
+          // حساب بلا لوحات خادمية + بيانات قديمة محلية → رحّلها إلى هذا الحساب
+          fetch('/api/dashboards/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ dashboards: legacyRows }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+        const finalRows = serverRows.length > 0 ? serverRows : legacyRows;
+        setDashboards(finalRows);
+        setActiveDashboardId(finalRows[0]?.id || '');
+      })
+      .catch(() => {
+        // تعذر الجلب — نعرض البيانات القديمة المرحّلة إن وُجدت حتى لا يفقد المستخدم عمله
+        if (legacyRows.length > 0) {
+          setDashboards(legacyRows);
+          setActiveDashboardId(legacyRows[0]?.id || '');
+        }
+      });
+
+    // 3) حالة مساحة العمل: تقارير / قصص البيانات / جداول التحديث التلقائي
+    Promise.all(
+      (['reports', 'data_stories', 'scheduled_refreshes'] as const).map(kind =>
+        fetch(`/api/workspace/state?kind=${kind}`, { headers: authHeaders() })
+          .then(res => (res.ok ? res.json() : { value: null }))
+          .then((resp: { value?: any }) => {
+            if (kind === 'reports' && Array.isArray(resp?.value)) { setReports(resp.value); return; }
+            if (kind === 'data_stories' && Array.isArray(resp?.value)) { setDataStories(resp.value); return; }
+            if (kind === 'scheduled_refreshes') {
+              if (Array.isArray(resp?.value)) { setScheduledRefreshes(resp.value); return; }
+              // ترحيل جداول التحديث القديمة المحلية إلى الحساب الحالي إن كان خادمياً فارغاً
+              if (legacyScheduled.length > 0) {
+                setScheduledRefreshes(legacyScheduled);
+                fetch('/api/workspace/state', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                  body: JSON.stringify({ kind: 'scheduled_refreshes', value: legacyScheduled }),
+                  keepalive: true,
+                }).catch(() => {});
+              }
+            }
+          })
+          .catch(() => {})
+      )
+    ).finally(() => { workspaceLoadedRef.current = true; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
-  const [dashboards, setDashboards] = useState<Dashboard[]>(getInitialDashboards);
-  const [activeDashboardId, setActiveDashboardId] = useState<string>(
-    getInitialDashboards()[0]?.id || ''
-  );
+
+  // اللوحات تبدأ فارغة دائماً — تُحمَّل خادمياً لكل مستخدم (خصوصية كاملة بين الحسابات)
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [activeDashboardId, setActiveDashboardId] = useState<string>('');
   const [reports, setReports] = useState<Report[]>([]);
   const [dataStories, setDataStories] = useState<DataStory[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -431,25 +565,17 @@ export const AppProvider: React.FC<{
   // ----------------------------------------------------
   // Scheduled Data Refresh State
   // ----------------------------------------------------
-  const [scheduledRefreshes, setScheduledRefreshes] = useState<ScheduledDataRefresh[]>(() => {
-    try {
-      const saved = localStorage.getItem('carbon_scheduled_refreshes');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // تجاهل جداول التحديث التجريبية المزروعة سابقاً (ref-1 / ref-2)
-        if (Array.isArray(parsed)) return parsed.filter((r: ScheduledDataRefresh) => r?.id !== 'ref-1' && r?.id !== 'ref-2');
-      }
-    } catch (e) {}
-    return [];
-  });
+  // جداول التحديث تبدأ فارغة — تُحمَّل خادمياً لكل مستخدم (كانت تُقرأ من localStorage مشترك بين الحسابات)
+  const [scheduledRefreshes, setScheduledRefreshes] = useState<ScheduledDataRefresh[]>([]);
 
   const [isRefreshModalOpen, setIsRefreshModalOpen] = useState(false);
 
-  // Sync scheduled refreshes to localStorage
+  // مزامنة جداول التحديث مع الخادم (عزل لكل مستخدم — بلا localStorage مشترك).
+  // الحرس workspaceLoadedRef يمنع الكتابة فوق بيانات الخادم بقائمة فارغة قبل اكتمال الجلب.
   useEffect(() => {
-    try {
-      localStorage.setItem('carbon_scheduled_refreshes', JSON.stringify(scheduledRefreshes));
-    } catch (e) {}
+    if (!workspaceLoadedRef.current) return;
+    syncStateToServer('scheduled_refreshes', scheduledRefreshes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduledRefreshes]);
 
   // ----------------------------------------------------
@@ -458,15 +584,32 @@ export const AppProvider: React.FC<{
   const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
   const [activeExplainRequest, setActiveExplainRequest] = useState<ModelExplanationRequest | null>(null);
 
-  // AI Providers & Models State
+  // AI Providers & Models State — إعدادات ومفاتيح API لكل مستخدم على حدة
+  const aiSettingsKey = authUser ? `carbon_ai_settings:${authUser.id}` : '';
   const [aiSettings, setAiSettings] = useState<AISettings>(getInitialAISettings);
 
-  // Sync AI settings to localStorage
+  // تحميل إعدادات صاحب الحساب عند الدخول (مع ترحيل المفتاح المشترك القديم لمرة واحدة)
   useEffect(() => {
+    if (!aiSettingsKey) return;
     try {
-      localStorage.setItem('carbon_ai_settings', JSON.stringify(aiSettings));
+      const legacy = localStorage.getItem('carbon_ai_settings');
+      if (legacy) {
+        if (!localStorage.getItem(aiSettingsKey)) localStorage.setItem(aiSettingsKey, legacy);
+        localStorage.removeItem('carbon_ai_settings');
+      }
+      const parsed = parseAISettings(localStorage.getItem(aiSettingsKey));
+      if (parsed) setAiSettings(parsed);
     } catch (e) {}
-  }, [aiSettings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiSettingsKey]);
+
+  // Sync AI settings to localStorage (مفتاح لكل مستخدم)
+  useEffect(() => {
+    if (!aiSettingsKey) return;
+    try {
+      localStorage.setItem(aiSettingsKey, JSON.stringify(aiSettings));
+    } catch (e) {}
+  }, [aiSettings, aiSettingsKey]);
 
   // لا جلسة محادثة تجريبية: تبدأ فارغة وتُنشأ جلسة جديدة عند فتح المساعد
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -857,21 +1000,36 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       if (Array.isArray(snapshot.dashboards) && snapshot.dashboards.length > 0) {
         setDashboards(snapshot.dashboards);
         setActiveDashboardId(snapshot.dashboards[0].id);
-        localStorage.setItem('carbon_dashboards', JSON.stringify(snapshot.dashboards));
+        // استبدال خادمي كامل للوحات (نفس نمط restore المجموعات)
+        if (authUser) {
+          try {
+            fetch('/api/dashboards/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders() },
+              body: JSON.stringify({ dashboards: snapshot.dashboards }),
+              keepalive: true,
+            }).catch(() => {});
+          } catch { /* noop */ }
+        }
       }
       if (Array.isArray(snapshot.dataStories)) {
         setDataStories(snapshot.dataStories);
+        syncStateToServer('data_stories', snapshot.dataStories);
       }
       // لقطات قديمة قد تحمل تعليقات — تُتجاهل بأمان (نظام التعليقات أُزيل لصالح صفحة المناقشات)
       if (Array.isArray(snapshot.reports)) {
         setReports(snapshot.reports);
+        syncStateToServer('reports', snapshot.reports);
       }
       if (Array.isArray(snapshot.scheduledRefreshes)) {
         setScheduledRefreshes(snapshot.scheduledRefreshes);
-        localStorage.setItem('carbon_scheduled_refreshes', JSON.stringify(snapshot.scheduledRefreshes));
       }
       if (Array.isArray(snapshot.workflows)) {
-        localStorage.setItem('carbon_workflows', JSON.stringify(snapshot.workflows));
+        localStorage.setItem('carbon_ai_workflows_v3', JSON.stringify(snapshot.workflows));
+        // مزامنة خادمية للسير العمل (زرع مفتاح المالك عبر الحدث النمطي)
+        try {
+          window.dispatchEvent(new CustomEvent('carbon-workflows-synced', { detail: snapshot.workflows }));
+        } catch {}
       }
       if (snapshot.layoutSettings) {
         setLayoutSettings(snapshot.layoutSettings);
@@ -1142,12 +1300,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     } catch (e) {}
   }, [layoutSettings]);
 
-  // Persist dashboards
-  useEffect(() => {
-    try {
-      localStorage.setItem('carbon_dashboards', JSON.stringify(dashboards));
-    } catch (e) {}
-  }, [dashboards]);
+  // اللوحات تُزامن خادمياً فقط (عزل لكل مستخدم) — لا localStorage مشترك بين الحسابات
 
   const setTheme = (newTheme: ThemeVariant) => {
     setThemeState(newTheme);
@@ -1307,6 +1460,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       }
       return [d, ...prev];
     });
+    syncDashboardToServer(d);
   };
 
   // إنشاء لوحة تحكم جديدة فارغة (زر "لوحة جديدة" في باني اللوحات) وتفعيلها فوراً
@@ -1327,6 +1481,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     };
     setDashboards(prev => [dash, ...prev]);
     setActiveDashboardId(dash.id);
+    syncDashboardToServer(dash);
     return dash;
   };
 
@@ -1338,6 +1493,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       }
       return remaining;
     });
+    deleteDashboardOnServer(id);
   };
 
   const addWidgetToDashboard = (dashboardId: string, widget: WidgetConfig) => {
@@ -1427,21 +1583,27 @@ const refreshOllamaModels = async (): Promise<string[]> => {
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = report;
+        syncStateToServer('reports', copy);
         return copy;
       }
-      return [report, ...prev];
+      const next = [report, ...prev];
+      syncStateToServer('reports', next);
+      return next;
     });
   };
 
   const saveDataStory = (story: DataStory) => {
     setDataStories(prev => {
       const idx = prev.findIndex(s => s.id === story.id);
+      let next: DataStory[];
       if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = story;
-        return copy;
+        next = [...prev];
+        next[idx] = story;
+      } else {
+        next = [story, ...prev];
       }
-      return [story, ...prev];
+      syncStateToServer('data_stories', next);
+      return next;
     });
   };
 
@@ -1616,7 +1778,13 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         testProviderConnection,
         refreshOllamaModels,
         refreshCloudModels,
-        logout: () => { onLogout?.(); },
+        logout: () => {
+          // خصوصية: امسح آثار بيانات العمل المحلية عند الخروج (البيانات الخادمية محمية بحساب المستخدم)
+          try {
+            ['carbon_dashboards', 'carbon_scheduled_refreshes', 'carbon_workflows'].forEach(k => localStorage.removeItem(k));
+          } catch {}
+          onLogout?.();
+        },
         exportProjectSnapshot,
         restoreProjectSnapshot,
         isSnapshotModalOpen,

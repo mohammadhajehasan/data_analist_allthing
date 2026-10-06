@@ -3,11 +3,12 @@ import { useApp } from '../../context/AppContext';
 import {
   Presentation, ChevronLeft, ChevronRight, FileDown, Edit3, Plus, Trash2,
   CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText, FileSpreadsheet,
-  MonitorPlay, Play, Pause,
+  MonitorPlay, Play, Pause, Wand2,
 } from 'lucide-react';
 import { WidgetConfig } from '../../types';
 import { ChartFactory, getAggregationLabel } from '../../components/charts/ChartFactory';
 import { captureElementToCanvas } from '../../utils/dashboardExport';
+import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 
 interface Slide {
   id: string;
@@ -126,6 +127,106 @@ export function generateSlidesFromDashboard(
   return slides;
 }
 
+// ---------- أدوات مساعدة لتوليد الشرائح بالذكاء الاصطناعي ----------
+
+const aiStr = (v: any, fb = ''): string => (typeof v === 'string' && v.trim() ? v.trim() : fb);
+const aiStrArr = (v: any): string[] =>
+  Array.isArray(v) ? v.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim()) : [];
+
+const aiFormatNum = (n: number): string => {
+  try {
+    return new Intl.NumberFormat('ar', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  } catch {
+    try { return n.toLocaleString('ar'); } catch { return String(Math.round(n)); }
+  }
+};
+
+/**
+ * تحويل قصة البيانات المولدة من /api/reports/generate إلى شرائح تنفيذية:
+ * غلاف (عنوان + ملخص تنفيذي) → شريحة لكل فصل (توصية + نقاط + رسم مرافق) → توصيات ختامية.
+ * تُعيد [] إذا لم يُعد النموذج محتوى قابلاً للاستخدام (فيُبقى العرض الحالي كما هو).
+ */
+export function buildAiSlidesFromStory(
+  dash: { name?: string; nameAr?: string; widgets: WidgetConfig[] },
+  story: any,
+  isAr = true
+): Slide[] {
+  if (!story || typeof story !== 'object') return [];
+  const chapters = Array.isArray(story.chapters) ? story.chapters : [];
+  const hasContent =
+    aiStr(story.executiveSummaryAr, aiStr(story.executiveSummary)).length > 0 ||
+    chapters.length > 0 ||
+    aiStrArr(story.recommendationsAr).length > 0 ||
+    aiStrArr(story.recommendations).length > 0;
+  if (!hasContent) return [];
+
+  const dashName = (isAr ? dash.nameAr || dash.name : dash.name) || (isAr ? 'لوحة تحليلات' : 'Analytics Dashboard');
+  const slides: Slide[] = [];
+
+  // 1) الغلاف — العنوان والملخص التنفيذي من النموذج
+  slides.push(makeSlide({
+    type: 'cover',
+    title: aiStr(story.title, dashName),
+    titleAr: aiStr(story.titleAr, aiStr(story.title, dashName)),
+    bullets: [aiStr(story.subtitle), aiStr(story.executiveSummary)].filter(Boolean),
+    bulletsAr: [
+      aiStr(story.subtitleAr, aiStr(story.subtitle)),
+      aiStr(story.executiveSummaryAr, aiStr(story.executiveSummary)),
+    ].filter(Boolean),
+  }));
+
+  // 2) شريحة لكل فصل سردي (حد أقصى 6) — المؤشر الرقمي + التوصية + النقاط
+  const chartWidgets = dash.widgets.filter(w => w.type !== 'kpi');
+  const widgetByTitle = (needle: string) => {
+    const n = needle.trim().toLowerCase();
+    if (!n) return undefined;
+    return chartWidgets.find(
+      w => (w.titleAr || '').trim().toLowerCase() === n || (w.title || '').trim().toLowerCase() === n
+    );
+  };
+
+  chapters.slice(0, 6).forEach((ch: any, idx: number) => {
+    const insights = aiStrArr(ch?.insightsAr).length > 0 ? aiStrArr(ch.insightsAr) : aiStrArr(ch?.insights);
+    const bulletsAr = [...insights];
+    const takeaway = aiStr(ch?.takeawayAr, aiStr(ch?.takeaway));
+    if (takeaway && !bulletsAr.includes(takeaway)) bulletsAr.unshift(takeaway);
+    const km = ch?.keyMetric && typeof ch.keyMetric === 'object' ? ch.keyMetric : null;
+    const kmValue = aiStr(km?.value);
+    if (kmValue) {
+      const kmLabel = aiStr(km?.labelAr, aiStr(km?.label, isAr ? 'مؤشر' : 'Metric'));
+      const kmContext = aiStr(km?.contextAr, aiStr(km?.context));
+      bulletsAr.unshift(`${kmLabel}: ${kmValue}${kmContext ? ` — ${kmContext}` : ''}`);
+    }
+    if (bulletsAr.length === 0) return;
+
+    const titleAr = aiStr(ch?.titleAr, aiStr(ch?.title, isAr ? 'فصل تحليلي' : 'Chapter'));
+    // ربط الرسم: مطابقة العنوان أولاً وإلا ربط موضعي (الفصل i ↔ الرسم i)
+    const widget = widgetByTitle(aiStr(ch?.titleAr)) || widgetByTitle(aiStr(ch?.title)) || chartWidgets[idx];
+    slides.push(makeSlide({
+      type: 'summary',
+      title: aiStr(ch?.title, titleAr),
+      titleAr,
+      bullets: bulletsAr,
+      bulletsAr,
+      chartWidgetId: widget?.id,
+    }));
+  });
+
+  // 3) الخاتمة — التوصيات الاستراتيجية
+  const recsAr = aiStrArr(story.recommendationsAr).length > 0 ? aiStrArr(story.recommendationsAr) : aiStrArr(story.recommendations);
+  if (recsAr.length > 0) {
+    slides.push(makeSlide({
+      type: 'conclusion',
+      title: 'Next Steps',
+      titleAr: 'التوصيات والخطوات القادمة',
+      bullets: aiStrArr(story.recommendations),
+      bulletsAr: recsAr,
+    }));
+  }
+
+  return slides;
+}
+
 export const SlidesExportPanel: React.FC = () => {
   const { activeDashboard, datasets, activeDataset, language, toast } = useApp();
   const isAr = language === 'ar';
@@ -140,6 +241,8 @@ export const SlidesExportPanel: React.FC = () => {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingPptx, setIsExportingPptx] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiGenStep, setAiGenStep] = useState('');
   const [showEditor, setShowEditor] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -382,6 +485,125 @@ export const SlidesExportPanel: React.FC = () => {
     }, 400);
   };
 
+  // ---------- التوليد بالذكاء الاصطناعي: تحليل حقيقي لبيانات اللوحة عبر الخادم ----------
+
+  /**
+   * ملخص إحصائي مُجرّد من بيانات المجموعات المستخدمة في اللوحة (بدون أي صف خام):
+   * أعمدة وأنواعها + إحصاءات عددية (مجموع/متوسط/أدنى/أقصى) + أعلى 5 فئات للعمود التصنيفي.
+   * يُرسل فقط لما تشير إليه عناصر اللوحة (datasetId لكل عنصر) ولا يتجاوز 12 عموداً و6 مجموعات.
+   */
+  const buildStatSummaryPayload = () => {
+    const dsIds = Array.from(new Set(activeDashboard.widgets.map(w => w.datasetId).filter(Boolean)));
+    const sources = (dsIds.length > 0 ? dsIds.map(id => datasets.find(d => d.id === id)) : [activeDataset])
+      .filter(Boolean)
+      .slice(0, 6);
+
+    const toNum = (v: any): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') {
+        const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+
+    return sources.map(ds => {
+      const rows: any[] = Array.isArray(ds!.data) ? ds!.data.slice(0, 2000) : [];
+      const cols = Array.isArray(ds!.columns) ? ds!.columns.slice(0, 12) : [];
+      const colStats: any[] = [];
+      for (const c of cols) {
+        if (!c?.name) continue;
+        if (c.type === 'float' || c.type === 'integer') {
+          let sum = 0, cnt = 0, min = Infinity, max = -Infinity;
+          for (const r of rows) {
+            const n = toNum(r[c.name]);
+            if (n !== null) { sum += n; cnt++; if (n < min) min = n; if (n > max) max = n; }
+          }
+          if (cnt > 0) {
+            colStats.push({ name: c.name, type: c.type, sum: Number(sum.toFixed(2)), avg: Number((sum / cnt).toFixed(2)), min: Number(min.toFixed(2)), max: Number(max.toFixed(2)) });
+          }
+        } else if (c.type === 'string' || c.type === 'category' || c.type === 'date') {
+          const freq = new Map<string, number>();
+          for (const r of rows) {
+            const k = String(r[c.name] ?? '').trim();
+            if (k) freq.set(k, (freq.get(k) || 0) + 1);
+          }
+          const top = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+          if (top.length > 0) {
+            colStats.push({ name: c.name, type: c.type, distinct: freq.size, top: top.map(([k, v]) => `${k} (${v})`) });
+          }
+        }
+      }
+      return { id: ds!.id, name: ds!.name, rowCount: ds!.rowCount || ds!.data?.length || rows.length, columns: colStats };
+    });
+  };
+
+  const handleGenerateWithAI = async () => {
+    if (!activeDashboard) return;
+    if (activeDashboard.widgets.length === 0) {
+      toast.info(
+        isAr ? 'لوحة التحكم فارغة' : 'Empty Dashboard',
+        isAr ? 'أضف مؤشرات ورسوماً إلى اللوحة النشطة أولاً ثم ولّد العرض بالذكاء الاصطناعي.' : 'Add KPIs and charts to the dashboard first, then generate with AI.'
+      );
+      return;
+    }
+    setIsGeneratingAI(true);
+    setAiGenStep(isAr ? 'جاري إعداد الملخص الإحصائي لبيانات اللوحة…' : 'Preparing statistical summary…');
+    const stepTimer = setTimeout(() => {
+      setAiGenStep(isAr ? 'الذكاء الاصطناعي يحلل النتائج ويصيغ النقاط التنفيذية…' : 'AI is analyzing results and drafting executive bullets…');
+    }, 2500);
+
+    try {
+      const res = await fetch('/api/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
+        body: JSON.stringify({
+          dataset: {
+            id: activeDashboard.id,
+            name: isAr ? (activeDashboard.nameAr || activeDashboard.name) : (activeDashboard.name || activeDashboard.id),
+            rowCount: activeDashboard.widgets.length,
+            columns: [],
+            data: [],
+            stats: buildStatSummaryPayload(),
+          },
+          language: 'ar',
+          focusAngle: 'comprehensive',
+          tone: 'executive',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = typeof data?.error === 'string' ? data.error : (isAr ? 'تعذر توليد العرض بالذكاء الاصطناعي' : 'AI slide generation failed');
+        throw new Error(errMsg);
+      }
+      const generated = buildAiSlidesFromStory(activeDashboard, data?.story || data, isAr);
+      if (generated.length === 0) {
+        toast.warning(
+          isAr ? 'لم يُعد النموذج محتوى كافياً' : 'Not enough AI content',
+          isAr ? 'جرّب مرة أخرى أو استخدم زر التوليد التلقائي من اللوحة.' : 'Try again or use the automatic dashboard generator instead.'
+        );
+        return;
+      }
+      setSlides(generated);
+      setActiveSlideIndex(0);
+      setShowEditor(false);
+      toast.success(
+        isAr ? 'تم توليد العرض بالذكاء الاصطناعي!' : 'AI Deck Generated!',
+        isAr ? `حلل الذكاء الاصطناعي بيانات اللوحة وأعد ${generated.length} شرائح تنفيذية — يمكنك تعديل أي نقطة قبل التصدير.` : `AI analyzed the dashboard data and produced ${generated.length} executive slides.`
+      );
+    } catch (err: any) {
+      console.error('AI slides generation error:', err);
+      toast.error(
+        isAr ? 'فشل التوليد بالذكاء الاصطناعي' : 'AI Generation Failed',
+        err?.message || (isAr ? 'تعذر الاتصال بمزود الذكاء الاصطناعي — تأكد من المفتاح أو الحصة اليومية.' : 'Could not reach the AI provider.')
+      );
+    } finally {
+      clearTimeout(stepTimer);
+      setIsGeneratingAI(false);
+      setAiGenStep('');
+    }
+  };
+
   // ---------- التصدير ----------
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -614,9 +836,20 @@ export const SlidesExportPanel: React.FC = () => {
             <span>{isAr ? 'وضع العرض' : 'Present'}</span>
           </button>
 
+          {/* توليد نقاط تنفيذية حقيقية بالذكاء الاصطناعي من تحليل بيانات اللوحة */}
+          <button
+            onClick={handleGenerateWithAI}
+            disabled={isGeneratingAI || isGenerating}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8a3ffc] to-[#0f62fe] hover:from-[#7c2ee6] hover:to-[#0353e9] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
+            title={isAr ? 'يحلل الذكاء الاصطناعي بيانات اللوحة ويولّد نقاطاً تنفيذية حقيقية بدل النصوص الجاهزة' : 'AI analyzes the dashboard data and generates real executive bullets'}
+          >
+            {isGeneratingAI ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            <span>{isAr ? 'توليد بالذكاء الاصطناعي' : 'Generate with AI'}</span>
+          </button>
+
           <button
             onClick={handleGenerateFromDashboard}
-            disabled={isGenerating}
+            disabled={isGenerating || isGeneratingAI}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8a3ffc] hover:bg-[#7c2ee6] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
             title={isAr ? 'إعادة بناء العرض بالكامل من مؤشرات ورسوم اللوحة النشطة' : 'Rebuild the whole deck from the active dashboard widgets'}
           >
@@ -654,6 +887,14 @@ export const SlidesExportPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* شريط حالة التوليد بالذكاء الاصطناعي */}
+      {isGeneratingAI && aiGenStep && (
+        <div className="flex items-center gap-2 border border-[#8a3ffc]/50 bg-[#8a3ffc]/10 px-3 py-2 text-xs text-[#d4bbff]">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+          <span>{aiGenStep}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Visual Slide Presenter Stage */}

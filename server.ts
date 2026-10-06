@@ -17,6 +17,11 @@ import {
   listUserDatasets, upsertUserDataset, deleteUserDataset, deleteUserDatasets,
   keepOnlyUserDatasets, getDatasetsStats, getDatasetSizeLimitBytes,
 } from './server/datasetsStore';
+import {
+  listUserDashboards, upsertUserDashboard, deleteUserDashboard, deleteUserDashboards,
+  replaceUserDashboards, getUserWorkspaceState, setUserWorkspaceState,
+  getWorkspaceStateLimitBytes, getUserStateStats, type WorkspaceStateKind,
+} from './server/userStateStore';
 
 
 dotenv.config();
@@ -2698,6 +2703,90 @@ app.get('/api/datasets/_stats', (req, res) => {
   const user = authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   res.json({ ...getDatasetsStats(), perDatasetLimitBytes: getDatasetSizeLimitBytes() });
+});
+
+// ---------------------------------------------------------------------------
+// Server-side per-user workspace state — لوحات التحكم وحالة مساحة العمل.
+// خصوصية كاملة: كل مستخدم يرى محتواه فقط (مفتاح العزل user_id في SQLite).
+// ---------------------------------------------------------------------------
+const WORKSPACE_STATE_KINDS: WorkspaceStateKind[] = ['reports', 'data_stories', 'scheduled_refreshes', 'workflows'];
+
+app.get('/api/dashboards', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ dashboards: listUserDashboards(user.id) });
+});
+
+app.put('/api/dashboards/:id', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const dashboard = req.body;
+  if (!dashboard || typeof dashboard !== 'object' || !dashboard.id) {
+    return res.status(400).json({ error: 'جسم اللوحة غير صالح' });
+  }
+  if (String(dashboard.id) !== req.params.id) {
+    return res.status(400).json({ error: 'معرّف اللوحة في المسار لا يطابق الجسم' });
+  }
+  const result = upsertUserDashboard(user.id, dashboard);
+  if (!result.ok) return res.status(413).json({ error: result.error });
+  res.json({ ok: true });
+});
+
+app.delete('/api/dashboards/:id', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const removed = deleteUserDashboard(user.id, req.params.id);
+  res.json({ ok: true, removed });
+});
+
+app.post('/api/dashboards/bulk-delete', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'قائمة المعرفات مطلوبة' });
+  }
+  const removed = deleteUserDashboards(user.id, ids.map(String));
+  res.json({ ok: true, removed });
+});
+
+// استعادة لقطة مشروع: استبدال كل لوحات المستخدم بمحتوى اللقطة دفعة واحدة
+app.post('/api/dashboards/restore', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const dashboards = req.body?.dashboards;
+  if (!Array.isArray(dashboards)) return res.status(400).json({ error: 'قائمة اللوحات مطلوبة' });
+  const result = replaceUserDashboards(user.id, dashboards);
+  res.json({ ok: result.errors.length === 0, ...result });
+});
+
+// حالة مساحة العمل: تقارير/قصص بيانات/جداول تحديث/سير عمل — blob واحد لكل نوع
+app.get('/api/workspace/state', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const kind = String(req.query.kind || '') as WorkspaceStateKind;
+  if (!WORKSPACE_STATE_KINDS.includes(kind)) {
+    return res.status(400).json({ error: `نوع الحالة مطلوب من: ${WORKSPACE_STATE_KINDS.join(', ')}` });
+  }
+  res.json({ kind, value: getUserWorkspaceState(user.id, kind) });
+});
+
+app.put('/api/workspace/state', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const { kind, value } = req.body || {};
+  if (!WORKSPACE_STATE_KINDS.includes(kind)) {
+    return res.status(400).json({ error: `نوع الحالة مطلوب من: ${WORKSPACE_STATE_KINDS.join(', ')}` });
+  }
+  const result = setUserWorkspaceState(user.id, kind, value ?? null);
+  if (!result.ok) return res.status(413).json({ error: result.error });
+  res.json({ ok: true });
+});
+
+app.get('/api/workspace/_stats', (req, res) => {
+  const user = authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  res.json({ ...getUserStateStats(), perItemLimitBytes: getWorkspaceStateLimitBytes() });
 });
 
 // The current user's groups — strictly members-only, no discovery.

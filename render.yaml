@@ -51,3 +51,8 @@ services:
       # reloads. Per-dataset upload cap in MB — keep within the free 512MB disk.
       - key: DATASET_SERVER_LIMIT_MB
         value: "10"
+      # Per-user dashboards & workspace state (reports/stories/refresh schedules)
+      # persist to SQLite with strict user_id isolation (privacy). Cap in MB per
+      # dashboard/state blob — keep within the free 512MB disk.
+      - key: WORKSPACE_STATE_LIMIT_MB
+        value: "5"
