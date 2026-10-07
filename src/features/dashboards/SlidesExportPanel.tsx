@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import {
   Presentation, ChevronLeft, ChevronRight, FileDown, Edit3, Plus, Trash2,
   CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText, FileSpreadsheet,
-  MonitorPlay, Play, Pause, Wand2,
+  MonitorPlay, Play, Pause, Wand2, Pen, Undo2, Eraser,
 } from 'lucide-react';
 import { WidgetConfig } from '../../types';
 import { ChartFactory, getAggregationLabel } from '../../components/charts/ChartFactory';
@@ -20,6 +20,13 @@ interface Slide {
   /** معرّف عنصر الرسم البياني في لوحة التحكم — يُعرض معاينته داخل الشريحة */
   chartWidgetId?: string;
 }
+
+// ---------- أدوات الملاحظات (الرسم على الشريحة أثناء العرض) ----------
+
+/** خط مرسوم: إحداثيات مُطبّعة [0..1] نسبةً إلى صندوق الشريحة (يتكيف مع أي حجم شاشة) */
+type Stroke = { slideId: string; color: string; width: number; points: Array<[number, number]> };
+const PEN_COLORS = ['#ffd500', '#ff4d4f', '#42be65', '#33b1ff', '#ffffff'];
+const PEN_WIDTHS = [2, 4, 7];
 
 let slideSeq = 0;
 function makeSlide(partial: Partial<Slide> & { type: Slide['type'] }): Slide {
@@ -286,6 +293,71 @@ export const SlidesExportPanel: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState(8);
   const presentStageRef = useRef<HTMLDivElement>(null);
 
+  // ---------- حالة القلم والرسوم (لكل شريحة رسومها المستقلة) ----------
+  const [annotations, setAnnotations] = useState<Record<string, Stroke[]>>({});
+  const [penArmed, setPenArmed] = useState(false);
+  const [penColor, setPenColor] = useState<string>(PEN_COLORS[0]);
+  const [penWidth, setPenWidth] = useState<number>(PEN_WIDTHS[1]);
+  const activeStrokeRef = useRef<Stroke | null>(null);
+  const [draftStroke, setDraftStroke] = useState<Stroke | null>(null);
+
+  const normPoint = (e: React.PointerEvent<HTMLDivElement>): [number, number] => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / Math.max(1, rect.width)));
+    const ny = Math.min(1, Math.max(0, (e.clientY - rect.top) / Math.max(1, rect.height)));
+    return [nx, ny];
+  };
+
+  const handleAnnotationPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!penArmed || !activeSlide) return;
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* تقاطع وهمي — نكمل */ }
+    const stroke: Stroke = { slideId: activeSlide.id, color: penColor, width: penWidth, points: [normPoint(e)] };
+    activeStrokeRef.current = stroke;
+    setDraftStroke({ ...stroke, points: [...stroke.points] });
+  };
+
+  const handleAnnotationPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const stroke = activeStrokeRef.current;
+    if (!penArmed || !stroke) return;
+    const p = normPoint(e);
+    const last = stroke.points[stroke.points.length - 1];
+    // تجاهل الحركات الدقيقة جدًا (تنعيم + تقليل عدد النقاط)
+    if (last && Math.abs(p[0] - last[0]) + Math.abs(p[1] - last[1]) < 0.004) return;
+    stroke.points.push(p);
+    setDraftStroke({ ...stroke, points: [...stroke.points] });
+  };
+
+  const commitActiveStroke = () => {
+    const stroke = activeStrokeRef.current;
+    if (!stroke) return;
+    activeStrokeRef.current = null;
+    setDraftStroke(null);
+    if (stroke.points.length === 0) return;
+    setAnnotations(prev => ({
+      ...prev,
+      [stroke.slideId]: [...(prev[stroke.slideId] || []), stroke],
+    }));
+  };
+
+  const handleAnnotationPointerUp = () => commitActiveStroke();
+
+  const undoLastStroke = () => {
+    const key = activeSlide?.id;
+    if (!key) return;
+    setAnnotations(prev => {
+      const arr = prev[key] || [];
+      if (arr.length === 0) return prev;
+      return { ...prev, [key]: arr.slice(0, -1) };
+    });
+  };
+
+  const clearSlideAnnotations = () => {
+    const key = activeSlide?.id;
+    if (!key) return;
+    setAnnotations(prev => ({ ...prev, [key]: [] }));
+  };
+
   const gotoSlide = (idx: number) => {
     if (slides.length === 0) return;
     setActiveSlideIndex(((idx % slides.length) + slides.length) % slides.length);
@@ -298,6 +370,7 @@ export const SlidesExportPanel: React.FC = () => {
   const stopPresenting = () => {
     setPresenting(false);
     setAutoplay(false);
+    setPenArmed(false); // القلم يُسحب تلقائياً عند الخروج من العرض
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   };
 
@@ -333,6 +406,12 @@ export const SlidesExportPanel: React.FC = () => {
         case 'End':
           e.preventDefault();
           gotoSlide(slides.length - 1);
+          break;
+        case 'p':
+        case 'P':
+        case 'پ':
+          e.preventDefault();
+          setPenArmed(v => !v);
           break;
         case 'Escape':
           stopPresenting();
@@ -807,6 +886,11 @@ export const SlidesExportPanel: React.FC = () => {
     conclusion: 'bg-[#33b1ff]/20 text-[#33b1ff]',
   };
 
+  // رسوم الشريحة الحالية + الخط قيد الرسم (معاينة حية أثناء السحب)
+  const strokesFor: Stroke[] = activeSlide
+    ? [...(annotations[activeSlide.id] || []), ...(draftStroke && draftStroke.slideId === activeSlide.id ? [draftStroke] : [])]
+    : [];
+
   return (
     <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-5 space-y-4">
       {/* Header */}
@@ -1122,8 +1206,8 @@ export const SlidesExportPanel: React.FC = () => {
               </span>
               <p>
                 {isAr
-                  ? '"توليد من اللوحة" يعيد بناء العرض من مؤشرات ورسوم اللوحة النشطة في أي وقت، وتعديلاتك اليدوية على النقاط تبقى قابلة للتصدير فوراً.'
-                  : '"Generate from Dashboard" rebuilds the deck from the active dashboard anytime; inline edits remain exportable instantly.'}
+                  ? 'أثناء العرض فعّل "قلم الملاحظات" للرسم والتشبيه على الشرائح أمام الإدارة — حرف P يبدّله، والتراجع/المسح في شريط الأدوات.'
+                  : 'While presenting, enable the annotation pen to draw on slides — press P to toggle it; undo/clear live in the toolbar.'}
               </p>
             </div>
           </div>
@@ -1169,12 +1253,37 @@ export const SlidesExportPanel: React.FC = () => {
             </button>
           </div>
 
-          {/* محتوى الشريحة — النقر للتقدم */}
+          {/* محتوى الشريحة — النقر للتقدم (يتوقف أثناء تفعيل القلم حتى لا يقفز العرض مع كل خط) */}
           <div
-            className="flex-1 min-h-0 flex flex-col justify-center px-16 py-6 cursor-pointer"
-            onClick={() => gotoSlide(activeSlideIndex + 1)}
+            className="relative flex-1 min-h-0 flex flex-col justify-center px-16 py-6 cursor-pointer"
+            onClick={() => { if (!penArmed) gotoSlide(activeSlideIndex + 1); }}
             title={isAr ? 'انقر للتقدم للشريحة التالية' : 'Click to advance'}
           >
+            {/* طبقة الملاحظات: تلتقط حركات الفأرة عند تفعيل القلم (فوق المحتوى وتحت أزرار التحكم) */}
+            <div
+              className="absolute inset-0 z-10"
+              style={{ cursor: penArmed ? 'crosshair' : 'default', touchAction: 'none' }}
+              onPointerDown={handleAnnotationPointerDown}
+              onPointerMove={handleAnnotationPointerMove}
+              onPointerUp={handleAnnotationPointerUp}
+              onPointerLeave={handleAnnotationPointerUp}
+              onClick={(e) => { if (penArmed) e.stopPropagation(); }}
+            >
+              <svg className="w-full h-full" aria-hidden>
+                {strokesFor.map((s, i) => (
+                  <polyline
+                    key={i}
+                    points={s.points.map(([x, y]) => `${(x * 100).toFixed(2)},${(y * 100).toFixed(2)}`).join(' ')}
+                    fill="none"
+                    stroke={s.color}
+                    strokeWidth={s.width}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </svg>
+            </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
               {isAr ? activeSlide.titleAr || activeSlide.title : activeSlide.title}
             </h1>
@@ -1188,6 +1297,72 @@ export const SlidesExportPanel: React.FC = () => {
                 <ChartFactory widget={chartWidget} dataset={chartWidgetDataset} activeTheme="professional" />
               </div>
             )}
+          </div>
+
+          {/* شريط أدوات الملاحظات: رسم حر على الشريحة أثناء العرض أمام الإدارة */}
+          <div className="shrink-0 px-8 pt-2">
+            <div className="flex flex-wrap items-center gap-2 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-3 py-1.5">
+              <button
+                onClick={() => setPenArmed(v => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono font-bold uppercase transition-colors border ${
+                  penArmed
+                    ? 'bg-[#8a3ffc]/25 border-[#8a3ffc] text-[#d4bbff]'
+                    : 'border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-02)]'
+                }`}
+                title={isAr ? 'تشغيل/إيقاف القلم (P) — عند التفعيل يرسم المؤشر على الشريحة بدل تقليب الشرائح' : 'Toggle pen (P) — the cursor draws on the slide instead of flipping slides'}
+              >
+                <Pen className="w-3.5 h-3.5" />
+                <span>{isAr ? (penArmed ? 'القلم مفعّل' : 'قلم الملاحظات') : (penArmed ? 'Pen On' : 'Pen')}</span>
+              </button>
+
+              <div className="flex items-center gap-1" role="group" title={isAr ? 'لون الحبر' : 'Ink color'}>
+                {PEN_COLORS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => { setPenColor(c); setPenArmed(true); }}
+                    className={`w-5 h-5 rounded-full border-2 transition-transform ${penColor === c ? 'scale-110 border-white' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                    style={{ backgroundColor: c }}
+                    title={isAr ? 'اختيار هذا اللون' : 'Use this color'}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1" role="group" title={isAr ? 'سماكة الخط' : 'Stroke width'}>
+                {PEN_WIDTHS.map(w => (
+                  <button
+                    key={w}
+                    onClick={() => { setPenWidth(w); setPenArmed(true); }}
+                    className={`w-7 h-6 flex items-center justify-center border transition-colors ${
+                      penWidth === w ? 'border-[#33b1ff] bg-[#33b1ff]/15' : 'border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
+                    }`}
+                    title={isAr ? `سماكة ${w}` : `Width ${w}`}
+                  >
+                    <span className="rounded-full block" style={{ width: w + 2, height: w + 2, backgroundColor: 'var(--cds-text-02, #a8a8a8)' }} />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={undoLastStroke}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono text-[var(--cds-text-02)] border border-[var(--cds-border-strong)] hover:text-white hover:bg-[var(--cds-layer-02)] transition-colors"
+                title={isAr ? 'تراجع عن آخر خط على هذه الشريحة' : 'Undo the last stroke on this slide'}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تراجع' : 'Undo'}</span>
+              </button>
+              <button
+                onClick={clearSlideAnnotations}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono text-[var(--cds-text-02)] border border-[var(--cds-border-strong)] hover:text-white hover:bg-[#da1e28] transition-colors"
+                title={isAr ? 'مسح كل الملاحظات على هذه الشريحة' : 'Clear all annotations on this slide'}
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span>{isAr ? 'مسح' : 'Clear'}</span>
+              </button>
+
+              <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] hidden xl:inline">
+                {isAr ? 'الملاحظات لعرضٍ فقط ولا تُصدَّر مع الملفات • اختصار القلم: P' : 'Annotations are view-only and not exported • Pen shortcut: P'}
+              </span>
+            </div>
           </div>
 
           {/* شريط التحكم السفلي */}
