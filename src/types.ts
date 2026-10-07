@@ -166,7 +166,12 @@ export type AggregationFunction =
   | 'cv'
   | 'sum_squares';
 
-export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries';
+export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries' | 'geo';
+
+/** Geo/map display mode: choropleth regions (folium-style) or lat/lng markers */
+export type GeoMapMode = 'choropleth' | 'markers';
+/** Predefined geographic viewport for the map widget */
+export type GeoMapScope = 'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas';
 
 export interface WidgetConfig {
   id: string;
@@ -189,6 +194,10 @@ export interface WidgetConfig {
     prefix?: string;
     suffix?: string;
   };
+  /** geo widgets only: choropleth regions vs lat/lng markers */
+  geoMode?: GeoMapMode;
+  /** geo widgets only: which part of the world map is shown */
+  mapScope?: GeoMapScope;
   querySpec?: QueryRequest;
 }
 

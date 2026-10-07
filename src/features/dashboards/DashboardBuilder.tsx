@@ -8,6 +8,7 @@ import {
   AGGREGATION_OPTIONS,
   computeMathematicalAggregation,
   getAggregationLabel,
+  guessGeoLocationColumn,
 } from '../../components/charts/ChartFactory';
 import {
   exportDashboardAsPng,
@@ -68,6 +69,8 @@ import {
   AlertTriangle,
   Palette,
   MessageSquare,
+  Globe2,
+  Vibrate,
 } from 'lucide-react';
 
 export const DashboardBuilder: React.FC = () => {
@@ -126,6 +129,10 @@ export const DashboardBuilder: React.FC = () => {
   const [widgetXAxis, setWidgetXAxis] = useState('');
   const [widgetYAxis, setWidgetYAxis] = useState('');
   const [widgetAggregation, setWidgetAggregation] = useState<AggregationFunction>('sum');
+  // Geo/map widget state (folium-style: choropleth regions or lat/lng markers)
+  const [geoMode, setGeoMode] = useState<'choropleth' | 'markers'>('choropleth');
+  const [mapScope, setMapScope] = useState<'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas'>('world');
+  const [geoLocationColumn, setGeoLocationColumn] = useState('');
 
   // Loading States
   const [isCalculatingAgg, setIsCalculatingAgg] = useState(false);
@@ -150,6 +157,14 @@ export const DashboardBuilder: React.FC = () => {
   const currentTargetDataset = useMemo(() => {
     return datasets.find(d => d.id === selectedDatasetId) || activeDataset || datasets[0];
   }, [datasets, selectedDatasetId, activeDataset]);
+
+  // Preselect the likely location column when opening the geo widget or changing dataset
+  useEffect(() => {
+    if (widgetType === 'geo' && currentTargetDataset?.columns?.length) {
+      const guess = guessGeoLocationColumn(currentTargetDataset.columns);
+      setGeoLocationColumn(prev => (prev && prev !== '' ? prev : (guess || '')));
+    }
+  }, [widgetType, currentTargetDataset]);
 
   // Initial column selection when dataset changes
   useEffect(() => {
@@ -225,6 +240,8 @@ export const DashboardBuilder: React.FC = () => {
     setWidgetType(w.type);
     setSelectedDatasetId(w.datasetId || activeDataset?.id || '');
     setWidgetXAxis(w.xAxis || w.categoryField || '');
+    setGeoMode(w.geoMode || 'choropleth');
+    setMapScope(w.mapScope || 'world');
     setWidgetYAxis(w.yAxis || '');
     setWidgetAggregation(w.aggregation || 'sum');
     setIsCalculatingAgg(false);
@@ -284,6 +301,15 @@ export const DashboardBuilder: React.FC = () => {
       w: widgetType === 'kpi' ? 3 : 6,
       h: widgetType === 'kpi' ? 1 : 2,
       kpiMetric,
+      ...(widgetType === 'geo'
+        ? {
+            geoMode,
+            mapScope,
+            categoryField: geoLocationColumn,
+            xAxis: geoLocationColumn,
+            yAxis: widgetYAxis,
+          }
+        : {}),
     };
 
     if (editingWidgetId) {
@@ -1350,6 +1376,7 @@ export const DashboardBuilder: React.FC = () => {
                     { type: 'kpi' as WidgetType, labelAr: 'مؤشر رقمي (KPI)', labelEn: 'KPI Stat Card', icon: TrendingUp },
                     { type: 'heatmap' as WidgetType, labelAr: 'خريطة حرارية', labelEn: 'Heatmap', icon: LayoutGrid },
                     { type: 'timeseries' as WidgetType, labelAr: 'متجهات زمنية', labelEn: 'Time-Series', icon: Activity },
+                    { type: 'geo' as WidgetType, labelAr: 'خريطة جغرافية', labelEn: 'Geo Map', icon: Globe2 },
                   ].map(item => {
                     const Icon = item.icon;
                     const isSelected = widgetType === item.type;
@@ -1545,6 +1572,81 @@ export const DashboardBuilder: React.FC = () => {
                       <p className="text-[10px] text-[var(--cds-text-03)] mt-1">
                         {isAr ? 'يحدد الأعمدة التجميعية (مثل: المدينة، التصنيف، التاريخ)' : 'Grouping dimension column'}
                       </p>
+                      {widgetType === 'geo' && (
+                        <div className="mt-2 space-y-2 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] p-2.5">
+                          <div>
+                            <label className="block text-[var(--cds-text-01)] font-bold mb-1 text-[11px] flex items-center gap-1">
+                              <Globe2 className="w-3.5 h-3.5 text-[#33b1ff]" />
+                              {isAr ? 'عمود الموقع الجغرافي (الدول/المناطق أو خط العرض)' : 'Geographic location column (countries or latitude)'}
+                            </label>
+                            <select
+                              value={geoLocationColumn}
+                              onChange={e => setGeoLocationColumn(e.target.value)}
+                              className="carbon-input w-full text-xs font-mono"
+                            >
+                              <option value="">{isAr ? '— اختر العمود الجغرافي —' : '— pick location column —'}</option>
+                              {currentTargetDataset?.columns?.map(c => (
+                                <option key={c.name} value={c.name}>
+                                  [{c.type}] {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[11px]">
+                              {isAr ? 'نمط الخريطة (نمط Folium)' : 'Map style (folium-like)'}
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setGeoMode('choropleth')}
+                                className={`p-2 border text-[11px] font-bold ${
+                                  geoMode === 'choropleth'
+                                    ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                    : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
+                                }`}
+                              >
+                                {isAr ? 'تلوين المناطق (Choropleth)' : 'Colored regions (Choropleth)'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGeoMode('markers')}
+                                className={`p-2 border text-[11px] font-bold ${
+                                  geoMode === 'markers'
+                                    ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                    : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
+                                }`}
+                              >
+                                {isAr ? 'نقاط خط العرض/الطول' : 'Lat/Lng markers'}
+                              </button>
+                            </div>
+                          </div>
+                          {geoMode === 'choropleth' && (
+                            <div>
+                              <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[11px]">
+                                {isAr ? 'نطاق العرض الجغرافي' : 'Geographic scope'}
+                              </label>
+                              <select
+                                value={mapScope}
+                                onChange={e => setMapScope(e.target.value as typeof mapScope)}
+                                className="carbon-input w-full text-xs"
+                              >
+                                <option value="world">{isAr ? 'العالم كامل' : 'Whole world'}</option>
+                                <option value="middleEast">{isAr ? 'الشرق الأوسط' : 'Middle East'}</option>
+                                <option value="europe">{isAr ? 'أوروبا' : 'Europe'}</option>
+                                <option value="africa">{isAr ? 'أفريقيا' : 'Africa'}</option>
+                                <option value="asia">{isAr ? 'آسيا' : 'Asia'}</option>
+                                <option value="americas">{isAr ? 'الأمريكتان' : 'Americas'}</option>
+                              </select>
+                            </div>
+                          )}
+                          <p className="text-[10px] text-[var(--cds-text-03)] leading-4">
+                            {isAr
+                              ? 'اعرض المناطق ذات أعلى مبيعات على الخريطة: اختر عمود الدولة، وعمود المقياس مثل (المبيعات)، وستُلوّن المناطق الأعلى قيمة بالأزرق والأقل بالأصفر.'
+                              : 'Show top-sales regions on a geographic map: pick the country column and a metric like sales; higher values draw blue, lower yellow.'}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Metric / Y-Axis */}

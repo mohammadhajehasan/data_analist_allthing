@@ -1,4 +1,5 @@
 import React from 'react';
+import { lazy, Suspense } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -36,7 +37,12 @@ import {
   AreaChart as AreaIcon,
   Calculator,
   Sigma,
+  Globe,
+  MapPin,
 } from 'lucide-react';
+
+// Map engine is heavy (~4MB) — loaded lazily in its own chunk, only for geo widgets.
+const LazyPlot = lazy(() => import('../common/LazyPlot'));
 
 // IBM Carbon Design System Official Chart Categorical 14 Palette
 export const CARBON_PALETTE = [
@@ -228,6 +234,128 @@ export function getAggregationLabel(agg: AggregationFunction = 'sum', language: 
   }
 }
 
+/**
+ * GEO MAP HELPERS — folium-style thematic maps without any Python:
+ * choropleth regions (country/ISO names) or plotted markers (lat/lng points)
+ * colored by an aggregated metric (e.g. sales by region).
+ */
+
+/** Recognized spatial (location) column names in either language */
+export const GEO_LOCATION_HINTS = [
+  'country', 'countries', 'الدولة', 'البلد', 'بلد', 'دولة',
+  'region', 'المنطقة', 'منطقة', 'مناطق', 'الاقليم', 'اقليم',
+  'state', 'الولاية', 'ولاية', 'المحافظة', 'محافظة', 'المدينة', 'city',
+  'wilaya', 'governorate', 'province', 'الاسم', 'اسم المنطقة',
+  'location', 'الموقع', 'موقع', 'مكان',
+];
+
+/** Guess the most likely location column from a dataset's column names */
+export function guessGeoLocationColumn(columns?: { name: string; type?: string }[]): string | null {
+  if (!columns || columns.length === 0) return null;
+  const norm = (s: string) => s.trim().toLowerCase();
+  // exact/substring hits first, in hint priority order
+  for (const hint of GEO_LOCATION_HINTS) {
+    const exact = columns.find(c => norm(c.name) === hint);
+    if (exact) return exact.name;
+  }
+  for (const hint of GEO_LOCATION_HINTS) {
+    const plan = columns.find(c => norm(c.name).includes(hint));
+    if (plan) return plan.name;
+  }
+  return null;
+}
+
+/** Detects numeric latitude/longitude-ish columns by name (lat, lng, خط الطول...) */
+export function isCoordColumn(name: string): boolean {
+  const n = String(name || '').trim().toLowerCase();
+  return /^(lat|latitude|خط العرض|عرض)$/.test(n) || /(lat$|latitude)/.test(n) || /^(lng|lon|long|longitude|خط الطول|طول)$/.test(n);
+}
+
+/** Region label normalizer for map lookups */
+function normGeoLabel(s: string): string {
+  return String(s || '').trim().toLowerCase().replace(/\u0640/g, '').replace(/[\u064B-\u065F\u0670]/g, '');
+}
+
+/** Arabic + English region-label -> ISO-3 country code (folium-familiar naming, in-browser) */
+const GEO_LABEL_CODE_MAP: Record<string, string> = {
+  // English
+  'united states': 'USA', 'united states of america': 'USA', 'usa': 'USA', 'us': 'USA', 'america': 'USA',
+  'canada': 'CAN', 'mexico': 'MEX', 'brazil': 'BRA', 'argentina': 'ARG', 'chile': 'CHL', 'colombia': 'COL',
+  'united kingdom': 'GBR', 'uk': 'GBR', 'england': 'GBR', 'great britain': 'GBR', 'ireland': 'IRL',
+  'france': 'FRA', 'germany': 'DEU', 'spain': 'ESP', 'italy': 'ITA', 'netherlands': 'NLD', 'belgium': 'BEL',
+  'switzerland': 'CHE', 'austria': 'AUT', 'sweden': 'SWE', 'norway': 'NOR', 'denmark': 'DNK', 'finland': 'FIN',
+  'poland': 'POL', 'portugal': 'PRT', 'greece': 'GRC', 'czechia': 'CZE', 'romania': 'ROU', 'hungary': 'HUN',
+  'turkey': 'TUR', 'russia': 'RUS', 'ukraine': 'UKR', 'china': 'CHN', 'japan': 'JPN', 'south korea': 'KOR',
+  'india': 'IND', 'pakistan': 'PAK', 'indonesia': 'IDN', 'malaysia': 'MYS', 'singapore': 'SGP', 'thailand': 'THA',
+  'vietnam': 'VNM', 'philippines': 'PHL', 'australia': 'AUS', 'new zealand': 'NZL', 'south africa': 'ZAF',
+  'nigeria': 'NGA', 'kenya': 'KEN', 'ghana': 'GHA', 'ethiopia': 'ETH', 'egypt': 'EGY', 'morocco': 'MAR',
+  'algeria': 'DZA', 'tunisia': 'TUN', 'libya': 'LBY', 'sudan': 'SDN', 'israel': 'ISR', 'palestine': 'PSE',
+  'saudi arabia': 'SAU', 'saudi': 'SAU', 'united arab emirates': 'ARE', 'uae': 'ARE', 'qatar': 'QAT',
+  'kuwait': 'KWT', 'bahrain': 'BHR', 'oman': 'OMN', 'yemen': 'YEM', 'iraq': 'IRQ', 'jordan': 'JOR',
+  'lebanon': 'LBN', 'syria': 'SYR', 'iran': 'IRN', 'afghanistan': 'AFG',
+  // Arabic (normalized: hamza forms are folded by prefix alternation at lookup)
+  'الولايات المتحدة': 'USA', 'أمريكا': 'USA', 'امريكا': 'USA', 'كندا': 'CAN', 'المكسيك': 'MEX', 'المكسيك)': 'MEX',
+  'البرازيل': 'BRA', 'الأرجنتين': 'ARG', 'تشيلي': 'CHL', 'كولومبيا': 'COL',
+  'المملكة المتحدة': 'GBR', 'بريطانيا': 'GBR', 'إنجلترا': 'GBR', 'انجلترا': 'GBR', 'إيرلندا': 'IRL', 'ايرلندا': 'IRL',
+  'فرنسا': 'FRA', 'ألمانيا': 'DEU', 'المانيا': 'DEU', 'إسبانيا': 'ESP', 'اسبانيا': 'ESP', 'إيطاليا': 'ITA', 'ايطاليا': 'ITA',
+  'هولندا': 'NLD', 'بلجيكا': 'BEL', 'سويسرا': 'CHE', 'النمسا': 'AUT', 'السويد': 'SWE', 'النرويج': 'NOR',
+  'الدنمارك': 'DNK', 'فنلندا': 'FIN', 'بولندا': 'POL', 'البرتغال': 'PRT', 'اليونان': 'GRC', 'تركيا': 'TUR',
+  'روسيا': 'RUS', 'أوكرانيا': 'UKR', 'اوكرانيا': 'UKR', 'الصين': 'CHN', 'اليابان': 'JPN', 'كوريا الجنوبية': 'KOR',
+  'الهند': 'IND', 'باكستان': 'PAK', 'إندونيسيا': 'IDN', 'اندونيسيا': 'IDN', 'ماليزيا': 'MYS', 'سنغافورة': 'SGP',
+  'تايلاند': 'THA', 'فيتنام': 'VNM', 'الفلبين': 'PHL', 'أستراليا': 'AUS', 'استراليا': 'AUS', 'نيوزيلندا': 'NZL',
+  'جنوب أفريقيا': 'ZAF', 'نيجيريا': 'NGA', 'كينيا': 'KEN', 'غانا': 'GHA', 'إثيوبيا': 'ETH', 'اثيوبيا': 'ETH',
+  'مصر': 'EGY', 'المغرب': 'MAR', 'الجزائر': 'DZA', 'تونس': 'TUN', 'ليبيا': 'LBY', 'السودان': 'SDN',
+  'فلسطين': 'PSE', 'السعودية': 'SAU', 'السعودية)': 'SAU', 'الإمارات': 'ARE', 'الامارات': 'ARE', 'قطر': 'QAT',
+  'الكويت': 'KWT', 'البحرين': 'BHR', 'عمان': 'OMN', 'العراق': 'IRQ', 'الأردن': 'JOR', 'الأردن)': 'JOR',
+  'لبنان': 'LBN', 'سوريا': 'SYR', 'إيران': 'IRN', 'ايران': 'IRN',
+};
+
+/** Maps a dataset location label to an ISO-3 code, tolerating Arabic article/hamza variants.
+ *  Returns null for non-country strings (e.g. city names) so chrópleth is skipped safely. */
+export function geoLabelToCode(label: string): string | null {
+  const raw = String(label || '').trim();
+  const lower = raw.toLowerCase();
+  if (ISO3_SET.has(lower)) return raw.toUpperCase();
+  const direct = GEO_LABEL_CODE_MAP[lower] ?? GEO_LABEL_CODE_MAP[normGeoLabel(lower)] ?? null;
+  if (direct) return direct;
+  const n = normGeoLabel(lower);
+  // fold initial hamza variants (أ إ آ ا) into bare alif and retry once
+  if (n.length > 1) {
+    const folded = 'ا' + n.slice(1);
+    const hit = GEO_LABEL_CODE_MAP[n] || GEO_LABEL_CODE_MAP[folded];
+    if (hit) return hit;
+  }
+  // tolerate full-width country suffixes like "مصر (مصر)" → strip parens
+  const parenless = raw.replace(/\([^)]*\)/g, '').trim().toLowerCase();
+  if (parenless && parenless !== lower) return GEO_LABEL_CODE_MAP[parenless] ?? null;
+  return null;
+}
+/** ISO-3 codes (lowercase) accepted when the location column already contains country codes */
+const ISO3_SET = new Set([
+  'usa','are','sau','egy','mar','dza','tun','jor','lbn','irq','kwt','qat','bhr','omn','yem','syr','sdn','som',
+  'fra','deu','esp','ita','gbr','tur','ind','chn','jpn','kor','can','bra','mex','arg','chl','col','aus',
+  'rus','zaf','nga','ken','gha','eth','nld','bel','che','swe','nor','fin','dnk','pol','aut','prt','irl','grc',
+  'pak','idn','mys','sgp','tha','vnm','phl','nzl','gbr','irn','afg','lby','pse','isr','cze','rou','hun','ukr',
+]);
+
+/** IBM-Carbon-flavored yellow→green→teal→blue sequential colorscale for the map */
+const CARBON_MAP_SCALE: Array<[number, string]> = [
+  [0, '#f1c21b'],
+  [0.35, '#42be65'],
+  [0.7, '#009d9a'],
+  [1, '#0f62fe'],
+];
+
+/** Viewport lat/lon ranges per map scope */
+const MAP_SCOPE_RANGES: Record<string, { lat: [number, number]; lon: [number, number] }> = {
+  world: { lat: [-55, 78], lon: [-170, 180] },
+  middleEast: { lat: [12, 42], lon: [25, 63] },
+  europe: { lat: [34, 71], lon: [-25, 45] },
+  africa: { lat: [-36, 38], lon: [-18, 52] },
+  asia: { lat: [-10, 55], lon: [60, 146] },
+  americas: { lat: [-56, 72], lon: [-168, -34] },
+};
+
 export const KpiCard: React.FC<{ widget: WidgetConfig }> = ({ widget }) => {
   const { language } = useApp();
   const kpi = widget.kpiMetric;
@@ -361,6 +489,35 @@ export const ChartFactory: React.FC<{
       });
   }, [widget, dataset, customData, xKey, yKey, aggFunc]);
 
+  /** Aggregated rows for geo widgets: {label, value, sum, avg, count} per location, sorted desc */
+  const geoRows = React.useMemo(() => {
+    const loc = widget.categoryField || ''; // builder UI picks the location column via xAxis/categoryField
+    const metric = widget.yAxis || '';
+    const sourceRows = customData && customData.length > 0 ? customData : (dataset?.data || []);
+    if (!loc || !sourceRows || sourceRows.length === 0) return [];
+    const groups: { [key: string]: { values: number[]; count: number } } = {};
+    sourceRows.forEach(r => {
+      const labelRaw = r[loc];
+      if (labelRaw === undefined || labelRaw === null || String(labelRaw).trim() === '') return;
+      const label = String(labelRaw).trim();
+      const rawY = metric ? r[metric] : undefined;
+      const cleaned = typeof rawY === 'number' ? rawY : parseFloat(String(rawY).replace(/[\$,\s%]/g, ''));
+      if (!groups[label]) groups[label] = { values: [], count: 0 };
+      groups[label].count += 1;
+      if (!isNaN(cleaned) && rawY !== undefined) groups[label].values.push(cleaned);
+    });
+    const chosenAgg: AggregationFunction = aggFunc === 'count' ? 'sum' : aggFunc;
+    return Object.entries(groups)
+      .map(([label, g]) => ({
+        label,
+        value: computeMathematicalAggregation(g.values, chosenAgg),
+        sum: computeMathematicalAggregation(g.values, 'sum'),
+        avg: computeMathematicalAggregation(g.values, 'avg'),
+        count: g.count,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [widget.categoryField, widget.yAxis, dataset, customData, aggFunc]);
+
   const yField = yKey;
   const aggTitle = getAggregationLabel(aggFunc, language);
 
@@ -397,6 +554,43 @@ export const ChartFactory: React.FC<{
       );
     }
     return null;
+  };
+
+  /** Guidance panel shown when the chosen columns yield no mappable data */
+  const renderGeoHint = () => {
+    const loc = widget.categoryField || '';
+    const metric = widget.yAxis || '';
+    const canAutofix = !loc && !!guessGeoLocationColumn(dataset?.columns);
+    const rowSample = (dataset?.data || []).slice(0, 6).map(r => String(r[loc] ?? '')).filter(Boolean).join('، ');
+    return (
+      <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-2 text-center px-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <Globe className="w-7 h-7 text-[var(--cds-interactive-01)]" />
+        <p className="text-xs font-bold text-[var(--cds-text-01)]">
+          {language === 'ar' ? 'لا توجد مواقع قابلة للرسم على الخريطة بعد' : 'No mappable locations yet'}
+        </p>
+        <p className="text-[11px] text-[var(--cds-text-02)] leading-5 max-w-md">
+          {language === 'ar'
+            ? (!loc
+              ? 'اختر "عمود الموقع الجغرافي" أدناه (عمود يحوي أسماء دول أو مناطق)، و"عمود المقياس" مثل المبيعات.'
+              : loc === metric
+                ? 'عمود الموقع وعمود المقياس متطابقان — اختر عمود موقع (نص) وعمود مقياس (رقمي) مختلفين.'
+                : `لم يتم التعرّف على مواقع معروفة من عمود "${loc}"${rowSample ? ` (نموذج: ${rowSample})` : ''} — الخريطة التفاعلية ترسم الدول بأسمائها أو رموز ISO-3، أما المدن والمناطق الفرعية فتُرسم كنقاط بإحداثيات خط العرض/الطول.`)
+            : (!loc
+              ? 'Pick a location column (country/region names) and a metric column like sales below.'
+              : 'No recognized countries in the chosen location column — the choropleth map draws countries by name or ISO-3 codes.')}
+        </p>
+        {canAutofix && (
+          <p className="text-[10px] font-mono text-[#42be65]">
+            {language === 'ar' ? 'تلميح: العمود الأقرب هو' : 'Suggested column:'}{' '}
+            <span className="font-bold">{guessGeoLocationColumn(dataset?.columns)}</span>
+          </p>
+        )}
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--cds-text-03)]">
+          <MapPin className="w-3 h-3" />
+          <span>{language === 'ar' ? 'Choropleth + Segments حسب ملء نطاق القيم' : 'Choropleth with sequential value scale'}</span>
+        </div>
+      </div>
+    );
   };
 
   const renderChart = () => {
@@ -580,6 +774,131 @@ export const ChartFactory: React.FC<{
           </ResponsiveContainer>
         );
 
+      case 'geo': {
+        const locationCol = widget.categoryField || '';
+        const latCol = locationCol;
+        const lonCol = widget.yAxis || '';
+        const isMarkerMode = widget.geoMode === 'markers' || (isCoordColumn(locationCol) && isCoordColumn(lonCol));
+        const maxPoints = 400;
+
+        if (isMarkerMode) {
+          // Real coordinates (lat/lng) -> scattergeo markers, folium-style
+          const pts = (dataset?.data || [])
+            .map(r => {
+              const la = parseFloat(String(r[latCol] ?? '').replace(/[^\d.\-+eE]/g, ''));
+              const lo = parseFloat(String(r[lonCol] ?? '').replace(/[^\d.\-+eE]/g, ''));
+              return { la, lo };
+            })
+            .filter(p => !isNaN(p.la) && !isNaN(p.lo) && Math.abs(p.la) <= 90 && Math.abs(p.lo) <= 180)
+            .slice(0, maxPoints);
+          if (pts.length === 0) return renderGeoHint();
+          const geoLayout: any = {
+            margin: { t: 4, r: 8, b: 4, l: 8 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            geo: {
+              projection: { type: 'mercator' },
+              showframe: false,
+              coastlinewidth: 0.6,
+              coastlinecolor: '#6f6f6f',
+              showcountries: true,
+              countrycolor: '#4b4b4b',
+              showland: true,
+              landcolor: isLight ? '#f4f4f4' : '#262626',
+              showocean: true,
+              oceancolor: isLight ? '#ffffff' : '#161616',
+              bgcolor: 'rgba(0,0,0,0)',
+            },
+            font: { family: 'IBM Plex Mono, monospace', size: 10, color: axisStroke },
+            dragmode: false,
+          };
+          return (
+            <LazyPlot
+              useResizeHandler
+              style={{ width: '100%', height: '100%' }}
+              layout={geoLayout}
+              config={{ displayModeBar: false, responsive: true, scrollZoom: true }}
+              data={[
+                {
+                  type: 'scattergeo',
+                  mode: 'markers',
+                  lat: pts.map(p => p.la),
+                  lon: pts.map(p => p.lo),
+                  text: pts.map(p => `${latCol}: ${p.la}<br>${lonCol}: ${p.lo}`),
+                  hovertemplate: '<b>%{text}</b><extra></extra>',
+                  marker: { size: 8, color: primaryColor, line: { color: isLight ? '#ffffff' : '#161616', width: 1 } },
+                },
+              ]}
+            />
+          );
+        }
+
+        // Region labels (countries) -> choropleth colored by the aggregated metric
+        const locations: string[] = [];
+        const z: number[] = [];
+        const text: string[] = [];
+        geoRows.forEach(gr => {
+          const code = geoLabelToCode(gr.label);
+          if (code) {
+            locations.push(code);
+            z.push(gr.value);
+            text.push(gr.label);
+          }
+        });
+        const geoLayoutChoro: any = {
+          margin: { t: 4, r: 8, b: 4, l: 8 },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          geo: {
+            projection: { type: 'mercator' },
+            showframe: false,
+            showcoastlines: true,
+            coastlinecolor: '#6f6f6f',
+            coastlinewidth: 0.6,
+            showcountries: true,
+            countrycolor: '#4b4b4b',
+            showland: true,
+            landcolor: isLight ? '#f4f4f4' : '#262626',
+            showocean: true,
+            oceancolor: isLight ? '#ffffff' : '#161616',
+            bgcolor: 'rgba(0,0,0,0)',
+          },
+          font: { family: 'IBM Plex Mono, monospace', size: 10, color: axisStroke },
+          dragmode: false,
+        };
+        const scope = MAP_SCOPE_RANGES[widget.mapScope || 'world'];
+        if (scope) {
+          geoLayoutChoro.geo.lataxis = { range: scope.lat };
+          geoLayoutChoro.geo.lonaxis = { range: scope.lon };
+        }
+        if (locations.length === 0) return renderGeoHint();
+        const maxZ = Math.max(...z, 1);
+        return (
+          <LazyPlot
+            useResizeHandler
+            style={{ width: '100%', height: '100%' }}
+            layout={geoLayoutChoro}
+            config={{ displayModeBar: false, responsive: true, scrollZoom: true }}
+            data={[
+              {
+                type: 'choropleth',
+                locationmode: 'ISO-3',
+                locations,
+                z,
+                text,
+                zmin: 0,
+                zmax: maxZ,
+                colorscale: CARBON_MAP_SCALE,
+                marker: { line: { color: isLight ? '#8d8d8d' : '#393939', width: 0.6 } },
+                hovertemplate: `<b>%{text}</b><br>${yKey || 'value'}: %{z:,.0f}<extra></extra>`,
+                showscale: true,
+                colorbar: { thickness: 10, len: 0.75, outlinewidth: 0, tickfont: { size: 9, color: axisStroke } },
+              },
+            ]}
+          />
+        );
+      }
+
       default:
         return null;
     }
@@ -592,13 +911,13 @@ export const ChartFactory: React.FC<{
           <h4 className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase tracking-wider">
             {language === 'ar' ? widget.titleAr || widget.title : widget.title}
           </h4>
-          <span className="text-[10px] font-mono text-[var(--cds-interactive-01)] flex items-center gap-1 mt-0.5">
+          <span className={`text-[10px] font-mono text-[var(--cds-interactive-01)] flex items-center gap-1 mt-0.5 ${widget.type === 'geo' ? 'hidden' : ''}`}>
             <Sigma className="w-3 h-3 text-[var(--cds-interactive-01)]" />
             <span>{aggTitle}</span>
           </span>
         </div>
         <span className="text-[10px] font-mono uppercase bg-[var(--cds-background)] text-[var(--cds-interactive-01)] border border-[var(--cds-border-subtle)] px-2 py-0.5 font-bold">
-          {widget.type}
+          {widget.type === 'geo' ? (language === 'ar' ? 'خريطة' : 'MAP') : widget.type}
         </span>
       </div>
       <div className="h-56 w-full">{renderChart()}</div>

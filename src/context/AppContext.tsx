@@ -490,6 +490,8 @@ export const AppProvider: React.FC<{
           for (const row of serverRows) byId.set(row.id, row);
           return Array.from(byId.values());
         });
+        // أول مجموعة تعود من الخادم تصبح النشطة تلقائياً إذا لم تُعين واحدة بعد
+        setActiveDatasetId(prev => prev || serverRows[0]?.id || '');
       })
       .catch(() => { /* تعذر الجلب — الواجهة تعمل محلياً كالمعتاد */ });
 
