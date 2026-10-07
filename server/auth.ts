@@ -10,6 +10,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { createAuthMirror } from './authMirror';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -35,6 +36,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
 
+/**
+ * مرآة سحابية (Turso/libSQL) — تحل مشكلة قرص Render الفاني: الحسابات
+ * تُستعاد عند الإقلاع وتُكتب فورياً عند التسجيل/الدخول/الخروج.
+ * بدون TURSO_DATABASE_URL يعمل النظام محلياً كما هو.
+ */
+export const authMirror = createAuthMirror(db);
+if (authMirror?.enabled) {
+  authMirror.hydrate().catch(() => {}); // الاستعادة في الخلفية — لا تعطل الإقلاع
+}
+
 export type Role = 'admin' | 'analyst' | 'viewer';
 
 export interface AuthUser {
@@ -59,9 +70,13 @@ export function createUser(email: string, name: string, password: string, role: 
   if (exists) throw new Error('هذا البريد مسجل مسبقاً');
   const id = `usr-${crypto.randomUUID().slice(0, 8)}`;
   const hash = bcrypt.hashSync(password, 10);
+  const createdAt = new Date().toISOString();
   db.prepare('INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?,?,?,?,?,?)')
-    .run(id, emailNorm, name.trim(), hash, role, new Date().toISOString());
-  return { id, email: emailNorm, name: name.trim(), role, createdAt: new Date().toISOString() };
+    .run(id, emailNorm, name.trim(), hash, role, createdAt);
+  // write-through: التسجيل يُحفظ سحابياً فوراً حتى لا يضيع عند إعادة نشر Render
+  authMirror?.mirrorUser({ id, email: emailNorm, name: name.trim(), password_hash: hash, role, created_at: createdAt })
+    .catch(() => {});
+  return { id, email: emailNorm, name: name.trim(), role, createdAt };
 }
 
 export function verifyLogin(email: string, password: string): { user: AuthUser; token: string; expiresAt: string } {
@@ -72,8 +87,11 @@ export function verifyLogin(email: string, password: string): { user: AuthUser; 
   }
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  const now = new Date().toISOString();
   db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?,?,?,?)')
-    .run(token, row.id, new Date().toISOString(), expiresAt);
+    .run(token, row.id, now, expiresAt);
+  authMirror?.mirrorSession({ token, user_id: row.id, created_at: now, expires_at: expiresAt })
+    .catch(() => {});
   return { user: rowToUser(row), token, expiresAt };
 }
 
@@ -88,6 +106,7 @@ export function getUserByToken(token: string): AuthUser | null {
 
 export function revokeSession(token: string): void {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+  authMirror?.mirrorRevoke(token).catch(() => {});
 }
 
 export function countUsers(): number {

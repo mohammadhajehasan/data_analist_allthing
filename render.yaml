@@ -12,6 +12,12 @@ services:
     startCommand: node dist/server.cjs
     healthCheckPath: /api/health
     envVars:
+      # استمرارية الحسابات: أنشئ قاعدة مجانية على https://turso.tech وضع
+      # libsql://... والتوكن في Dashboard → Environment لتفادي مسح users عند النشر
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: NODE_ENV
         value: production
       # Render injects PORT automatically — the server reads process.env.PORT
