@@ -27,6 +27,7 @@ import {
 // GIS upload/analysis icons for the GeoJSON source panel
 import { WidgetConfig, Dataset, AggregationFunction } from '../../types';
 import { parseGeoJsonSource, computeGeoJsonAutoFit } from '../../utils/geoJson';
+import { ISO3_TO_ISO2_FULL } from '../../data/allCountries';
 import { useApp } from '../../context/AppContext';
 import { getThemePalette, VISUALIZATION_THEMES } from '../../utils/visualizationThemes';
 import {
@@ -340,19 +341,8 @@ const ISO3_SET = new Set([
   'pak','idn','mys','sgp','tha','vnm','phl','nzl','gbr','irn','afg','lby','pse','isr','cze','rou','hun','ukr',
 ]);
 
-/** ISO-3 -> ISO-2 mapping for Nominatim countrycodes lookups (subset covering the app's labels) */
-const ISO3_TO_ISO2: Record<string, string> = {
-  usa: 'us', can: 'ca', mex: 'mx', bra: 'br', arg: 'ar', chl: 'cl', col: 'co', gbr: 'gb', irl: 'ie',
-  fra: 'fr', deu: 'de', esp: 'es', ita: 'it', nld: 'nl', bel: 'be', che: 'ch', aut: 'at', swe: 'se',
-  nor: 'no', dnk: 'dk', fin: 'fi', pol: 'pl', prt: 'pt', grc: 'gr', cze: 'cz', rou: 'ro', hun: 'hu',
-  tur: 'tr', rus: 'ru', ukr: 'ua', chn: 'cn', jpn: 'jp', kor: 'kr', ind: 'in', pak: 'pk', idn: 'id',
-  mys: 'my', sgp: 'sg', tha: 'th', vnm: 'vn', phl: 'ph', aus: 'au', nzl: 'nz', zaf: 'za', nga: 'ng',
-  ken: 'ke', gha: 'gh', eth: 'et', egy: 'eg', mar: 'ma', dza: 'dz', tun: 'tn', lby: 'ly', sdn: 'sd',
-  isr: 'il', pse: 'ps', sau: 'sa', are: 'ae', qat: 'qa', kwt: 'kw', bhr: 'bh', omn: 'om', yem: 'ye',
-  irq: 'iq', jor: 'jo', lbn: 'lb', syr: 'sy', irn: 'ir', afg: 'af',
-};
 export function iso2FromIso3(iso3: string): string {
-  return ISO3_TO_ISO2[String(iso3 || '').toLowerCase()] || '';
+  return ISO3_TO_ISO2_FULL[String(iso3 || '').toUpperCase()] || '';
 }
 
 /** IBM-Carbon-flavored yellow→green→teal→blue sequential colorscale for the map */

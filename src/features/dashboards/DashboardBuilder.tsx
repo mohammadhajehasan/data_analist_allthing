@@ -30,6 +30,7 @@ import { ShareToGroupModal } from '../../components/discussions/ShareToGroupModa
 import { captureElementToCanvas } from '../../utils/dashboardExport';
 import { FileUp, FileJson, Trash2 as TrashIcon } from 'lucide-react';
 import { parseGeoJsonSource } from '../../utils/geoJson';
+import { ALL_COUNTRIES } from '../../data/allCountries';
 import {
   LayoutDashboard,
   Plus,
@@ -75,34 +76,8 @@ import {
   Vibrate,
 } from 'lucide-react';
 
-/** Country list for the drill-down (single-country) map scope — ISO-3 codes shown in both languages */
-const GEO_COUNTRY_CODES: { iso3: string; labelEn: string; labelAr: string }[] = [
-  { iso3: 'SAU', labelEn: 'Saudi Arabia', labelAr: 'السعودية' },
-  { iso3: 'ARE', labelEn: 'United Arab Emirates', labelAr: 'الإمارات' },
-  { iso3: 'EGY', labelEn: 'Egypt', labelAr: 'مصر' },
-  { iso3: 'MAR', labelEn: 'Morocco', labelAr: 'المغرب' },
-  { iso3: 'DZA', labelEn: 'Algeria', labelAr: 'الجزائر' },
-  { iso3: 'TUN', labelEn: 'Tunisia', labelAr: 'تونس' },
-  { iso3: 'JOR', labelEn: 'Jordan', labelAr: 'الأردن' },
-  { iso3: 'IRQ', labelEn: 'Iraq', labelAr: 'العراق' },
-  { iso3: 'KWT', labelEn: 'Kuwait', labelAr: 'الكويت' },
-  { iso3: 'QAT', labelEn: 'Qatar', labelAr: 'قطر' },
-  { iso3: 'BHR', labelEn: 'Bahrain', labelAr: 'البحرين' },
-  { iso3: 'OMN', labelEn: 'Oman', labelAr: 'عمان' },
-  { iso3: 'YEM', labelEn: 'Yemen', labelAr: 'اليمن' },
-  { iso3: 'LBN', labelEn: 'Lebanon', labelAr: 'لبنان' },
-  { iso3: 'SYR', labelEn: 'Syria', labelAr: 'سوريا' },
-  { iso3: 'LBY', labelEn: 'Libya', labelAr: 'ليبيا' },
-  { iso3: 'SDN', labelEn: 'Sudan', labelAr: 'السودان' },
-  { iso3: 'PSE', labelEn: 'Palestine', labelAr: 'فلسطين' },
-  { iso3: 'USA', labelEn: 'United States', labelAr: 'الولايات المتحدة' },
-  { iso3: 'GBR', labelEn: 'United Kingdom', labelAr: 'المملكة المتحدة' },
-  { iso3: 'FRA', labelEn: 'France', labelAr: 'فرنسا' },
-  { iso3: 'DEU', labelEn: 'Germany', labelAr: 'ألمانيا' },
-  { iso3: 'TUR', labelEn: 'Turkey', labelAr: 'تركيا' },
-  { iso3: 'IND', labelEn: 'India', labelAr: 'الهند' },
-  { iso3: 'CHN', labelEn: 'China', labelAr: 'الصين' },
-];
+/** Full world country list for the drill-down (single-country) map scope — bilingual labels */
+const GEO_COUNTRY_CODES = ALL_COUNTRIES;
 
 export const DashboardBuilder: React.FC = () => {
   const {
