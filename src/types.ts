@@ -171,7 +171,16 @@ export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' |
 /** Geo/map display mode: choropleth regions (folium-style) or lat/lng markers */
 export type GeoMapMode = 'choropleth' | 'markers';
 /** Predefined geographic viewport for the map widget */
-export type GeoMapScope = 'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas';
+export type GeoMapScope = 'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas' | 'country';
+/** Where a geo widget's features come from: built-in world map or a user-uploaded GeoJSON */
+export interface GeoJsonSource {
+  name: string;
+  /* Raw GeoJSON text of the uploaded file */
+  data: string;
+  /** GeoJSON property key holding area names (e.g. "governorate", "city", "ADMIN_1") */
+  featureProperty: string;
+  uploadedAt: string;
+}
 
 export interface WidgetConfig {
   id: string;
@@ -198,6 +207,10 @@ export interface WidgetConfig {
   geoMode?: GeoMapMode;
   /** geo widgets only: which part of the world map is shown */
   mapScope?: GeoMapScope;
+  /** geo widgets with mapScope === 'country': focused country ISO-3 code (drill-down viewport) */
+  focusCountry?: string;
+  /** geo widgets only: user-uploaded GeoJSON of sub-regions (governorates/cities) replacing the built-in map */
+  geoJson?: GeoJsonSource;
   querySpec?: QueryRequest;
 }
 

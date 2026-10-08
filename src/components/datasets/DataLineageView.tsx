@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Dataset, Dashboard } from '../../types';
+import { Dataset, Dashboard, DatasetColumn } from '../../types';
 import { generateDatasetLineage } from '../../utils/dataLineageGenerator';
 import {
   GitFork,
@@ -82,6 +82,12 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
     dataset.columns[0]?.name || ''
   );
   const [simAction, setSimAction] = useState<'delete' | 'rename' | 'type_change'>('delete');
+  // Rename / type-change simulation parameters (drives the mutation preview)
+  const [newSimColumnName, setNewSimColumnName] = useState('');
+  const [newSimColumnType, setNewSimColumnType] = useState<DatasetColumn['type']>('string');
+  const [showSimResult, setShowSimResult] = useState(false);
+  const [isSimRunning, setIsSimRunning] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
   // Generate real-time Lineage Manifest
@@ -152,17 +158,40 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
     });
 
     const affectedReportsCount = dataStories.filter(s => s.datasetId === dataset.id).length;
-    const isCritical = affectedWidgets.length > 0 || colName === 'revenue' || colName === 'order_id';
+    const isTypeChangeSafe = simAction === 'type_change' ? (
+      (() => {
+        const cur = dataset.columns.find(c => c.name === colName)?.type;
+        const numeric = (t?: string) => t === 'integer' || t === 'float';
+        // Safe when casting string->date/bool is lossy-free, or numeric<->numeric
+        if (!cur) return false;
+        if (cur === newSimColumnType) return true;
+        if (numeric(cur) && numeric(newSimColumnType)) return true;
+        if (newSimColumnType === 'string') return true; // everything casts to string
+        return false;
+      })()
+    ) : null;
+    const hasNameCollision = simAction === 'rename' &&
+      !!newSimColumnName.trim() &&
+      dataset.columns.some(c => c.name === newSimColumnName.trim() && c.name !== colName);
+    const riskBase = affectedWidgets.length > 0 ? 'HIGH' : 'LOW';
+    const riskLevel = hasNameCollision ? 'HIGH'
+      : simAction === 'rename' && !newSimColumnName.trim() ? 'MEDIUM'
+      : simAction === 'type_change' && isTypeChangeSafe === false ? 'HIGH'
+      : riskBase;
 
     return {
       column: colName,
       action: simAction,
+      newColumnName: simAction === 'rename' ? newSimColumnName.trim() : undefined,
+      newColumnType: simAction === 'type_change' ? newSimColumnType : undefined,
+      isTypeChangeSafe,
+      hasNameCollision,
       affectedWidgets,
       affectedReportsCount,
-      riskLevel: isCritical ? 'HIGH' : affectedWidgets.length > 0 ? 'MEDIUM' : 'LOW',
+      riskLevel,
       breakingQueriesCount: 3 + affectedWidgets.length * 2,
     };
-  }, [selectedSimColumn, simAction, dashboards, dataStories, dataset.id]);
+  }, [selectedSimColumn, simAction, dashboards, dataStories, dataset, newSimColumnName, newSimColumnType]);
 
   // Export JSON Manifest
   const handleExportLineage = () => {
@@ -973,14 +1002,23 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
           </div>
 
           {/* Simulation Playground Controls */}
+          {dataset.columns.length === 0 ? (
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-6 text-center text-xs font-mono text-[var(--cds-text-03)]">
+              {isAr ? 'لا توجد أعمدة في هذه المجموعة لتشغيل المحاكاة عليها.' : 'This dataset has no columns to simulate changes on.'}
+            </div>
+          ) : (
+          <div className="space-y-4">
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-mono text-[var(--cds-text-02)] mb-1.5">
                 {isAr ? '1. اختر الحقل المراد تعديله:' : '1. Select Target Attribute:'}
               </label>
               <select
-                value={selectedSimColumn}
-                onChange={e => setSelectedSimColumn(e.target.value)}
+                value={selectedSimColumn || dataset.columns[0]?.name || ''}
+                onChange={e => {
+                  setSelectedSimColumn(e.target.value);
+                  setShowSimResult(false);
+                }}
                 className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden"
               >
                 {dataset.columns.map(c => (
@@ -997,7 +1035,10 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
               </label>
               <select
                 value={simAction}
-                onChange={e => setSimAction(e.target.value as any)}
+                onChange={e => {
+                  setSimAction(e.target.value as any);
+                  setShowSimResult(false);
+                }}
                 className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden"
               >
                 <option value="delete">{isAr ? 'حذف العمود (DROP COLUMN)' : 'DROP COLUMN (Delete)'}</option>
@@ -1006,24 +1047,112 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
               </select>
             </div>
 
+            {(simAction === 'rename' || simAction === 'type_change') && (
+              <div>
+                {simAction === 'rename' ? (
+                  <>
+                    <label className="block text-xs font-mono text-[var(--cds-text-02)] mb-1.5">
+                      {isAr ? 'الاسم الجديد للعمود:' : 'New column name:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newSimColumnName}
+                      onChange={e => {
+                        setNewSimColumnName(e.target.value);
+                        setShowSimResult(false);
+                      }}
+                      placeholder={isAr ? 'مثال: المبيعات_الجديدة' : 'e.g. sales_v2'}
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden focus:border-[#0f62fe]"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-xs font-mono text-[var(--cds-text-02)] mb-1.5">
+                      {isAr ? 'النوع الجديد:' : 'New data type:'}
+                    </label>
+                    <select
+                      value={newSimColumnType}
+                      onChange={e => {
+                        setNewSimColumnType(e.target.value as DatasetColumn['type']);
+                        setShowSimResult(false);
+                      }}
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden"
+                    >
+                      {['integer', 'float', 'string', 'date', 'boolean', 'category'].map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-mono text-[var(--cds-text-02)] mb-1.5">
-                {isAr ? '3. مستوى الخطورة المتوقع:' : '3. Computed Blast Radius:'}
+                {isAr ? '3. محاكاة الأثر:' : '3. Run Impact Simulation:'}
               </label>
-              <div className={`px-4 py-2 border font-mono font-bold text-xs flex items-center justify-between ${
-                impactAnalysis.riskLevel === 'HIGH'
-                  ? 'bg-[#da1e28]/20 border-[#da1e28] text-[#ff8389]'
-                  : impactAnalysis.riskLevel === 'MEDIUM'
-                  ? 'bg-[#f1c21b]/20 border-[#f1c21b] text-[#f1c21b]'
-                  : 'bg-[#24a148]/20 border-[#24a148] text-[#42be65]'
-              }`}>
-                <span>{impactAnalysis.riskLevel} RISK</span>
-                <span>{impactAnalysis.affectedWidgets.length} Affected Visuals</span>
-              </div>
+              <button
+                onClick={() => {
+                  if (!selectedSimColumn) {
+                    setSimError(isAr ? 'اختر حقل أولاً لتشغيل المحاكاة.' : 'Pick a column before running the simulation.');
+                    return;
+                  }
+                  if (simAction === 'rename' && !newSimColumnName.trim()) {
+                    setSimError(isAr ? 'أدخل الاسم الجديد للعمود في خانة إعادة التسمية أولاً.' : 'Enter the new column name for the rename simulation first.');
+                    return;
+                  }
+                  setSimError(null);
+                  setIsSimRunning(true);
+                  setShowSimResult(false);
+                  setTimeout(() => {
+                    setIsSimRunning(false);
+                    setShowSimResult(true);
+                  }, 550);
+                }}
+                disabled={isSimRunning}
+                className="w-full px-4 py-2 bg-[#da1e28] hover:bg-[#ba1e28] disabled:opacity-60 text-white text-xs font-mono font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                {isSimRunning ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    {isAr ? 'جارِ المحاكاة...' : 'Simulating...'}
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {isAr ? 'تشغيل محاكاة الأثر' : 'Run Impact Simulation'}
+                  </>
+                )}
+              </button>
+              {simError && (
+                <p className="text-[10px] font-mono text-[#ff8389] mt-1.5">{simError}</p>
+              )}
+              {showSimResult && !simError && (
+                <div className={`mt-2 px-3 py-2 border font-mono font-bold text-xs flex items-center justify-between ${
+                  impactAnalysis.riskLevel === 'HIGH'
+                    ? 'bg-[#da1e28]/20 border-[#da1e28] text-[#ff8389]'
+                    : impactAnalysis.riskLevel === 'MEDIUM'
+                    ? 'bg-[#f1c21b]/20 border-[#f1c21b] text-[#f1c21b]'
+                    : 'bg-[#24a148]/20 border-[#24a148] text-[#42be65]'
+                }`}>
+                  <span>{impactAnalysis.riskLevel} RISK</span>
+                  <span>{impactAnalysis.affectedWidgets.length} {isAr ? 'عنصر متأثر' : 'Affected'}</span>
+                </div>
+              )}
             </div>
           </div>
+          </div>
+          )}
 
           {/* Simulation Output Report */}
+          {!showSimResult ? (
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-8 text-center text-xs font-mono text-[var(--cds-text-03)]">
+              <Info className="w-7 h-7 text-[#33b1ff] mx-auto mb-2" />
+              {isAr
+                ? 'حدد الحقل والإجراء أعلاه ثم اضغط "تشغيل محاكاة الأثر" لعرض تقرير المخاطر التفصيلي.'
+                : 'Pick a column and mutation above, then press "Run Impact Simulation" to generate the detailed risk report.'}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Impact Summary */}
             <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 space-y-3">
@@ -1047,6 +1176,20 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                 </div>
               </div>
 
+              {impactAnalysis.hasNameCollision && (
+                <div className="p-3 bg-[#da1e28]/15 border border-[#da1e28] text-[11px] font-mono text-[#ff8389]">
+                  {isAr
+                    ? `تعارض: يوجد بالفعل عمود باسم "${newSimColumnName}" في هذا المخطط — اختر اسماً مختلفاً.`
+                    : `Collision: a column named "${newSimColumnName}" already exists in this schema — pick a different name.`}
+                </div>
+              )}
+              {impactAnalysis.isTypeChangeSafe === false && (
+                <div className="p-3 bg-[#f1c21b]/15 border border-[#f1c21b] text-[11px] font-mono text-[#f1c21b]">
+                  {isAr
+                    ? `التحويل من النوع الحالي إلى (${newSimColumnType}) غير مضمون وقد يُفقد البيانات — راجع القيم قبل التطبيق.`
+                    : `Casting to (${newSimColumnType}) is not lossless — some values may fail or be discarded.`}
+                </div>
+              )}
               <div className="pt-2 border-t border-[var(--cds-border-subtle)] text-xs text-[var(--cds-text-02)] leading-relaxed">
                 <p>
                   {impactAnalysis.riskLevel === 'HIGH'
@@ -1092,6 +1235,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -24,7 +24,9 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
 } from 'recharts';
+// GIS upload/analysis icons for the GeoJSON source panel
 import { WidgetConfig, Dataset, AggregationFunction } from '../../types';
+import { parseGeoJsonSource, computeGeoJsonAutoFit } from '../../utils/geoJson';
 import { useApp } from '../../context/AppContext';
 import { getThemePalette, VISUALIZATION_THEMES } from '../../utils/visualizationThemes';
 import {
@@ -338,6 +340,21 @@ const ISO3_SET = new Set([
   'pak','idn','mys','sgp','tha','vnm','phl','nzl','gbr','irn','afg','lby','pse','isr','cze','rou','hun','ukr',
 ]);
 
+/** ISO-3 -> ISO-2 mapping for Nominatim countrycodes lookups (subset covering the app's labels) */
+const ISO3_TO_ISO2: Record<string, string> = {
+  usa: 'us', can: 'ca', mex: 'mx', bra: 'br', arg: 'ar', chl: 'cl', col: 'co', gbr: 'gb', irl: 'ie',
+  fra: 'fr', deu: 'de', esp: 'es', ita: 'it', nld: 'nl', bel: 'be', che: 'ch', aut: 'at', swe: 'se',
+  nor: 'no', dnk: 'dk', fin: 'fi', pol: 'pl', prt: 'pt', grc: 'gr', cze: 'cz', rou: 'ro', hun: 'hu',
+  tur: 'tr', rus: 'ru', ukr: 'ua', chn: 'cn', jpn: 'jp', kor: 'kr', ind: 'in', pak: 'pk', idn: 'id',
+  mys: 'my', sgp: 'sg', tha: 'th', vnm: 'vn', phl: 'ph', aus: 'au', nzl: 'nz', zaf: 'za', nga: 'ng',
+  ken: 'ke', gha: 'gh', eth: 'et', egy: 'eg', mar: 'ma', dza: 'dz', tun: 'tn', lby: 'ly', sdn: 'sd',
+  isr: 'il', pse: 'ps', sau: 'sa', are: 'ae', qat: 'qa', kwt: 'kw', bhr: 'bh', omn: 'om', yem: 'ye',
+  irq: 'iq', jor: 'jo', lbn: 'lb', syr: 'sy', irn: 'ir', afg: 'af',
+};
+export function iso2FromIso3(iso3: string): string {
+  return ISO3_TO_ISO2[String(iso3 || '').toLowerCase()] || '';
+}
+
 /** IBM-Carbon-flavored yellow→green→teal→blue sequential colorscale for the map */
 const CARBON_MAP_SCALE: Array<[number, string]> = [
   [0, '#f1c21b'],
@@ -354,6 +371,65 @@ const MAP_SCOPE_RANGES: Record<string, { lat: [number, number]; lon: [number, nu
   africa: { lat: [-36, 38], lon: [-18, 52] },
   asia: { lat: [-10, 55], lon: [60, 146] },
   americas: { lat: [-56, 72], lon: [-168, -34] },
+};
+
+/** Loader that fetches a country bounding box from Nominatim for the drill-down scope */
+const CountryFocusLoader: React.FC<{
+  iso3: string;
+  isAr: boolean;
+  onLoaded: (bbox: [number, number, number, number]) => void;
+}> = ({ iso3, isAr, onLoaded }) => {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    fetch(`https://nominatim.openstreetmap.org/search?countrycodes=${iso2FromIso3(iso3) || ''}&format=json&limit=1`, {
+      signal: controller.signal,
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((results: any[]) => {
+        clearTimeout(timeout);
+        if (cancelled) return;
+        const bbox = results?.[0]?.boundingbox; // [south, north, west, east] strings
+        if (Array.isArray(bbox) && bbox.length === 4) {
+          onLoaded([
+            parseFloat(bbox[2]),
+            parseFloat(bbox[0]),
+            parseFloat(bbox[3]),
+            parseFloat(bbox[1]),
+          ]);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [iso3, onLoaded]);
+  if (failed) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+        <Globe className="w-6 h-6 text-[#da1e28]" />
+        <p className="text-[11px] font-mono text-[var(--cds-text-02)]">
+          {isAr ? 'تعذر جلب حدود الدولة من خدمة الخرائط — تحقق من الاتصال وحاول التبديل بين النطاقات.' : 'Could not fetch country bounds from the map service — check connection or switch scopes.'}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-2">
+      <div className="w-6 h-6 border-2 border-[#0f62fe] border-t-transparent rounded-full animate-spin" />
+      <p className="text-[11px] font-mono text-[var(--cds-text-03)]">
+        {isAr ? 'جارِ توسيط الخريطة على الدولة المحددة...' : 'Centering map on the selected country...'}
+      </p>
+    </div>
+  );
 };
 
 export const KpiCard: React.FC<{ widget: WidgetConfig }> = ({ widget }) => {
@@ -411,6 +487,14 @@ export const ChartFactory: React.FC<{
   activeTheme?: string;
 }> = ({ widget, dataset, customData, activeTheme }) => {
   const { language, theme } = useApp();
+  // Uploaded GeoJSON sub-region boundaries (governorates/cities)
+  const uploadedGj = useMemo(
+    () => (widget.geoJson ? parseGeoJsonSource(widget.geoJson) : null),
+    [widget.geoJson]
+  );
+  // Bounding box of the focused country, fetched from Nominatim for drill-down
+  const [focusedBbox, setFocusedBbox] = useState<[number, number, number, number] | null>(null);
+  useEffect(() => setFocusedBbox(null), [widget.focusCountry]);
 
   const isLight = theme === 'g10' || theme === 'white';
   const gridStroke = isLight ? '#e0e0e0' : theme === 'midnight' ? '#1e335e' : '#393939';
@@ -837,6 +921,67 @@ export const ChartFactory: React.FC<{
         const locations: string[] = [];
         const z: number[] = [];
         const text: string[] = [];
+        // User-uploaded GeoJSON: fill polygons by matching area names against geoRows
+        if (uploadedGj) {
+          const gjLocs: string[] = [];
+          const gjZ: number[] = [];
+          const gjText: string[] = [];
+          const rowsByLabel = new Map<string, { label: string; value: number; sum: number; avg: number; count: number }>();
+          geoRows.forEach(gr => rowsByLabel.set(gr.label.trim().toLowerCase(), gr));
+          uploadedGj.features.forEach((f: any) => {
+            const key = f.properties?.[uploadedGj.featureProperty];
+            if (key === undefined || key === null) return;
+            const gr = rowsByLabel.get(String(key).trim().toLowerCase());
+            if (gr) {
+              // Plotly expects one location string per feature; repeat entries are fine as they share polygon ids.
+              gjLocs.push(gr.label);
+              gjZ.push(gr.value);
+              gjText.push(gr.label);
+            }
+          });
+          if (gjLocs.length === 0) return renderGeoHint();
+          const { geo: gjAuto } = computeGeoJsonAutoFit(uploadedGj);
+          const gjLayout: any = {
+            margin: { t: 4, r: 8, b: 4, l: 8 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            geo: {
+              projection: { type: 'mercator' },
+              showframe: false,
+              ...gjAuto,
+              bgcolor: 'rgba(0,0,0,0)',
+            },
+            font: { family: 'IBM Plex Mono, monospace', size: 10, color: axisStroke },
+            dragmode: false,
+          };
+          const maxZgj = Math.max(...gjZ, 1);
+          return (
+            <LazyPlot
+              useResizeHandler
+              style={{ width: '100%', height: '100%' }}
+              layout={gjLayout}
+              config={{ displayModeBar: false, responsive: true, scrollZoom: true }}
+              data={[
+                {
+                  type: 'choropleth',
+                  geojson: uploadedGj.json,
+                  locations: gjLocs,
+                  featureidkey: `properties.${uploadedGj.featureProperty}`,
+                  z: gjZ,
+                  text: gjText,
+                  zmin: 0,
+                  zmax: maxZgj,
+                  colorscale: CARBON_MAP_SCALE,
+                  marker: { line: { color: isLight ? '#8d8d8d' : '#393939', width: 0.6 } },
+                  hovertemplate: `<b>%{text}</b><br>${yKey || 'value'}: %{z:,.0f}<extra></extra>`,
+                  showscale: true,
+                  colorbar: { thickness: 10, len: 0.75, outlinewidth: 0, tickfont: { size: 9, color: axisStroke } },
+                },
+              ]}
+            />
+          );
+        }
+        // Fallback: region labels (countries) -> choropleth colored by the aggregated metric
         geoRows.forEach(gr => {
           const code = geoLabelToCode(gr.label);
           if (code) {
@@ -866,10 +1011,28 @@ export const ChartFactory: React.FC<{
           font: { family: 'IBM Plex Mono, monospace', size: 10, color: axisStroke },
           dragmode: false,
         };
-        const scope = MAP_SCOPE_RANGES[widget.mapScope || 'world'];
-        if (scope) {
-          geoLayoutChoro.geo.lataxis = { range: scope.lat };
-          geoLayoutChoro.geo.lonaxis = { range: scope.lon };
+        // Country drill-down scope: fetch the country's bounding box live from Nominatim
+        if (widget.mapScope === 'country') {
+          const focus = widget.focusCountry || ''; // ISO-3 code
+          if (focusedBbox) {
+            const [w, s, e, n] = focusedBbox; // [west, south, east, north]
+            geoLayoutChoro.geo.lataxis = { range: [s, n] };
+            geoLayoutChoro.geo.lonaxis = { range: [w, e] };
+          } else if (focus) {
+            return (
+              <CountryFocusLoader
+                iso3={focus}
+                isAr={language === 'ar'}
+                onLoaded={bbox => setFocusedBbox(bbox)}
+              />
+            );
+          }
+        } else {
+          const scope = MAP_SCOPE_RANGES[widget.mapScope || 'world'];
+          if (scope) {
+            geoLayoutChoro.geo.lataxis = { range: scope.lat };
+            geoLayoutChoro.geo.lonaxis = { range: scope.lon };
+          }
         }
         if (locations.length === 0) return renderGeoHint();
         const maxZ = Math.max(...z, 1);

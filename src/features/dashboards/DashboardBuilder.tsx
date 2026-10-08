@@ -28,6 +28,8 @@ import { SlidesExportPanel } from './SlidesExportPanel';
 import { DataCinemaMode } from '../../components/dashboards/DataCinemaMode';
 import { ShareToGroupModal } from '../../components/discussions/ShareToGroupModal';
 import { captureElementToCanvas } from '../../utils/dashboardExport';
+import { FileUp, FileJson, Trash2 as TrashIcon } from 'lucide-react';
+import { parseGeoJsonSource } from '../../utils/geoJson';
 import {
   LayoutDashboard,
   Plus,
@@ -72,6 +74,35 @@ import {
   Globe2,
   Vibrate,
 } from 'lucide-react';
+
+/** Country list for the drill-down (single-country) map scope — ISO-3 codes shown in both languages */
+const GEO_COUNTRY_CODES: { iso3: string; labelEn: string; labelAr: string }[] = [
+  { iso3: 'SAU', labelEn: 'Saudi Arabia', labelAr: 'السعودية' },
+  { iso3: 'ARE', labelEn: 'United Arab Emirates', labelAr: 'الإمارات' },
+  { iso3: 'EGY', labelEn: 'Egypt', labelAr: 'مصر' },
+  { iso3: 'MAR', labelEn: 'Morocco', labelAr: 'المغرب' },
+  { iso3: 'DZA', labelEn: 'Algeria', labelAr: 'الجزائر' },
+  { iso3: 'TUN', labelEn: 'Tunisia', labelAr: 'تونس' },
+  { iso3: 'JOR', labelEn: 'Jordan', labelAr: 'الأردن' },
+  { iso3: 'IRQ', labelEn: 'Iraq', labelAr: 'العراق' },
+  { iso3: 'KWT', labelEn: 'Kuwait', labelAr: 'الكويت' },
+  { iso3: 'QAT', labelEn: 'Qatar', labelAr: 'قطر' },
+  { iso3: 'BHR', labelEn: 'Bahrain', labelAr: 'البحرين' },
+  { iso3: 'OMN', labelEn: 'Oman', labelAr: 'عمان' },
+  { iso3: 'YEM', labelEn: 'Yemen', labelAr: 'اليمن' },
+  { iso3: 'LBN', labelEn: 'Lebanon', labelAr: 'لبنان' },
+  { iso3: 'SYR', labelEn: 'Syria', labelAr: 'سوريا' },
+  { iso3: 'LBY', labelEn: 'Libya', labelAr: 'ليبيا' },
+  { iso3: 'SDN', labelEn: 'Sudan', labelAr: 'السودان' },
+  { iso3: 'PSE', labelEn: 'Palestine', labelAr: 'فلسطين' },
+  { iso3: 'USA', labelEn: 'United States', labelAr: 'الولايات المتحدة' },
+  { iso3: 'GBR', labelEn: 'United Kingdom', labelAr: 'المملكة المتحدة' },
+  { iso3: 'FRA', labelEn: 'France', labelAr: 'فرنسا' },
+  { iso3: 'DEU', labelEn: 'Germany', labelAr: 'ألمانيا' },
+  { iso3: 'TUR', labelEn: 'Turkey', labelAr: 'تركيا' },
+  { iso3: 'IND', labelEn: 'India', labelAr: 'الهند' },
+  { iso3: 'CHN', labelEn: 'China', labelAr: 'الصين' },
+];
 
 export const DashboardBuilder: React.FC = () => {
   const {
@@ -131,8 +162,14 @@ export const DashboardBuilder: React.FC = () => {
   const [widgetAggregation, setWidgetAggregation] = useState<AggregationFunction>('sum');
   // Geo/map widget state (folium-style: choropleth regions or lat/lng markers)
   const [geoMode, setGeoMode] = useState<'choropleth' | 'markers'>('choropleth');
-  const [mapScope, setMapScope] = useState<'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas'>('world');
+  const [mapScope, setMapScope] = useState<'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas' | 'country'>('world');
+  const [focusCountry, setFocusCountry] = useState('');
   const [geoLocationColumn, setGeoLocationColumn] = useState('');
+  // Uploaded GeoJSON boundaries for sub-region drawing (governorates/cities)
+  const [geoJsonName, setGeoJsonName] = useState('');
+  const [geoJsonData, setGeoJsonData] = useState('');
+  const [geoJsonFeatureProperty, setGeoJsonFeatureProperty] = useState('');
+  const [geoJsonPropertyOptions, setGeoJsonPropertyOptions] = useState<string[]>([]);
 
   // Loading States
   const [isCalculatingAgg, setIsCalculatingAgg] = useState(false);
@@ -215,6 +252,15 @@ export const DashboardBuilder: React.FC = () => {
     setSelectedDatasetId(activeDataset?.id || datasets[0]?.id || '');
     setWidgetAggregation('sum');
     setIsCalculatingAgg(false);
+    // Reset geo form state so stale values from a previous edit don't leak into the new widget
+    setGeoMode('choropleth');
+    setMapScope('world');
+    setFocusCountry('');
+    setGeoLocationColumn('');
+    setGeoJsonName('');
+    setGeoJsonData('');
+    setGeoJsonFeatureProperty('');
+    setGeoJsonPropertyOptions([]);
 
     if (activeDataset?.columns?.length) {
       const catCol = activeDataset.columns.find(c => c.type === 'string' || c.type === 'date') || activeDataset.columns[0];
@@ -242,6 +288,12 @@ export const DashboardBuilder: React.FC = () => {
     setWidgetXAxis(w.xAxis || w.categoryField || '');
     setGeoMode(w.geoMode || 'choropleth');
     setMapScope(w.mapScope || 'world');
+    setFocusCountry(w.focusCountry || '');
+    setGeoJsonName(w.geoJson?.name || '');
+    setGeoJsonData(w.geoJson?.data || '');
+    setGeoJsonFeatureProperty(w.geoJson?.featureProperty || '');
+    const parsedGj = w.geoJson ? parseGeoJsonSource(w.geoJson) : null;
+    setGeoJsonPropertyOptions(parsedGj?.candidateProperties || []);
     setWidgetYAxis(w.yAxis || '');
     setWidgetAggregation(w.aggregation || 'sum');
     setIsCalculatingAgg(false);
@@ -305,6 +357,11 @@ export const DashboardBuilder: React.FC = () => {
         ? {
             geoMode,
             mapScope,
+            focusCountry: mapScope === 'country' ? focusCountry : undefined,
+            geoJson:
+              geoJsonData && geoJsonFeatureProperty
+                ? { name: geoJsonName || 'custom-boundaries', data: geoJsonData, featureProperty: geoJsonFeatureProperty, uploadedAt: new Date().toISOString() }
+                : undefined,
             categoryField: geoLocationColumn,
             xAxis: geoLocationColumn,
             yAxis: widgetYAxis,
@@ -1637,7 +1694,121 @@ export const DashboardBuilder: React.FC = () => {
                                 <option value="africa">{isAr ? 'أفريقيا' : 'Africa'}</option>
                                 <option value="asia">{isAr ? 'آسيا' : 'Asia'}</option>
                                 <option value="americas">{isAr ? 'الأمريكتان' : 'Americas'}</option>
+                                <option value="country">{isAr ? 'دولة محددة (تكبير تفصيلي)' : 'Single country (drill-down)'}</option>
                               </select>
+                            </div>
+                          )}
+                          {geoMode === 'choropleth' && mapScope === 'country' && (
+                            <div>
+                              <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[11px]">
+                                {isAr ? 'الدولة المستهدفة' : 'Focused country'}
+                              </label>
+                              <select
+                                value={focusCountry}
+                                onChange={e => setFocusCountry(e.target.value)}
+                                className="carbon-input w-full text-xs font-mono"
+                              >
+                                <option value="">{isAr ? '— اختر الدولة —' : '— pick country —'}</option>
+                                {GEO_COUNTRY_CODES.map(code => (
+                                  <option key={code.iso3} value={code.iso3}>
+                                    {isAr ? code.labelAr : code.labelEn}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {geoMode === 'choropleth' && (
+                            <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-2.5 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-1.5 text-[var(--cds-text-01)] font-bold text-[11px]">
+                                  <FileJson className="w-3.5 h-3.5 text-[#33b1ff]" />
+                                  {isAr ? 'حدود جغرافية مخصصة (GeoJSON)' : 'Custom GeoJSON boundaries'}
+                                </label>
+                                {geoJsonData && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setGeoJsonData('');
+                                      setGeoJsonName('');
+                                      setGeoJsonFeatureProperty('');
+                                      setGeoJsonPropertyOptions([]);
+                                    }}
+                                    className="text-[10px] font-mono text-[#ff8389] hover:underline flex items-center gap-1"
+                                  >
+                                    <TrashIcon className="w-3 h-3" />
+                                    {isAr ? 'إزالة' : 'Remove'}
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-[var(--cds-text-03)] leading-4">
+                                {isAr
+                                  ? 'ارفع ملف GeoJSON يدعم محافظات أو مدن الدولة (FeatureCollection) لرسم مناطق فرعية على الخريطة بدل الدول الافتراضية.'
+                                  : 'Upload a FeatureCollection GeoJSON of governorates/cities to draw sub-regions on the map instead of built-in countries.'}
+                              </p>
+                              {!geoJsonData ? (
+                                <label className="flex items-center justify-center gap-2 py-3 border border-dashed border-[var(--cds-border-strong)] cursor-pointer hover:border-[#0f62fe] transition-colors text-[11px] font-mono text-[var(--cds-text-02)] hover:text-white">
+                                  <FileUp className="w-4 h-4 text-[#0f62fe]" />
+                                  <span>{isAr ? 'اختر ملف ‎.geojson / ‏.json' : 'Pick a .geojson / .json file'}</span>
+                                  <input
+                                    type="file"
+                                    accept=".geojson,.json,application/geo+json,application/json"
+                                    className="hidden"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = () => {
+                                        const text = String(reader.result || '');
+                                        const probe = parseGeoJsonSource({ name: file.name, data: text, featureProperty: '', uploadedAt: '' });
+                                        if (!probe || probe.error || probe.candidateProperties.length === 0) {
+                                          toast.error(
+                                            isAr ? 'ملف GeoJSON غير صالح' : 'Invalid GeoJSON',
+                                            isAr ? 'جرب ملف GeoJSON بصيغة FeatureCollection.' : 'Expected a FeatureCollection GeoJSON file.'
+                                          );
+                                          return;
+                                        }
+                                        setGeoJsonData(text);
+                                        setGeoJsonName(file.name);
+                                        setGeoJsonPropertyOptions(probe.candidateProperties);
+                                        const guess = probe.candidateProperties.find(k => /name|governorate|city|admin|region|wilaya|محافظة|مدينة|اسم|دولة|منطقة/i.test(k)) || probe.candidateProperties[0];
+                                        setGeoJsonFeatureProperty(guess);
+                                        toast.success(
+                                          isAr ? 'تم رفع الملف' : 'GeoJSON Loaded',
+                                          isAr
+                                            ? `تم تحميل ${probe.features.length} منطقة من "${file.name}" — حدد خاصية الاسم المطابقة لعمود الموقع.`
+                                            : `Loaded ${probe.features.length} features from "${file.name}" — pick the name property matching your location column.`
+                                        );
+                                      };
+                                      reader.readAsText(file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-[10px] font-mono bg-[var(--cds-layer-02)] border border-[#24a148]/40 px-2 py-1.5">
+                                    <span className="flex items-center gap-1.5 text-[#42be65] font-bold truncate">
+                                      <FileJson className="w-3 h-3 shrink-0" />
+                                      {geoJsonName}
+                                    </span>
+                                    <span className="text-[var(--cds-text-03)]">{geoJsonPropertyOptions.length} props</span>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[10px]">
+                                      {isAr ? 'خاصية الاسم داخل GeoJSON (تطابق عمود الموقع)' : 'Name property in GeoJSON (matches location column)'}
+                                    </label>
+                                    <select
+                                      value={geoJsonFeatureProperty}
+                                      onChange={e => setGeoJsonFeatureProperty(e.target.value)}
+                                      className="carbon-input w-full text-xs font-mono"
+                                    >
+                                      {geoJsonPropertyOptions.map(k => (
+                                        <option key={k} value={k}>{k}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                           <p className="text-[10px] text-[var(--cds-text-03)] leading-4">
