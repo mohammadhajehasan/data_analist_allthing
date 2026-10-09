@@ -30,6 +30,9 @@ import {
   RefreshCw,
   ExternalLink,
   Zap,
+  PenLine,
+  Sliders,
+  X,
 } from 'lucide-react';
 
 const FOCUS_ANGLES = [
@@ -123,6 +126,15 @@ export const ReportsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'studio' | 'library'>('studio');
   const [viewMode, setViewMode] = useState<'scrolly' | 'slides' | 'markdown'>('scrolly');
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+  // Manual story builder state (user writes the report by hand instead of using the AI generator)
+  const [storyBasis, setStoryBasis] = useState<'ai' | 'manual'>('ai');
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualSubtitle, setManualSubtitle] = useState('');
+  const [manualSummary, setManualSummary] = useState('');
+  const [manualChapters, setManualChapters] = useState<DataStoryChapter[]>([
+    { id: `ch-${Date.now()}`, chapterNumber: 1, title: '', titleAr: '', narrative: '', narrativeAr: '', chartType: 'bar', chartData: [], insights: [], insightsAr: [], takeaway: '', takeawayAr: '' },
+  ]);
 
   // Active Story selection
   const [activeStory, setActiveStory] = useState<DataStory | null>(
@@ -309,6 +321,109 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
     ? (activeStory.chapters || activeStory.sections || [])
     : [];
 
+  // ── Manual story builder handlers ──
+  const updateManualChapter = (idx: number, patch: Partial<DataStoryChapter>) => {
+    setManualChapters(prev => prev.map((c, i) => (i === idx ? { ...c, ...patch, id: c.id || `ch-${idx}-${Date.now()}` } : c)));
+  };
+
+  const addManualChapter = () => {
+    setManualChapters(prev => [
+      ...prev,
+      { id: `ch-${Date.now()}`, chapterNumber: prev.length + 1, title: '', titleAr: '', narrative: '', narrativeAr: '', chartType: 'bar', chartData: [], insights: [], insightsAr: [], takeaway: '', takeawayAr: '' },
+    ]);
+  };
+
+  const removeManualChapter = (idx: number) => {
+    setManualChapters(prev => prev.filter((_, i) => i !== idx).map((c, i) => ({ ...c, chapterNumber: i + 1 })));
+  };
+
+  const setChapterChartDataRow = (idx: number, rowIdx: number, key: 'name' | 'value', raw: string) => {
+    setManualChapters(prev => prev.map((c, i) => {
+      if (i !== idx) return c;
+      const rows = [...(c.chartData || [])];
+      const row = { ...(rows[rowIdx] || { name: '', value: 0 }) };
+      if (key === 'name') row.name = raw;
+      else row.value = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
+      rows[rowIdx] = row;
+      return { ...c, chartData: rows, xAxis: 'name', yAxis: 'value' };
+    }));
+  };
+
+  const addChapterChartDataRow = (idx: number) => {
+    setManualChapters(prev => prev.map((c, i) =>
+      i === idx ? { ...c, chartData: [...(c.chartData || []), { name: '', value: 0 }], xAxis: 'name', yAxis: 'value' } : c
+    ));
+  };
+
+  const removeChapterChartDataRow = (idx: number, rowIdx: number) => {
+    setManualChapters(prev => prev.map((c, i) =>
+      i === idx ? { ...c, chartData: (c.chartData || []).filter((_, j) => j !== rowIdx) } : c
+    ));
+  };
+
+  const handleSaveManualStory = () => {
+    const trimmedTitle = manualTitle.trim();
+    if (!trimmedTitle) {
+      toast({
+        title: isAr ? 'العنوان مطلوب' : 'Title Required',
+        description: isAr ? 'أدخل عنوانًا للقصة قبل الحفظ.' : 'Enter a title before saving the story.',
+        variant: 'warning',
+      });
+      return;
+    }
+    const validChapters = manualChapters.filter(c => (c.title || c.titleAr || '').trim() !== '');
+    if (validChapters.length === 0) {
+      toast({
+        title: isAr ? 'لا توجد فصول' : 'No Chapters',
+        description: isAr ? 'أضف عنوانًا لفصل واحد على الأقل.' : 'Add at least one named chapter.',
+        variant: 'warning',
+      });
+      return;
+    }
+    const now = new Date().toISOString();
+    const story: DataStory = {
+      id: `story-manual-${Date.now()}`,
+      datasetId: activeDataset?.id || '',
+      datasetName: activeDataset?.name,
+      title: trimmedTitle,
+      titleAr: trimmedTitle,
+      subtitle: manualSubtitle.trim(),
+      subtitleAr: manualSubtitle.trim(),
+      executiveSummary: manualSummary.trim(),
+      executiveSummaryAr: manualSummary.trim(),
+      focusAngle: 'manual',
+      tone: 'manual',
+      chapters: validChapters.map((c, i) => ({
+        ...c,
+        id: c.id || `ch-${i}-${Date.now()}`,
+        chapterNumber: i + 1,
+        narrative: c.narrative || '',
+        narrativeAr: c.narrativeAr || c.narrative || '',
+        chartData: (c.chartData && c.chartData.length > 0) ? c.chartData : undefined,
+        xAxis: 'name',
+        yAxis: 'value',
+        insights: (c.insights && c.insights.some(s => s.trim())) ? c.insights : undefined,
+        insightsAr: (c.insightsAr && c.insightsAr.some(s => s.trim())) ? c.insightsAr : undefined,
+        takeaway: c.takeaway || '',
+        takeawayAr: c.takeawayAr || c.takeaway || '',
+      })),
+      recommendations: [],
+      recommendationsAr: [],
+      generatedAt: now,
+      author: user?.name || 'Manual Builder',
+      modelUsed: undefined,
+      durationMs: undefined,
+      qualityScore: undefined,
+    };
+    saveDataStory(story);
+    setActiveStory(story);
+    toast({
+      title: isAr ? 'تم حفظ القصة اليدوية' : 'Manual Story Saved',
+      description: isAr ? 'تم إنشاء التقرير اليدوي مع الرسوم البيانية المخصصة.' : 'Manual narrative report built with custom charts.',
+      variant: 'success',
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header Banner */}
@@ -406,7 +521,40 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
       {/* Main Studio View */}
       {activeTab === 'studio' ? (
         <div className="space-y-6">
+          {/* Basis Toggle: AI-generated vs fully manual composition */}
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-[#0f62fe]" />
+                <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
+                  {isAr ? 'طريقة إنشاء القصة' : 'Story Source'}
+                </h3>
+              </div>
+              <div className="flex items-center bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-0.5">
+                <button
+                  onClick={() => setStoryBasis('ai')}
+                  className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
+                    storyBasis === 'ai' ? 'bg-[#8a3ffc] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'توليد بالذكاء الاصطناعي' : 'AI-Generated'}</span>
+                </button>
+                <button
+                  onClick={() => setStoryBasis('manual')}
+                  className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
+                    storyBasis === 'manual' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                  }`}
+                >
+                  <PenLine className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'التوليد اليدوي' : 'Manual Composition'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* AI Generator Configuration Card */}
+          {storyBasis === 'ai' && (
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 sm:p-5">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--cds-border-subtle)]">
               <div className="flex items-center gap-2">
@@ -548,6 +696,186 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               </div>
             )}
           </div>
+          )}
+
+          {/* Manual Story Builder Card */}
+          {storyBasis === 'manual' && (
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--cds-border-subtle)]">
+                <div className="flex items-center gap-2">
+                  <PenLine className="w-4 h-4 text-[#0f62fe]" />
+                  <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
+                    {isAr ? 'كتابة التقرير يدويًا (بدون ذكاء اصطناعي)' : 'Manual Narrative Composer'}
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-[var(--cds-text-03)]">
+                  Dataset: <strong className="text-[var(--cds-text-01)]">{activeDataset?.name}</strong>
+                </span>
+              </div>
+
+              {/* Story header fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
+                    {isAr ? 'عنوان التقرير' : 'Report Title'}
+                  </label>
+                  <input
+                    value={manualTitle}
+                    onChange={e => setManualTitle(e.target.value)}
+                    placeholder={isAr ? 'مثال: تحليل الإيرادات الربع سنوية' : 'e.g. Quarterly Revenue Analysis'}
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
+                    {isAr ? 'العنوان الفرعي' : 'Subtitle'}
+                  </label>
+                  <input
+                    value={manualSubtitle}
+                    onChange={e => setManualSubtitle(e.target.value)}
+                    placeholder={isAr ? 'سطر تعريفي مختصر' : 'Short descriptive tagline'}
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider mb-1">
+                    {isAr ? 'الملخص التنفيذي' : 'Executive Summary'}
+                  </label>
+                  <textarea
+                    value={manualSummary}
+                    onChange={e => setManualSummary(e.target.value)}
+                    rows={3}
+                    placeholder={isAr ? 'خلاصة تحليلية موجزة أعلى التقرير...' : 'Concise analytical summary shown at the top of the report...'}
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Chapters editor */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#33b1ff]">
+                    {isAr ? `الفصول (${manualChapters.length})` : `Chapters (${manualChapters.length})`}
+                  </span>
+                  <button
+                    onClick={addManualChapter}
+                    className="carbon-btn-secondary text-[11px] font-mono font-bold gap-1"
+                  >
+                    <Layers className="w-3 h-3" />
+                    <span>{isAr ? 'إضافة فصل' : 'Add chapter'}</span>
+                  </button>
+                </div>
+
+                {manualChapters.map((ch, idx) => (
+                  <div key={ch.id || idx} className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 bg-[#0f62fe] text-white font-mono text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                      {manualChapters.length > 1 && (
+                        <button
+                          onClick={() => removeManualChapter(idx)}
+                          className="text-[10px] font-mono text-[#ff8389] hover:underline"
+                        >
+                          {isAr ? 'حذف الفصل' : 'Remove chapter'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        value={isAr ? ch.titleAr : ch.title}
+                        onChange={e => updateManualChapter(idx, isAr ? { titleAr: e.target.value } : { title: e.target.value })}
+                        placeholder={isAr ? 'عنوان الفصل' : 'Chapter title'}
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                      />
+                      <select
+                        value={ch.chartType || 'bar'}
+                        onChange={e => updateManualChapter(idx, { chartType: e.target.value as DataStoryChapter['chartType'] })}
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 font-mono focus:border-[#0f62fe] focus:outline-none"
+                      >
+                        <option value="bar">{isAr ? 'رسم أعمدة' : 'Bar chart'}</option>
+                        <option value="line">{isAr ? 'رسم خطي' : 'Line chart'}</option>
+                        <option value="area">{isAr ? 'رسم منطقة' : 'Area chart'}</option>
+                        <option value="pie">{isAr ? 'رسم دائري' : 'Pie chart'}</option>
+                      </select>
+                      <input
+                        value={isAr ? (ch.takeawayAr || '') : (ch.takeaway || '')}
+                        onChange={e => updateManualChapter(idx, isAr ? { takeawayAr: e.target.value } : { takeaway: e.target.value })}
+                        placeholder={isAr ? 'الخلاصة الإجرائية' : 'Key takeaway'}
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                      />
+                    </div>
+                    <textarea
+                      value={isAr ? (ch.narrativeAr || '') : (ch.narrative || '')}
+                      onChange={e => updateManualChapter(idx, isAr ? { narrativeAr: e.target.value } : { narrative: e.target.value })}
+                      rows={2}
+                      placeholder={isAr ? 'نص السرد التحليلي لهذا الفصل...' : 'Analytical narrative text for this chapter...'}
+                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                    />
+
+                    {/* Chart data rows */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--cds-text-03)]">
+                          {isAr ? 'بيانات الرسم البياني (اسم × قيمة)' : 'Chart data (name × value)'}
+                        </span>
+                        <button
+                          onClick={() => addChapterChartDataRow(idx)}
+                          className="text-[10px] font-mono text-[#33b1ff] hover:underline"
+                        >
+                          + {isAr ? 'صف' : 'Row'}
+                        </button>
+                      </div>
+                      {(ch.chartData || []).map((row, ri) => (
+                        <div key={ri} className="flex items-center gap-1.5">
+                          <input
+                            value={String(row?.name ?? '')}
+                            onChange={e => setChapterChartDataRow(idx, ri, 'name', e.target.value)}
+                            placeholder={isAr ? 'التسمية' : 'Label'}
+                            className="flex-1 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
+                          />
+                          <input
+                            type="number"
+                            value={String(row?.value ?? '')}
+                            onChange={e => setChapterChartDataRow(idx, ri, 'value', e.target.value)}
+                            placeholder="0"
+                            className="w-24 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 font-mono focus:border-[#0f62fe] focus:outline-none"
+                          />
+                          <button
+                            onClick={() => removeChapterChartDataRow(idx, ri)}
+                            className="text-[var(--cds-text-03)] hover:text-[#ff8389] px-1"
+                            title={isAr ? 'حذف الصف' : 'Delete row'}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Insights (one per line) */}
+                    <textarea
+                      value={(isAr ? (ch.insightsAr || []) : (ch.insights || [])).join('\n')}
+                      onChange={e => updateManualChapter(idx, isAr
+                        ? { insightsAr: e.target.value.split('\n').filter(s => s.trim() !== '') }
+                        : { insights: e.target.value.split('\n').filter(s => s.trim() !== '') })}
+                      rows={2}
+                      placeholder={isAr ? 'رؤى تحليلية، واحدة لكل سطر...' : 'Analytical insights, one per line...'}
+                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Save trigger */}
+              <div className="flex justify-end pt-2 border-t border-[var(--cds-border-subtle)]">
+                <button
+                  onClick={handleSaveManualStory}
+                  className="carbon-btn-primary text-xs font-mono font-bold uppercase tracking-wider gap-2 px-5 py-2.5 shadow-md"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <span>{isAr ? 'حفظ القصة اليدوية وعرضها' : 'Save Manual Story & Preview'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Rendered Story View */}
           {activeStory ? (

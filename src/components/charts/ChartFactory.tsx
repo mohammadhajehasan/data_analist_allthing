@@ -363,7 +363,9 @@ const MAP_SCOPE_RANGES: Record<string, { lat: [number, number]; lon: [number, nu
   americas: { lat: [-56, 72], lon: [-168, -34] },
 };
 
-/** Loader that fetches a country bounding box from Nominatim for the drill-down scope */
+/** Loader that fetches a country bounding box for the drill-down scope.
+ Tries Nominatim first, then BigDataCloud free country-info API as a fallback
+ (Nominatim can be blocked by CORS proxies / corporate networks). */
 const CountryFocusLoader: React.FC<{
   iso3: string;
   isAr: boolean;
@@ -372,35 +374,75 @@ const CountryFocusLoader: React.FC<{
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-    fetch(`https://nominatim.openstreetmap.org/search?countrycodes=${iso2FromIso3(iso3) || ''}&format=json&limit=1`, {
-      signal: controller.signal,
-    })
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((results: any[]) => {
-        clearTimeout(timeout);
-        if (cancelled) return;
-        const bbox = results?.[0]?.boundingbox; // [south, north, west, east] strings
-        if (Array.isArray(bbox) && bbox.length === 4) {
-          onLoaded([
-            parseFloat(bbox[2]),
-            parseFloat(bbox[0]),
-            parseFloat(bbox[3]),
-            parseFloat(bbox[1]),
-          ]);
-        } else {
-          setFailed(true);
-        }
-      })
-      .catch(() => {
-        clearTimeout(timeout);
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-      controller.abort();
+    const timeoutFor = (ms: number) => {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), ms);
+      return { ac, clear: () => clearTimeout(t) };
     };
+    const accept = (bbox: [number, number, number, number] | null) => {
+      if (!cancelled && bbox) onLoaded(bbox);
+      else if (!cancelled) setFailed(true);
+    };
+
+    // 1) Nominatim
+    {
+      const { ac, clear } = timeoutFor(6000);
+      fetch(`https://nominatim.openstreetmap.org/search?countrycodes=${iso2FromIso3(iso3) || ''}&format=json&limit=1`, {
+        signal: ac.signal,
+      })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((results: any[]) => {
+          clear();
+          const bbox = results?.[0]?.boundingbox; // [south, north, west, east] strings
+          if (Array.isArray(bbox) && bbox.length === 4) {
+            accept([
+              parseFloat(bbox[2]),
+              parseFloat(bbox[0]),
+              parseFloat(bbox[3]),
+              parseFloat(bbox[1]),
+            ]);
+          } else {
+            // fall through to BigDataCloud
+            const bdc = timeoutFor(6000);
+            fetch(`https://api.bigdatacloud.net/data/country-info?code=${iso2FromIso3(iso3) || iso3}&localityLanguage=en`, {
+              signal: bdc.ac.signal,
+            })
+              .then(r2 => (r2.ok ? r2.json() : Promise.reject(new Error(String(r2.status)))))
+              .then((info: any) => {
+                bdc.clear();
+                const bb = (info?.bounds?.south && info?.bounds?.west && info?.bounds?.east && info?.bounds?.north)
+                  ? [info.bounds.west, info.bounds.south, info.bounds.east, info.bounds.north] as [number, number, number, number]
+                  : null;
+                accept(bb);
+              })
+              .catch(() => {
+                bdc.clear();
+                accept(null);
+              });
+          }
+        })
+        .catch(() => {
+          clear();
+          // fall through to BigDataCloud
+          const bdc = timeoutFor(6000);
+          fetch(`https://api.bigdatacloud.net/data/country-info?code=${iso2FromIso3(iso3) || iso3}&localityLanguage=en`, {
+            signal: bdc.ac.signal,
+          })
+            .then(r2 => (r2.ok ? r2.json() : Promise.reject(new Error(String(r2.status)))))
+            .then((info: any) => {
+              bdc.clear();
+              const bb = (info?.bounds?.south && info?.bounds?.west && info?.bounds?.east && info?.bounds?.north)
+                ? [info.bounds.west, info.bounds.south, info.bounds.east, info.bounds.north] as [number, number, number, number]
+                : null;
+              accept(bb);
+            })
+            .catch(() => {
+              bdc.clear();
+              accept(null);
+            });
+        });
+    }
+    return () => { cancelled = true; };
   }, [iso3, onLoaded]);
   if (failed) {
     return (

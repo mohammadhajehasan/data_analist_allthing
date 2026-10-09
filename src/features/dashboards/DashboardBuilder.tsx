@@ -30,7 +30,7 @@ import { ShareToGroupModal } from '../../components/discussions/ShareToGroupModa
 import { captureElementToCanvas } from '../../utils/dashboardExport';
 import { FileUp, FileJson, Trash2 as TrashIcon } from 'lucide-react';
 import { parseGeoJsonSource } from '../../utils/geoJson';
-import { ALL_COUNTRIES } from '../../data/allCountries';
+import { ALL_COUNTRIES, CONTINENT_FILTERS, ContinentKey } from '../../data/allCountries';
 import {
   LayoutDashboard,
   Plus,
@@ -139,6 +139,7 @@ export const DashboardBuilder: React.FC = () => {
   const [geoMode, setGeoMode] = useState<'choropleth' | 'markers'>('choropleth');
   const [mapScope, setMapScope] = useState<'world' | 'middleEast' | 'europe' | 'africa' | 'asia' | 'americas' | 'country'>('world');
   const [focusCountry, setFocusCountry] = useState('');
+  const [focusContinent, setFocusContinent] = useState<ContinentKey | 'all'>('all');
   const [geoLocationColumn, setGeoLocationColumn] = useState('');
   // Uploaded GeoJSON boundaries for sub-region drawing (governorates/cities)
   const [geoJsonName, setGeoJsonName] = useState('');
@@ -231,6 +232,7 @@ export const DashboardBuilder: React.FC = () => {
     setGeoMode('choropleth');
     setMapScope('world');
     setFocusCountry('');
+    setFocusContinent('all');
     setGeoLocationColumn('');
     setGeoJsonName('');
     setGeoJsonData('');
@@ -1676,6 +1678,28 @@ export const DashboardBuilder: React.FC = () => {
                           {geoMode === 'choropleth' && mapScope === 'country' && (
                             <div>
                               <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[11px]">
+                                {isAr ? 'فلترة حسب المنطقة أو القارة' : 'Filter by region / continent'}
+                              </label>
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {CONTINENT_FILTERS.map(f => (
+                                  <button
+                                    key={f.key}
+                                    type="button"
+                                    onClick={() => {
+                                      setFocusContinent(f.key);
+                                      setFocusCountry('');
+                                    }}
+                                    className={`px-2 py-1 text-[10px] font-mono font-bold border transition-colors ${
+                                      focusContinent === f.key
+                                        ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                        : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
+                                    }`}
+                                  >
+                                    {isAr ? f.labelAr : f.labelEn}
+                                  </button>
+                                ))}
+                              </div>
+                              <label className="block text-[var(--cds-text-02)] font-bold mb-1 text-[11px]">
                                 {isAr ? 'الدولة المستهدفة' : 'Focused country'}
                               </label>
                               <select
@@ -1683,8 +1707,15 @@ export const DashboardBuilder: React.FC = () => {
                                 onChange={e => setFocusCountry(e.target.value)}
                                 className="carbon-input w-full text-xs font-mono"
                               >
-                                <option value="">{isAr ? '— اختر الدولة —' : '— pick country —'}</option>
-                                {GEO_COUNTRY_CODES.map(code => (
+                                <option value="">
+                                  {isAr
+                                    ? `— اختر الدولة من ${CONTINENT_FILTERS.find(f => f.key === focusContinent)?.labelAr || 'القائمة'} —`
+                                    : `— pick a country from ${CONTINENT_FILTERS.find(f => f.key === focusContinent)?.labelEn || 'the list'} —`}
+                                </option>
+                                {(focusContinent === 'all'
+                                  ? GEO_COUNTRY_CODES
+                                  : GEO_COUNTRY_CODES.filter(c => c.continent === focusContinent)
+                                ).map(code => (
                                   <option key={code.iso3} value={code.iso3}>
                                     {isAr ? code.labelAr : code.labelEn}
                                   </option>
