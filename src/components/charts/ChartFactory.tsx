@@ -467,6 +467,15 @@ export const ChartFactory: React.FC<{
   activeTheme?: string;
 }> = ({ widget, dataset, customData, activeTheme }) => {
   const { language, theme } = useApp();
+  // #(live-verified) Crash when dataset is undefined (e.g., a chart widget in the
+  // Slides tool references a deleted dataset) — instantly broke the app root.
+  if (!dataset) {
+    return (
+      <div className="h-full flex items-center justify-center text-[11px] font-mono text-[var(--cds-text-03)] text-center px-3">
+        {language === 'ar' ? 'مجموعة البيانات المرتبطة بهذا الرسم غير متوفرة — حدّث مصدر الرسم.' : 'The dataset linked to this chart is unavailable — update the chart source.'}
+      </div>
+    );
+  }
   // Uploaded GeoJSON sub-region boundaries (governorates/cities)
   const uploadedGj = useMemo(
     () => (widget.geoJson ? parseGeoJsonSource(widget.geoJson) : null),

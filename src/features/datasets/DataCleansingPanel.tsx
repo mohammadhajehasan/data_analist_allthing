@@ -355,7 +355,8 @@ Authority: IBM Carbon / AI Data Governance Officer
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Diagnostic Panel Details (Left/Top) */}
+        {/* Diagnostic Panel Details (Left/Top) — مخفي في وضع المخطط لأنه يأخذ الخلية بنفسه */}
+        {cleansingMode !== 'schema' && (
         <div className="lg:col-span-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 flex flex-col justify-between text-start">
           
           {/* Mode 1: Null values auto imputation */}
@@ -590,10 +591,11 @@ Authority: IBM Carbon / AI Data Governance Officer
             </div>
           )}
         </div>
+        )}
 
-        {/* Mode 5: Column Type Editor */}
+        {/* Mode 5: Column Type Editor — يأخذ العمود العريض نفسه (12 عمود) — يخفي لوحة الجودة في هذا الوضع لإزالة المساحة الفارغة */}
         {cleansingMode === 'schema' && (
-          <div className="space-y-4">
+          <div className="lg:col-span-12 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 space-y-4 text-start">
             <div className="space-y-1">
               <span className="text-[10px] font-mono font-bold text-[#be95ff] uppercase">
                 SCHEMA TYPE STUDIO
@@ -688,6 +690,7 @@ Authority: IBM Carbon / AI Data Governance Officer
         )}
 
         {/* Quality Score Diagnostics (Right/Bottom) */}
+        {cleansingMode !== 'schema' && (
         <div className="lg:col-span-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-4 flex flex-col justify-between space-y-4">
           <div className="space-y-3 text-start">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] block border-b border-[var(--cds-border-subtle)] pb-1.5">
@@ -740,6 +743,7 @@ Authority: IBM Carbon / AI Data Governance Officer
             </p>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

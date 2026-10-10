@@ -1269,7 +1269,7 @@ export const SlidesExportPanel: React.FC = () => {
               onPointerLeave={handleAnnotationPointerUp}
               onClick={(e) => { if (penArmed) e.stopPropagation(); }}
             >
-              <svg className="w-full h-full" aria-hidden>
+              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
                 {strokesFor.map((s, i) => (
                   <polyline
                     key={i}
