@@ -63,7 +63,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
     {
       nameAr: 'مؤشرات المبيعات والمنتجات (Sales Trends CSV)',
       nameEn: 'Global Sales Trends & Profit CSV',
-      url: 'https://raw.githubusercontent.com/datasets/gdp/master/data/gdp.csv',
+      url: 'https://raw.githack.com/datasets/gdp/master/data/gdp.csv',
       format: 'csv' as DatasetFormat,
       descAr: 'بيانات اقتصادية ومؤشرات سنوية موثقة من مستودعات البيانات المفتوحة.',
       descEn: 'Public annual macroeconomic dataset for time-series and correlation analysis.',
@@ -71,7 +71,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
     {
       nameAr: 'مؤشرات التسويق وسلوك العملاء (Customer Churn CSV)',
       nameEn: 'Customer Demographics & Churn CSV',
-      url: 'https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv',
+      url: 'https://raw.githack.com/mwaskom/seaborn-data/master/iris.csv',
       format: 'csv' as DatasetFormat,
       descAr: 'مجموعة بيانات شهيرة تتضمن قياسات متعددة مناسبة لتصنيف ونمذجة الانحدار.',
       descEn: 'Classic multivariate benchmark dataset for classification and regression.',
@@ -79,7 +79,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
     {
       nameAr: 'بيانات الرحلات ومسافات الطيران (Flights Data CSV)',
       nameEn: 'Airline Flights & Delays CSV',
-      url: 'https://raw.githubusercontent.com/mwaskom/seaborn-data/master/flights.csv',
+      url: 'https://raw.githack.com/mwaskom/seaborn-data/master/flights.csv',
       format: 'csv' as DatasetFormat,
       descAr: 'مجموعة بيانات الركاب والشهور لتحليل الاتجاهات والموسمية.',
       descEn: 'Monthly airline passenger count time series dataset.',
@@ -133,7 +133,7 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
       // Validate URL syntax
       new URL(url);
 
-      // Fetch the remote payload
+      // جلب الخصائص يمر من الخادم (proxy) — لأن المتصفح يحجب معظم الروابط الخارجية بـ CORS
       let customHeaders: Record<string, string> = {};
       if (urlHeaders.trim()) {
         try {
@@ -142,20 +142,18 @@ export const UrlAndFileImportModule: React.FC<UrlAndFileImportModuleProps> = ({
           // Ignore invalid header JSON
         }
       }
-
-      const response = await fetch(url, {
-        headers: customHeaders,
+      const { getStoredToken } = await import('../../features/auth/LoginPage');
+      const proxyResponse = await fetch('/api/proxy/fetch-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}) },
+        body: JSON.stringify({ url, headers: customHeaders }),
       });
-
-      if (!response.ok) {
-        throw new Error(
-          isAr
-            ? `فشل جلب الرابط (رمز الاستجابة: ${response.status} ${response.statusText})`
-            : `HTTP error ${response.status}: ${response.statusText}`
-        );
+      const proxyData = await proxyResponse.json();
+      if (!proxyResponse.ok) {
+        throw new Error(proxyData?.error || (isAr ? 'تعذر جلب البيانات عبر الخادم.' : 'Server-side fetch failed.'));
       }
 
-      const text = await response.text();
+      const text = proxyData.text as string;
       let parsedRows: any[] = [];
       let format: DatasetFormat = 'csv';
 

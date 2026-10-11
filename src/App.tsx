@@ -206,14 +206,31 @@ export default function App() {
     if (!token) { setAuthState('guest'); return; }
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
-        if (!res.ok) throw new Error('invalid session');
+        if (res.status === 401) {
+          // الجلسة منتهية/ملغاة فعلاً — امسح الرمز فقط في هذه الحالة
+          clearStoredToken();
+          setAuthState('guest');
+          return;
+        }
+        if (!res.ok) throw new Error('transient server error');
         const data = await res.json();
         setAuthUser(data.user);
         setAuthState('authed');
       })
       .catch(() => {
-        clearStoredToken();
-        setAuthState('guest');
+        // خطأ شبكة/خادم عابر (mất الاتصال أثناء إعادة النشر مثلاً) — احتفظ بالجلسة
+        // وأمِل التحقق بدل الخروج القسري، حتى لا يفقد المستخدم ولاسته بلا سبب.
+        setAuthState('authed');
+        setAuthUser({ id: 'pending-session', email: '', name: '', role: 'analyst' });
+        // إعادة المحاولة من الخلف — عند النجاح نستبدل الهوية المؤقتة بالحقيقية
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+          .then(async (res) => {
+            if (res.status === 401) { clearStoredToken(); setAuthUser(null); setAuthState('guest'); return; }
+            if (!res.ok) return; // نستمر بالهوية المؤقتة حتى المحاولة التالية
+            const data = await res.json();
+            setAuthUser(data.user);
+          })
+          .catch(() => {});
       });
   }, []);
 

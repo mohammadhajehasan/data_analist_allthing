@@ -65,6 +65,10 @@ interface AppContextType {
    addWidgetToDashboard: (dashboardId: string, widget: WidgetConfig) => void;
    updateWidgetInDashboard: (dashboardId: string, widget: WidgetConfig) => void;
    deleteWidgetFromDashboard: (dashboardId: string, widgetId: string) => void;
+   // الحفظ التلقائي للوحات (شبكة أمان كل 30 ثانية)
+   dashboardAutosave: { paused: boolean; lastSavedAt: string | null; lastSavedCount: number };
+   setDashboardAutosavePaused: (paused: boolean) => void;
+   saveModifiedDashboardsNow: (explicit?: Dashboard[]) => number;
    chatSessions: ChatSession[];
    activeChatSession: ChatSession | null;
    addChatMessage: (sessionId: string, message: any) => void;
@@ -434,6 +438,47 @@ export const AppProvider: React.FC<{
     } catch { /* noop */ }
   }, [authHeaders]);
 
+  // ------------------------------------------------------------
+  // الحفظ التلقائي كل 30 ثانية (شبكة أمان ضد فقدان البيانات)
+  // يرفع للخادم أي لوحة عدّل آخر تحديث لها بعد آخر نبضة حفظ.
+  // ------------------------------------------------------------
+  const [dashboardAutosaveState, setDashboardAutosaveState] = useState<{ paused: boolean; lastSavedAt: string | null; lastSavedCount: number }>({ paused: false, lastSavedAt: null, lastSavedCount: 0 });
+  const autosavePausedRef = useRef(false);
+  useEffect(() => { autosavePausedRef.current = dashboardAutosaveState.paused; }, [dashboardAutosaveState.paused]);
+
+  const setDashboardAutosavePaused = useCallback((paused: boolean) => {
+    setDashboardAutosaveState(prev => ({ ...prev, paused }));
+  }, []);
+
+  // خط الأساس لآخر نبضة حفظ — يتجدد عند كل دخول حساب وتحميل اللوحات من الخادم
+  const lastAutosavePulseRef = useRef<number>(Date.now());
+
+  const saveModifiedDashboardsNow = useCallback((explicit: Dashboard[] | null = null): number => {
+    if (!authUserRef.current || autosavePausedRef.current) return 0;
+    const lastPulse = lastAutosavePulseRef.current;
+    const targets = explicit
+      ? explicit
+      : dashboardsRef.current.filter(d => new Date(d.updatedAt).getTime() > lastPulse);
+    if (targets.length === 0) return 0;
+    targets.forEach(d => syncDashboardToServer(d));
+    if (!explicit) {
+      lastAutosavePulseRef.current = Date.now();
+      setDashboardAutosaveState(prev => ({
+        ...prev,
+        lastSavedAt: new Date().toISOString(),
+        lastSavedCount: targets.length,
+      }));
+    }
+    return targets.length;
+  }, [syncDashboardToServer]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      saveModifiedDashboardsNow();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [saveModifiedDashboardsNow]);
+
   // حذف لوحة من الخادم (fire-and-forget)
   const deleteDashboardOnServer = useCallback((id: string) => {
     if (!authUserRef.current) return;
@@ -552,6 +597,16 @@ export const AppProvider: React.FC<{
 
   // اللوحات تبدأ فارغة دائماً — تُحمَّل خادمياً لكل مستخدم (خصوصية كاملة بين الحسابات)
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  // مرجع حي لقائمة اللوحات يستخدمه الحفظ التلقائي (تُعرَّف الحالة بعد كتلة الحفظ التلقائي)
+  const dashboardsRef = useRef<Dashboard[]>([]);
+  useEffect(() => { dashboardsRef.current = dashboards; }, [dashboards]);
+  // ضبط خط الأساس عند تحميل اللوحات من الخادم (حتى لا يرفع الحفظ التلقائي قوائم غير معدّلة)
+  useEffect(() => {
+    if (dashboards.length > 0) {
+      const latest = Math.max(...dashboards.map(d => new Date(d.updatedAt).getTime() || 0), 0);
+      lastAutosavePulseRef.current = Math.max(lastAutosavePulseRef.current, latest);
+    }
+  }, [dashboards.length === 0 ? 'empty' : (dashboards[0]?.id || '')]);
   const [activeDashboardId, setActiveDashboardId] = useState<string>('');
   const [reports, setReports] = useState<Report[]>([]);
   const [dataStories, setDataStories] = useState<DataStory[]>([]);
@@ -1502,11 +1557,14 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     setDashboards(prev =>
       prev.map(d => {
         if (d.id === dashboardId) {
-          return {
+          const next = {
             ...d,
             widgets: [...d.widgets, widget],
             updatedAt: new Date().toISOString(),
           };
+          // مزامنة خادمية هنا (بجوار التحديث نفسه) — وبدونها تُفقد الأداة عند تحديث الصفحة
+          syncDashboardToServer(next);
+          return next;
         }
         return d;
       })
@@ -1517,11 +1575,13 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     setDashboards(prev =>
       prev.map(d => {
         if (d.id === dashboardId) {
-          return {
+          const next = {
             ...d,
             widgets: d.widgets.map(w => (w.id === widget.id ? widget : w)),
             updatedAt: new Date().toISOString(),
           };
+          syncDashboardToServer(next);
+          return next;
         }
         return d;
       })
@@ -1532,11 +1592,13 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     setDashboards(prev =>
       prev.map(d => {
         if (d.id === dashboardId) {
-          return {
+          const next = {
             ...d,
             widgets: d.widgets.filter(w => w.id !== widgetId),
             updatedAt: new Date().toISOString(),
           };
+          syncDashboardToServer(next);
+          return next;
         }
         return d;
       })
@@ -1726,6 +1788,9 @@ const refreshOllamaModels = async (): Promise<string[]> => {
         addWidgetToDashboard,
         updateWidgetInDashboard,
         deleteWidgetFromDashboard,
+        dashboardAutosave: dashboardAutosaveState,
+        setDashboardAutosavePaused,
+        saveModifiedDashboardsNow,
         chatSessions,
         activeChatSession,
         addChatMessage,

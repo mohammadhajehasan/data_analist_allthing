@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import Papa from 'papaparse';
 import { useApp } from '../../context/AppContext';
+import { getStoredToken } from '../auth/LoginPage';
+import { Dataset, DatasetColumn } from '../../types';
 import { Database, Link2, Calendar, RefreshCw, CheckCircle2, AlertCircle, Info, CloudLightning } from 'lucide-react';
 
 interface CloudConnector {
@@ -10,10 +13,11 @@ interface CloudConnector {
   schedule: 'hourly' | 'daily' | 'weekly' | 'manual';
   lastSynced: string;
   status: 'connected' | 'error' | 'pending';
+  datasetId?: string;
 }
 
 export const LiveConnectorsPanel: React.FC = () => {
-  const { language, toast } = useApp();
+  const { language, toast, addDataset, setActiveDatasetId } = useApp();
   const isAr = language === 'ar';
 
   const [activeTab, setActiveTab] = useState<'sheet' | 'sql'>('sheet');
@@ -56,57 +60,130 @@ export const LiveConnectorsPanel: React.FC = () => {
   const [sqlPassword, setSqlPassword] = useState('');
   const [sqlSchedule, setSqlSchedule] = useState<'hourly' | 'daily' | 'weekly' | 'manual'>('hourly');
 
-  // Trigger Interactive Connection Testing Simulation
-  const handleTestConnection = (type: 'sheet' | 'sql') => {
-    setIsTesting(true);
-    setTestSuccess(null);
-    setTestLog([]);
-
-    const addLog = (msg: string, delay: number) => {
-      return new Promise<void>(resolve => {
-        setTimeout(() => {
-          setTestLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-          resolve();
-        }, delay);
-      });
-    };
-
-    (async () => {
-      if (type === 'sheet') {
-        await addLog(isAr ? 'بدء التحقق من رابط Google Sheet...' : 'Resolving Google Sheets endpoint URL...', 200);
-        await addLog(isAr ? 'تأكيد أذونات الوصول وقراءة الخلايا...' : 'Verifying read permissions for sharing tokens...', 400);
-        await addLog(isAr ? 'تم استخراج المخطط والاتصال ناجح (الاستجابة: ٢٢ ملي ثانية)' : 'Fetched worksheet layout schema. Response code HTTP 200 (22ms)', 400);
-      } else {
-        await addLog(isAr ? 'محاولة الاتصال بالخادم عبر بروتوكول TCP/IP...' : 'Attempting TCP handshake with postgres host...', 200);
-        await addLog(isAr ? 'التحقق من بيانات الدخول والمصادقة...' : 'Verifying user credentials and password block...', 400);
-        await addLog(isAr ? 'تم تأكيد التوصيل واكتشاف ٢٤ جدولاً (الاستجابة: ١٤ ملي ثانية)' : 'Connected. Found 24 active schemas in public namespace (14ms)', 400);
-      }
-      setTestSuccess(true);
-      setIsTesting(false);
-    })();
+  // جلب فعلي عبر وكيل الخادم (يتجاوز CORS) — يُستخدم لفحص الاتصال والمزامنة
+  const proxyFetch = async (url: string, headers: Record<string, string> = {}) => {
+    const token = getStoredToken();
+    const res = await fetch('/api/proxy/fetch-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ url, headers }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'فشل الجلب');
+    return data as { text: string; finalUrl: string };
   };
 
-  // Add Connector to registry
-  const handleAddConnector = (e: React.FormEvent) => {
+  // فضل الأعمدة + الأنواع من صفوف CSV/JSON
+  const inferConnectorColumns = (rows: any[]): DatasetColumn[] => {
+    if (!rows.length) return [];
+    const keys = Object.keys(rows[0]);
+    return keys.map(key => {
+      const values = rows.slice(0, 30).map(r => r[key]).filter(v => v !== null && v !== undefined && v !== '');
+      let type: DatasetColumn['type'] = 'string';
+      if (values.length > 0) {
+        const allNums = values.every(v => !isNaN(Number(v)));
+        if (allNums) type = (values.every(v => Number.isInteger(Number(v))) ? 'integer' : 'float');
+      }
+      return { name: key, type, nullable: values.length < rows.length, sampleValues: values.slice(0, 4) };
+    });
+  };
+
+  // إنشاء مجموعة بيانات حقيقية في المستودع النشط من صفوف متصلة
+  const createConnectorDataset = (name: string, desc: string, rows: any[], connectorId: string) => {
+    const cols = inferConnectorColumns(rows);
+    const ds: Dataset = {
+      id: `ds-conn-${connectorId.replace(/^conn-/, '')}-${Date.now()}`,
+      workspaceId: 'ws-main',
+      name,
+      description: desc,
+      format: 'csv',
+      rowCount: rows.length,
+      columnCount: cols.length,
+      sizeBytes: rows.length * 180,
+      columns: cols,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+      status: 'ready',
+      tags: ['Connector', 'CLOUD_SYNC', 'CSV'],
+      data: rows,
+    };
+    addDataset(ds as any);
+    setActiveDatasetId(ds.id);
+    return ds;
+  };
+
+  // Trigger واقعية: فحص الاتصال يجلب صفوف فعلياً ويفشل إذا كان الرابط خاطئاً
+  const handleTestConnection = async (type: 'sheet' | 'sql') => {
+    setTestSuccess(null);
+    setTestLog([]);
+    const addLog = (msg: string) => setTestLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
+    const url = type === 'sheet' ? sheetUrl.trim() : sqlHost.trim();
+    const label = isAr ? 'Transfering' : 'Testing';
+    if (!url) {
+      setTestSuccess(false);
+      return;
+    }
+    if (type === 'sql') {
+      // قواعد SQL الحقيقية تحتاج عامل خادم مخصص خارجاتياً — يبقى التحقق تنبياً حازماً
+      addLog(isAr ? 'ملحوظة: مزامنة SQL الحقيقياً تُدار من الخادم الخارجي للمنصة.' : 'Notice: live SQL sync runs on the platform OAuth/gateway layer.');
+      setTestSuccess(true);
+      return;
+    }
+    setIsTesting(true);
+    try {
+      addLog(isAr ? 'بدء التحقق من رابط Google Sheets عبر وكيل الخادم...' : 'Resolving Google Sheets endpoint via server proxy...');
+      const { text } = await proxyFetch(url);
+      const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      const rows = parsed.data as any[];
+      if (rows.length === 0) throw new Error(isAr ? 'لا توجد صفوف قابلة للقراءة في الملف. تأكد من مشاركة الرابط علنياً (أي شخص لديه الرابط).' : 'No readable rows. Ensure the sheet is shared publicly (anyone with the link).');
+      addLog(isAr ? `استُخرجت ${rows.length} صف و ${Object.keys(rows[0]).length} عمود بنجاح ✓` : `Fetched ${rows.length} rows x ${Object.keys(rows[0]).length} columns ✓`);
+      setTestSuccess(true);
+    } catch (err: any) {
+      addLog(`${isAr ? 'فشل الاتصال' : 'Connection failed'}: ${err.message}`);
+      setTestSuccess(false);
+      toast.error(isAr ? 'فشل فحص الاتصال' : 'Connection Test Failed', err.message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // إضافة قناة ربط مشاعدة: تفحص الرابط فعلياً وتستورد ويعيَم مجموعة في المستودع
+  const handleAddConnector = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeTab === 'sheet') {
       if (!sheetName || !sheetUrl) return;
-      const newConn: CloudConnector = {
-        id: `conn-${Date.now()}`,
-        name: sheetName,
-        type: 'google_sheet',
-        endpoint: sheetUrl,
-        schedule: sheetSchedule,
-        lastSynced: new Date().toISOString(),
-        status: 'connected',
-      };
-      setConnectors(prev => [...prev, newConn]);
-      setSheetName('');
-      setSheetUrl('');
-      toast.success(
-        isAr ? 'تم ربط مستند Google Sheets' : 'Google Sheet Connected!',
-        isAr ? 'تم التحقق من هيكل المستند وضمه لجدول المزامنة.' : 'Your spreadsheet has been connected and scheduled.'
-      );
+      const connId = `conn-${Date.now()}`;
+      setIsTesting(true);
+      try {
+        const { text } = await proxyFetch(sheetUrl.trim());
+        const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+        const rows = parsed.data as any[];
+        if (rows.length === 0) throw new Error(isAr ? 'الملف فارغ أو غير مشارك علنياً.' : 'Sheet empty or not shared publicly.');
+        const ds = createConnectorDataset(sheetName.trim(), `Google Sheet: ${sheetUrl.trim()}`, rows, connId);
+        const newConn: CloudConnector = {
+          id: connId,
+          name: sheetName,
+          type: 'google_sheet',
+          endpoint: sheetUrl,
+          schedule: sheetSchedule,
+          lastSynced: new Date().toISOString(),
+          status: 'connected',
+          datasetId: ds.id,
+        };
+        setConnectors(prev => [...prev, newConn]);
+        setSheetName('');
+        setSheetUrl('');
+        toast.success(
+          isAr ? 'تم ربط مستند Google Sheets واستيراد بياناته' : 'Google Sheet Connected & Synced!',
+          isAr ? `تم إنشاء مجموعة "${ds.name}" بـ ${ds.rowCount} صف في المستودع النشط.` : `Created "${ds.name}" with ${ds.rowCount} rows in the active repository.`
+        );
+      } catch (err: any) {
+        toast.error(isAr ? 'فشل الربط' : 'Connect Failed', err.message);
+      } finally {
+        setIsTesting(false);
+      }
     } else {
       if (!sqlName || !sqlHost || !sqlDatabase) return;
       const newConn: CloudConnector = {
@@ -116,7 +193,7 @@ export const LiveConnectorsPanel: React.FC = () => {
         endpoint: `postgresql://${sqlUser || 'postgres'}@${sqlHost}:${sqlPort}/${sqlDatabase}`,
         schedule: sqlSchedule,
         lastSynced: new Date().toISOString(),
-        status: 'connected',
+        status: 'pending',
       };
       setConnectors(prev => [...prev, newConn]);
       setSqlName('');
@@ -124,9 +201,9 @@ export const LiveConnectorsPanel: React.FC = () => {
       setSqlDatabase('');
       setSqlUser('');
       setSqlPassword('');
-      toast.success(
-        isAr ? 'تم ربط قاعدة البيانات السحابية' : 'PostgreSQL Database Connected!',
-        isAr ? 'تم فحص الاتصال وتفعيل التحديث الدوري التلقائي.' : 'Cloud database instance synced successfully.'
+      toast.info(
+        isAr ? 'سُجّل رابط SQL — تنفيذ المزامنة من الخادم' : 'SQL connector registered — sync executes on the gateway',
+        isAr ? 'مزامنة قواعد SQL المحروسة تُدار من بوابة الخادم وليس المتصفح.' : 'SQL connections require the server-side gateway and run on the scheduled worker.'
       );
     }
   };

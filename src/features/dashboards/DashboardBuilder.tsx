@@ -28,7 +28,7 @@ import { SlidesExportPanel } from './SlidesExportPanel';
 import { DataCinemaMode } from '../../components/dashboards/DataCinemaMode';
 import { ShareToGroupModal } from '../../components/discussions/ShareToGroupModal';
 import { captureElementToCanvas } from '../../utils/dashboardExport';
-import { FileUp, FileJson, Trash2 as TrashIcon } from 'lucide-react';
+import { FileUp, FileJson, Trash2 as TrashIcon, CloudUpload, Pause, Play } from 'lucide-react';
 import { parseGeoJsonSource } from '../../utils/geoJson';
 import { ALL_COUNTRIES, CONTINENT_FILTERS, ContinentKey } from '../../data/allCountries';
 import {
@@ -91,6 +91,9 @@ export const DashboardBuilder: React.FC = () => {
     addWidgetToDashboard,
     updateWidgetInDashboard,
     deleteWidgetFromDashboard,
+    dashboardAutosave,
+    setDashboardAutosavePaused,
+    saveModifiedDashboardsNow,
     layoutSettings,
     toast,
     language,
@@ -126,6 +129,16 @@ export const DashboardBuilder: React.FC = () => {
 
   // Advanced Tools Sub-Tabs State
   const [advancedToolTab, setAdvancedToolTab] = useState<'agent' | 'forecast' | 'audio' | 'slides'>('forecast');
+
+  // الحفظ التلقائي — مؤشر الحالة الأخير للحفظ (يُحدّث كل 30 ثانية)
+  const [autosaveTick, setAutosaveTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setAutosaveTick(v => v + 1), 10000);
+    return () => clearInterval(t);
+  }, []);
+  const autosaveLastSaved = dashboardAutosave.lastSavedAt
+    ? new Date(dashboardAutosave.lastSavedAt).toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null;
 
   // Form Fields
   const [widgetTitle, setWidgetTitle] = useState('');
@@ -742,6 +755,46 @@ export const DashboardBuilder: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* الحفظ التلقائي كل 30 ثانية — شبكة أمان ضد فقدان البيانات */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-2 border text-[11px] font-mono font-bold transition-colors ${
+              dashboardAutosave.paused
+                ? 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]'
+                : 'border-[#0f62fe]/40 bg-[#0f62fe]/5 text-[#0f62fe]'
+            }`}
+            title={autosaveLastSaved
+              ? (isAr ? `آخر حفظ تلقائي: ${autosaveLastSaved}` : `Last auto-save: ${autosaveLastSaved}`)
+              : (isAr ? 'لم يحدث حفظ تلقائي بعد' : 'No auto-save happened yet')
+            }
+          >
+            <CloudUpload className={`w-3.5 h-3.5 ${dashboardAutosave.paused ? 'text-[var(--cds-text-03)]' : 'text-[#0f62fe]'}`} />
+            <span>
+              {dashboardAutosave.paused
+                ? (isAr ? 'الحفظ التلقائي موقوف' : 'Auto-save paused')
+                : autosaveLastSaved
+                  ? (isAr ? `محفوظ تلقائياً ${autosaveLastSaved}` : `Auto-saved ${autosaveLastSaved}`)
+                  : (isAr ? 'حفظ تلقائي نشط' : 'Auto-save active')}
+            </span>
+          </div>
+          <button
+            onClick={() => saveModifiedDashboardsNow()}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#0f62fe] text-[var(--cds-text-01)] text-xs font-mono font-bold transition-colors shadow-xs"
+            title={isAr ? 'حفظ كل التغييرات غير المحفوظة الآن' : 'Save all unsaved changes now'}
+          >
+            <CloudUpload className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <span>{isAr ? 'حفظ الآن' : 'Save now'}</span>
+          </button>
+          <button
+            onClick={() => setDashboardAutosavePaused(!dashboardAutosave.paused)}
+            className={`flex items-center gap-1.5 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border text-xs font-mono font-bold transition-colors shadow-xs ${
+              dashboardAutosave.paused ? 'border-[#da1e28] text-[#da1e28]' : 'border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
+            }`}
+            title={dashboardAutosave.paused ? (isAr ? 'استئناف الحفظ التلقائي' : 'Resume auto-save') : (isAr ? 'إيقاف الحفظ التلقائي مؤقتاً' : 'Pause auto-save')}
+          >
+            {dashboardAutosave.paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            <span>{dashboardAutosave.paused ? (isAr ? 'استئناف' : 'Resume') : (isAr ? 'إيقاف مؤقت' : 'Pause')}</span>
+          </button>
+
           {/* Quick Zero-Upload CSV Ingestion */}
           <button
             onClick={() => setShowCsvModal(true)}
