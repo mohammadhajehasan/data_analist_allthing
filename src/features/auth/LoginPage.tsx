@@ -4,7 +4,18 @@
  * The first registered account automatically becomes admin (server-side rule).
  */
 import React, { useState } from 'react';
-import { Lock, Mail, User as UserIcon, LogIn, UserPlus, ShieldCheck, Database, BarChart3, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, LogIn, UserPlus, ShieldCheck, Database, BarChart3, Eye, EyeOff, Languages } from 'lucide-react';
+
+type LoginLanguage = 'ar' | 'en';
+
+/** Language preference — same localStorage key AppContext reads after login, so the choice carries over. */
+function readLoginLanguage(): LoginLanguage {
+  try {
+    const saved = localStorage.getItem('carbon_language');
+    if (saved === 'ar' || saved === 'en') return saved;
+  } catch { /* noop */ }
+  return 'ar';
+}
 
 interface LoginPageProps {
   onAuthSuccess: (user: { id: string; email: string; name: string; role: string }) => void;
@@ -20,7 +31,13 @@ export function clearStoredToken(): void {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
-  const isAr = true; // platform default is Arabic; header language toggle applies after login
+  const [lang, setLang] = useState<LoginLanguage>(readLoginLanguage);
+  const isAr = lang === 'ar';
+  const toggleLang = () => {
+    const next: LoginLanguage = lang === 'ar' ? 'en' : 'ar';
+    setLang(next);
+    try { localStorage.setItem('carbon_language', next); } catch { /* noop */ }
+  };
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -52,8 +69,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
   const inputCls = 'w-full ps-9 pe-3 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden focus:ring-1 focus:ring-[#0f62fe]/40 transition-colors';
 
+  // Bilingual copy for the login gate
+  const T = isAr
+    ? {
+        title: 'منصة تحليل البيانات الذكية',
+        subtitle: 'منصة ذكاء وتحليل البيانات — سجّل الدخول للوصول إلى مساحة عملك',
+        login: 'تسجيل الدخول', register: 'حساب جديد',
+        name: 'الاسم الكامل', email: 'البريد الإلكتروني', password: 'كلمة المرور',
+        showPass: 'إظهار كلمة المرور',
+        processing: 'جاري المعالجة...', enter: 'دخول', create: 'إنشاء الحساب',
+        adminHint: <>أول حساب يُسجَّل في النظام يحصل تلقائياً على صلاحية <b className="text-[var(--cds-text-01,#f4f4f4)]">مدير (admin)</b>، والحسابات التالية تنضم كمحللين.</>,
+        local: 'بياناتكم محلية 100%', bcrypt: 'كلمات المرور مشفرة bcrypt',
+      }
+    : {
+        title: 'Smart Data Analytics Platform',
+        subtitle: 'AI-powered data & analytics — sign in to reach your workspace',
+        login: 'Sign in', register: 'New account',
+        name: 'Full name', email: 'Email address', password: 'Password',
+        showPass: 'Show password',
+        processing: 'Processing...', enter: 'Sign in', create: 'Create account',
+        adminHint: <>The first registered account automatically gets <b className="text-[var(--cds-text-01,#f4f4f4)]">admin</b> rights; later accounts join as analysts.</>,
+        local: 'Your data stays 100% local', bcrypt: 'Passwords hashed with bcrypt',
+      };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--cds-background,#161616)] p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--cds-background,#161616)] p-4" dir={isAr ? 'rtl' : 'ltr'} lang={lang}>
       {/* Ambient background accents */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 -start-32 w-96 h-96 rounded-full bg-[#0f62fe]/10 blur-3xl" />
@@ -61,16 +101,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
       </div>
 
       <div className="relative w-full max-w-md">
+        {/* Language toggle — choice persists into the post-login workspace via carbon_language */}
+        <div className="absolute -top-2 end-0">
+          <button
+            type="button" onClick={toggleLang}
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[var(--cds-border-subtle,#393939)] bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-02,#c6c6c6)] hover:text-[var(--cds-text-01,#f4f4f4)] hover:border-[#0f62fe] transition-colors"
+            aria-label={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
+            title={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
+          >
+            <Languages className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <span dir="ltr">{isAr ? 'EN' : 'ع'}</span>
+          </button>
+        </div>
         {/* Brand header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0f62fe] shadow-lg shadow-[#0f62fe]/30 mb-3">
             <BarChart3 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--cds-text-01,#f4f4f4)]">
-            منصة تحليل البيانات الذكية
+            {T.title}
           </h1>
           <p className="text-xs text-[var(--cds-text-03,#8d8d8d)] mt-1.5">
-            منصة ذكاء وتحليل البيانات — سجّل الدخول للوصول إلى مساحة عملك
+            {T.subtitle}
           </p>
         </div>
 
@@ -89,7 +141,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                     : 'text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]'
                 }`}
               >
-                {m === 'login' ? 'تسجيل الدخول' : 'حساب جديد'}
+                {m === 'login' ? T.login : T.register}
               </button>
             ))}
           </div>
@@ -100,7 +152,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 <UserIcon className="w-4 h-4 absolute top-3 start-3 text-[var(--cds-text-03,#8d8d8d)]" />
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="الاسم الكامل" required minLength={2}
+                  placeholder={T.name} required minLength={2}
                   className={inputCls}
                 />
               </div>
@@ -109,7 +161,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <Mail className="w-4 h-4 absolute top-3 start-3 text-[var(--cds-text-03,#8d8d8d)]" />
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="البريد الإلكتروني" required dir="ltr"
+                placeholder={T.email} required dir="ltr"
                 className={`${inputCls} text-left`}
               />
             </div>
@@ -118,13 +170,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <input
                 type={showPassword ? 'text' : 'password'} value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="كلمة المرور" required minLength={6} dir="ltr"
+                placeholder={T.password} required minLength={6} dir="ltr"
                 className={`${inputCls} text-left pe-10`}
               />
               <button
                 type="button" onClick={() => setShowPassword(v => !v)}
                 className="absolute top-2.5 end-3 text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]"
-                aria-label="إظهار كلمة المرور"
+                aria-label={T.showPass}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -141,7 +193,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#0f62fe]/25"
             >
               {mode === 'login' ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-              {busy ? 'جاري المعالجة...' : mode === 'login' ? 'دخول' : 'إنشاء الحساب'}
+              {busy ? T.processing : mode === 'login' ? T.enter : T.create}
             </button>
           </form>
 
@@ -149,14 +201,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
           {mode === 'register' && (
             <div className="mt-4 text-[11px] text-[var(--cds-text-03,#8d8d8d)] bg-[var(--cds-layer-02,#161616)] border border-[var(--cds-border-subtle,#393939)] rounded-lg p-3 flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-[#42be65] shrink-0 mt-0.5" />
-              <span>أول حساب يُسجَّل في النظام يحصل تلقائياً على صلاحية <b className="text-[var(--cds-text-01,#f4f4f4)]">مدير (admin)</b>، والحسابات التالية تنضم كمحللين.</span>
+              <span>{T.adminHint}</span>
             </div>
           )}
         </div>
 
         <div className="mt-5 flex items-center justify-center gap-4 text-[10px] text-[var(--cds-text-03,#8d8d8d)]">
-          <span className="flex items-center gap-1"><Database className="w-3 h-3" /> بياناتكم محلية 100%</span>
-          <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> كلمات المرور مشفرة bcrypt</span>
+          <span className="flex items-center gap-1"><Database className="w-3 h-3" /> {T.local}</span>
+          <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> {T.bcrypt}</span>
         </div>
       </div>
     </div>

@@ -208,6 +208,44 @@ async function generateWithModelFallback(params: {
 }
 
 /**
+ * Ollama endpoint resolution with IPv4/IPv6 fallback.
+ *
+ * Problem: on Windows, Ollama binds only to 127.0.0.1 (IPv4 loopback). Node's
+ * fetch resolves `localhost` via DNS and may pick the IPv6 ::1 record first,
+ * which immediately fails with ECONNREFUSED — making a perfectly healthy
+ * local Ollama look "offline" (port up, connection fails).
+ *
+ * Fix: try the user-configured endpoint, then catalogue localhost and
+ * 127.0.0.1 variants and return the first that responds.
+ */
+function ollamaCandidateEndpoints(endpointUrl?: string): string[] {
+  const candidates: string[] = [];
+  const push = (u: string) => { const c = u.replace(/\/+$/, ''); if (c && !candidates.includes(c)) candidates.push(c); };
+  if (endpointUrl && endpointUrl.trim()) push(endpointUrl.trim());
+  push('http://127.0.0.1:11434');
+  push('http://localhost:11434');
+  return candidates;
+}
+
+/** Ping a list of Ollama endpoints (in order) resolving to the first that answers /api/tags. */
+async function resolveReachableOllamaEndpoint(endpointUrl?: string, timeoutMs = 3500): Promise<{ endpoint: string; models: string[] } | null> {
+  for (const endpoint of ollamaCandidateEndpoints(endpointUrl)) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${endpoint}/api/tags`, { signal: controller.signal, headers: { 'ngrok-skip-browser-warning': 'true' } });
+      if (res.ok) {
+        const data: any = await res.json().catch(() => null);
+        const models: string[] = (data?.models || []).map((m: any) => m.name).filter(Boolean);
+        return { endpoint, models };
+      }
+    } catch { /* try next candidate */ }
+    finally { clearTimeout(timeout); }
+  }
+  return null;
+}
+
+/**
  * Universal Multi-Provider AI Caller
  * Supports: Gemini, Ollama (Local Privacy), OpenRouter, Qwen (Alibaba), DeepSeek, and Custom OpenAI API
  */
@@ -229,10 +267,16 @@ async function callUniversalAI(params: {
   const modelName = rawModel.includes('/') ? rawModel.split('/').slice(1).join('/') : rawModel;
 
   // 1. Ollama (100% Local & Privacy-First)
-   if (provider === 'ollama') {
-     const endpoint = (params.endpointUrl || 'http://localhost:11434').replace(/\/+$/, '');
-     const controller = new AbortController();
-     const timeoutId = setTimeout(() => controller.abort(), 120000);
+  if (provider === 'ollama') {
+    // Resolve a reachable endpoint first (IPv4/IPv6 fallback) — detects the
+    // healthy local daemon even when `localhost` resolves to ::1 first.
+    let endpoint = params.endpointUrl || 'http://127.0.0.1:11434';
+    try {
+      const reachable = await resolveReachableOllamaEndpoint(params.endpointUrl, 3500);
+      if (reachable) endpoint = reachable.endpoint;
+    } catch { /* keep default endpoint */ }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
       const res = await fetch(`${endpoint}/api/chat`, {
@@ -497,49 +541,34 @@ app.post('/api/ai/test-connection', aiServerKeyQuotaGuard, async (req, res) => {
 
   try {
     if (provider === 'ollama') {
-      const targetHost = (endpointUrl || 'http://localhost:11434').replace(/\/+$/, '');
-      const url = `${targetHost}/api/tags`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3500);
-
-      let pingRes: Response | null = null;
-      let pingErr: string | null = null;
-
-      try {
-        pingRes = await fetch(url, { signal: controller.signal, headers: { 'ngrok-skip-browser-warning': 'true' } });
-      } catch (err: any) {
-        pingErr = err?.message || 'Connection refused or timed out';
-      } finally {
-        clearTimeout(timeout);
+      // Try the configured endpoint, then fall back across IPv4/IPv6 loopback
+      // so a healthy local daemon is detected even when `localhost` resolves
+      // to ::1 first (common on Windows).
+      const reachable = await resolveReachableOllamaEndpoint(endpointUrl, 3500);
+      if (reachable) {
+        return res.json({
+          status: 'connected',
+          latencyMs: Date.now() - startTime,
+          models: reachable.models,
+          isLocal: true,
+          message: `Connected to Ollama at ${reachable.endpoint}. Found ${reachable.models.length} installed models.`,
+        });
       }
 
-      if (pingRes && pingRes.ok) {
-        try {
-          const data: any = await pingRes.json();
-          const modelNames = (data.models || []).map((m: any) => m.name);
-          return res.json({
-            status: 'connected',
-            latencyMs: Date.now() - startTime,
-            models: modelNames,
-            isLocal: true,
-            message: `Connected to Ollama at ${targetHost}. Found ${modelNames.length} installed models.`,
-          });
-        } catch (e) {}
-      }
-
+      const targetHost = (endpointUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
       const isLocalhost = targetHost.includes('localhost') || targetHost.includes('127.0.0.1');
       return res.json({
         status: 'error',
         latencyMs: Date.now() - startTime,
         message: isLocalhost
-          ? 'تعذر الوصول إلى http://localhost:11434 من خادم السحابة. إذا كان Ollama يعلم على جهازك الشخصي، نوصي باستعمال رابط نفق (ngrok) أو التحويل إلى Gemini.'
-          : `تعذر الاتصال بـ Ollama عبر الرابط: ${targetHost} (${pingErr || 'No response'}).`,
+          ? `تعذر الوصول إلى Ollama المحلي عبر ${targetHost} (جُمّعت عناوين 127.0.0.1 و localhost معاً). تأكد من تشغيل أمر "ollama serve".`
+          : `تعذر الاتصال بـ Ollama عبر الرابط: ${targetHost} (لا استجابة).`,
         isLocalhostNotice: isLocalhost,
         diagnosticAr: isLocalhost
-          ? 'خادم التطبيق يعمل في بيئة Cloud Run، لذلك فإن localhost تشير إلى حاوية السحابة وليس جهازك الشخصي. يمكنك استخدام ngrok أو تفعيل Gemini المدمج بنقرة واحدة.'
+          ? 'تأكد من تشغيل أمر "ollama serve" وأن المنفذ 11434 مفتوح ومستقبل للاتصالات. إذا كان الخادم بعيداً عن جهازك، استخدم رابط نفق (ngrok).'
           : 'تأكد من تشغيل أمر "ollama serve" وأن المنفذ مفتوح ومستقبل للاتصالات الخارجية.',
         diagnosticEn: isLocalhost
-          ? 'The app backend runs in a Cloud Run container, so http://localhost:11434 checks the cloud container rather than your local PC. Use ngrok or switch to Gemini with 1-click.'
+          ? 'Ensure "ollama serve" is active on port 11434. If the daemon runs on another machine, expose it via an ngrok tunnel.'
           : 'Ensure "ollama serve" is active and reachable over the specified host.',
       });
     }
@@ -920,28 +949,25 @@ app.get('/api/ai/quota', (req, res) => {
 });
 
 app.get('/api/ai/ollama/tags', async (req, res) => {
-  const host = (req.query.host as string) || 'http://localhost:11434';
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
-    const response = await fetch(`${host.replace(/\/+$/, '')}/api/tags`, { signal: controller.signal, headers: { 'ngrok-skip-browser-warning': 'true' } });
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data: any = await response.json();
-      return res.json({
-        connected: true,
-        models: data.models || [],
-      });
+  const reachable = await resolveReachableOllamaEndpoint(req.query.host as string | undefined, 3500);
+  if (reachable) {
+      try {
+        // Re-fetch the full tags payload from the resolved endpoint for raw model metadata
+        const response = await fetch(`${reachable.endpoint}/api/tags`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+        if (response.ok) {
+          const data: any = await response.json();
+          return res.json({
+            connected: true,
+            models: data.models || [],
+          });
+        }
+      } catch { /* fall through to disconnected response */ }
     }
-  } catch (err: any) {
-    // Graceful catch for offline / unreachable Ollama
-  }
   return res.json({
     connected: false,
-models: [],
-     hint: 'Run "ollama serve" on your local machine to activate local privacy models.',
-   });
+    models: [],
+    hint: 'Run "ollama serve" on your local machine to activate local privacy models.',
+  });
 });
 
 // 1e. Dynamic Model Discovery for Cloud Providers
