@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DataStory, DataStoryChapter } from '../../types';
 import { aiAuthHeaders } from '../../utils/aiAccessGuard';
+import { applyBestVoice } from '../../services/bestVoice';
 import { StoryChartRenderer } from '../../components/reports/StoryChartRenderer';
 import {
   FileText,
@@ -184,7 +185,10 @@ export const ReportsPage: React.FC = () => {
 
     const fullText = narrativeParts.join(' ... ');
     const utterance = new SpeechSynthesisUtterance(fullText);
-    utterance.lang = isAr ? 'ar-SA' : 'en-US';
+    const tl: 'ar-SA' | 'en-US' = isAr ? 'ar-SA' : 'en-US';
+    utterance.lang = tl;
+    // أفضل صوت متاح من النظام لهذه اللغة تلقائياً
+    applyBestVoice(utterance, tl);
     utterance.rate = 0.95;
 
     utterance.onend = () => setIsSpeaking(false);

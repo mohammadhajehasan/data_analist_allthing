@@ -33,6 +33,7 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
     availableAIModels,
     activeAIModelDef,
     setActiveAIModel,
+    refreshOllamaModels,
     toast,
     updateProviderConfig,
     refreshCloudModels,
@@ -182,6 +183,27 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
                       : isAr ? 'تحديث نماذج Gemini' : 'Refresh Gemini Models'}
                   </button>
                 )}
+                {/* Ollama Installed Models Refresh (المصدر: /api/ai/ollama/tags على محركك المحلي) */}
+                <button
+                  onClick={async () => {
+                    setIsRefreshingModels('ollama');
+                    try {
+                      const models = await refreshOllamaModels();
+                      if (models.length > 0) {
+                        toast.success(isAr ? 'تم اكتشاف النماذج المحلية' : 'Local models discovered', isAr ? `تم العثور على ${models.length} نموذج مثبت في أولاما.` : `Found ${models.length} installed Ollama models.`);
+                      } else {
+                        toast.warning(isAr ? 'لا توجد نماذج مثبتة' : 'No models found', isAr ? 'شغّل "ollama serve" وتأكد من سحب نموذج (ollama pull).' : 'Run "ollama serve" and pull a model (ollama pull).');
+                      }
+                    } finally {
+                      setIsRefreshingModels(null);
+                    }
+                  }}
+                  disabled={isRefreshingModels === 'ollama'}
+                  className="flex items-center gap-1.5 text-[10px] text-[#42be65] hover:text-[#42be65] mb-2"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshingModels === 'ollama' ? 'animate-spin' : ''}`} />
+                  {isAr ? 'تحديث النماذج المحلية (Ollama)' : 'Refresh Installed Ollama Models'}
+                </button>
 
             {/* Quick Filters */}
             <div className="flex items-center gap-1 mb-2 pb-2 border-b border-[var(--cds-border-subtle)] overflow-x-auto text-[10px]">
@@ -249,8 +271,14 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
               })}
 
               {filteredModels.length === 0 && (
-                <div className="text-center py-4 text-xs text-[var(--cds-text-03)]">
-                  {isAr ? 'لا توجد نماذج مطابقة' : 'No matching models found'}
+                <div className="text-center py-4 text-[11px] text-[var(--cds-text-03)] space-y-1.5">
+                  <p>{isAr ? (searchQuery ? 'لا توجد نماذج مطابقة' : 'لا توجد نماذج مثبتة محلياً — وأي مفاتيح سحابية مسجلة تظهر هنا.') : (searchQuery ? 'No matching models found' : 'No locally installed models — cloud providers with keys will appear here.')}</p>
+                  {!searchQuery && (
+                    <p className="font-mono text-[10px] text-[var(--cds-text-03)]">
+                      {isAr ? 'شغّل "ollama serve" ثم اسحب نموذجاً: ' : 'Run "ollama serve" then pull a model: '}
+                      <span className="text-[#42be65]">ollama pull qwen2.5-coder:7b</span>
+                    </p>
+                  )}
                 </div>
               )}
               {filteredModels.length > 0 && (

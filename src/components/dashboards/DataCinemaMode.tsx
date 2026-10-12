@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { WidgetConfig, Dataset } from '../../types';
 import { ChartFactory, KpiCard } from '../charts/ChartFactory';
 import { audio } from '../../utils/audioEngine';
+import { applyBestVoice } from '../../services/bestVoice';
 import {
   X,
   Play,
@@ -14,6 +15,7 @@ import {
   Type,
   Volume2,
   VolumeX,
+  Music,
 } from 'lucide-react';
 
 /**
@@ -51,7 +53,10 @@ export const DataCinemaMode: React.FC<DataCinemaModeProps> = ({
   const [isPlaying, setIsPlaying] = useState(true);
   const [typedText, setTypedText] = useState('');
   const [withSound, setWithSound] = useState(false);
+  const [withVoice, setWithVoice] = useState(true); // قراءة الموجز صوتياً تلقائياً عند الفتح
   const timerRef = useRef<number | null>(null);
+  const voiceEnabledRef = useRef(withVoice);
+  useEffect(() => { voiceEnabledRef.current = withVoice; }, [withVoice]);
 
   const ordered = useMemo(() => {
     // KPIs first (exec summary), then charts in dashboard order
@@ -145,6 +150,25 @@ export const DataCinemaMode: React.FC<DataCinemaModeProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isPlaying, sceneIndex, ordered.length, withSound]);
 
+  // ------------------------------------------------------------
+  // القراءة الصوتية التلقائية للموجز (TTS) عند فتح وضع السينما —
+  // يقرأ تعليق كل مشهد أثناء عرضه، ويتوقف عند الإغلاق/الإيقاف/التنقل.
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    if (!isOpen || !withVoice || !isPlaying || !narration) return;
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(narration);
+    const tl: 'ar-SA' | 'en-US' = isAr ? 'ar-SA' : 'en-US';
+    utter.lang = tl;
+    // أفضل صوت عربي متاح من النظام تلقائياً (نطق أعلى جودة إن وُجد)
+    applyBestVoice(utter, tl);
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+    return () => { window.speechSynthesis.cancel(); };
+  }, [isOpen, withVoice, isPlaying, sceneIndex, narration]);
+
   // Esc to exit
   useEffect(() => {
     if (!isOpen) return;
@@ -182,6 +206,13 @@ export const DataCinemaMode: React.FC<DataCinemaModeProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setWithVoice(v => !v)}
+            className="p-1.5 text-[var(--cds-text-03)] hover:text-white transition-colors"
+            title={withVoice ? (isAr ? 'إيقاف القراءة الصوتية للموجز' : 'Mute the spoken narration') : (isAr ? 'تشغيل القراءة الصوتية للموجز' : 'Enable spoken narration')}
+          >
+            {withVoice ? <Music className="w-4 h-4 text-[#8a3ffc]" /> : <VolumeX className="w-4 h-4" />}
+          </button>
           <button
             onClick={() => setWithSound(s => !s)}
             className="p-1.5 text-[var(--cds-text-03)] hover:text-white transition-colors"

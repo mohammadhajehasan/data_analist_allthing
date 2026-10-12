@@ -96,6 +96,12 @@ describe('AppContext & AI Provider State Management Integration Tests', () => {
       );
     });
 
+    // نموذج مزوّد Ollama (المصدر الحقيقي الآن: tags من /api/ai/ollama/tags,
+    // الكتالوج الثابت يُفلتر ليُظهر المثبّت فقط)
+    await act(async () => {
+      capturedContext.updateProviderConfig('ollama', { installedLocalModels: ['ollama/deepseek-r1:8b'] });
+    });
+
     // Set model to Ollama model
     await act(async () => {
       capturedContext.setActiveAIModel('ollama/deepseek-r1:8b');
@@ -121,6 +127,10 @@ describe('AppContext & AI Provider State Management Integration Tests', () => {
           <TestComponent />
         </AppProvider>
       );
+    });
+
+    await act(async () => {
+      capturedContext.updateProviderConfig('ollama', { installedLocalModels: ['ollama/qwen2.5-coder:7b'] });
     });
 
     await act(async () => {

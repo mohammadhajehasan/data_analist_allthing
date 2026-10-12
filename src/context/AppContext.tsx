@@ -748,7 +748,18 @@ export const AppProvider: React.FC<{
       }
     }
 
-    return [...AVAILABLE_AI_MODELS, ...dynamicModels, ...discoveredCloudModels];
+    // كتيّب نماذج Ollama الثابت يُفلتر حسب المثبّت فعلاً: tags من /api/ai/ollama/tags هي مصدر الحقيقة —
+    // النماذج غير المثبّتة لا تظهر في المنتقي (لا أشباح من الكتالوج). المطابقة مرنة باللاحقة لأن tags
+    // يعيد أحياناً الاسم بلا بادئة (qwen2.5-coder:7b) بينما الكتالوج مُسبَّق (ollama/...).
+    const installedSet = new Set(installedOllamaModels.map(id => String(id).toLowerCase()));
+    const isInstalledOllamaModel = (catalogId: string) => {
+      if (installedSet.has(catalogId.toLowerCase())) return true;
+      const bare = catalogId.toLowerCase().replace(/^ollama\//, '');
+      return installedOllamaModels.some(id => String(id).toLowerCase().replace(/^ollama\//, '') === bare);
+    };
+    const verifiedOllamaCatalog = AVAILABLE_AI_MODELS.filter(m => m.provider === 'ollama' && isInstalledOllamaModel(m.id));
+
+    return [...verifiedOllamaCatalog, ...dynamicModels, ...AVAILABLE_AI_MODELS.filter(m => m.provider !== 'ollama'), ...discoveredCloudModels];
   }, [installedOllamaModels, aiSettings.providers.gemini.discoveredModels, aiSettings.providers.qwen.discoveredModels, aiSettings.providers.deepseek.discoveredModels, aiSettings.providers.openrouter.discoveredModels, aiSettings.providers.custom_openai.discoveredModels]);
   const activeAIModelDef = availableAIModels.find((model) => model.id === aiSettings.activeModel) || availableAIModels[0];
 
@@ -870,6 +881,18 @@ const refreshOllamaModels = async (): Promise<string[]> => {
      }
      return [];
     };
+
+  // كشف تلقائي عند تحميل التطبيق: أسجّل نماذج Ollama المثبّتة فعلاً مرة واحدة حتى
+  // يظهر المنتقي الحقيقي بدل الكتالوج الثابت، ويعاد الفحص عند تغيير عنوان المحرك.
+  const ollamaEndpoint = aiSettings.providers.ollama.endpointUrl || 'http://localhost:11434';
+  const ollamaAutoProbedRef = useRef(false);
+  useEffect(() => {
+    // أعد الفحص عند تغيّر العنوان (بعد أول بروب)
+    if (ollamaAutoProbedRef.current) return;
+    ollamaAutoProbedRef.current = true;
+    refreshOllamaModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ollamaEndpoint]);
 
   // Tracks the last key per provider that model discovery ran for, so a key
   // change (paste/edit/delete) re-triggers discovery.

@@ -263,8 +263,13 @@ async function callUniversalAI(params: {
   const startTime = Date.now();
   const provider = (params.provider || 'gemini').toLowerCase();
   const rawModel = params.model || 'gemini-3.8-flash';
-  // Strip provider prefix if present (e.g. "ollama/qwen2.5-coder:7b" -> "qwen2.5-coder:7b")
-  const modelName = rawModel.includes('/') ? rawModel.split('/').slice(1).join('/') : rawModel;
+  // Strip provider prefix if present (e.g. "ollama/qwen2.5-coder:7b" -> "qwen2.5-coder:7b").
+  // Ollama model names may legitimately contain '/' (namespaced repos like
+  // "maternion/spark-x2.5-heretic:4b"), so only strip a *known provider* prefix —
+  // stripping the first path segment of any name broke those models with 404.
+  const PROVIDER_PREFIXES = ['ollama/', 'qwen/', 'deepseek/'];
+  const matchedPrefix = PROVIDER_PREFIXES.find(p => rawModel.toLowerCase().startsWith(p));
+  const modelName = matchedPrefix ? rawModel.slice(matchedPrefix.length) : rawModel;
 
   // 1. Ollama (100% Local & Privacy-First)
   if (provider === 'ollama') {
