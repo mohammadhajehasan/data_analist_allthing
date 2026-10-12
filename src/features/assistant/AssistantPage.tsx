@@ -115,8 +115,10 @@ export const AssistantPage: React.FC = () => {
       });
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || `HTTP ${res.status}`);
+        const errJson = await res.json().catch(() => null) as any;
+        // الخادم يعيد { error: { message } } أو { error: 'نص' } أو { message } — استخرج السبب الحقيقي
+        const realMsg = errJson?.error?.message || (typeof errJson?.error === 'string' ? errJson.error : null) || errJson?.message || `HTTP ${res.status}`;
+        throw new Error(realMsg);
       }
 
       const data = await res.json();

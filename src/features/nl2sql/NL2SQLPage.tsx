@@ -172,7 +172,10 @@ export const NL2SQLPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) {
-        const errMsg = typeof data?.error === 'string' ? data.error : (isAr ? 'فشل توليد الاستعلام' : 'Generation Failed');
+        // الخادم يعيد { error: 'نص' } أو { error: { message } } — استخرج السبب الحقيقي بدل عبارة عامة
+        const errMsg = typeof data?.error === 'string'
+          ? data.error
+          : (data?.error?.message || data?.message || (isAr ? 'فشل توليد الاستعلام' : 'Generation Failed'));
         toast.error(isAr ? 'فشل توليد الاستعلام' : 'Generation Failed', errMsg);
         return;
       }

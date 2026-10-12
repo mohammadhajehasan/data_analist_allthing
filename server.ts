@@ -2106,11 +2106,15 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
     }
    } catch (err: any) {
     console.error('AI Assistant execution failed:', err?.message || err);
+    const msg = err?.message || 'AI Assistant execution failed';
+    // كلا الصيغتين حتى تقرأ الواجهة السبب الحقيقي (تستخدم errJson?.message أو errJson?.error)
     return res.status(500).json({
       error: {
         code: -32603,
-        message: err?.message || 'AI Assistant execution failed',
+        message: msg,
       },
+      // ملائمات صريحة بتسطيح الحقل للواجهات الأقدم
+      message: msg,
       model: null,
       isLocal: false,
     });
