@@ -268,7 +268,7 @@ async function callUniversalAI(params: {
   // Ollama model names may legitimately contain '/' (namespaced repos like
   // "maternion/spark-x2.5-heretic:4b"), so only strip a *known provider* prefix —
   // stripping the first path segment of any name broke those models with 404.
-  const PROVIDER_PREFIXES = ['ollama/', 'qwen/', 'deepseek/', 'freellmapi/'];
+  const PROVIDER_PREFIXES = ['ollama/', 'qwen/', 'deepseek/', 'freellmapi/', 'openrouter/'];
   const matchedPrefix = PROVIDER_PREFIXES.find(p => rawModel.toLowerCase().startsWith(p));
   let modelName = matchedPrefix ? rawModel.slice(matchedPrefix.length) : rawModel;
   // FreeLLMAPI: النموذج الافتراضي للتطبيق (gemini-3.8-flash) غير موجود في فهرست

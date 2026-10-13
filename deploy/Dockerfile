@@ -9,8 +9,6 @@ RUN npm run build
 
 FROM node:24-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
 COPY package*.json ./
 # Production deps only (bundled server.cjs needs: express, better-sqlite3, dotenv...)
 RUN npm ci --omit=dev --ignore-scripts || npm ci --omit=dev
@@ -18,7 +16,7 @@ RUN npm ci --omit=dev --ignore-scripts || npm ci --omit=dev
 RUN npm rebuild better-sqlite3 || true
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
-# Data dir for SQLite (mount a volume here in production!)
+# Data dir for SQLite (mounted as volume in production!)
 RUN mkdir -p /app/data
 VOLUME ["/app/data"]
 EXPOSE 3000

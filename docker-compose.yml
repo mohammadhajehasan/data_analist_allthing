@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Main analytics platform
+  analytics-platform:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PUBLIC_BASE_URL=http://localhost:3000
+      - OLLAMA_ENDPOINT_URL=http://ollama:11434
+      - FREELLMAPI_ENDPOINT=http://freellmapi:31415/v1
+    depends_on:
+      - ollama
+      - freellmapi
+    restart: unless-stopped
+    networks:
+      - ai-network
+
+  # Ollama for local AI models
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - ai-network
+    command: ollama serve
+
+  # FreeLLMAPI Router (open-source Ollama API-compatible router)
+  freellmapi:
+    image: ghcr.io/freellmapi/freellmapi:latest
+    ports:
+      - "31415:31415"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - PORT=31415
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - ai-network
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  ai-network:
+    driver: bridge

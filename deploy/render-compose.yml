@@ -1,0 +1,64 @@
+# Render-compatible Docker Compose for analytics platform with Ollama/FreeLLMAPI
+# This requires Render's paid plan (Docker support) or an alternative deployment method.
+version: '3.8'
+
+services:
+  analytics-platform:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
+      # Point to Ollama/FreeLLMAPI on same network
+      - OLLAMA_ENDPOINT_URL=http://ollama:11434
+      - FREELLMAPI_ENDPOINT=http://freellmapi:31415/v1
+      # API keys from Render dashboard
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_SECURE=true
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - TURSO_DATABASE_URL=${TURSO_DATABASE_URL:-}
+      - TURSO_AUTH_TOKEN=${TURSO_AUTH_TOKEN:-}
+    depends_on:
+      - ollama
+      - freellmapi
+    restart: unless-stopped
+    volumes:
+      - app-data:/app/data
+
+  # Ollama for local AI models
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+  # FreeLLMAPI Router (optional - if you need model routing/auto-selection)
+  freellmapi:
+    image: ghcr.io/freellmapi/freellmapi:latest
+    ports:
+      - "31415:31415"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - PORT=31415
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  app-data:
+    driver: local
+  ollama-data:
+    driver: local
