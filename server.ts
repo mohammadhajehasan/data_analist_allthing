@@ -262,14 +262,20 @@ async function callUniversalAI(params: {
 }): Promise<{ text: string; modelUsed: string; durationMs: number; isLocal: boolean }> {
   const startTime = Date.now();
   const provider = (params.provider || 'gemini').toLowerCase();
-  const rawModel = params.model || 'gemini-3.8-flash';
+  // FreeLLMAPI: بدون نموذج محدد يستخدم نماذج موجّهه الذكي "auto"
+  const rawModel = params.model || (provider === 'freellmapi' ? 'auto' : 'gemini-3.8-flash');
   // Strip provider prefix if present (e.g. "ollama/qwen2.5-coder:7b" -> "qwen2.5-coder:7b").
   // Ollama model names may legitimately contain '/' (namespaced repos like
   // "maternion/spark-x2.5-heretic:4b"), so only strip a *known provider* prefix —
   // stripping the first path segment of any name broke those models with 404.
-  const PROVIDER_PREFIXES = ['ollama/', 'qwen/', 'deepseek/'];
+  const PROVIDER_PREFIXES = ['ollama/', 'qwen/', 'deepseek/', 'freellmapi/'];
   const matchedPrefix = PROVIDER_PREFIXES.find(p => rawModel.toLowerCase().startsWith(p));
-  const modelName = matchedPrefix ? rawModel.slice(matchedPrefix.length) : rawModel;
+  let modelName = matchedPrefix ? rawModel.slice(matchedPrefix.length) : rawModel;
+  // FreeLLMAPI: النموذج الافتراضي للتطبيق (gemini-3.8-flash) غير موجود في فهرست
+  // الموجّه — أرسل "auto" ليختار الموجّه من نماذجه المتاحة.
+  if (provider === 'freellmapi' && (!matchedPrefix && (rawModel === 'gemini-3.8-flash' || !params.model))) {
+    modelName = 'auto';
+  }
 
   // 1. Ollama (100% Local & Privacy-First)
   if (provider === 'ollama') {
@@ -295,6 +301,10 @@ async function callUniversalAI(params: {
             { role: 'user', content: params.prompt },
           ],
           stream: false,
+          // keep_alive: keep the model resident in memory between requests;
+          // without it Ollama unloads after 5min and every "cold" call pays a
+          // full disk->VRAM reload (several seconds on 3B models).
+          keep_alive: '30m',
           format: params.jsonMode ? 'json' : undefined,
           // num_ctx: 3072 keeps 3B-class local models fully in GPU on 4GB cards;
           // the default 4096 spills them into hybrid CPU mode (~60x slower).
@@ -332,7 +342,7 @@ async function callUniversalAI(params: {
   }
 
   // 2. OpenAI-Compatible Providers (OpenRouter, Qwen DashScope, DeepSeek, Custom OpenAI)
-  if (['openrouter', 'qwen', 'deepseek', 'custom_openai'].includes(provider)) {
+  if (['openrouter', 'qwen', 'deepseek', 'custom_openai', 'freellmapi'].includes(provider)) {
     let baseUrl = params.endpointUrl;
     // مفتاح وهمي/فارغ من المتصفح يُعامل كغياب — ليعمل مفتاح الخادم الاحتياطي للجميع
     const userApiKey = params.apiKey && !isPlaceholderApiKey(params.apiKey) ? params.apiKey.trim() : '';
@@ -348,6 +358,8 @@ async function callUniversalAI(params: {
         authHeader = `Bearer ${process.env.QWEN_API_KEY}`;
       } else if (provider === 'custom_openai' && process.env.CUSTOM_OPENAI_API_KEY) {
         authHeader = `Bearer ${process.env.CUSTOM_OPENAI_API_KEY}`;
+      } else if (provider === 'freellmapi' && process.env.FREELLMAPI_API_KEY) {
+        authHeader = `Bearer ${process.env.FREELLMAPI_API_KEY}`;
       }
     }
 
@@ -359,9 +371,12 @@ async function callUniversalAI(params: {
       baseUrl = baseUrl || 'https://api.deepseek.com/v1';
     } else if (provider === 'custom_openai') {
       baseUrl = baseUrl || process.env.CUSTOM_OPENAI_ENDPOINT || 'http://localhost:8000/v1';
+    } else if (provider === 'freellmapi') {
+      baseUrl = baseUrl || process.env.FREELLMAPI_ENDPOINT || 'http://localhost:3001/v1';
     }
 
-    if (baseUrl && (authHeader || provider === 'custom_openai')) {
+    // freellmapi يُقبل بلا مفتاح أيضاً (بعض إعداداته المحلية لا تتطلب unified key)
+    if (baseUrl && (authHeader || provider === 'custom_openai' || provider === 'freellmapi')) {
       const endpoint = baseUrl.replace(/\/+$/, '') + '/chat/completions';
       const controller = new AbortController();
       // 90s: free-tier cloud models (OpenRouter etc.) can take 30-60s under load;
@@ -405,7 +420,7 @@ async function callUniversalAI(params: {
             text,
             modelUsed: `${provider}:${modelName}`,
             durationMs: Date.now() - startTime,
-            isLocal: provider === 'custom_openai',
+            isLocal: provider === 'custom_openai' || provider === 'freellmapi',
           };
         } else {
           if (params.disableFallback) {
@@ -438,7 +453,7 @@ async function callUniversalAI(params: {
                       text: retryText,
                       modelUsed: `${provider}:${modelName}`,
                       durationMs: Date.now() - startTime,
-                      isLocal: provider === 'custom_openai',
+                      isLocal: provider === 'custom_openai' || provider === 'freellmapi',
                     };
                   }
                   const retryErr = await retryRes.text().catch(() => '');
@@ -694,7 +709,7 @@ app.post('/api/ai/sandbox/query', aiServerKeyQuotaGuard, async (req, res) => {
     let promptRate = 0.075; // default gemini 3.8 flash
     let completionRate = 0.30;
 
-    if (provider === 'ollama' || provider === 'custom_openai' || result.isLocal) {
+    if (['ollama', 'custom_openai', 'freellmapi'].includes(provider) || result.isLocal) {
       promptRate = 0;
       completionRate = 0;
     } else if (model.includes('pro')) {
@@ -759,7 +774,7 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
   const rpcProvider = typeof params.provider === 'string' ? params.provider.toLowerCase() : 'gemini';
   const rpcModel = typeof params.model === 'string' ? params.model : undefined;
   const nativeAIMethods = new Set(['ai.generate', 'ai.chat', 'ai.analyzeData', 'ai.profile', 'ai.nl2sql']);
-  const shouldUseNativeAIHandler = nativeAIMethods.has(method) && (rpcProvider === 'ollama' || rpcProvider === 'custom_openai');
+  const shouldUseNativeAIHandler = nativeAIMethods.has(method) && (rpcProvider === 'ollama' || rpcProvider === 'custom_openai' || rpcProvider === 'freellmapi');
 
   if (!shouldUseNativeAIHandler) {
     try {
@@ -989,11 +1004,13 @@ app.post('/api/ai/fetch-models', async (req, res) => {
       qwen: process.env.QWEN_API_KEY,
       gemini: process.env.GEMINI_API_KEY,
       custom_openai: process.env.CUSTOM_OPENAI_API_KEY,
+      freellmapi: process.env.FREELLMAPI_API_KEY,
     };
     apiKey = envKeys[provider];
   }
 
-  if (!provider || !apiKey) {
+  // FreeLLMAPI بوابة ذاتية-الاستضافة: بعض إعداداتها المحلية لا تطلب unified key
+  if (!provider || (!apiKey && provider !== 'freellmapi')) {
     return res.status(400).json({ error: 'Provider and API key are required (no stored key found in browser or .env)' });
   }
 
@@ -1131,6 +1148,25 @@ app.post('/api/ai/fetch-models', async (req, res) => {
             costPer1kTokens: 0,
             contextWindow: m.context_window || 32768,
             capabilities: ['nl2sql', 'privacy', 'code'],
+          }));
+        }
+        break;
+      }
+
+      case 'freellmapi': {
+        const baseUrl = endpointUrl || process.env.FREELLMAPI_ENDPOINT || 'http://localhost:3001/v1';
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        const response = await fetch(`${baseUrl}/models?available=true`, { headers });
+        if (response.ok) {
+          const data: any = await response.json();
+          models = (data.data || []).map((m: any) => ({
+            id: `freellmapi/${m.id}`,
+            name: m.id === 'auto' ? 'Auto (FreeLLMAPI Router)' : m.id,
+            isFree: true,
+            costPer1kTokens: 0,
+            contextWindow: m.context_length || 32768,
+            capabilities: ['nl2sql', 'code'],
           }));
         }
         break;
@@ -1774,7 +1810,7 @@ Respond STRICTLY in valid JSON format with these exact keys:
     }
   ]
 }`;
-  } else if (['deepseek', 'qwen', 'openrouter', 'custom_openai'].includes(provider)) {
+  } else if (['deepseek', 'qwen', 'openrouter', 'custom_openai', 'freellmapi'].includes(provider)) {
     systemInstruction = 'You are a Principal Database Performance Engineer & Execution Plan Specialist. Generate high-performance SQL refactoring, CTE optimizations, predicate pushdowns, and B-Tree indexing DDLs.';
     prompt = `Perform an enterprise SQL optimization audit for table "${tableName}" with dataset schema:
 ${JSON.stringify(datasetSchema, null, 2)}
@@ -2086,7 +2122,7 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
         status: 'SUCCESS',
         durationMs: Date.now() - startTime,
         timestamp: new Date().toISOString(),
-        payloadSummary: `Copilot [${aiResult.modelUsed}] response to: "${message.substring(0, 30)}..."`,
+        payloadSummary: `Copilot [${aiResult.modelUsed}] response to: "${(message || '').substring(0, 30)}..."`,
       });
 
       return res.json({
@@ -2188,6 +2224,7 @@ async function handleStoryGeneration(req: express.Request, res: express.Response
 Generate a structured, insightful, and compelling "Data Story" based on the provided dataset and focus angle.
 Tone: ${tone} (${tone === 'technical' ? 'Data Science & Statistical Depth' : tone === 'journalistic' ? 'Engaging Investigative Narrative' : 'Strategic Executive Decision-Making'}).
 Language: ${language}.
+CRITICAL LANGUAGE RULE: If language === 'ar', ALL primary content fields — title, executiveSummary, chapters[].title/narrative/insights/takeaway/chartExplanation, and recommendations — MUST be written in fluent Arabic (العربية الفصحى). Never use English in those fields. The parallel *Ar fields (titleAr, narrativeAr, insightsAr, chartExplanationAr, contextAr, takeawayAr) must contain the same Arabic text.
 Always return pure, strictly valid JSON conforming to the requested schema.`;
 
     const prompt = `Dataset Profile:
@@ -3434,6 +3471,23 @@ app.get(['/favicon.ico', '/favicon.svg'], (_req, res) => {
 });
 
 async function startServer() {
+  // ---------------------------------------------------------------------------
+  // Respan tracing (opt-in, server-only): records LLM calls as traces in Respan.
+  // Active only when RESPAN_API_KEY is set, so dev/CI run exactly as before
+  // without a key. Nothing is rerouted and no client baseURL/apiKey is touched.
+  // Runs before app.listen(), i.e. before any LLM client is created per request.
+  // ---------------------------------------------------------------------------
+  if (process.env.RESPAN_API_KEY) {
+    try {
+      const { Respan } = await import('@respan/respan');
+      const respan = new Respan();
+      await respan.initialize();
+      console.log('[Respan] tracing enabled.');
+    } catch (err: any) {
+      console.warn(`[Respan] tracing disabled — initialization failed: ${err?.message || err}`);
+    }
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

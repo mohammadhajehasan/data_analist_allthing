@@ -295,6 +295,26 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                   <span className="w-2 h-2 rounded-full bg-[#42be65]" />
                 )}
               </button>
+              {/* 7. FreeLLMAPI (Free Models Router) */}
+              <button
+                onClick={() => setActiveTab('freellmapi')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
+                  activeTab === 'freellmapi'
+                    ? 'bg-[#8a3ffc] text-white font-medium'
+                    : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-[var(--cds-text-02)]" />
+                  <div>
+                    <div className="font-medium">{isAr ? 'FreeLLMAPI — موجّه النماذج المجانية' : 'FreeLLMAPI Router'}</div>
+                    <div className="text-[10px] opacity-80">{isAr ? 'بوابة مجانية لعدة مزودين' : 'Free multi-provider gateway'}</div>
+                  </div>
+                </div>
+                {aiSettings.activeProvider === 'freellmapi' && (
+                  <span className="w-2 h-2 rounded-full bg-[#42be65]" />
+                )}
+              </button>
             </div>
 
             {/* Privacy Policy Tab */}

@@ -1,4 +1,4 @@
-export type AIProviderId = 'gemini' | 'ollama' | 'qwen' | 'deepseek' | 'openrouter' | 'custom_openai';
+export type AIProviderId = 'gemini' | 'ollama' | 'qwen' | 'deepseek' | 'openrouter' | 'custom_openai' | 'freellmapi';
 
 export type AIModelCapability = 'nl2sql' | 'reasoning' | 'optimization' | 'privacy' | 'fast' | 'vision' | 'code';
 
@@ -371,6 +371,37 @@ export const AVAILABLE_AI_MODELS: AIModelDefinition[] = [
     recommendedFor: 'Custom enterprise infrastructure & air-gapped setups',
     recommendedForAr: 'البيئات المعزولة والبنية التحتية الخاصة بالشركات',
   },
+
+  // 7. FreeLLMAPI (self-hosted free-model router, OpenAI-compatible)
+  // الافتراضي: minimax-m2.5 (الفائز بمقياس العربية للمهام الطويلة) — راجع الجدول في ملاحظات الاختبار.
+  {
+    id: 'freellmapi/minimax-m2.5',
+    name: 'MiniMax M2.5 (Free via FreeLLMAPI)',
+    provider: 'freellmapi',
+    providerName: 'FreeLLMAPI',
+    description: 'Best Arabic-quality long-form generation on the router (reports/data stories) at half the latency of auto.',
+    descriptionAr: 'أفضل جودة عربية للتوليد الطويل (تقارير/قصص بيانات) على الموجّه، بزمن يعادل نصف النموذج التلقائي.',
+    contextWindow: 32768,
+    isLocal: true,
+    isPrivacyFirst: false,
+    capabilities: ['nl2sql', 'code'],
+    recommendedFor: 'Arabic reports & data stories',
+    recommendedForAr: 'التقارير وقصص البيانات بالعربية',
+  },
+  {
+    id: 'freellmapi/auto',
+    name: 'Auto (FreeLLMAPI Router)',
+    provider: 'freellmapi',
+    providerName: 'FreeLLMAPI',
+    description: 'Self-hosted router that routes to the free tiers of many providers (auto model selection).',
+    descriptionAr: 'موجّه ذاتي-hosting يوجه الطلبات إلى الطبقات المجانية لعشرات المزودين (اختيار تلقائي للنموذج).',
+    contextWindow: 32768,
+    isLocal: true,
+    isPrivacyFirst: false,
+    capabilities: ['nl2sql', 'code'],
+    recommendedFor: 'Free multi-provider access via one local gateway',
+    recommendedForAr: 'وصول مجاني لعدة مزودين عبر بوابة محلية واحدة',
+  },
 ];
 
 export const INITIAL_AI_SETTINGS: AISettings = {
@@ -468,6 +499,24 @@ export const INITIAL_AI_SETTINGS: AISettings = {
       descriptionAr: 'ربط خوادم vLLM أو LM Studio أو خوادم الشركات الخاصة لخصوصية كاملة.',
       badge: 'Custom Gateway',
       badgeAr: 'خادم مخصص',
+    },
+    freellmapi: {
+      providerId: 'freellmapi',
+      name: 'FreeLLMAPI (Free Models Router)',
+      nameAr: 'FreeLLMAPI (موجّه النماذج المجانية)',
+      enabled: false,
+      // هذا الجهاز يشغّل FreeLLMAPI على 31415 (الافتراضي الرسمي 3001)؛
+      // يمكن تغييره من الواجهة في أي وقت.
+      endpointUrl: 'http://127.0.0.1:31415/v1',
+      // الفائز بمقياس العربية للمهام الطويلة (تقارير/قصص): 90%+ عربية خلال ~23s
+      // مقابل auto النموذج الأعلى صرامة لغة (100%) لكن بضعف الزمن (~47s).
+      defaultModelId: 'freellmapi/minimax-m2.5',
+      status: 'unconfigured',
+      isLocalOnly: true,
+      description: 'Self-hosted router exposing many free provider tiers via one OpenAI-compatible gateway.',
+      descriptionAr: 'موجّه ذاتي-الاستضافة يكشف طبقات مزودين مجانية عبر بوابة واحدة متوافقة مع OpenAI.',
+      badge: 'Free Router',
+      badgeAr: 'موجّه مجاني',
     },
 },
   };

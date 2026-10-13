@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { parseAssistantAction } from '../../utils/assistantActions';
 import { useApp } from '../../context/AppContext';
 import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
@@ -127,14 +128,10 @@ export const AssistantPage: React.FC = () => {
       let actionObj = null;
 
       // Extract JSON action block if present
-      const jsonActionMatch = replyContent.match(/```json\s*([\s\S]+?)\s*```/);
-      if (jsonActionMatch) {
-         try {
-           actionObj = JSON.parse(jsonActionMatch[1]);
-           replyContent = replyContent.replace(jsonActionMatch[0], '').trim();
-         } catch(e) {
-           console.error("Failed to parse agent action", e);
-         }
+      const parsed = parseAssistantAction(replyContent);
+      if (parsed.action) {
+        actionObj = parsed.action;
+        replyContent = parsed.replyContent;
       }
 
       const assistantMsg: ChatMessage = {
