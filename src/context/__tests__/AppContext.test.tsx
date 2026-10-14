@@ -215,4 +215,41 @@ describe('AppContext & AI Provider State Management Integration Tests', () => {
     expect(capturedContext.isRTL).toBe(true);
     expect(capturedContext.dir).toBe('rtl');
   });
+
+  it('يُسجّل مزوّد FreeLLMAPI ونماذجه ضمن قائمة النماذج التي يعرضها المنتقي', async () => {
+    let capturedContext: any = null;
+
+    const TestComponent = () => {
+      const context = useApp();
+      capturedContext = context;
+      return null;
+    };
+
+    await act(async () => {
+      root.render(
+        <AppProvider>
+          <TestComponent />
+        </AppProvider>
+      );
+    });
+
+    // المزوّد مُسجّل بإعداداته المحلية (موجّه FreeLLMAPI على المنفذ المحلي)
+    expect(capturedContext.aiSettings.providers.freellmapi).toBeDefined();
+    expect(capturedContext.aiSettings.providers.freellmapi.endpointUrl).toContain('127.0.0.1:31415');
+
+    // نماذج FreeLLMAPI تظهر فعلاً في القائمة المشتقة التي يبنيها المنتقي
+    const freellmapiModels = capturedContext.availableAIModels.filter(
+      (m: any) => m.provider === 'freellmapi'
+    );
+    expect(freellmapiModels.length).toBeGreaterThan(0);
+    expect(freellmapiModels.map((m: any) => m.id)).toContain('freellmapi/minimax-m2.5');
+
+    // اختيار أحد نماذجه يبدّل المزوّد النشط تلقائياً
+    await act(async () => {
+      capturedContext.setActiveAIModel('freellmapi/minimax-m2.5');
+    });
+    expect(capturedContext.aiSettings.activeModel).toBe('freellmapi/minimax-m2.5');
+    expect(capturedContext.aiSettings.activeProvider).toBe('freellmapi');
+    expect(capturedContext.activeAIModelDef.provider).toBe('freellmapi');
+  });
 });

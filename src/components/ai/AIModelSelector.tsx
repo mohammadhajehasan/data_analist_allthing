@@ -49,7 +49,8 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
 
   const handleRefreshCloudModels = async (provider: AIProviderId) => {
     const config = aiSettings.providers[provider];
-    if (!config?.apiKey) {
+    // freellmapi موجّه محلي: يعمل بلا مفتاح متصفح (مفتاح .env أو بلا مفتاح إطلاقاً).
+    if (!config?.apiKey && provider !== 'freellmapi') {
       toast.error(isAr ? 'المزود يحتاج مفتاح API' : 'Provider requires API key');
       return;
     }
@@ -92,6 +93,8 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
         return <Server className="w-3.5 h-3.5 text-[#be95ff]" />;
       case 'openrouter':
         return <Globe className="w-3.5 h-3.5 text-[#33b1ff]" />;
+      case 'freellmapi':
+        return <Globe className="w-3.5 h-3.5 text-[#be95ff]" />;
       default:
         return <Cpu className="w-3.5 h-3.5 text-[var(--cds-text-02)]" />;
     }
@@ -183,6 +186,17 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
                       : isAr ? 'تحديث نماذج Gemini' : 'Refresh Gemini Models'}
                   </button>
                 )}
+                {/* FreeLLMAPI Local Router Refresh (المصدر: /api/ai/fetch-models → الموجّه المحلي) */}
+                <button
+                  onClick={() => handleRefreshCloudModels('freellmapi')}
+                  disabled={isRefreshingModels === 'freellmapi'}
+                  className="flex items-center gap-1.5 text-[10px] text-[#be95ff] hover:text-[#be95ff] mb-2"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshingModels === 'freellmapi' ? 'animate-spin' : ''}`} />
+                  {isRefreshingModels === 'freellmapi'
+                    ? isAr ? 'جاري...' : 'Refreshing...'
+                    : isAr ? 'تحديث نماذج FreeLLMAPI' : 'Refresh FreeLLMAPI Models'}
+                </button>
                 {/* Ollama Installed Models Refresh (المصدر: /api/ai/ollama/tags على محركك المحلي) */}
                 <button
                   onClick={async () => {

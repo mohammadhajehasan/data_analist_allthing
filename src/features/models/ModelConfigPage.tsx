@@ -763,6 +763,27 @@ export const ModelConfigPage: React.FC = () => {
                   <span className="px-2 py-0.5 text-[9px] bg-white/20 text-white font-mono font-bold rounded-xs">Active</span>
                 )}
               </button>
+
+              {/* FreeLLMAPI (Free Models Router) */}
+              <button
+                onClick={() => setSelectedProviderId('freellmapi')}
+                className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
+                  selectedProviderId === 'freellmapi'
+                    ? 'bg-[#8a3ffc] border-[#8a3ffc] text-white font-semibold'
+                    : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Globe className="w-4 h-4 text-[#be95ff]" />
+                  <div>
+                    <div className="font-semibold">{isAr ? 'FreeLLMAPI — موجّه النماذج المجانية' : 'FreeLLMAPI Router'}</div>
+                    <div className="text-[10px] opacity-80">{isAr ? 'بوابة محلية مجانية لعدة مزودين' : 'Local free multi-provider gateway'}</div>
+                  </div>
+                </div>
+                {aiSettings.activeProvider === 'freellmapi' && (
+                  <span className="px-2 py-0.5 text-[9px] bg-white/20 text-white font-mono font-bold rounded-xs">Active</span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -855,10 +876,10 @@ export const ModelConfigPage: React.FC = () => {
                       : currentProvider.status === 'error'
                       ? (currentProvider.errorMessage || (isAr ? 'فشل الاتصال بالمزود، تحقق من الإعدادات' : 'Connection failed'))
                       : (isAr
-                        ? (!currentProvider.apiKey && currentProvider.providerId !== 'ollama'
+                        ? (!currentProvider.apiKey && !['ollama', 'freellmapi'].includes(currentProvider.providerId)
                           ? 'لم يُدخل مفتاح بعد — أدخل مفتاحك في الحقل أدناه ثم اضغط "حفظ واختبار"'
                           : 'لم يتم فحص الاتصال بعد — اضغط "حفظ واختبار"')
-                        : (!currentProvider.apiKey && currentProvider.providerId !== 'ollama'
+                        : (!currentProvider.apiKey && !['ollama', 'freellmapi'].includes(currentProvider.providerId)
                           ? 'No key yet — enter your key below then press "Save & Test"'
                           : 'Not verified yet — press "Save & Test"'))}
                   </span>

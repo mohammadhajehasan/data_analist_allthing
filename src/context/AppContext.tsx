@@ -725,7 +725,7 @@ export const AppProvider: React.FC<{
 
     // Merge discovered cloud models from each provider config
     const discoveredCloudModels: AIModelDefinition[] = [];
-    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai', 'freellmapi'];
     for (const providerId of cloudProviders) {
       const discovered = aiSettings.providers[providerId].discoveredModels || [];
       for (const m of discovered) {
@@ -760,7 +760,7 @@ export const AppProvider: React.FC<{
     const verifiedOllamaCatalog = AVAILABLE_AI_MODELS.filter(m => m.provider === 'ollama' && isInstalledOllamaModel(m.id));
 
     return [...verifiedOllamaCatalog, ...dynamicModels, ...AVAILABLE_AI_MODELS.filter(m => m.provider !== 'ollama'), ...discoveredCloudModels];
-  }, [installedOllamaModels, aiSettings.providers.gemini.discoveredModels, aiSettings.providers.qwen.discoveredModels, aiSettings.providers.deepseek.discoveredModels, aiSettings.providers.openrouter.discoveredModels, aiSettings.providers.custom_openai.discoveredModels]);
+  }, [installedOllamaModels, aiSettings.providers.gemini.discoveredModels, aiSettings.providers.qwen.discoveredModels, aiSettings.providers.deepseek.discoveredModels, aiSettings.providers.openrouter.discoveredModels, aiSettings.providers.custom_openai.discoveredModels, aiSettings.providers.freellmapi.discoveredModels]);
   const activeAIModelDef = availableAIModels.find((model) => model.id === aiSettings.activeModel) || availableAIModels[0];
 
   const getDefaultModelForProvider = (providerId: AIProviderId): string => {
@@ -902,16 +902,17 @@ const refreshOllamaModels = async (): Promise<string[]> => {
   // Re-discovery runs on every key change so the model list always reflects
   // what that specific key can actually access (per-provider, all providers).
   useEffect(() => {
-    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai', 'freellmapi'];
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     for (const providerId of cloudProviders) {
       const config = aiSettings.providers[providerId];
       const currentKey = (config.apiKey || '').trim();
       const keyChanged = currentKey !== (lastDiscoveredKeys.current[providerId] ?? null);
-      const openrouterServerKey = providerId === 'openrouter'; // backend can use .env key
+      // openrouter: الخادم قد يحمل المفتاح في .env؛ freellmapi: الموجّه المحلي يعمل بلا مفتاح موحّد.
+      const serverKeyProvider = providerId === 'openrouter' || providerId === 'freellmapi';
 
-      if ((currentKey || openrouterServerKey) && keyChanged) {
+      if ((currentKey || serverKeyProvider) && keyChanged) {
         lastDiscoveredKeys.current[providerId] = currentKey;
         const timeoutId = setTimeout(() => {
           refreshCloudModels(providerId, currentKey, config.endpointUrl);
@@ -926,6 +927,7 @@ const refreshOllamaModels = async (): Promise<string[]> => {
     aiSettings.providers.deepseek.apiKey,
     aiSettings.providers.openrouter.apiKey,
     aiSettings.providers.custom_openai.apiKey,
+    aiSettings.providers.freellmapi.apiKey,
   ]);
 
   // Dynamic Model Discovery for Cloud Providers
@@ -955,27 +957,31 @@ const refreshOllamaModels = async (): Promise<string[]> => {
    // Auto-discover cloud models when API key is added/changed.
    // Runs even without a browser-stored key: the backend falls back to .env keys.
    useEffect(() => {
-    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai'];
-    
+    const cloudProviders: AIProviderId[] = ['gemini', 'qwen', 'deepseek', 'openrouter', 'custom_openai', 'freellmapi'];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
     for (const providerId of cloudProviders) {
       const config = aiSettings.providers[providerId];
       const hasKey = config.apiKey && config.apiKey.trim().length > 0;
-      const needsDiscovery = (hasKey || providerId === 'openrouter') && (!config.discoveredModels || config.discoveredModels.length === 0);
-      
+      // openrouter/freellmapi: يُكتشفان حتى بلا مفتاح متصفح (مفتاح .env أو موجّه محلي بلا مفتاح).
+      const serverKeyProvider = providerId === 'openrouter' || providerId === 'freellmapi';
+      const needsDiscovery = (hasKey || serverKeyProvider) && (!config.discoveredModels || config.discoveredModels.length === 0);
+
       if (needsDiscovery) {
-        // Debounce to avoid multiple rapid calls
-        const timeoutId = setTimeout(() => {
+        // Debounce to avoid multiple rapid calls; اجمع كل المؤقتات بدل العودة من أول مزود.
+        timeouts.push(setTimeout(() => {
           refreshCloudModels(providerId, config.apiKey || '', config.endpointUrl);
-        }, 500);
-        return () => clearTimeout(timeoutId);
+        }, 500));
       }
     }
+    return () => timeouts.forEach(clearTimeout);
   }, [
     aiSettings.providers.gemini.apiKey,
     aiSettings.providers.qwen.apiKey,
     aiSettings.providers.deepseek.apiKey,
     aiSettings.providers.openrouter.apiKey,
     aiSettings.providers.custom_openai.apiKey,
+    aiSettings.providers.freellmapi.apiKey,
   ]);
 
   // ----------------------------------------------------
