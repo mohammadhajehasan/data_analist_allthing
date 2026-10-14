@@ -11,6 +11,9 @@ import {
   roleForFirstUser, listUsers, type Role,
 } from './server/auth';
 import {
+  requestPasswordReset, verifyPasswordResetCode, confirmPasswordResetWithTicket,
+} from './server/passwordReset';
+import {
   consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
 } from './server/aiQuota';
 import {
@@ -2599,13 +2602,13 @@ app.get('/api/audit', (_req, res) => {
 // Authentication (SQLite-backed): register / login / logout / session
 // ---------------------------------------------------------------------------
 app.post('/api/auth/register', (req, res) => {
-  const { email, name, password } = req.body || {};
+  const { email, name, password, phone } = req.body || {};
   if (!email || !name || !password) {
     return res.status(400).json({ error: 'البريد والاسم وكلمة المرور مطلوبة' });
   }
   try {
     const role: Role = roleForFirstUser(); // first account = admin
-    const user = createUser(email, name, password, role);
+    const user = createUser(email, name, password, role, phone);
     // Auto-join: if this email was invited to a group while unregistered,
     // consume the invite and add the fresh account to that group now.
     let joinedGroup: { discussionId: string; discussionName: string } | null = null;
@@ -2634,6 +2637,55 @@ app.post('/api/auth/logout', (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (token) revokeSession(token);
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Password reset (code via email or SMS phone, per-country phone validation)
+// ---------------------------------------------------------------------------
+app.post('/api/auth/password-reset/request', async (req, res) => {
+  const { channel, target } = req.body || {};
+  if (channel !== 'email' && channel !== 'sms' && channel !== 'telegram') {
+    return res.status(400).json({ error: 'channel يجب أن يكون email أو sms أو telegram' });
+  }
+  if (!target) return res.status(400).json({ error: 'target مطلوب (بريد أو رقم هاتف بصيغة +963...)' });
+  try {
+    const result = await requestPasswordReset(channel as 'email' | 'sms', String(target));
+    if (!result.ok) return res.status(400).json({ error: result.message, retryAfterMs: result.retryAfterMs });
+    res.json({
+      ok: true, channel: result.channel, target: result.target,
+      message: result.message, expiresAt: result.expiresAt, hint: result.hint,
+    });
+  } catch (err: any) {
+    console.error('[pwd-reset] request failed:', err?.message);
+    res.status(500).json({ error: 'حدث خطأ غير متوقع — حاول مجدداً' });
+  }
+});
+
+app.post('/api/auth/password-reset/verify', (req, res) => {
+  const { channel, target, code } = req.body || {};
+  if (channel !== 'email' && channel !== 'sms' && channel !== 'telegram') {
+    return res.status(400).json({ error: 'channel يجب أن يكون email أو sms أو telegram' });
+  }
+  try {
+    const result = verifyPasswordResetCode(channel, String(target || ''), String(code || ''));
+    if (!result.ok) return res.status(400).json({ error: result.message });
+    res.json({ ok: true, message: result.message, ticket: result.ticket });
+  } catch (err: any) {
+    console.error('[pwd-reset] verify failed:', err?.message);
+    res.status(500).json({ error: 'حدث خطأ غير متوقع — حاول مجدداً' });
+  }
+});
+
+app.post('/api/auth/password-reset/confirm', (req, res) => {
+  const { ticket, password } = req.body || {};
+  try {
+    const result = confirmPasswordResetWithTicket(String(ticket || ''), String(password || ''));
+    if (!result.ok) return res.status(400).json({ error: result.message });
+    res.json({ ok: true, message: result.message });
+  } catch (err: any) {
+    console.error('[pwd-reset] confirm failed:', err?.message);
+    res.status(500).json({ error: 'حدث خطأ غير متوقع — حاول مجدداً' });
+  }
 });
 
 app.get('/api/auth/me', (req, res) => {

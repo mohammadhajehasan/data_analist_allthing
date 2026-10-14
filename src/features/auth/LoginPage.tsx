@@ -4,7 +4,10 @@
  * The first registered account automatically becomes admin (server-side rule).
  */
 import React, { useState } from 'react';
-import { Lock, Mail, User as UserIcon, LogIn, UserPlus, ShieldCheck, Database, BarChart3, Eye, EyeOff, Languages } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, LogIn, UserPlus, ShieldCheck, Database, BarChart3, Eye, EyeOff, Languages, KeyRound, Smartphone } from 'lucide-react';
+import { ResetPasswordPanel, PhoneWithCountryCode } from './ResetPasswordPanel';
+import { PHONE_COUNTRIES, validatePhoneNational } from '../../utils/phoneCountries';
+
 
 type LoginLanguage = 'ar' | 'en';
 
@@ -39,22 +42,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     try { localStorage.setItem('carbon_language', next); } catch { /* noop */ }
   };
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [forgotMode, setForgotMode] = useState(false); // نافذة "نسيت كلمة المرور"
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // حقل الهاتف (اختياري) في التسجيل: منتقي رمز الدولة + رقم وطني يُتحقق بنمط الدولة حيًّا
+  const [regCountry, setRegCountry] = useState(PHONE_COUNTRIES[0]); // سوريا افتراضيًا
+  const [regNational, setRegNational] = useState('');
+  const [showPhone, setShowPhone] = useState(false); // إظهار حقل الهاتف عند الطلب
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // حقل الهاتف اختياري لكن إن كتب فيه المستخدم رقمًا فلا بد أن يطابق نمط دولته
+    // (نفس قواعد الخادم عبر الوحدة المشتركة — لا مفاجآت عند النقر على "إنشاء الحساب").
+    let phoneE164: string | undefined;
+    if (mode === 'register' && regNational.trim()) {
+      const v = validatePhoneNational(regCountry.dial, regNational);
+      if (!v.valid) {
+        setError(isAr ? `رقم الهاتف لا يطابق نمط ${regCountry.nameAr} (مثال: ${regCountry.example})` : `Number doesn't match ${regCountry.name} format (e.g. ${regCountry.example})`);
+        return;
+      }
+      phoneE164 = `+${regCountry.dial}${v.nationalDigits}`;
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mode === 'login' ? { email, password } : { email, name, password }),
+        body: JSON.stringify(mode === 'login'
+          ? { email, password }
+          : { email, name, password, phone: phoneE164 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل الطلب');
@@ -75,6 +96,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         title: 'منصة تحليل البيانات الذكية',
         subtitle: 'منصة ذكاء وتحليل البيانات — سجّل الدخول للوصول إلى مساحة عملك',
         login: 'تسجيل الدخول', register: 'حساب جديد',
+        forgot: 'نسيت كلمة المرور؟', forgotTitle: 'استعادة كلمة المرور',
+        phoneOptional: 'رقم الهاتف (اختياري)', addPhone: '+ إضافة رقم هاتف للاستعادة عبر SMS',
         name: 'الاسم الكامل', email: 'البريد الإلكتروني', password: 'كلمة المرور',
         showPass: 'إظهار كلمة المرور',
         processing: 'جاري المعالجة...', enter: 'دخول', create: 'إنشاء الحساب',
@@ -85,6 +108,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         title: 'Smart Data Analytics Platform',
         subtitle: 'AI-powered data & analytics — sign in to reach your workspace',
         login: 'Sign in', register: 'New account',
+        forgot: 'Forgot password?', forgotTitle: 'Reset your password',
+        phoneOptional: 'Phone number (optional)', addPhone: '+ Add a phone number for SMS recovery',
         name: 'Full name', email: 'Email address', password: 'Password',
         showPass: 'Show password',
         processing: 'Processing...', enter: 'Sign in', create: 'Create account',
@@ -128,7 +153,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
         {/* Card */}
         <div className="bg-[var(--cds-layer-01,#262626)] border border-[var(--cds-border-subtle,#393939)] rounded-2xl shadow-2xl p-6">
-          {/* Mode tabs */}
+          {/* Mode tabs — مخفية داخل نافذة الاستعادة */}
+          {forgotMode ? (
+            <div className="text-center mb-5">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#0f62fe]/15 border border-[#0f62fe]/30 mb-2">
+                <KeyRound className="w-5 h-5 text-[#78a9ff]" />
+              </div>
+              <h2 className="text-base font-bold text-[var(--cds-text-01,#f4f4f4)]">{T.forgotTitle}</h2>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-1 p-1 bg-[var(--cds-layer-02,#161616)] rounded-lg mb-5">
             {(['login', 'register'] as const).map((m) => (
               <button
@@ -145,7 +178,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               </button>
             ))}
           </div>
+          )}
 
+          {forgotMode ? (
+            <ResetPasswordPanel
+              lang={lang}
+              initialEmail={email} // ما كتبه المستخدم في حقل الدخول — لا نطلب إعادة كتابته
+              onBack={() => { setForgotMode(false); setError(null); }}
+              onSuccess={() => setForgotMode(false)}
+              switchToLogin={(identifier) => {
+                // الدخول مباشرة بهوية الاستعادة (بريد أو +هاتف) — الخادم يقبل الاثنين
+                setMode('login');
+                setEmail(identifier);
+                setPassword('');
+              }}
+            />
+          ) : (
           <form onSubmit={submit} className="space-y-3.5">
             {mode === 'register' && (
               <div className="relative">
@@ -160,7 +208,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             <div className="relative">
               <Mail className="w-4 h-4 absolute top-3 start-3 text-[var(--cds-text-03,#8d8d8d)]" />
               <input
-                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                type="text" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder={T.email} required dir="ltr"
                 className={`${inputCls} text-left`}
               />
@@ -181,6 +229,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {mode === 'register' && (
+              <div className="space-y-1.5">
+                {!showPhone && !regNational ? (
+                  <button
+                    type="button" onClick={() => setShowPhone(true)}
+                    className="text-xs text-[#78a9ff] hover:text-[#0f62fe] font-medium flex items-center gap-1"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    {T.addPhone}
+                  </button>
+                ) : (
+                  <>
+                    <label className="text-[11px] text-[var(--cds-text-03,#8d8d8d)]">{T.phoneOptional}</label>
+                    <PhoneWithCountryCode
+                      isAr={isAr}
+                      country={regCountry}
+                      setCountry={setRegCountry}
+                      national={regNational}
+                      setNational={setRegNational}
+                      invalidMsg={regNational && !validatePhoneNational(regCountry.dial, regNational).valid
+                        ? (isAr ? `لا يطابق نمط ${regCountry.nameAr} (مثال: ${regCountry.example})` : `Doesn't match ${regCountry.name} format`)
+                        : null}
+                    />
+                    <button
+                      type="button" onClick={() => { setShowPhone(false); setRegNational(''); }}
+                      className="text-[10px] text-[var(--cds-text-03,#8d8d8d)] hover:text-[#ff8389]"
+                    >
+                      {isAr ? 'إزالة' : 'Remove'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            {mode === 'login' && (
+              <div className="text-end">
+                <button
+                  type="button"
+                  onClick={() => { setForgotMode(true); setError(null); }}
+                  className="text-xs text-[#78a9ff] hover:text-[#0f62fe] font-medium"
+                >
+                  {T.forgot}
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="text-xs text-[#ff8389] bg-[#da1e28]/15 border border-[#da1e28]/40 rounded-lg px-3 py-2">
@@ -196,6 +288,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               {busy ? T.processing : mode === 'login' ? T.enter : T.create}
             </button>
           </form>
+          )}
 
           {/* First-user admin hint */}
           {mode === 'register' && (

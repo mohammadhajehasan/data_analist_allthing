@@ -232,13 +232,17 @@ async function trySendInviteEmail(to: string, groupName: string, inviteUrl: stri
  * Resolve the configured sender identity into { name, email } for the HTTP
  * APIs. Accepts the same forms as senderAddress(): "Name <addr>" or an address.
  */
+/** يحلل الصيغة "Nome <mail@x.com>" أو بريداً خامساً. */
+function parseSenderRaw(raw: string): { name: string; email: string } {
+  const from = raw.trim();
+  const m = from.match(/^(.*)<\s*([^>]+)\s*>$/);
+  if (m) return { name: m[1].trim().replace(/^["']+|["']+$/g, '') || DEFAULT_FROM_NAME, email: m[2].trim() };
+  return { name: DEFAULT_FROM_NAME, email: from };
+}
+
 function parseSender(): { name: string; email: string } {
   const from = process.env.SMTP_FROM?.trim();
-  if (from) {
-    const m = from.match(/^(.*)<\s*([^>]+)\s*>$/);
-    if (m) return { name: m[1].trim().replace(/^["']+|["']+$/g, '') || DEFAULT_FROM_NAME, email: m[2].trim() };
-    return { name: DEFAULT_FROM_NAME, email: from };
-  }
+  if (from) return parseSenderRaw(from);
   return { name: DEFAULT_FROM_NAME, email: process.env.SMTP_USER || 'no-reply@localhost' };
 }
 
@@ -283,7 +287,10 @@ async function sendViaResend(p: MailPayload): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY?.trim();
   if (!key) return { sent: false, error: 'RESEND_API_KEY غير مضبوط', provider: 'resend' };
   try {
-    const sender = parseSender();
+    /* Resend بلا نطاق مُتحقَّق يسمح فقط بالإرسال من onboarding@resend.dev وإلى بريد صاحب
+       الحساب نفسه — لذا نسمح بتجاوز المُرسِل عبر RESEND_FROM حتى يُعتمد النطاق لاحقاً. */
+    const override = process.env.RESEND_FROM?.trim();
+    const sender = override ? parseSenderRaw(override) : parseSender();
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },

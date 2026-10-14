@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { createAuthMirror } from './authMirror';
+import { parseE164 } from './passwordReset';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -35,6 +36,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
+
+// عمود الهاتف (استعادة كلمة المرور عبر SMS) — ترحيل لقواعد البيانات القديمة:
+try {
+  db.exec('ALTER TABLE users ADD COLUMN phone TEXT');
+} catch { /* العمود موجود مسبقاً */ }
 
 /**
  * مرآة سحابية (Turso/libSQL) — تحل مشكلة قرص Render الفاني: الحسابات
@@ -62,17 +68,27 @@ function rowToUser(row: any): AuthUser {
   return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at };
 }
 
-export function createUser(email: string, name: string, password: string, role: Role = 'analyst'): AuthUser {
+export function createUser(email: string, name: string, password: string, role: Role = 'analyst', phone?: string): AuthUser {
   const emailNorm = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) throw new Error('البريد الإلكتروني غير صالح');
   if (password.length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+  // الهاتف اختياري لكن إن جاء فلا بُد أن يكون E.164 صالحاً حسب نمط دولته
+  // (سوريا مثلاً: 9 أرقام تبدأ بـ 9...) عبر الوحدة المشتركة مع العميل.
+  let phoneE164: string | null = null;
+  if (phone && String(phone).trim()) {
+    const p = parseE164(phone);
+    if (!p.ok) throw new Error(p.message);
+    phoneE164 = p.e164;
+    const dup = db.prepare('SELECT id FROM users WHERE phone = ?').get(phoneE164);
+    if (dup) throw new Error('هذا الرقم مسجل مسبقاً');
+  }
   const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(emailNorm);
   if (exists) throw new Error('هذا البريد مسجل مسبقاً');
   const id = `usr-${crypto.randomUUID().slice(0, 8)}`;
   const hash = bcrypt.hashSync(password, 10);
   const createdAt = new Date().toISOString();
-  db.prepare('INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?,?,?,?,?,?)')
-    .run(id, emailNorm, name.trim(), hash, role, createdAt);
+  db.prepare('INSERT INTO users (id, email, name, password_hash, phone, role, created_at) VALUES (?,?,?,?,?,?,?)')
+    .run(id, emailNorm, name.trim(), hash, phoneE164, role, createdAt);
   // write-through: التسجيل يُحفظ سحابياً فوراً حتى لا يضيع عند إعادة نشر Render
   authMirror?.mirrorUser({ id, email: emailNorm, name: name.trim(), password_hash: hash, role, created_at: createdAt })
     .catch(() => {});
@@ -81,7 +97,18 @@ export function createUser(email: string, name: string, password: string, role: 
 
 export function verifyLogin(email: string, password: string): { user: AuthUser; token: string; expiresAt: string } {
   const emailNorm = email.trim().toLowerCase();
-  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(emailNorm) as any;
+  let row = db.prepare('SELECT * FROM users WHERE email = ? AND email IS NOT NULL').get(emailNorm) as any;
+  // يُسمح أيضاً بالدخول برقم الهاتف (E.164) — مصدر ثانٍ للتسجيل محلّياً.
+  if (!row && String(email).trim().startsWith('+')) {
+    const p = parseE164(email);
+    if (p.ok) {
+      row = db.prepare(
+        `SELECT * FROM users
+         WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), '(', ''), ')', ''), ' ', ''), '+', '')
+           LIKE '%' || ?`
+      ).get(p.e164.slice(1)) as any;
+    }
+  }
   if (!row || !bcrypt.compareSync(password, row.password_hash)) {
     throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
   }
