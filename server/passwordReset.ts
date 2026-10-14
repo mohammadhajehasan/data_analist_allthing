@@ -15,10 +15,12 @@ import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { sendEmail } from './emailInvites';
 import { validatePhoneNational, PHONE_COUNTRIES } from '../src/utils/phoneCountries';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(path.join(DATA_DIR, 'auth.db'));
 db.pragma('journal_mode = WAL');
 
