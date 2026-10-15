@@ -602,9 +602,9 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
             className="h-9 flex items-center gap-2 px-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs text-[var(--cds-text-01)] transition-colors"
           >
             <div className="w-6 h-6 rounded-md bg-[var(--cds-interactive-01)] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-              {user.name.charAt(0)}
+              {user?.name?.charAt(0) || '?'}
             </div>
-            <span className="hidden sm:inline text-xs font-medium">{user.name}</span>
+            <span className="hidden sm:inline text-xs font-medium">{user?.name || ''}</span>
             <span className="carbon-tag-blue hidden md:inline">
               {user.role}
             </span>

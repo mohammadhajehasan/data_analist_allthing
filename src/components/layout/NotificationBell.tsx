@@ -168,7 +168,7 @@ export const NotificationBell: React.FC = () => {
     await load();
   };
 
-  const pendingIds = new Set(pending.map(p => p.id));
+  const pendingIds = new Set((pending || []).map(p => p.id));
 
   return (
     <div className="relative" ref={wrapRef}>
