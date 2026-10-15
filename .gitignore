@@ -8,3 +8,18 @@ coverage/
 !.env.example
 # SQLite database — live data, never commit
 /data/
+# Turso / local DB copies created during dev & tests
+/auth
+/auth-wal
+/dbs
+/dbs-wal
+/orgs
+/orgs-wal
+/reports/
+# Server error logs from local runs
+/server-mirror.err
+/server-verify.err
+# Local experiments & scripts (not part of the app)
+.freebuff/
+.agents/
+.buyer-execution-hooks/

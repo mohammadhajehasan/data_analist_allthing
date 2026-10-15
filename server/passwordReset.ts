@@ -11,21 +11,14 @@
  * منفيل العدوى كحد أقصى لكل هدف في 10 دقائق. نجاح التحقق يُصدر تذكرة
  * استخدام-واحد مُهشّرة تُستخدم مرة واحدة لتعيين كلمة المرور الجديدة.
  */
-import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import path from 'path';
-import fs from 'fs';
+import { turso, one, run, ensureSchema } from './turso';
 import { sendEmail } from './emailInvites';
 import { validatePhoneNational, PHONE_COUNTRIES } from '../src/utils/phoneCountries';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-const db = new Database(path.join(DATA_DIR, 'auth.db'));
-db.pragma('journal_mode = WAL');
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS pwd_resets (
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS pwd_resets (
   id TEXT PRIMARY KEY,
   channel TEXT NOT NULL CHECK (channel IN ('email','sms','telegram')),
   target TEXT NOT NULL,             -- بريد مُطبّع أو +رقم E.164
@@ -36,37 +29,17 @@ CREATE TABLE IF NOT EXISTS pwd_resets (
   ticket_hash TEXT,                 -- تذكرة الاستخدام-الواحد (في الذاكرة أيضاً)
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_pwd_target ON pwd_resets(channel, target);
-`);
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_pwd_target ON pwd_resets(channel, target)`,
+];
 
-// ترحيل القواعد القديمة: SQLite لا يعدّل قيد CHECK — نبني الجدول من جديد وننسخ الصفوف
-try {
-  const oldSql = (db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='pwd_resets'").get() as any)?.sql || '';
-  if (!oldSql.includes("'telegram'")) {
-    db.exec(`
-      CREATE TABLE pwd_resets_migrate (
-        id TEXT PRIMARY KEY,
-        channel TEXT NOT NULL CHECK (channel IN ('email','sms','telegram')),
-        target TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        code_hash TEXT NOT NULL,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        consumed_at TEXT,
-        ticket_hash TEXT,
-        created_at TEXT NOT NULL,
-        expires_at TEXT NOT NULL
-      );
-      INSERT INTO pwd_resets_migrate (id, channel, target, user_id, code_hash, attempts, consumed_at, ticket_hash, created_at, expires_at)
-        SELECT id, channel, target, user_id, code_hash, attempts, consumed_at, ticket_hash, created_at, expires_at FROM pwd_resets;
-      DROP TABLE pwd_resets;
-      ALTER TABLE pwd_resets_migrate RENAME TO pwd_resets;
-      CREATE INDEX IF NOT EXISTS idx_pwd_target ON pwd_resets(channel, target);
-    `);
-    console.log('[pwd-reset] migrated pwd_resets to support telegram channel');
-  }
-} catch (e: any) {
-  console.error('[pwd-reset] telegram channel migration failed:', e.message);
+let schemaReady: Promise<void> | null = null;
+function init(): Promise<void> {
+  schemaReady ??= ensureSchema(turso(), SCHEMA).catch(err => {
+    schemaReady = null;
+    throw err;
+  });
+  return schemaReady;
 }
 
 export type ResetChannel = 'email' | 'sms' | 'telegram';
@@ -112,17 +85,18 @@ export function maskTarget(channel: ResetChannel, target: string): string {
 }
 
 /** إيجاد المستخدم الهدف: بريد مسجّل أو هاتف E.164 (بلا مسافة/أصفار). */
-function findTargetUser(channel: ResetChannel, target: string): { id: string; email: string; name: string } | null {
+async function findTargetUser(channel: ResetChannel, target: string): Promise<{ id: string; email: string; name: string } | null> {
   let row: any;
   if (channel === 'email') {
-    row = db.prepare('SELECT id, email, name FROM users WHERE email = ?').get(target);
+    row = await one('SELECT id, email, name FROM users WHERE email = ?', [target]);
   } else {
     // نطابق الهاتف بعد تنزيل كل الفواصل والأقواس والأصفار البادئة.
-    row = db.prepare(
+    row = await one(
       `SELECT id, email, name FROM users
        WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), '(', ''), ')', ''), ' ', ''), '+', '')
-         LIKE '%' || ?`
-    ).get(target.replace(/[^0-9]/g, '').slice(1)); // بعد +: الرقم الوطني + رمز الدولة
+         LIKE '%' || ?`,
+      [target.replace(/[^0-9]/g, '').slice(1)] // بعد +: الرقم الوطني + رمز الدولة
+    );
   }
   return row || null;
 }
@@ -374,28 +348,30 @@ export async function requestPasswordReset(
   let user: { id: string; email: string; name: string } | null = null;
   if (channel === 'email') {
     target = String(targetRaw || '').trim().toLowerCase();
-    user = findTargetUser('email', target);
+    user = await findTargetUser('email', target);
   } else {
     const p = parseE164(targetRaw);
     if (!p.ok) {
       return { ok: false, channel, target: String(targetRaw || ''), message: p.message };
     }
     target = p.e164;
-    user = findTargetUser('sms', target);
+    user = await findTargetUser('sms', target);
   }
   if (!user) {
     // رسالة محايدة تمنع استخراج قائمة الحسابات المسجلة.
     const hint = channel === 'email'
-      ? 'إذا كان هذا البريد مسجّلاً لدينا فسيصلك رمز التحقق خلال دقيقة'
-      : 'إذا كان هذا الرقم مسجّلاً لدينا فسيصلك رمز التحقق خلال دقيقة — تأكد من رمز الدولة';
+      ? 'إذا كان هذا البريد مسجلاً لدينا فسيصلك رمز التحقق خلال دقيقة'
+      : 'إذا كان هذا الرقم مسجلاً لدينا فسيصلك رمز التحقق خلال دقيقة — تأكد من رمز الدولة';
     return { ok: false, channel, target: maskTarget(channel, target), message: hint };
   }
 
   // 2) حدود المعدل: 60 ثانية بين الطلبات + 3 طلبات / 10 دقائق لكل هدف.
+  await init();
   const now = Date.now();
-  const last = db.prepare(
-    'SELECT created_at FROM pwd_resets WHERE channel = ? AND target = ? ORDER BY created_at DESC LIMIT 1'
-  ).get(channel, target) as any;
+  const last = await one<any>(
+    'SELECT created_at FROM pwd_resets WHERE channel = ? AND target = ? ORDER BY created_at DESC LIMIT 1',
+    [channel, target]
+  );
   if (last) {
     const since = now - new Date(last.created_at).getTime();
     if (since < RESEND_COOLDOWN_MS) {
@@ -403,10 +379,11 @@ export async function requestPasswordReset(
     }
   }
   const windowStart = new Date(now - REQUEST_WINDOW_MS).toISOString();
-  const inWindow = db.prepare(
-    'SELECT COUNT(*) AS c FROM pwd_resets WHERE channel = ? AND target = ? AND created_at > ?'
-  ).get(channel, target, windowStart) as any;
-  if (inWindow.c >= MAX_REQUESTS_PER_WINDOW) {
+  const inWindow = await one<any>(
+    'SELECT COUNT(*) AS c FROM pwd_resets WHERE channel = ? AND target = ? AND created_at > ?',
+    [channel, target, windowStart]
+  );
+  if (Number(inWindow?.c || 0) >= MAX_REQUESTS_PER_WINDOW) {
     return { ok: false, channel, target: maskTarget(channel, target), message: 'تجاوزت عدد الطلبات المسموح — حاول بعد 10 دقائق', retryAfterMs: REQUEST_WINDOW_MS };
   }
 
@@ -414,8 +391,10 @@ export async function requestPasswordReset(
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   const id = `rst-${crypto.randomUUID().slice(0, 8)}`;
   const expiresAt = new Date(now + CODE_TTL_MS).toISOString();
-  db.prepare('INSERT INTO pwd_resets (id, channel, target, user_id, code_hash, created_at, expires_at) VALUES (?,?,?,?,?,?,?)')
-    .run(id, channel, target, user.id, hashOf(code), new Date().toISOString(), expiresAt);
+  await run(
+    'INSERT INTO pwd_resets (id, channel, target, user_id, code_hash, created_at, expires_at) VALUES (?,?,?,?,?,?,?)',
+    [id, channel, target, user.id, hashOf(code), new Date().toISOString(), expiresAt]
+  );
 
   // 4) إرسال الرمز عبر قناة الهدف.
   let sent = false; let err: string | undefined;
@@ -432,7 +411,7 @@ export async function requestPasswordReset(
   }
   if (!sent) {
     // نحذف المحاولة الفاشلة حتى لا تستهلك نصيب الحدود مع رسالة سبب واضحة.
-    db.prepare('DELETE FROM pwd_resets WHERE id = ?').run(id);
+    await run('DELETE FROM pwd_resets WHERE id = ?', [id]);
     return { ok: false, channel, target: maskTarget(channel, target), message: `فشل إرسال الرمز: ${err || 'لا مزود بريد مضبوط'}` };
   }
 
@@ -458,37 +437,39 @@ export async function requestPasswordReset(
 const ticketMetaByHash = new Map<string, { userId: string; rowId: string; expiresAt: string }>();
 
 /** تحقق الرمز وإصدار تذكرة استخدام-واحد لتعيين كلمة المرور. */
-export function verifyPasswordResetCode(channel: ResetChannel, target: string, code: string): ResetVerifyResult {
+export async function verifyPasswordResetCode(channel: ResetChannel, target: string, code: string): Promise<ResetVerifyResult> {
   const t = channel === 'email'
     ? String(target || '').trim().toLowerCase()
     : (() => { const p = parseE164(target); return p.ok ? p.e164 : String(target || ''); })();
   const normCode = String(code || '').replace(/[^0-9]/g, '');
   if (!t || normCode.length !== 6) return { ok: false, message: 'الرمز غير مكتمل (6 أرقام)' };
-  const row = db.prepare(
-    'SELECT * FROM pwd_resets WHERE channel = ? AND target = ? AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1'
-  ).get(channel, t) as any;
+  await init();
+  const row = await one<any>(
+    'SELECT * FROM pwd_resets WHERE channel = ? AND target = ? AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1',
+    [channel, t]
+  );
   if (!row) return { ok: false, message: 'اطلب رمزاً أولاً' };
   if (new Date(row.expires_at) <= new Date()) return { ok: false, message: 'انتهت صلاحية الرمز — اطلب رمزاً جديداً' };
   if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
-    db.prepare('UPDATE pwd_resets SET consumed_at = ? WHERE id = ?').run(new Date().toISOString(), row.id);
+    await run('UPDATE pwd_resets SET consumed_at = ? WHERE id = ?', [new Date().toISOString(), row.id]);
     return { ok: false, message: 'تجاوزت المحاولات المتاحة — اطلب رمزاً جديداً' };
   }
-  db.prepare('UPDATE pwd_resets SET attempts = attempts + 1 WHERE id = ?').run(row.id);
+  await run('UPDATE pwd_resets SET attempts = attempts + 1 WHERE id = ?', [row.id]);
   if (row.code_hash !== hashOf(normCode)) {
     const remaining = MAX_VERIFY_ATTEMPTS - (row.attempts + 1);
     return { ok: false, message: `الرمز غير صحيح${remaining > 0 ? ` — بقي ${remaining} محاولات` : ''}` };
   }
   // نجاح: يُستهلك الرمز ويُصدر توكن استخدام-واحد.
-  db.prepare('UPDATE pwd_resets SET consumed_at = ? WHERE id = ?').run(new Date().toISOString(), row.id);
+  await run('UPDATE pwd_resets SET consumed_at = ? WHERE id = ?', [new Date().toISOString(), row.id]);
   const ticket = crypto.randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + TICKET_TTL_MS).toISOString();
-  db.prepare('UPDATE pwd_resets SET ticket_hash = ? WHERE id = ?').run(hashOf(ticket), row.id);
+  await run('UPDATE pwd_resets SET ticket_hash = ? WHERE id = ?', [hashOf(ticket), row.id]);
   ticketMetaByHash.set(hashOf(ticket), { userId: row.user_id, rowId: row.id, expiresAt });
   return { ok: true, message: 'تم التحقق من الرمز', ticket };
 }
 
 /** تعيين كلمة المرور الجديدة عبر تذكرة الاستخدام-الواحد. */
-export function confirmPasswordResetWithTicket(ticket: string, newPassword: string): { ok: boolean; message: string } {
+export async function confirmPasswordResetWithTicket(ticket: string, newPassword: string): Promise<{ ok: boolean; message: string }> {
   if (!ticket || typeof newPassword !== 'string') return { ok: false, message: 'بيانات ناقصة' };
   if (newPassword.length < 6) return { ok: false, message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' };
   const h = hashOf(ticket);
@@ -498,14 +479,15 @@ export function confirmPasswordResetWithTicket(ticket: string, newPassword: stri
     ticketMetaByHash.delete(h);
     return { ok: false, message: 'انتهت صلاحية التذكرة — أعد طلب الرمز' };
   }
-  const row = db.prepare('SELECT * FROM pwd_resets WHERE id = ?').get(meta.rowId) as any;
+  await init();
+  const row = await one<any>('SELECT * FROM pwd_resets WHERE id = ?', [meta.rowId]);
   if (!row) return { ok: false, message: 'طلب غير موجود' };
 
-  // استخدام واحد: تُحذف تذكرة لحظة النجاح (لا يمكن تعيين كلمة مرور مرتين بنفس التذكرة).
+  // استخدام واحد: تُحذف تذكرة لحظة النجاح (لا يمكن تعيين كلمة مرور مرتين بنفس التذكرة.
   ticketMetaByHash.delete(h);
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, meta.userId);
-  db.prepare('UPDATE pwd_resets SET ticket_hash = NULL WHERE id = ?').run(meta.rowId);
+  await run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, meta.userId]);
+  await run('UPDATE pwd_resets SET ticket_hash = NULL WHERE id = ?', [meta.rowId]);
   console.log(`[pwd-reset] password updated via ${row.channel} for user ${meta.userId}`);
   return { ok: true, message: 'تم تعيين كلمة المرور الجديدة — سجّل الدخول بها الآن' };
 }

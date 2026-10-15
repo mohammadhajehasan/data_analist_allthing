@@ -5,7 +5,7 @@
  * من النفاد بفرض حد يومي على كل مستخدم/زائر عند استخدامه مفتاح الخادم
  * بدلاً من مفتاحه الخاص.
  *
- * - العدّاد يُخزَّن في data/auth.db (جدول ai_usage_daily) ويتجدد تلقائياً كل يوم UTC.
+ * - العدّاد مُخزَّن في جدول ai_usage_daily داخل قاعدة Turso الوحيدة، ويجدد تلقائياً كل يوم UTC.
  * - الزائر غير المسجَّل يُحسب بعنوان IP الخاص به (callerId = ip:<ip>).
  * - استدعاء مفتاح المستخدم الخاص لا يُحسب إطلاقاً (رصيده هو، وليس رصيد المنصة).
  * - limit <= 0 يعني "غير محدود" (يُستخدم للمدير افتراضياً عبر AI_SERVER_ADMIN_DAILY_LIMIT=0).
@@ -14,9 +14,8 @@
  *   AI_SERVER_DAILY_LIMIT        — حد المستخدم العادي يومياً (افتراضي 100 طلب)
  *   AI_SERVER_ADMIN_DAILY_LIMIT  — حد المدير يومياً (افتراضي 0 = غير محدود)
  */
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import type { Client, InValue } from '@libsql/client';
+import { turso, one, run, ensureSchema } from './turso';
 
 export interface QuotaResult {
   ok: boolean;
@@ -47,74 +46,74 @@ export function getAdminDailyLimit(): number {
 }
 
 export interface AiQuotaStore {
-  consume(args: { callerId: string; cost?: number; limit: number; day?: string }): QuotaResult;
-  status(args: { callerId: string; limit: number; day?: string }): QuotaResult;
+  consume(args: { callerId: string; cost?: number; limit: number; day?: string }): Promise<QuotaResult>;
+  status(args: { callerId: string; limit: number; day?: string }): Promise<QuotaResult>;
   close(): void;
 }
 
-export function createAiQuotaStore(dbPath: string): AiQuotaStore {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ai_usage_daily (
+export async function createAiQuotaStore(): Promise<AiQuotaStore> {
+  await ensureSchema(turso(), [
+    `CREATE TABLE IF NOT EXISTS ai_usage_daily (
       caller_id TEXT NOT NULL,
       day       TEXT NOT NULL,
       requests  INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (caller_id, day)
-    )
-  `);
+    )`,
+  ]);
 
   let lastCleanupDay = '';
 
-  function cleanupIfNeeded(day: string) {
+  // احتفظ بآخر 7 أيام فقط — الجدول سجل استخدام لا حاجة لتاريخه الأقدم
+  async function cleanupIfNeeded(day: string) {
     if (lastCleanupDay === day) return;
     lastCleanupDay = day;
     try {
-      // احتفظ بآخر 7 أيام فقط — الجدول سجل استخدام لا حاجة لتاريخه الأقدم
       const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      db.prepare('DELETE FROM ai_usage_daily WHERE day < ?').run(cutoff);
+      await run('DELETE FROM ai_usage_daily WHERE day < ?', [cutoff]);
     } catch {
       // التنظيف تحسين فقط — لا يُسقط الطلب أبداً
     }
   }
 
-  const getRow = db.prepare('SELECT requests FROM ai_usage_daily WHERE caller_id = ? AND day = ?');
-  const insertRow = db.prepare('INSERT INTO ai_usage_daily (caller_id, day, requests) VALUES (?, ?, ?)');
-  const updateRow = db.prepare('UPDATE ai_usage_daily SET requests = requests + ? WHERE caller_id = ? AND day = ?');
+  /** زيادة ذرّية للعداد — ترجع الرصيد الجديد (0 عند نقص الصف: مُدرج ضمن upsert). */
+  async function bump(callerId: string, day: string, cost: number): Promise<number> {
+    const res = await turso().execute({
+      sql: `INSERT INTO ai_usage_daily (caller_id, day, requests) VALUES (?1, ?2, ?3)
+            ON CONFLICT(caller_id, day) DO UPDATE SET requests = requests + excluded.requests
+            RETURNING requests`,
+      args: [callerId, day, cost] as InValue[],
+    });
+    return Number((res.rows[0] as any)?.requests || 0);
+  }
 
-  const consume = db.transaction((callerId: string, cost: number, limit: number, day: string): QuotaResult => {
-    cleanupIfNeeded(day);
-    const resetAt = nextUtcMidnight();
-    if (limit <= 0) {
-      // غير محدود — لكن نُسجّل الاستخدام للشفافية
-      const current = (getRow.get(callerId, day) as { requests: number } | undefined)?.requests || 0;
-      if (current === 0) insertRow.run(callerId, day, cost);
-      else updateRow.run(cost, callerId, day);
-      return { ok: true, used: current + cost, limit, remaining: -1, resetAt }; // -1 = غير محدود
-    }
-    const current = (getRow.get(callerId, day) as { requests: number } | undefined)?.requests || 0;
-    const projected = current + cost;
-    if (projected > limit) {
-      return { ok: false, used: current, limit, remaining: 0, resetAt };
-    }
-    if (current === 0) insertRow.run(callerId, day, cost);
-    else updateRow.run(cost, callerId, day);
-    const used = current + cost;
-    return { ok: true, used, limit, remaining: Math.max(0, limit - used), resetAt };
-  });
+  async function read(callerId: string, day: string): Promise<number> {
+    const row = (await one<any>('SELECT requests FROM ai_usage_daily WHERE caller_id = ? AND day = ?', [callerId, day])) as any;
+    return Number(row?.requests || 0);
+  }
 
   return {
-    consume({ callerId, cost = 1, limit, day }) {
+    async consume({ callerId, cost = 1, limit, day }) {
       const d = day || utcDay();
-      return consume(callerId, Math.max(1, Math.floor(cost)), limit, d);
+      const price = Math.max(1, Math.floor(cost));
+      const resetAt = nextUtcMidnight();
+      await cleanupIfNeeded(d);
+      if (limit <= 0) {
+        // غير محدود — لكن نُسجّل الاستخدام للشفافية
+        const used = await bump(callerId, d, price);
+        return { ok: true, used, limit, remaining: -1, resetAt }; // -1 = غير محدود
+      }
+      const current = await read(callerId, d);
+      if (current + price > limit) {
+        return { ok: false, used: current, limit, remaining: 0, resetAt };
+      }
+      const used = await bump(callerId, d, price);
+      return { ok: true, used, limit, remaining: Math.max(0, limit - used), resetAt };
     },
-    status({ callerId, limit, day }) {
+
+    async status({ callerId, limit, day }) {
       const d = day || utcDay();
-      cleanupIfNeeded(d);
-      const used = (getRow.get(callerId, d) as { requests: number } | undefined)?.requests || 0;
+      await cleanupIfNeeded(d);
+      const used = await read(callerId, d);
       return {
         ok: limit <= 0 || used < limit,
         used,
@@ -123,18 +122,23 @@ export function createAiQuotaStore(dbPath: string): AiQuotaStore {
         resetAt: nextUtcMidnight(),
       };
     },
+
     close() {
-      db.close();
+      /* العميل المشترك يُغلق مع العملية — لا شيء هنا */
     },
   };
 }
 
-const defaultStore = createAiQuotaStore(path.join(process.cwd(), 'data', 'auth.db'));
-
-export function consumeAiQuota(args: { callerId: string; cost?: number; limit: number }): QuotaResult {
-  return defaultStore.consume(args);
+let defaultStore: AiQuotaStore | null = null;
+async function getDefault(): Promise<AiQuotaStore> {
+  defaultStore ??= await createAiQuotaStore();
+  return defaultStore;
 }
 
-export function getAiQuotaStatus(args: { callerId: string; limit: number }): QuotaResult {
-  return defaultStore.status(args);
+export async function consumeAiQuota(args: { callerId: string; cost?: number; limit: number }): Promise<QuotaResult> {
+  return (await getDefault()).consume(args);
+}
+
+export async function getAiQuotaStatus(args: { callerId: string; limit: number }): Promise<QuotaResult> {
+  return (await getDefault()).status(args);
 }

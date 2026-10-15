@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { SessionsManagerModal } from './SessionsManagerModal';
 import {
   Sparkles,
   Globe,
@@ -78,6 +79,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
 
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showLayoutModal, setShowLayoutModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
@@ -624,6 +626,16 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
                 <button
                   onClick={() => {
                     setShowUserMenu(false);
+                    setShowSessionsModal(true);
+                  }}
+                  className="w-full text-start px-2 py-2 text-xs font-semibold text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-hover-01)] rounded-md flex items-center gap-2 transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {language === 'ar' ? 'إدارة الجلسات النشطة' : 'Active Sessions'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
                     logout();
                   }}
                   className="w-full text-start px-2 py-2 text-xs font-semibold text-[#ff8389] hover:bg-[#da1e28]/15 rounded-md flex items-center gap-2 transition-colors"
@@ -636,6 +648,9 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
           )}
         </div>
       </div>
+
+      {/* إدارة الجلسات النشطة: عرض الأجهزة وإبطال أي جلسة أو الكل */}
+      <SessionsManagerModal isOpen={showSessionsModal} onClose={() => setShowSessionsModal(false)} />
 
       {/* Persistent Layout Modal */}
       <DashboardLayoutModal

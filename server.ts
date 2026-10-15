@@ -8,8 +8,11 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
   createUser, verifyLogin, getUserByToken, revokeSession,
-  roleForFirstUser, listUsers, type Role,
+  roleForFirstUser, listUsers, describeDevice,
+  listSessionsForUser, revokeSessionForUser, revokeAllSessionsForUser,
+  getSessionIdleMsStored, invalidateIdleCache, type Role,
 } from './server/auth';
+import { setSetting, getSetting, APP_SETTING_KEYS } from './server/appSettings';
 import {
   requestPasswordReset, verifyPasswordResetCode, confirmPasswordResetWithTicket,
 } from './server/passwordReset';
@@ -28,6 +31,18 @@ import {
 
 
 dotenv.config();
+// ---------------------------------------------------------------------------
+// فحص إلزامي عند الإقلاع: كل التخزين الخادمي يعمل الآن على Turso (libSQL).
+// لا يوجد أي مخزن محلي بعد الآن — بلا TURSO_DATABASE_URL لا يوجد خادم.
+// ---------------------------------------------------------------------------
+if (!(process.env.TURSO_DATABASE_URL || '').trim()) {
+  console.error('[boot] TURSO_DATABASE_URL غير مضبوط — لا مخزن محلي بعد الآن.');
+  console.error('[boot] أنشئ قاعدة مجانية على https://turso.tech وأضف إلى .env:');
+  console.error('[boot]   TURSO_DATABASE_URL=libsql://<db>.turso.io');
+  console.error('[boot]   TURSO_AUTH_TOKEN=<token>');
+  process.exit(1);
+}
+
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000; // cloud platforms inject PORT
@@ -59,7 +74,7 @@ function hasRealServerAiKey(): boolean {
   });
 }
 
-function aiServerKeyQuotaGuard(req: express.Request, res: express.Response, next: express.NextFunction) {
+async function aiServerKeyQuotaGuard(req: express.Request, res: express.Response, next: express.NextFunction) {
   try {
     // Ollama محلي ومجاني — لا يُحسب أبداً
     if (String(req.body?.provider || '').toLowerCase() === 'ollama') return next();
@@ -69,7 +84,7 @@ function aiServerKeyQuotaGuard(req: express.Request, res: express.Response, next
     // لا مفاتيح خادم مكوّنة → لا شيء يحميه
     if (!hasRealServerAiKey()) return next();
 
-    const caller = authUserFromReq(req);
+    const caller = await authUserFromReq(req);
     const isAdmin = caller?.role === 'admin';
     const limit = isAdmin ? getAdminDailyLimit() : getUserDailyLimit();
     if (limit <= 0) return next(); // 0 = غير محدود
@@ -79,7 +94,7 @@ function aiServerKeyQuotaGuard(req: express.Request, res: express.Response, next
     const cost = Array.isArray(req.body?.models) && req.body.models.length > 0
       ? Math.min(req.body.models.length, 10)
       : 1;
-    const result = consumeAiQuota({ callerId, cost, limit });
+    const result = await consumeAiQuota({ callerId, cost, limit });
     if (!result.ok) {
       return res.status(429).json({
         error: `وصلت الحد اليومي لاستخدام مفتاح الخادم (${result.used}/${result.limit} طلب). يتجدد الحد تلقائياً بعد منتصف الليل بتوقيت UTC — أو أضف مفتاحك الخاص من إعدادات النماذج لاستخدام غير محدود.`,
@@ -962,12 +977,12 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
 
 // 1d. Get Ollama Installed Tags
 // رصيد حصة مفتاح الخادم للمتصل الحالي — لعرضها في الواجهة
-app.get('/api/ai/quota', (req, res) => {
-  const caller = authUserFromReq(req);
+app.get('/api/ai/quota', async (req, res) => {
+  const caller = await authUserFromReq(req);
   const isAdmin = caller?.role === 'admin';
   const limit = isAdmin ? getAdminDailyLimit() : getUserDailyLimit();
   const callerId = caller ? `user:${caller.id}` : `ip:${req.ip || 'unknown'}`;
-  const status = getAiQuotaStatus({ callerId, limit });
+  const status = await getAiQuotaStatus({ callerId, limit });
   res.json({ ...status, unlimited: limit <= 0, authenticated: Boolean(caller) });
 });
 
@@ -1330,7 +1345,7 @@ function googleSheetsCsvUrl(raw: string): string | null {
 }
 
 app.post('/api/proxy/fetch-data', async (req, res) => {
-  const user = authUserFromReq(req);
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const raw = String(req.body?.url || '').trim();
   if (!raw) return res.status(400).json({ error: 'الرابط مطلوب' });
@@ -2601,42 +2616,106 @@ app.get('/api/audit', (_req, res) => {
 // ---------------------------------------------------------------------------
 // Authentication (SQLite-backed): register / login / logout / session
 // ---------------------------------------------------------------------------
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { email, name, password, phone } = req.body || {};
   if (!email || !name || !password) {
     return res.status(400).json({ error: 'البريد والاسم وكلمة المرور مطلوبة' });
   }
   try {
-    const role: Role = roleForFirstUser(); // first account = admin
-    const user = createUser(email, name, password, role, phone);
+    const role: Role = await roleForFirstUser(); // first account = admin
+    const user = await createUser(email, name, password, role, phone);
     // Auto-join: if this email was invited to a group while unregistered,
     // consume the invite and add the fresh account to that group now.
     let joinedGroup: { discussionId: string; discussionName: string } | null = null;
-    try { joinedGroup = consumeEmailInviteForNewUser(user.id, email); } catch { /* non-fatal */ }
-    const { token, expiresAt } = verifyLogin(email, password);
+    try { joinedGroup = await consumeEmailInviteForNewUser(user.id, email); } catch { /* non-fatal */ }
+    const { token, expiresAt } = await verifyLogin(email, password, describeDevice(String(req.headers['user-agent'] || '')));
     res.json({ user, token, expiresAt, joinedGroup });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });
   }
   try {
-    const { user, token, expiresAt } = verifyLogin(email, password);
+    const { user, token, expiresAt } = await verifyLogin(email, password, describeDevice(String(req.headers['user-agent'] || '')));
     res.json({ user, token, expiresAt });
   } catch (err: any) {
     res.status(401).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (token) revokeSession(token);
+  if (token) await revokeSession(token);
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// إدارة الجلسات النشطة — لصاحب الحساب فقط: عرض الأجهزة وآخر نشاط وإبطال فردي/جماعي.
+// ---------------------------------------------------------------------------
+app.get('/api/auth/sessions', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  res.json({ sessions: await listSessionsForUser(user.id, token) });
+});
+
+app.delete('/api/auth/sessions/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const revoked = await revokeSessionForUser(user.id, req.params.id);
+    res.json({ ok: true, revoked });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'فشل إبطال الجلسة' });
+  }
+});
+
+app.delete('/api/auth/sessions', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const revoked = await revokeAllSessionsForUser(user.id, token || undefined);
+  res.json({ ok: true, revoked });
+});
+
+// مدة الخمول: القيمة الفعالة (env ← الاختصار setNorth؛ الأقوى alternates!) للعرض في الواجهة
+app.get('/api/auth/idle-config', async (_req, res) => {
+  res.json({ idleMs: await getSessionIdleMsStored() });
+});
+
+// ---------------------------------------------------------------------------
+// إعدادات المدير المخزنة في Turso (لا .env)
+// ---------------------------------------------------------------------------
+app.get('/api/admin/settings/idle', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط' });
+  const storedMinutes = Math.round(parseInt(await getSetting(APP_SETTING_KEYS.SESSION_IDLE_MS, ''), 10) / 60000);
+  const effectiveMs = await getSessionIdleMsStored();
+  res.json({
+    storedMinutes: Number.isFinite(storedMinutes) && storedMinutes > 0 ? storedMinutes : null,
+    effectiveMinutes: Math.round(effectiveMs / 60000),
+    envOverride: !!(process.env.SESSION_IDLE_MS || '').trim(),
+  });
+});
+
+app.put('/api/admin/settings/idle', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط' });
+  const minutes = Math.floor(Number((req.body || {}).minutes));
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 43200) {
+    return res.status(400).json({ error: 'المدة يجب أن تكون بين 1 و 43200 دقيقة (30 يوماً)' });
+  }
+  await setSetting(APP_SETTING_KEYS.SESSION_IDLE_MS, String(minutes * 60000));
+  invalidateIdleCache();
+  console.log(`[admin-settings] idle timeout set to ${minutes} minutes by user ${user.id}`);
+  res.json({ ok: true, minutes });
 });
 
 // ---------------------------------------------------------------------------
@@ -2661,13 +2740,13 @@ app.post('/api/auth/password-reset/request', async (req, res) => {
   }
 });
 
-app.post('/api/auth/password-reset/verify', (req, res) => {
+app.post('/api/auth/password-reset/verify', async (req, res) => {
   const { channel, target, code } = req.body || {};
   if (channel !== 'email' && channel !== 'sms' && channel !== 'telegram') {
     return res.status(400).json({ error: 'channel يجب أن يكون email أو sms أو telegram' });
   }
   try {
-    const result = verifyPasswordResetCode(channel, String(target || ''), String(code || ''));
+    const result = await verifyPasswordResetCode(channel, String(target || ''), String(code || ''));
     if (!result.ok) return res.status(400).json({ error: result.message });
     res.json({ ok: true, message: result.message, ticket: result.ticket });
   } catch (err: any) {
@@ -2676,10 +2755,10 @@ app.post('/api/auth/password-reset/verify', (req, res) => {
   }
 });
 
-app.post('/api/auth/password-reset/confirm', (req, res) => {
+app.post('/api/auth/password-reset/confirm', async (req, res) => {
   const { ticket, password } = req.body || {};
   try {
-    const result = confirmPasswordResetWithTicket(String(ticket || ''), String(password || ''));
+    const result = await confirmPasswordResetWithTicket(String(ticket || ''), String(password || ''));
     if (!result.ok) return res.status(400).json({ error: result.message });
     res.json({ ok: true, message: result.message });
   } catch (err: any) {
@@ -2688,7 +2767,7 @@ app.post('/api/auth/password-reset/confirm', (req, res) => {
   }
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const user = getUserByToken(token);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة أو منتهية' });
@@ -2697,21 +2776,21 @@ app.get('/api/auth/me', (req, res) => {
 
 // Full platform user list — ADMIN ONLY. Regular users must use
 // /api/users/contacts (self + shared-discussion contacts) instead.
-app.get('/api/auth/users', (req, res) => {
-  const caller = authUserFromReq(req);
+app.get('/api/auth/users', async (req, res) => {
+  const caller = await authUserFromReq(req);
   if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   if (caller.role !== 'admin') {
     return res.status(403).json({ error: 'هذه القائمة متاحة للمدير فقط — استخدم جهات اتصالك من المناقشات' });
   }
-  res.json({ users: listUsers() });
+  res.json({ users: await listUsers() });
 });
 
 // ---- Database migration (admin only): safe export/import of data/auth.db ----
 // Export uses sqlite's online .backup API so it is consistent even under WAL
 // while the live server keeps serving requests.
 
-app.get('/api/admin/db/export', (req, res) => {
-  const caller = authUserFromReq(req);
+app.get('/api/admin/db/export', async (req, res) => {
+  const caller = await authUserFromReq(req);
   if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   if (caller.role !== 'admin') return res.status(403).json({ error: 'عملية الترحيل متاحة للمدير فقط' });
   let tmpPath: string | null = null;
@@ -2739,7 +2818,7 @@ app.get('/api/admin/db/export', (req, res) => {
 // Safety chain: size cap → file magic check → automatic pre-replace backup
 // → replace → process exit (systemd/Render restarts into the new data).
 app.post('/api/admin/db/import', express.raw({ type: 'application/octet-stream', limit: '200mb' }), async (req, res) => {
-  const caller = authUserFromReq(req);
+  const caller = await authUserFromReq(req);
   if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   if (caller.role !== 'admin') return res.status(403).json({ error: 'عملية الترحيل متاحة للمدير فقط' });
   const upload = Buffer.from(req.body || Buffer.alloc(0));
@@ -2790,8 +2869,8 @@ app.post('/api/admin/db/import', express.raw({ type: 'application/octet-stream',
 });
 
 // ---- Platform health monitoring (admin only): uptime, memory, database ----
-app.get('/api/admin/system-status', (req, res) => {
-  const caller = authUserFromReq(req);
+app.get('/api/admin/system-status', async (req, res) => {
+  const caller = await authUserFromReq(req);
   if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   if (caller.role !== 'admin') return res.status(403).json({ error: 'مراقبة النظام متاحة للمدير فقط' });
   try {
@@ -2825,10 +2904,10 @@ app.get('/api/admin/system-status', (req, res) => {
 
 // Privacy-scoped contact list: the caller's own account + users who share at
 // least one discussion group with the caller (no global user enumeration).
-app.get('/api/users/contacts', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/users/contacts', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const rows = listContactsForUser(user.id);
+  const rows = await listContactsForUser(user.id);
   res.json({ contacts: rows });
 });
 
@@ -2866,15 +2945,15 @@ function authUserFromReq(req: express.Request) {
 // Write-through JSON blobs in data/auth.db (جدول datasets)، ملكية لكل مستخدم.
 // الواجهة تبقى تعمل من الذاكرة للأداء؛ الخادم مجرد مخزن استمرارية.
 // ---------------------------------------------------------------------------
-app.get('/api/datasets', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/datasets', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const rows = listUserDatasets(user.id);
+  const rows = await listUserDatasets(user.id);
   res.json({ datasets: rows.map(r => JSON.parse(r.payload)) });
 });
 
-app.put('/api/datasets/:id', (req, res) => {
-  const user = authUserFromReq(req);
+app.put('/api/datasets/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const dataset = req.body;
   if (!dataset || typeof dataset !== 'object' || !dataset.id) {
@@ -2883,52 +2962,52 @@ app.put('/api/datasets/:id', (req, res) => {
   if (dataset.id !== req.params.id) {
     return res.status(400).json({ error: 'معرّف المجموعة في المسار لا يطابق الجسم' });
   }
-  const result = upsertUserDataset(user.id, dataset);
+  const result = await upsertUserDataset(user.id, dataset);
   if (!result.ok) return res.status(413).json({ error: result.error });
   res.json({ ok: true });
 });
 
-app.delete('/api/datasets/:id', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/datasets/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const removed = deleteUserDataset(user.id, req.params.id);
+  const removed = await deleteUserDataset(user.id, req.params.id);
   res.json({ ok: true, removed });
 });
 
 // حذف دفعي — يستخدمه حذف مجموعات متعددة من الواجهة
-app.post('/api/datasets/bulk-delete', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/datasets/bulk-delete', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const ids = req.body?.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'قائمة المعرفات مطلوبة' });
   }
-  const removed = deleteUserDatasets(user.id, ids.map(String));
+  const removed = await deleteUserDatasets(user.id, ids.map(String));
   res.json({ ok: true, removed });
 });
 
 // استعادة لقطة مشروع: استبدال كل مجموعات المستخدم بمحتوى اللقطة دفعة واحدة
-app.post('/api/datasets/restore', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/datasets/restore', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const datasets = req.body?.datasets;
   if (!Array.isArray(datasets)) return res.status(400).json({ error: 'قائمة المجموعات مطلوبة' });
   const ids = datasets.map((d: any) => String(d?.id || '')).filter(Boolean);
-  let replaced = keepOnlyUserDatasets(user.id, ids);
+  let replaced = await keepOnlyUserDatasets(user.id, ids);
   let saved = 0;
   const errors: string[] = [];
   for (const ds of datasets) {
-    const r = upsertUserDataset(user.id, ds);
+    const r = await upsertUserDataset(user.id, ds);
     if (r.ok) saved++; else errors.push(r.error || 'خطأ غير معروف');
   }
   res.json({ ok: errors.length === 0, saved, replaced, errors: errors.slice(0, 3) });
 });
 
 // معلومات التخزين الخادمي (تظهر في لوحة الإدارة مستقبلاً)
-app.get('/api/datasets/_stats', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/datasets/_stats', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json({ ...getDatasetsStats(), perDatasetLimitBytes: getDatasetSizeLimitBytes() });
+  res.json({ ...await getDatasetsStats(), perDatasetLimitBytes: getDatasetSizeLimitBytes() });
 });
 
 // ---------------------------------------------------------------------------
@@ -2937,14 +3016,14 @@ app.get('/api/datasets/_stats', (req, res) => {
 // ---------------------------------------------------------------------------
 const WORKSPACE_STATE_KINDS: WorkspaceStateKind[] = ['reports', 'data_stories', 'scheduled_refreshes', 'workflows'];
 
-app.get('/api/dashboards', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/dashboards', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json({ dashboards: listUserDashboards(user.id) });
+  res.json({ dashboards: await listUserDashboards(user.id) });
 });
 
-app.put('/api/dashboards/:id', (req, res) => {
-  const user = authUserFromReq(req);
+app.put('/api/dashboards/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const dashboard = req.body;
   if (!dashboard || typeof dashboard !== 'object' || !dashboard.id) {
@@ -2953,117 +3032,117 @@ app.put('/api/dashboards/:id', (req, res) => {
   if (String(dashboard.id) !== req.params.id) {
     return res.status(400).json({ error: 'معرّف اللوحة في المسار لا يطابق الجسم' });
   }
-  const result = upsertUserDashboard(user.id, dashboard);
+  const result = await upsertUserDashboard(user.id, dashboard);
   if (!result.ok) return res.status(413).json({ error: result.error });
   res.json({ ok: true });
 });
 
-app.delete('/api/dashboards/:id', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/dashboards/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const removed = deleteUserDashboard(user.id, req.params.id);
+  const removed = await deleteUserDashboard(user.id, req.params.id);
   res.json({ ok: true, removed });
 });
 
-app.post('/api/dashboards/bulk-delete', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/dashboards/bulk-delete', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const ids = req.body?.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'قائمة المعرفات مطلوبة' });
   }
-  const removed = deleteUserDashboards(user.id, ids.map(String));
+  const removed = await deleteUserDashboards(user.id, ids.map(String));
   res.json({ ok: true, removed });
 });
 
 // استعادة لقطة مشروع: استبدال كل لوحات المستخدم بمحتوى اللقطة دفعة واحدة
-app.post('/api/dashboards/restore', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/dashboards/restore', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const dashboards = req.body?.dashboards;
   if (!Array.isArray(dashboards)) return res.status(400).json({ error: 'قائمة اللوحات مطلوبة' });
-  const result = replaceUserDashboards(user.id, dashboards);
+  const result = await replaceUserDashboards(user.id, dashboards);
   res.json({ ok: result.errors.length === 0, ...result });
 });
 
 // حالة مساحة العمل: تقارير/قصص بيانات/جداول تحديث/سير عمل — blob واحد لكل نوع
-app.get('/api/workspace/state', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/workspace/state', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const kind = String(req.query.kind || '') as WorkspaceStateKind;
   if (!WORKSPACE_STATE_KINDS.includes(kind)) {
     return res.status(400).json({ error: `نوع الحالة مطلوب من: ${WORKSPACE_STATE_KINDS.join(', ')}` });
   }
-  res.json({ kind, value: getUserWorkspaceState(user.id, kind) });
+  res.json({ kind, value: await getUserWorkspaceState(user.id, kind) });
 });
 
-app.put('/api/workspace/state', (req, res) => {
-  const user = authUserFromReq(req);
+app.put('/api/workspace/state', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const { kind, value } = req.body || {};
   if (!WORKSPACE_STATE_KINDS.includes(kind)) {
     return res.status(400).json({ error: `نوع الحالة مطلوب من: ${WORKSPACE_STATE_KINDS.join(', ')}` });
   }
-  const result = setUserWorkspaceState(user.id, kind, value ?? null);
+  const result = await setUserWorkspaceState(user.id, kind, value ?? null);
   if (!result.ok) return res.status(413).json({ error: result.error });
   res.json({ ok: true });
 });
 
-app.get('/api/workspace/_stats', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/workspace/_stats', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json({ ...getUserStateStats(), perItemLimitBytes: getWorkspaceStateLimitBytes() });
+  res.json({ ...await getUserStateStats(), perItemLimitBytes: getWorkspaceStateLimitBytes() });
 });
 
 // The current user's groups — strictly members-only, no discovery.
 // ?light=1 strips image payloads from lastMessage (fast chat list).
-app.get('/api/discussions', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   if (req.query.light === '1') return res.json(listChatSummaries(user.id));
-  res.json(listDiscussionsForUser(user.id));
+  res.json(await listDiscussionsForUser(user.id));
 });
 
 // Total unread across all the user's groups — the sidebar tab badge.
 // MUST be defined before '/api/discussions/:id' style routes.
-app.get('/api/discussions/unread-total', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/unread-total', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json({ total: totalUnreadCount(user.id) });
+  res.json({ total: await totalUnreadCount(user.id) });
 });
 
 // Unread SHARED-SNAPSHOT counts per source tab — mini badges on Dashboards/Reports tabs
-app.get('/api/discussions/snapshot-badges', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/snapshot-badges', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json(snapshotUnreadBySource(user.id));
+  res.json(await snapshotUnreadBySource(user.id));
 });
 
-app.post('/api/discussions', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const { name, topic, memberIds } = req.body || {};
   if (!name || !String(name).trim()) {
     return res.status(400).json({ error: 'اسم المجموعة مطلوب' });
   }
   try {
-    const discussion = createDiscussion(String(name), topic ? String(topic) : '', user.id, user.name);
+    const discussion = await createDiscussion(String(name), topic ? String(topic) : '', user.id, user.name);
     // Optionally invite members at creation time (ids or emails)
     const invited: string[] = [];
     const failed: { target: string; error: string }[] = [];
     if (Array.isArray(memberIds)) {
       for (const raw of memberIds.slice(0, 100)) {
         try {
-          const target = findUserByIdOrEmail(String(raw));
+          const target = await findUserByIdOrEmail(String(raw));
           if (!target) throw new Error('غير موجود');
-          addMember(discussion.id, target.id);
+          await addMember(discussion.id, target.id);
           invited.push(target.id);
         } catch (e: any) {
           failed.push({ target: String(raw), error: e.message });
         }
       }
     }
-    const list = listDiscussionsForUser(user.id);
+    const list = await listDiscussionsForUser(user.id);
     const full = list.mine.find(d => d.id === discussion.id) || discussion;
     res.json({ discussion: full, invited, failed });
   } catch (err: any) {
@@ -3071,32 +3150,32 @@ app.post('/api/discussions', (req, res) => {
   }
 });
 
-app.get('/api/discussions/:id/messages', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/:id/messages', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const disc = getDiscussionRow(req.params.id);
+  const disc = await getDiscussionRow(req.params.id);
   if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 50;
     const before = req.query.before ? String(req.query.before) : undefined;
-    const messages = listMessages(req.params.id, user.id, limit, before);
+    const messages = await listMessages(req.params.id, user.id, limit, before);
     const oldest = messages.length > 0 ? messages[0].createdAt : null;
     res.json({
       messages,
-      hasOlder: oldest ? hasOlderMessages(req.params.id, oldest) : false,
+      hasOlder: oldest ? await hasOlderMessages(req.params.id, oldest) : false,
     });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
   }
 });
 
-app.post('/api/discussions/:id/messages', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/messages', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const disc = getDiscussionRow(req.params.id);
+  const disc = await getDiscussionRow(req.params.id);
   if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
   try {
-    const message = postMessage(
+    const message = await postMessage(
       req.params.id, user.id, user.name,
       String(req.body?.body || ''),
       req.body?.imageData ?? null,
@@ -3109,12 +3188,12 @@ app.post('/api/discussions/:id/messages', (req, res) => {
 });
 
 // Invite members (owner or moderators — like WhatsApp group admins)
-app.post('/api/discussions/:id/members', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/members', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const disc = getDiscussionRow(req.params.id);
+  const disc = await getDiscussionRow(req.params.id);
   if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
-  if (!isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم دعوة الأعضاء' });
+  if (!await isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم دعوة الأعضاء' });
   const { memberIds } = req.body || {};
   if (!Array.isArray(memberIds) || memberIds.length === 0) {
     return res.status(400).json({ error: 'قائمة الأعضاء (memberIds) مطلوبة' });
@@ -3123,25 +3202,25 @@ app.post('/api/discussions/:id/members', (req, res) => {
   const failed: { target: string; error: string }[] = [];
   for (const raw of memberIds.slice(0, 100)) {
     try {
-      const target = findUserByIdOrEmail(String(raw));
+      const target = await findUserByIdOrEmail(String(raw));
       if (!target) throw new Error('غير موجود');
-      addMember(req.params.id, target.id);
+      await addMember(req.params.id, target.id);
       invited.push(target.id);
     } catch (e: any) {
       failed.push({ target: String(raw), error: e.message });
     }
   }
-  const list = listDiscussionsForUser(user.id);
+  const list = await listDiscussionsForUser(user.id);
   const full = list.mine.find(d => d.id === req.params.id);
   res.json({ discussion: full, invited, failed });
 });
 
-app.delete('/api/discussions/:id/members/:userId', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/discussions/:id/members/:userId', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  if (!isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم إزالة الأعضاء' });
+  if (!await isModerator(req.params.id, user.id)) return res.status(403).json({ error: 'فقط المالك أو المشرفون يمكنهم إزالة الأعضاء' });
   try {
-    removeMember(req.params.id, req.params.userId, user.id);
+    await removeMember(req.params.id, req.params.userId, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3151,14 +3230,14 @@ app.delete('/api/discussions/:id/members/:userId', (req, res) => {
 // ---- Moderator management (owner only) ----
 
 // Owner promotes a member to moderator
-app.post('/api/discussions/:id/moderators/:userId', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/moderators/:userId', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    promoteToModerator(req.params.id, req.params.userId, user.id);
+    await promoteToModerator(req.params.id, req.params.userId, user.id);
     // Let the promotee know about their new role
-    const disc = getDiscussionRow(req.params.id);
-    pushNotification(
+    const disc = await getDiscussionRow(req.params.id);
+    await pushNotification(
       req.params.userId,
       'info',
       'تم تعيينك مشرفاً 🛡',
@@ -3172,14 +3251,14 @@ app.post('/api/discussions/:id/moderators/:userId', (req, res) => {
 });
 
 // Owner demotes a moderator back to member
-app.delete('/api/discussions/:id/moderators/:userId', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/discussions/:id/moderators/:userId', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    demoteModerator(req.params.id, req.params.userId, user.id);
+    await demoteModerator(req.params.id, req.params.userId, user.id);
     // Let the demoted member know their role changed
-    const disc = getDiscussionRow(req.params.id);
-    pushNotification(
+    const disc = await getDiscussionRow(req.params.id);
+    await pushNotification(
       req.params.userId,
       'info',
       'أُلغي إشرافك في مجموعة',
@@ -3193,15 +3272,15 @@ app.delete('/api/discussions/:id/moderators/:userId', (req, res) => {
 });
 
 // Owner toggles closed-group mode: only owner & moderators can post
-app.post('/api/discussions/:id/send-policy', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/send-policy', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const policy = String(req.body?.policy || '');
   if (policy !== 'everyone' && policy !== 'moderators_only') {
     return res.status(400).json({ error: "policy يجب أن تكون 'everyone' أو 'moderators_only'" });
   }
   try {
-    setSendPolicy(req.params.id, user.id, policy);
+    await setSendPolicy(req.params.id, user.id, policy);
     res.json({ ok: true, sendPolicy: policy });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3209,25 +3288,25 @@ app.post('/api/discussions/:id/send-policy', (req, res) => {
 });
 
 // Leave a group (non-owner)
-app.post('/api/discussions/:id/leave', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/leave', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  if (isOwner(req.params.id, user.id)) {
+  if (await isOwner(req.params.id, user.id)) {
     return res.status(400).json({ error: 'المالك لا يمكنه المغادرة — احذف المجموعة بدلاً من ذلك' });
   }
   try {
-    removeMember(req.params.id, user.id);
+    await removeMember(req.params.id, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-app.delete('/api/discussions/:id', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/discussions/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    deleteDiscussion(req.params.id, user.id);
+    await deleteDiscussion(req.params.id, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3237,12 +3316,12 @@ app.delete('/api/discussions/:id', (req, res) => {
 // ---- Invite links: the only path into a private group ----
 
 // Owner generates a fresh secret invite link
-app.post('/api/discussions/:id/invites', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/invites', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
     const maxUses = req.body?.maxUses ? Number(req.body.maxUses) : undefined;
-    const invite = createInvite(req.params.id, user.id, maxUses);
+    const invite = await createInvite(req.params.id, user.id, maxUses);
     res.json(invite);
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3250,22 +3329,22 @@ app.post('/api/discussions/:id/invites', (req, res) => {
 });
 
 // Owner lists the group's invite links (with usage + revoke state)
-app.get('/api/discussions/:id/invites', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/:id/invites', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    res.json({ invites: listInvites(req.params.id, user.id) });
+    res.json({ invites: await listInvites(req.params.id, user.id) });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
   }
 });
 
 // Owner revokes an invite link
-app.delete('/api/discussions/:id/invites/:code', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/discussions/:id/invites/:code', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    revokeInvite(req.params.id, req.params.code, user.id);
+    await revokeInvite(req.params.id, req.params.code, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3274,25 +3353,25 @@ app.delete('/api/discussions/:id/invites/:code', (req, res) => {
 
 // Pending invites received by the current user (MUST be registered before
 // the '/api/invites/:code' route or "pending" is captured as a code!)
-app.get('/api/invites/pending', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/invites/pending', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   res.json({ invites: listPendingInvitesFor(user.id) });
 });
 
 // Public-ish preview of an invite code (name only — no messages, no members)
-app.get('/api/invites/:code', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/invites/:code', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json(peekInvite(req.params.code));
+  res.json(await peekInvite(req.params.code));
 });
 
 // Join a group through a valid invite code
-app.post('/api/invites/:code/join', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/invites/:code/join', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    const result = joinViaInvite(req.params.code, user.id, user.name);
+    const result = await joinViaInvite(req.params.code, user.id, user.name);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3303,7 +3382,7 @@ app.post('/api/invites/:code/join', (req, res) => {
 
 // Owner invites an email address (SMTP if configured, manual link otherwise)
 app.post('/api/discussions/:id/invite-email', async (req, res) => {
-  const user = authUserFromReq(req);
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'البريد الإلكتروني مطلوب' });
@@ -3316,27 +3395,27 @@ app.post('/api/discussions/:id/invite-email', async (req, res) => {
 });
 
 // Invitee-side preview of an email invite (name of group only)
-app.get('/api/email-invites/:code', (req, res) => {
-  res.json(peekEmailInvite(req.params.code));
+app.get('/api/email-invites/:code', async (req, res) => {
+  res.json(await peekEmailInvite(req.params.code));
 });
 
 // Owner: all email invites of a group with consumption status
-app.get('/api/discussions/:id/email-invites', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/:id/email-invites', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    res.json({ invites: listGroupEmailInvites(req.params.id, user.id) });
+    res.json({ invites: await listGroupEmailInvites(req.params.id, user.id) });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
   }
 });
 
 // Owner: revoke a pending email invite (its link stops working)
-app.delete('/api/discussions/:id/email-invites/:code', (req, res) => {
-  const user = authUserFromReq(req);
+app.delete('/api/discussions/:id/email-invites/:code', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    revokeEmailInvite(req.params.id, req.params.code, user.id);
+    await revokeEmailInvite(req.params.id, req.params.code, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3344,11 +3423,11 @@ app.delete('/api/discussions/:id/email-invites/:code', (req, res) => {
 });
 
 // Ephemeral typing signal (fire-and-forget, nothing persisted).
-app.post('/api/discussions/:id/typing', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/typing', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    broadcastTyping(req.params.id, user.id, user.name);
+    await broadcastTyping(req.params.id, user.id, user.name);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3357,9 +3436,9 @@ app.post('/api/discussions/:id/typing', (req, res) => {
 
 // Live stream of discussion events for the current user (Server-Sent Events).
 // Auth via query token because EventSource cannot send headers.
-app.get('/api/discussions/stream', (req, res) => {
+app.get('/api/discussions/stream', async (req, res) => {
   const token = String(req.query.token || '');
-  const user = getUserByToken(token);
+  const user = await getUserByToken(token);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
 
   res.writeHead(200, {
@@ -3391,35 +3470,35 @@ app.get('/api/discussions/stream', (req, res) => {
 });
 
 // ---- Notifications ----
-app.get('/api/notifications', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/notifications', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  res.json({ notifications: listNotifications(user.id), unread: countUnread(user.id) });
+  res.json({ notifications: await listNotifications(user.id), unread: await countUnread(user.id) });
 });
 
-app.post('/api/notifications/:id/read', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/notifications/:id/read', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  markNotificationRead(user.id, req.params.id);
+  await markNotificationRead(user.id, req.params.id);
   res.json({ ok: true });
 });
 
-app.post('/api/notifications/read-all', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/notifications/read-all', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  markAllNotificationsRead(user.id);
+  await markAllNotificationsRead(user.id);
   res.json({ ok: true });
 });
 
 // ---- Group invites (pending → accept/reject) ----
 // Owner invites a contact: creates a PENDING invite + notification for the invitee
-app.post('/api/discussions/:id/invite-user', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/invite-user', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const { userId } = req.body || {};
   if (!userId) return res.status(400).json({ error: 'معرّف المدعو (userId) مطلوب' });
   try {
-    const result = sendDiscussionInvite(req.params.id, user.id, user.name, String(userId));
+    const result = await sendDiscussionInvite(req.params.id, user.id, user.name, String(userId));
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3427,22 +3506,22 @@ app.post('/api/discussions/:id/invite-user', (req, res) => {
 });
 
 // Invitee accepts — membership happens ONLY here
-app.post('/api/invites/pending/:id/accept', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/invites/pending/:id/accept', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    res.json(acceptDiscussionInvite(req.params.id, user.id));
+    res.json(await acceptDiscussionInvite(req.params.id, user.id));
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
 // Invitee rejects — owner is notified
-app.post('/api/invites/pending/:id/reject', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/invites/pending/:id/reject', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    rejectDiscussionInvite(req.params.id, user.id);
+    await rejectDiscussionInvite(req.params.id, user.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3451,26 +3530,26 @@ app.post('/api/invites/pending/:id/reject', (req, res) => {
 
 // Mark ALL the user's groups as read in one click (sidebar badge → 0).
 // MUST be registered before '/api/discussions/:id/read' ("all" ≠ a group id).
-app.post('/api/discussions/read-all', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/read-all', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const affected = markAllDiscussionsRead(user.id);
-  emitToUser(user.id, countUnread(user.id));
+  const affected = await markAllDiscussionsRead(user.id);
+  emitToUser(user.id, await countUnread(user.id));
   res.json({ ok: true, total: 0, affected });
 });
 
 // Mark the group as read for the current user (unread badge resets).
 // Replies with the user's fresh unread counts per group for instant badge sync.
-app.post('/api/discussions/:id/read', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/read', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    markDiscussionRead(req.params.id, user.id);
-    const list = listChatSummaries(user.id);
+    await markDiscussionRead(req.params.id, user.id);
+    const list = await listChatSummaries(user.id);
     const unreadByGroup: Record<string, number> = {};
     for (const g of list.mine) unreadByGroup[g.id] = g.unreadCount;
     // Nudge the caller's own SSE stream so other open tabs sync too
-    emitToUser(user.id, countUnread(user.id));
+    emitToUser(user.id, await countUnread(user.id));
     res.json({ ok: true, unreadByGroup });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -3478,24 +3557,24 @@ app.post('/api/discussions/:id/read', (req, res) => {
 });
 
 // Group members: see this group's pending invites (owner manages them)
-app.get('/api/discussions/:id/pending-invites', (req, res) => {
-  const user = authUserFromReq(req);
+app.get('/api/discussions/:id/pending-invites', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    res.json({ invites: listGroupPendingInvites(req.params.id, user.id) });
+    res.json({ invites: await listGroupPendingInvites(req.params.id, user.id) });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
   }
 });
 
 // Cancel a pending invite (the inviter themselves, or the group owner for anyone's)
-app.post('/api/discussions/:id/pending-invites/:inviteId/cancel', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/pending-invites/:inviteId/cancel', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  const disc = getDiscussionRow(req.params.id);
+  const disc = await getDiscussionRow(req.params.id);
   if (!disc) return res.status(404).json({ error: 'المجموعة غير موجودة' });
   try {
-    cancelPendingInvite(req.params.id, req.params.inviteId, user.id, isOwner(req.params.id, user.id));
+    await cancelPendingInvite(req.params.id, req.params.inviteId, user.id, await isOwner(req.params.id, user.id));
     res.json({ ok: true });
   } catch (err: any) {
     res.status(403).json({ error: err.message });
@@ -3503,11 +3582,11 @@ app.post('/api/discussions/:id/pending-invites/:inviteId/cancel', (req, res) => 
 });
 
 // Resend a pending invite (fresh notification to the invitee)
-app.post('/api/discussions/:id/pending-invites/:inviteId/resend', (req, res) => {
-  const user = authUserFromReq(req);
+app.post('/api/discussions/:id/pending-invites/:inviteId/resend', async (req, res) => {
+  const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   try {
-    resendPendingInvite(req.params.id, req.params.inviteId, user.id, user.name);
+    await resendPendingInvite(req.params.id, req.params.inviteId, user.id, user.name);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(403).json({ error: err.message });

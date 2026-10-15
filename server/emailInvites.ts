@@ -10,33 +10,34 @@
  *   account is AUTOMATICALLY added to the group — no extra click
  * Uses nodemailer when available; falls back gracefully otherwise.
  */
-import Database from 'better-sqlite3';
 import crypto from 'crypto';
-import path from 'path';
+import type { InValue } from '@libsql/client';
+import { rows, one, run, ensureSchema, turso } from './turso';
 import { getDiscussionRow, isMember, isModerator, addMember } from './discussions';
 import { pushNotification } from './notifications';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const db = new Database(path.join(DATA_DIR, 'auth.db'));
-db.pragma('journal_mode = WAL');
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS discussion_email_invites (
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS discussion_email_invites (
   code TEXT PRIMARY KEY,
-  discussion_id TEXT NOT NULL REFERENCES discussions(id) ON DELETE CASCADE,
+  discussion_id TEXT NOT NULL,
   invited_email TEXT NOT NULL,
   invited_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   consumed_by TEXT,
   reminded_at TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_einv_email ON discussion_email_invites(invited_email);
-`);
-// Existing databases created before the reminder feature: add the column if missing
-try {
-  db.exec('ALTER TABLE discussion_email_invites ADD COLUMN reminded_at TEXT');
-} catch { /* column already exists */ }
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_einv_email ON discussion_email_invites(invited_email)`,
+];
+
+let schemaReady: Promise<void> | null = null;
+function init(): Promise<void> {
+  schemaReady ??= ensureSchema(turso(), SCHEMA).catch(err => {
+    schemaReady = null;
+    throw err;
+  });
+  return schemaReady;
+}
 
 export interface EmailInviteResult {
   code: string;
@@ -198,21 +199,24 @@ export async function createEmailInvite(
   invitedByEmail: string,
   rawEmail: string
 ): Promise<EmailInviteResult> {
-  const disc = getDiscussionRow(discussionId);
+  const disc = await getDiscussionRow(discussionId);
   if (!disc) throw new Error('المجموعة غير موجودة');
-  if (!isModerator(discussionId, invitedByEmail)) throw new Error('فقط المالك أو المشرفون يمكنهم الدعوة');
+  if (!(await isModerator(discussionId, invitedByEmail))) throw new Error('فقط المالك أو المشرفون يمكنهم الدعوة');
 
   const email = normalizeEmail(rawEmail);
   if (!EMAIL_RE.test(email)) throw new Error('صيغة البريد الإلكتروني غير صالحة');
 
   const code = crypto.randomBytes(16).toString('base64url');
   const expiresAt = new Date(Date.now() + TTL_MS).toISOString();
-  db.prepare('INSERT INTO discussion_email_invites (code, discussion_id, invited_email, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?)')
-    .run(code, discussionId, email, invitedByEmail, new Date().toISOString(), expiresAt);
+  await init();
+  await run(
+    'INSERT INTO discussion_email_invites (code, discussion_id, invited_email, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?)',
+    [code, discussionId, email, invitedByEmail, new Date().toISOString(), expiresAt]
+  );
 
   const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
   const inviteUrl = `${baseUrl}/join/${code}`;
-  const inviter = db.prepare('SELECT name FROM users WHERE id = ?').get(invitedByEmail) as any;
+  const inviter = await one<any>('SELECT name FROM users WHERE id = ?', [invitedByEmail]);
   const mail = await trySendInviteEmail(email, disc.name, inviteUrl, inviter?.name || 'فريقك', expiresAt);
 
   return { code, expiresAt, emailSent: mail.sent, emailError: mail.error, inviteUrl };
@@ -291,11 +295,15 @@ async function sendViaResend(p: MailPayload): Promise<SendResult> {
        الحساب نفسه — لذا نسمح بتجاوز المُرسِل عبر RESEND_FROM حتى يُعتمد النطاق لاحقاً. */
     const override = process.env.RESEND_FROM?.trim();
     const sender = override ? parseSenderRaw(override) : parseSender();
+    /* Resend يرفض صرامةً أيّ display-name يحتوي حروفاً غير لاتينية (422) —
+       نُسقط الاسم في هذه الحالة ونرسل من البريد فقط. */
+    const asciiName = /^[\x20-\x7E]*(?:[\t]*[\x20-\x7E]*)*$/.test(sender.name);
+    const from = asciiName && sender.name ? `${sender.name} <${sender.email}>` : sender.email;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        from: `${sender.name} <${sender.email}>`,
+        from,
         to: [p.to],
         subject: p.subject,
         text: p.text,
@@ -371,13 +379,14 @@ export async function sendEmail(p: MailPayload): Promise<SendResult> {
 export interface EmailInviteInfo { valid: boolean; reason?: string; discussionName?: string; email?: string }
 
 /** Validate an email-invite code without consuming it. */
-export function peekEmailInvite(code: string): EmailInviteInfo {
-  const row = db.prepare('SELECT * FROM discussion_email_invites WHERE code = ?').get(String(code || '')) as any;
+export async function peekEmailInvite(code: string): Promise<EmailInviteInfo> {
+  await init();
+  const row = await one<any>('SELECT * FROM discussion_email_invites WHERE code = ?', [String(code || '')]);
   if (!row) return { valid: false, reason: 'رابط الدعوة غير صالح' };
   if (row.consumed_by === 'REVOKED') return { valid: false, reason: 'تم إلغاء رابط الدعوة من قبل المالك' };
   if (row.consumed_by) return { valid: false, reason: 'تم استخدام رابط الدعوة مسبقاً' };
   if (new Date(row.expires_at) <= new Date()) return { valid: false, reason: 'انتهت صلاحية رابط الدعوة' };
-  const disc = getDiscussionRow(row.discussion_id);
+  const disc = await getDiscussionRow(row.discussion_id);
   if (!disc) return { valid: false, reason: 'المجموعة لم تعد موجودة' };
   return { valid: true, discussionName: disc.name, email: row.invited_email };
 }
@@ -386,19 +395,19 @@ export function peekEmailInvite(code: string): EmailInviteInfo {
  * Called right after registration: if the new user's email matches a pending
  * email invite, they are added to the group automatically (invite consumed).
  */
-export function consumeEmailInviteForNewUser(userId: string, email: string): { discussionId: string; discussionName: string } | null {
+export async function consumeEmailInviteForNewUser(userId: string, email: string): Promise<{ discussionId: string; discussionName: string } | null> {
+  await init();
   const norm = normalizeEmail(email);
-  const row = db.prepare('SELECT * FROM discussion_email_invites WHERE invited_email = ? AND consumed_by IS NULL ORDER BY created_at DESC')
-    .get(norm) as any;
+  const row = await one<any>('SELECT * FROM discussion_email_invites WHERE invited_email = ? AND consumed_by IS NULL ORDER BY created_at DESC', [norm]);
   if (!row) return null;
   if (new Date(row.expires_at) <= new Date()) return null;
-  const disc = getDiscussionRow(row.discussion_id);
+  const disc = await getDiscussionRow(row.discussion_id);
   if (!disc) return null;
 
   if (row.consumed_by === 'REVOKED') return null;
-  db.prepare('UPDATE discussion_email_invites SET consumed_by = ? WHERE code = ?').run(userId, row.code);
-  if (!isMember(row.discussion_id, userId)) {
-    addMember(row.discussion_id, userId);
+  await run('UPDATE discussion_email_invites SET consumed_by = ? WHERE code = ?', [userId, row.code]);
+  if (!(await isMember(row.discussion_id, userId))) {
+    await addMember(row.discussion_id, userId);
   }
   return { discussionId: row.discussion_id, discussionName: disc.name };
 }
@@ -413,18 +422,19 @@ export interface EmailInviteRow {
 }
 
 /** All email invites of one group — owner & moderators. */
-export function listGroupEmailInvites(discussionId: string, byUserId: string): EmailInviteRow[] {
-  if (!isModerator(discussionId, byUserId)) throw new Error('فقط المالك أو المشرفون يمكنهم عرض دعوات المجموعة');
-  const rows = db.prepare(`
+export async function listGroupEmailInvites(discussionId: string, byUserId: string): Promise<EmailInviteRow[]> {
+  await init();
+  if (!(await isModerator(discussionId, byUserId))) throw new Error('فقط المالك أو المشرفون يمكنهم عرض دعوات المجموعة');
+  const rset = await rows<any>(`
     SELECT e.code, e.invited_email, e.created_at, e.expires_at, e.consumed_by,
       u.name AS consumed_by_name
     FROM discussion_email_invites e
     LEFT JOIN users u ON u.id = e.consumed_by
     WHERE e.discussion_id = ?
     ORDER BY e.created_at DESC
-  `).all(discussionId) as any[];
+  `, [discussionId]);
   const now = new Date();
-  return rows.map(r => {
+  return rset.map((r: any) => {
     let status: EmailInviteRow['status'];
     if (r.consumed_by === 'REVOKED') status = 'revoked';
     else if (r.consumed_by) status = 'consumed';
@@ -442,14 +452,15 @@ export function listGroupEmailInvites(discussionId: string, byUserId: string): E
 }
 
 /** Owner or moderator revokes (cancels) a pending email invite so its link stops working. */
-export function revokeEmailInvite(discussionId: string, code: string, byUserId: string): void {
-  if (!isModerator(discussionId, byUserId)) throw new Error('فقط المالك أو المشرفون يمكنهم إلغاء الدعوات');
-  const row = db.prepare('SELECT * FROM discussion_email_invites WHERE code = ? AND discussion_id = ?').get(code, discussionId) as any;
+export async function revokeEmailInvite(discussionId: string, code: string, byUserId: string): Promise<void> {
+  await init();
+  if (!(await isModerator(discussionId, byUserId))) throw new Error('فقط المالك أو المشرفون يمكنهم إلغاء الدعوات');
+  const row = await one<any>('SELECT * FROM discussion_email_invites WHERE code = ? AND discussion_id = ?', [code, discussionId]);
   if (!row) throw new Error('رابط الدعوة غير موجود');
   if (row.consumed_by) throw new Error('لا يمكن إلغاء دعوة مستهلكة — المدعو انضم بالفعل');
   // Revocation = consume without a user (the link stops working everywhere).
   // peekEmailInvite/consumeEmailInviteForNewUser both treat any consumed_by as used.
-  db.prepare("UPDATE discussion_email_invites SET consumed_by = 'REVOKED' WHERE code = ?").run(code);
+  await run("UPDATE discussion_email_invites SET consumed_by = 'REVOKED' WHERE code = ?", [code]);
 }
 
 // ---------------------------------------------------------------------------
@@ -478,36 +489,39 @@ async function trySendReminderEmail(to: string, groupName: string, inviterName: 
  * Returns how many invites were processed (exported for tests/CLI).
  */
 export async function remindStaleEmailInvites(): Promise<number> {
+  await init();
   const cutoff = new Date(Date.now() - REMINDER_AFTER_MS).toISOString();
-  const stale = db.prepare(`
+  const stale = await rows<any>(`
     SELECT e.code, e.discussion_id, e.invited_email, e.invited_by, e.expires_at,
       u.name AS inviter_name
     FROM discussion_email_invites e
     JOIN users u ON u.id = e.invited_by
     WHERE e.consumed_by IS NULL AND e.reminded_at IS NULL AND e.created_at < ?
-  `).all(cutoff) as any[];
+  `, [cutoff]);
 
   for (const row of stale) {
     const stampHandled = () =>
-      db.prepare('UPDATE discussion_email_invites SET reminded_at = ? WHERE code = ? AND reminded_at IS NULL')
-        .run(new Date().toISOString(), row.code);
+      run('UPDATE discussion_email_invites SET reminded_at = ? WHERE code = ? AND reminded_at IS NULL', [
+        new Date().toISOString(),
+        row.code,
+      ]);
 
     // Expired or vanished group: nothing worth reminding — just mark handled
-    if (new Date(row.expires_at) <= new Date() || !getDiscussionRow(row.discussion_id)) {
-      stampHandled();
+    if (new Date(row.expires_at) <= new Date() || !(await getDiscussionRow(row.discussion_id))) {
+      await stampHandled();
       continue;
     }
 
-    const disc = getDiscussionRow(row.discussion_id)!;
+    const disc = (await getDiscussionRow(row.discussion_id))!;
     const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
     const inviteUrl = `${baseUrl}/join/${row.code}`;
     const mail = await trySendReminderEmail(row.invited_email, disc.name, row.inviter_name || 'فريقك', inviteUrl);
 
     // Stamp FIRST so a crash mid-loop never double-sends the reminder
-    stampHandled();
+    await stampHandled();
 
     // In-app nudge to the owner so they know the invite is still unanswered
-    pushNotification(
+    await pushNotification(
       row.invited_by,
       'info',
       'تذكير تلقائي أُرسل للمدعو',

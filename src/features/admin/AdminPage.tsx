@@ -26,6 +26,109 @@ import {
 } from 'lucide-react';
 import { CarbonDataTable, CarbonDataTableColumn } from '../../components/common/CarbonDataTable';
 import { motion } from 'motion/react';
+import { Timer, Loader2 } from 'lucide-react';
+
+/** بطاقة مدة الخمول — إعداد مدير مخزن في قاعدة Turso عبر /api/admin/settings/idle */
+const IdleSettingsCard: React.FC<{ isAr: boolean }> = () => {
+  const idleCfgInit = { storedMinutes: null as number | null, effectiveMinutes: 5, envOverride: false };
+  const [cfg, setCfg] = useState(idleCfgInit);
+  const [minutes, setMinutes] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const showToast = (ok: boolean, text: string) => {
+    setMsg({ ok, text });
+    window.setTimeout(() => setMsg(null), 4000);
+  };
+
+  const load = useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem('carbon_auth_token') || '';
+        const res = await fetch('/api/admin/settings/idle', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setCfg(data);
+          setMinutes(data.storedMinutes != null ? String(data.storedMinutes) : '');
+        }
+      } catch { /* هادئ: البطاقة تعرض افتراضياً */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  void load;
+
+  const save = async () => {
+    const m = Math.floor(Number(minutes));
+    if (!Number.isFinite(m) || m < 1 || m > 43200) {
+      showToast(false, 'أدخل مدة بين 1 و 43200 دقيقة (30 يوماً)');
+      return;
+    }
+    setBusy(true);
+    try {
+      const token = localStorage.getItem('carbon_auth_token') || '';
+      const res = await fetch('/api/admin/settings/idle', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ minutes: m }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'فشل الحفظ');
+      showToast(true, `حُفظت المدة: ${m} دقيقة — تُطبَّق على كل الجلسات خلال ثوانٍ`);
+      // إبلاغ تبابك التطبيق في نفس الجلسة بتحديث مؤقّت الخمول فوراً
+      window.dispatchEvent(new CustomEvent('carbon-idle-updated', { detail: { idleMs: m * 60000 } }));
+    } catch (e: any) {
+      showToast(false, e?.message || 'فشل الحفظ');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3">
+      <div className="flex items-center gap-2">
+        <Timer className="w-4 h-4 text-[#da1e28]" />
+        <h3 className="text-sm font-bold text-[var(--cds-text-01)]">مدة الخمول قبل تسجيل الخروج التلقائي</h3>
+      </div>
+      <p className="text-[11px] text-[var(--cds-text-03)] leading-relaxed">
+        تنهى الجلسة تلقائياً عند مرور هذه المدة دون أي تفاعل من المستخدم (نقر، لوحة مفاتيح، تمرير، لمس)،
+        ويعاد المستخدم إلى صفحة تسجيل الدخول. القيمة تُخزَّن في قاعدة التطبيق وتُطبَّق على كل الجلسات خلال ثوانٍ.
+      </p>
+      {cfg.envOverride && (
+        <p className="text-[11px] px-3 py-2 rounded-lg bg-[#f1c21b]/10 text-[#d9a304] border border-[#f1c21b]/30">
+          تنبيه: SESSION_IDLE_MS مضبوط في متغيرات البيئة — يعيّن هذه القيمة المخزنة، فعطّله في .env لتفعيل الإعداد من هنا.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="number"
+          min={1}
+          max={43200}
+          value={minutes}
+          onChange={e => setMinutes(e.target.value)}
+          placeholder={`افتراضي: ${cfg.effectiveMinutes}`}
+          className="h-9 w-36 px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] rounded-lg text-xs text-[var(--cds-text-01)] outline-none"
+        />
+        <span className="text-xs text-[var(--cds-text-03)]">دقيقة</span>
+        <button
+          onClick={() => void save()}
+          disabled={busy}
+          className="h-9 px-4 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
+        >
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+          حفظ المدة
+        </button>
+        {cfg.storedMinutes != null && (
+          <span className="text-[11px] text-[var(--cds-text-03)]">المخزن حالياً: {cfg.storedMinutes} دقيقة</span>
+        )}
+      </div>
+      {msg && (
+        <p className={`text-[11px] ${msg.ok ? 'text-[#24a148]' : 'text-[#ff8389]'}`}>{msg.text}</p>
+      )}
+    </div>
+  );
+};
 
 export const AdminPage: React.FC = () => {
   const { workspace, setWorkspace, usersList, setUsersList, user, language, t, aiSettings, updateProviderConfig, toast } = useApp();
@@ -417,6 +520,9 @@ export const AdminPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* إعدادات أمان الجلسات: مدة الخمول القابلة للتعديل (تُخزن في Turso) */}
+      {isAdmin && <IdleSettingsCard isAr={isAr} />}
 
       {/* Database migration (admin only) */}
       {isAdmin && (

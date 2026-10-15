@@ -201,6 +201,63 @@ export default function App() {
     if (m) setPendingInviteCode(m[1]);
   }, []);
 
+  // --------------------------------------------------------------------------
+  // الخروج التلقائي بعد خمول المستخدم — 5 دقائق دون أي تفاعل (نقر، لوحة مفاتيح،
+  // تمرير، لمس). عند انتهائها: تُلغى الجلسة على الخادم (حذف من Turso) ويُمسح
+  // الرمز المحلي ويُعاد المستخدم إلى صفحة تسجيل الدخول فوراً. الخادم يفرض الحد
+  // نفسه أيضاً (SESSION_IDLE_MS في server/auth.ts) كطبقة حماية ثانية.
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (authState !== 'authed') return; // مؤقّت الخمول فقط ولجلسة نشطة
+    const IDLE_EVENTS = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll', 'focus'] as const;
+
+    const idleLogout = () => {
+      const token = getStoredToken();
+      // إبطال الجلسة على الخادم ثم مسح الحالة المحلية — LoginPage يظهر تلقائياً
+      if (token) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      clearStoredToken();
+      setAuthUser(null);
+      setAuthState('guest');
+    };
+
+    let timer = 0;
+    let cancelled = false;
+    const armTimer = (ms: number) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(idleLogout, ms);
+    };
+    const onActivity = () => { if (idleMsRef.current) armTimer(idleMsRef.current); };
+    for (const evt of IDLE_EVENTS) window.addEventListener(evt, onActivity, { passive: true });
+
+    // المدة الفعالة من الخادم (القيمة التي خزّنها المدير في Turso، أو 5 دقائق افتراضياً)
+    // — لو فشل الجلب نستخدم 5 دقائق (نفس افتراض الخادم).
+    let idleMsRef = { current: 0 } as { current: number };
+    fetch('/api/auth/idle-config')
+      .then(r => (r.ok ? r.json() : { idleMs: 5 * 60 * 1000 }))
+      .then((d: { idleMs?: number }) => {
+        const ms = Number(d?.idleMs);
+        idleMsRef.current = Number.isFinite(ms) && ms >= 10_000 ? ms : 5 * 60 * 1000;
+        if (!cancelled) armTimer(idleMsRef.current);
+      })
+      .catch(() => {
+        idleMsRef.current = 5 * 60 * 1000;
+        if (!cancelled) armTimer(idleMsRef.current);
+      });
+
+    // إغلاق فوري في التبويبات الأخرى إذا أنهى تبويبٌ آخر الجلسة (مسح الرمز مشتركاً)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'carbon_auth_token' && !e.newValue) idleLogout();
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      for (const evt of IDLE_EVENTS) window.removeEventListener(evt, onActivity);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [authState]);
+
   useEffect(() => {
     const token = getStoredToken();
     if (!token) { setAuthState('guest'); return; }

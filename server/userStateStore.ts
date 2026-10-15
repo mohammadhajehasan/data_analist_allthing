@@ -1,23 +1,20 @@
 /**
- * Server-side per-user workspace state — SQLite storage for dashboards and
- * user-scoped app state (reports, data stories, scheduled refreshes, workflows).
+ * Server-side per-user workspace state — Turso (libSQL) storage for dashboards
+ * and user-scoped app state (reports, data stories, scheduled refreshes, workflows).
  *
  * الهدف: خصوصية كاملة لكل مستخدم — كل ما يبنيه المستخدم محفوظ على الخادم تحت
  * معرّف حسابه فقط، ولا يظهر لأي مستخدم آخر مهما كان المتصفح مشتركاً.
  * (كانت لوحات التحكم تُخزّن في localStorage المشترك على نفس المتصفح — ثغرة
  * خصوصية: حساب جديد على نفس الجهاز كان يرى لوحات الحساب القديم.)
  *
- * البنية:
- * - جدول dashboards: صف JSON واحد لكل لوحة (نفس نمط جدول datasets في datasetsStore).
+ * البنية (داخل قاعدة Turso الوحيدة):
+ * - جدول dashboards: صف JSON واحد لكل لوحة.
  * - جدول workspace_state: blob JSON واحد لكل مستخدم لكل نوع حالة
  *   (reports / data_stories / scheduled_refreshes / workflows) — كمياتها صغيرة
  *   والوصول يتم دفعة واحدة عند الدخول.
- *
- * الواجهة تبقى تعمل من الذاكرة للأداء؛ الخادم مجرد مخزن استمرارية مملوك للمستخدم.
  */
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import type { Client, InValue } from '@libsql/client';
+import { turso, rows, one, run, ensureSchema } from './turso';
 
 const DASHBOARDS_TABLE_LIMIT = 300; // حد أقصى لعدد اللوحات لكل مستخدم — حماية من الامتلاء
 
@@ -31,27 +28,21 @@ export function getWorkspaceStateLimitBytes(): number {
 }
 
 export interface UserStateStore {
-  listDashboards(userId: string): any[];
-  upsertDashboard(userId: string, dashboard: any): { ok: boolean; error?: string };
-  deleteDashboard(userId: string, dashboardId: string): boolean;
-  deleteDashboardsMany(userId: string, ids: string[]): number;
-  replaceDashboards(userId: string, dashboards: any[]): { saved: number; errors: string[] };
-  getDashboard(userId: string, dashboardId: string): any | null;
-  dashboardsCount(userId: string): number;
-  getState(userId: string, kind: WorkspaceStateKind): any | null;
-  setState(userId: string, kind: WorkspaceStateKind, value: any): { ok: boolean; error?: string };
-  stats(): { users: number; dashboards: number; stateBlobs: number; totalBytes: number };
+  listDashboards(userId: string): Promise<any[]>;
+  upsertDashboard(userId: string, dashboard: any): Promise<{ ok: boolean; error?: string }>;
+  deleteDashboard(userId: string, dashboardId: string): Promise<boolean>;
+  deleteDashboardsMany(userId: string, ids: string[]): Promise<number>;
+  replaceDashboards(userId: string, dashboards: any[]): Promise<{ saved: number; errors: string[] }>;
+  getDashboard(userId: string, dashboardId: string): Promise<any | null>;
+  dashboardsCount(userId: string): Promise<number>;
+  getState(userId: string, kind: WorkspaceStateKind): Promise<any | null>;
+  setState(userId: string, kind: WorkspaceStateKind, value: any): Promise<{ ok: boolean; error?: string }>;
+  stats(): Promise<{ users: number; dashboards: number; stateBlobs: number; totalBytes: number }>;
   close(): void;
 }
 
-export function createUserStateStore(dbPath: string): UserStateStore {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS dashboards (
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS dashboards (
       id          TEXT NOT NULL,
       user_id     TEXT NOT NULL,
       name        TEXT NOT NULL,
@@ -60,64 +51,49 @@ export function createUserStateStore(dbPath: string): UserStateStore {
       updated_at  TEXT NOT NULL,
       payload     TEXT NOT NULL,
       PRIMARY KEY (user_id, id)
-    );
-    CREATE TABLE IF NOT EXISTS workspace_state (
+    )`,
+  `CREATE TABLE IF NOT EXISTS workspace_state (
       user_id     TEXT NOT NULL,
       kind        TEXT NOT NULL CHECK (kind IN ('reports','data_stories','scheduled_refreshes','workflows')),
       size_bytes  INTEGER NOT NULL DEFAULT 0,
       updated_at  TEXT NOT NULL,
       payload     TEXT NOT NULL,
       PRIMARY KEY (user_id, kind)
-    )
-  `);
+    )`,
+];
 
-  const stmtListDash = db.prepare(
-    'SELECT payload FROM dashboards WHERE user_id = ? ORDER BY updated_at DESC'
-  );
-  const stmtGetDash = db.prepare(
-    'SELECT payload FROM dashboards WHERE user_id = ? AND id = ?'
-  );
-  const stmtCountDash = db.prepare('SELECT COUNT(*) AS c FROM dashboards WHERE user_id = ?');
-  const stmtInsertDash = db.prepare(
-    `INSERT INTO dashboards (id, user_id, name, widget_count, size_bytes, updated_at, payload)
-     VALUES (@id, @user_id, @name, @widget_count, @size_bytes, @updated_at, @payload)
+const UPSERT_DASH = `INSERT INTO dashboards (id, user_id, name, widget_count, size_bytes, updated_at, payload)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, id) DO UPDATE SET
        name = excluded.name,
        widget_count = excluded.widget_count,
        size_bytes = excluded.size_bytes,
        updated_at = excluded.updated_at,
-       payload = excluded.payload`
-  );
-  const stmtDeleteDash = db.prepare('DELETE FROM dashboards WHERE user_id = ? AND id = ?');
-  const stmtDeleteDashMany = db.prepare(
-    'DELETE FROM dashboards WHERE user_id = ? AND id IN (SELECT value FROM json_each(?))'
-  );
-  const stmtGetState = db.prepare(
-    'SELECT payload FROM workspace_state WHERE user_id = ? AND kind = ?'
-  );
-  const stmtSetState = db.prepare(
-    `INSERT INTO workspace_state (user_id, kind, size_bytes, updated_at, payload)
-     VALUES (@user_id, @kind, @size_bytes, @updated_at, @payload)
-     ON CONFLICT(user_id, kind) DO UPDATE SET
-       size_bytes = excluded.size_bytes,
-       updated_at = excluded.updated_at,
-       payload = excluded.payload`
-  );
+       payload = excluded.payload`;
+
+export async function createUserStateStore(): Promise<UserStateStore> {
+  await ensureSchema(turso(), SCHEMA);
 
   return {
-    listDashboards(userId: string): any[] {
+    async listDashboards(userId: string): Promise<any[]> {
       try {
-        return (stmtListDash.all(userId) as Array<{ payload: string }>).map(r => {
-          try { return JSON.parse(r.payload); } catch { return null; }
-        }).filter(Boolean);
+        return (await rows<{ payload: string }>('SELECT payload FROM dashboards WHERE user_id = ? ORDER BY updated_at DESC', [userId]))
+          .map(r => {
+            try {
+              return JSON.parse(r.payload);
+            } catch {
+              return null;
+            }
+          })
+          .filter(Boolean);
       } catch {
         return [];
       }
     },
 
-    getDashboard(userId: string, dashboardId: string): any | null {
+    async getDashboard(userId: string, dashboardId: string): Promise<any | null> {
       try {
-        const row = stmtGetDash.get(userId, dashboardId) as { payload: string } | undefined;
+        const row = await one<{ payload: string }>('SELECT payload FROM dashboards WHERE user_id = ? AND id = ?', [userId, dashboardId]);
         if (!row) return null;
         return JSON.parse(row.payload);
       } catch {
@@ -125,21 +101,21 @@ export function createUserStateStore(dbPath: string): UserStateStore {
       }
     },
 
-    dashboardsCount(userId: string): number {
+    async dashboardsCount(userId: string): Promise<number> {
       try {
-        return (stmtCountDash.get(userId) as { c: number }).c;
+        return Number(((await one<any>('SELECT COUNT(*) AS c FROM dashboards WHERE user_id = ?', [userId])) as any)?.c || 0);
       } catch {
         return 0;
       }
     },
 
-    upsertDashboard(userId: string, dashboard: any): { ok: boolean; error?: string } {
+    async upsertDashboard(userId: string, dashboard: any): Promise<{ ok: boolean; error?: string }> {
       try {
         if (!dashboard || typeof dashboard !== 'object' || !dashboard.id) {
           return { ok: false, error: 'بيانات اللوحة غير صالحة' };
         }
-        const count = this.dashboardsCount(userId);
-        const exists = !!stmtGetDash.get(userId, dashboard.id);
+        const count = await this.dashboardsCount(userId);
+        const exists = !!(await one('SELECT 1 FROM dashboards WHERE user_id = ? AND id = ?', [userId, dashboard.id]));
         if (!exists && count >= DASHBOARDS_TABLE_LIMIT) {
           return { ok: false, error: `وصلت الحد الأقصى لعدد اللوحات المخزنة (${DASHBOARDS_TABLE_LIMIT})` };
         }
@@ -152,69 +128,75 @@ export function createUserStateStore(dbPath: string): UserStateStore {
           };
         }
         const now = new Date().toISOString();
-        stmtInsertDash.run({
-          id: String(dashboard.id),
-          user_id: userId,
-          name: String(dashboard.nameAr || dashboard.name || dashboard.titleAr || dashboard.title || dashboard.id),
-          widget_count: Number(Array.isArray(dashboard.widgets) ? dashboard.widgets.length : 0),
-          size_bytes: size,
-          updated_at: String(dashboard.updatedAt || now),
+        await run(UPSERT_DASH, [
+          String(dashboard.id),
+          userId,
+          String(dashboard.nameAr || dashboard.name || dashboard.titleAr || dashboard.title || dashboard.id),
+          Number(Array.isArray(dashboard.widgets) ? dashboard.widgets.length : 0),
+          size,
+          String(dashboard.updatedAt || now),
           payload,
-        });
+        ]);
         return { ok: true };
       } catch (err: any) {
         return { ok: false, error: err?.message || 'فشل حفظ اللوحة' };
       }
     },
 
-    deleteDashboard(userId: string, dashboardId: string): boolean {
+    async deleteDashboard(userId: string, dashboardId: string): Promise<boolean> {
       try {
-        return stmtDeleteDash.run(userId, dashboardId).changes > 0;
+        return (await run('DELETE FROM dashboards WHERE user_id = ? AND id = ?', [userId, dashboardId])) > 0;
       } catch {
         return false;
       }
     },
 
-    deleteDashboardsMany(userId: string, ids: string[]): number {
+    async deleteDashboardsMany(userId: string, ids: string[]): Promise<number> {
       if (!Array.isArray(ids) || ids.length === 0) return 0;
       try {
-        return stmtDeleteDashMany.run(userId, JSON.stringify(ids)).changes;
+        return await run('DELETE FROM dashboards WHERE user_id = ? AND id IN (SELECT value FROM json_each(?))', [
+          userId,
+          JSON.stringify(ids) as InValue,
+        ]);
       } catch {
         return 0;
       }
     },
 
-    replaceDashboards(userId: string, dashboards: any[]): { saved: number; errors: string[] } {
+    async replaceDashboards(userId: string, dashboards: any[]): Promise<{ saved: number; errors: string[] }> {
       try {
-        let saved = 0;
-        const tx = db.transaction((items: any[]) => {
-          db.prepare('DELETE FROM dashboards WHERE user_id = ?').run(userId);
-          const now = new Date().toISOString();
-          for (const d of items) {
-            if (!d || typeof d !== 'object' || !d.id) continue;
-            const payload = JSON.stringify(d);
-            stmtInsertDash.run({
-              id: String(d.id),
-              user_id: userId,
-              name: String(d.nameAr || d.name || d.titleAr || d.title || d.id),
-              widget_count: Number(Array.isArray(d.widgets) ? d.widgets.length : 0),
-              size_bytes: Buffer.byteLength(payload, 'utf8'),
-              updated_at: String(d.updatedAt || now),
+        const items = Array.isArray(dashboards) ? dashboards : [];
+        // معاملة واحدة: حذف ثم إعادة إدخال — إما كله أو لا شيء (batch write)
+        const statements: { sql: string; args: InValue[] }[] = [
+          { sql: 'DELETE FROM dashboards WHERE user_id = ?', args: [userId] },
+        ];
+        const now = new Date().toISOString();
+        for (const d of items) {
+          if (!d || typeof d !== 'object' || !d.id) continue;
+          const payload = JSON.stringify(d);
+          statements.push({
+            sql: UPSERT_DASH,
+            args: [
+              String(d.id),
+              userId,
+              String(d.nameAr || d.name || d.titleAr || d.title || d.id),
+              Number(Array.isArray(d.widgets) ? d.widgets.length : 0),
+              Buffer.byteLength(payload, 'utf8'),
+              String(d.updatedAt || now),
               payload,
-            });
-            saved++;
-          }
-        });
-        tx(Array.isArray(dashboards) ? dashboards : []);
-        return { saved, errors: [] };
+            ],
+          });
+        }
+        await turso().batch(statements, 'write');
+        return { saved: statements.length - 1, errors: [] };
       } catch (err: any) {
         return { saved: 0, errors: [err?.message || 'فشل استبدال اللوحات'] };
       }
     },
 
-    getState(userId: string, kind: WorkspaceStateKind): any | null {
+    async getState(userId: string, kind: WorkspaceStateKind): Promise<any | null> {
       try {
-        const row = stmtGetState.get(userId, kind) as { payload: string } | undefined;
+        const row = await one<{ payload: string }>('SELECT payload FROM workspace_state WHERE user_id = ? AND kind = ?', [userId, kind]);
         if (!row) return null;
         return JSON.parse(row.payload);
       } catch {
@@ -222,7 +204,7 @@ export function createUserStateStore(dbPath: string): UserStateStore {
       }
     },
 
-    setState(userId: string, kind: WorkspaceStateKind, value: any): { ok: boolean; error?: string } {
+    async setState(userId: string, kind: WorkspaceStateKind, value: any): Promise<{ ok: boolean; error?: string }> {
       try {
         if (!STATE_KINDS.includes(kind)) {
           return { ok: false, error: 'نوع الحالة غير مدعوم' };
@@ -235,37 +217,37 @@ export function createUserStateStore(dbPath: string): UserStateStore {
             error: `حجم الحالة (${(size / 1024 / 1024).toFixed(1)}MB) يتجاوز حد التخزين الخادمي — استخدم WORKSPACE_STATE_LIMIT_MB`,
           };
         }
-        stmtSetState.run({
-          user_id: userId,
-          kind,
-          size_bytes: size,
-          updated_at: new Date().toISOString(),
-          payload,
-        });
+        await run(
+          `INSERT INTO workspace_state (user_id, kind, size_bytes, updated_at, payload)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(user_id, kind) DO UPDATE SET
+             size_bytes = excluded.size_bytes,
+             updated_at = excluded.updated_at,
+             payload = excluded.payload`,
+          [userId, kind, size, new Date().toISOString(), payload]
+        );
         return { ok: true };
       } catch (err: any) {
         return { ok: false, error: err?.message || 'فشل حفظ الحالة' };
       }
     },
 
-    stats(): { users: number; dashboards: number; stateBlobs: number; totalBytes: number } {
+    async stats(): Promise<{ users: number; dashboards: number; stateBlobs: number; totalBytes: number }> {
       try {
-        const d = db
-          .prepare('SELECT COUNT(DISTINCT user_id) AS users, COUNT(*) AS dashboards, COALESCE(SUM(size_bytes),0) AS bytes FROM dashboards')
-          .get() as { users: number; dashboards: number; bytes: number };
-        const s = db
-          .prepare('SELECT COUNT(DISTINCT user_id) AS users, COUNT(*) AS blobs, COALESCE(SUM(size_bytes),0) AS bytes FROM workspace_state')
-          .get() as { users: number; blobs: number; bytes: number };
-        const unionUsers = (
-          db
-            .prepare("SELECT COUNT(DISTINCT user_id) AS u FROM (SELECT user_id FROM dashboards UNION SELECT user_id FROM workspace_state)")
-            .get() as { u: number }
-        ).u;
+        const d = (await one<any>(
+          'SELECT COUNT(DISTINCT user_id) AS users, COUNT(*) AS dashboards, COALESCE(SUM(size_bytes),0) AS bytes FROM dashboards'
+        )) as any;
+        const s = (await one<any>(
+          'SELECT COUNT(DISTINCT user_id) AS users, COUNT(*) AS blobs, COALESCE(SUM(size_bytes),0) AS bytes FROM workspace_state'
+        )) as any;
+        const unionUsers = Number((((await one<any>(
+          "SELECT COUNT(DISTINCT user_id) AS u FROM (SELECT user_id FROM dashboards UNION SELECT user_id FROM workspace_state)"
+        )) as any)?.u) || 0);
         return {
-          users: unionUsers || Math.max(d.users, s.users),
-          dashboards: d.dashboards,
-          stateBlobs: s.blobs,
-          totalBytes: d.bytes + s.bytes,
+          users: Number(unionUsers || Math.max(d?.users || 0, s?.users || 0)),
+          dashboards: Number(d?.dashboards || 0),
+          stateBlobs: Number(s?.blobs || 0),
+          totalBytes: Number(d?.bytes || 0) + Number(s?.bytes || 0),
         };
       } catch {
         return { users: 0, dashboards: 0, stateBlobs: 0, totalBytes: 0 };
@@ -273,37 +255,41 @@ export function createUserStateStore(dbPath: string): UserStateStore {
     },
 
     close() {
-      db.close();
+      /* العميل المشترك يُغلق مع العملية */
     },
   };
 }
 
-const defaultStore = createUserStateStore(path.join(process.cwd(), 'data', 'auth.db'));
+let defaultStore: UserStateStore | null = null;
+async function getDefault(): Promise<UserStateStore> {
+  defaultStore ??= await createUserStateStore();
+  return defaultStore;
+}
 
-export function listUserDashboards(userId: string): any[] {
-  return defaultStore.listDashboards(userId);
+export async function listUserDashboards(userId: string): Promise<any[]> {
+  return (await getDefault()).listDashboards(userId);
 }
-export function getUserDashboard(userId: string, id: string): any | null {
-  return defaultStore.getDashboard(userId, id);
+export async function getUserDashboard(userId: string, id: string): Promise<any | null> {
+  return (await getDefault()).getDashboard(userId, id);
 }
-export function upsertUserDashboard(userId: string, dashboard: any) {
-  return defaultStore.upsertDashboard(userId, dashboard);
+export async function upsertUserDashboard(userId: string, dashboard: any) {
+  return (await getDefault()).upsertDashboard(userId, dashboard);
 }
-export function deleteUserDashboard(userId: string, id: string): boolean {
-  return defaultStore.deleteDashboard(userId, id);
+export async function deleteUserDashboard(userId: string, id: string): Promise<boolean> {
+  return (await getDefault()).deleteDashboard(userId, id);
 }
-export function deleteUserDashboards(userId: string, ids: string[]): number {
-  return defaultStore.deleteDashboardsMany(userId, ids);
+export async function deleteUserDashboards(userId: string, ids: string[]): Promise<number> {
+  return (await getDefault()).deleteDashboardsMany(userId, ids);
 }
-export function replaceUserDashboards(userId: string, dashboards: any[]) {
-  return defaultStore.replaceDashboards(userId, dashboards);
+export async function replaceUserDashboards(userId: string, dashboards: any[]) {
+  return (await getDefault()).replaceDashboards(userId, dashboards);
 }
-export function getUserWorkspaceState(userId: string, kind: WorkspaceStateKind): any | null {
-  return defaultStore.getState(userId, kind);
+export async function getUserWorkspaceState(userId: string, kind: WorkspaceStateKind): Promise<any | null> {
+  return (await getDefault()).getState(userId, kind);
 }
-export function setUserWorkspaceState(userId: string, kind: WorkspaceStateKind, value: any) {
-  return defaultStore.setState(userId, kind, value);
+export async function setUserWorkspaceState(userId: string, kind: WorkspaceStateKind, value: any) {
+  return (await getDefault()).setState(userId, kind, value);
 }
-export function getUserStateStats() {
-  return defaultStore.stats();
+export async function getUserStateStats() {
+  return (await getDefault()).stats();
 }
