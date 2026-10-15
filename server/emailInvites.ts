@@ -298,7 +298,10 @@ async function sendViaResend(p: MailPayload): Promise<SendResult> {
     /* Resend يرفض صرامةً أيّ display-name يحتوي حروفاً غير لاتينية (422) —
        نُسقط الاسم في هذه الحالة ونرسل من البريد فقط. */
     const asciiName = /^[\x20-\x7E]*(?:[\t]*[\x20-\x7E]*)*$/.test(sender.name);
-    const from = asciiName && sender.name ? `${sender.name} <${sender.email}>` : sender.email;
+    // Resend 严格要求 from 是 email 或 "Name <email>" 格式；
+    // sender.email 为空或非合法邮箱时降级为 noreply@localhost 避免 422。
+    const effectiveEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sender.email || '') ? sender.email : 'noreply@localhost';
+    const from = asciiName && sender.name ? `${sender.name} <${effectiveEmail}>` : effectiveEmail;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },

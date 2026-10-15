@@ -6,7 +6,7 @@
  */
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  KeyRound, Mail, Smartphone, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff,
+  KeyRound, Mail, Smartphone, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff, Copy, Check, ClipboardPaste,
 } from 'lucide-react';
 import { PHONE_COUNTRIES, validatePhoneNational } from '../../utils/phoneCountries';
 
@@ -47,6 +47,8 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
   const [verifiedTarget, setVerifiedTarget] = useState('');
   // تلميح الخادم (فحص المجلد غير المرغوب...) يُعرض بدل النص الثابت إن ورد
   const [hint, setHint] = useState<string>('');
+  const [devCode, setDevCode] = useState<string>('');
+  const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
 
   const T = isAr
@@ -106,6 +108,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
       const res = await post('request', { channel: channel === 'email' ? 'email' : phoneChannel, target: targetString });
       setVerifiedTarget(String(res.target || ''));
       setHint(String(res.hint || ''));
+      setDevCode(String(res.devCode || ''));
       setCooldown(60);
       const t = setInterval(() => setCooldown(c => {
         if (c <= 1) { clearInterval(t); return 0; }
@@ -234,12 +237,47 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
               <p className="text-xs text-[var(--cds-text-03,#8d8d8d)]">
                 <span dir="ltr">{verifiedTarget}</span> — {hint || T.codeHint}
               </p>
-              <input
-                ref={codeRef} value={code}
-                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                inputMode="numeric" maxLength={6} dir="ltr" placeholder="•• •• ••"
-                className={`${inputCls} text-center tracking-[8px] font-mono text-lg`}
-              />
+              {devCode && (
+                <p className="text-xs text-[#f0b429] font-mono">
+                  <span>{isAr ? '【وضع التطوير】الرمز:' : '[DEV] Code:'}</span>
+                  <span dir="ltr" className="mr-1 font-bold">{devCode}</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(devCode);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded bg-[#393939] hover:bg-[#4a4a4a] text-[var(--cds-text-01)]"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ' : 'Copy')}
+                  </button>
+                </p>
+              )}
+              <div className="flex gap-2 items-center">
+                <input
+                  ref={codeRef} value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                  inputMode="numeric" maxLength={6} dir="ltr" placeholder="•• •• ••"
+                  className={`${inputCls} text-center tracking-[8px] font-mono text-lg flex-1`}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    try {
+                      const v = await navigator.clipboard.readText();
+                      const digits = v.replace(/[^0-9]/g, '').slice(0, 6);
+                      if (digits.length >= 6) setCode(digits);
+                    } catch { /* clipboard denied */ }
+                  }}
+                  title={isAr ? 'لصق من الحافظة' : 'Paste from clipboard'}
+                  className="p-2.5 bg-[var(--cds-layer-02,#262626)] hover:bg-[#393939] border border-[var(--cds-border-subtle,#393939)] rounded-lg text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01)] transition-colors"
+                >
+                  <ClipboardPaste className="w-4 h-4" />
+                </button>
+              </div>
               <button
                 type="button" disabled={busy || code.replace(/[^0-9]/g, '').length < 6} onClick={verify}
                 className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"

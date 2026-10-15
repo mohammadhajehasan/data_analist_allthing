@@ -60,6 +60,8 @@ export interface ResetRequestResult {
   retryAfterMs?: number;
   /** تلميح استكشافي للعميل (يبقى below الرمز سرياً على الخادم ولا يُرجع الرقم إطلاقاً) */
   hint?: string;
+  /** في وضع التطوير (PASSWORD_RESET_DEV_CODE=1) يعاد الرمز صراحةً للاختبار — لا يُعاد في الإنتاج */
+  devCode?: string;
 }
 
 export interface ResetVerifyResult {
@@ -397,7 +399,13 @@ export async function requestPasswordReset(
   );
 
   // 4) إرسال الرمز عبر قناة الهدف.
+  // في وضع التطوير (PASSWORD_RESET_DEV_CODE=1) يُعرض الرمز في السجل
+  // دون الاعتماد على مزود البريد (مفيد لاختبار القالب محلياً).
   let sent = false; let err: string | undefined;
+  if (process.env.PASSWORD_RESET_DEV_CODE === '1') {
+    console.log(`[pwd-reset][dev] code for ${channel} ${target}: ${code}`);
+    sent = true;
+  }
   if (channel === 'email') {
     const mail = buildCodeEmail(code, user.name, CODE_TTL_MS / 60000);
     const r = await sendEmail({ to: target, subject: mail.subject, text: mail.text, html: mail.html });
@@ -429,6 +437,7 @@ export async function requestPasswordReset(
       : channel === 'email'
       ? 'إن لم يصلك البريد خلال دقيقة فافحص مجلد «الرسائل غير المرغوبة/الترقيات» ثم اضغط «ليس بريداً غير مرغوباً» دفعة تالية'
       : 'قد تصل الرسالة باسم مُرسِل مختلف — لا تشارك الرمز مع أحد إطلاقاً',
+    ...(process.env.PASSWORD_RESET_DEV_CODE === '1' ? { devCode: code } : {}),
   };
 }
 
