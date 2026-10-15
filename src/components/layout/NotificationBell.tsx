@@ -42,7 +42,7 @@ export const NotificationBell: React.FC = () => {
       const pData = await pRes.json();
       setItems(nData.notifications || []);
       setUnread(nData.unread || 0);
-      setPending(pData.invites || []);
+      setPending(Array.isArray(pData.invites) ? pData.invites : []);
     } catch { /* non-fatal */ }
   }, []);
 
