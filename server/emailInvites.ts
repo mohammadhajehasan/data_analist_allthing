@@ -297,10 +297,16 @@ async function sendViaResend(p: MailPayload): Promise<SendResult> {
     const sender = override ? parseSenderRaw(override) : parseSender();
     /* Resend يرفض صرامةً أيّ display-name يحتوي حروفاً غير لاتينية (422) —
        نُسقط الاسم في هذه الحالة ونرسل من البريد فقط. */
-    const asciiName = /^[\x20-\x7E]*(?:[\t]*[\x20-\x7E]*)*$/.test(sender.name);
-    // Resend 严格要求 from 是 email 或 "Name <email>" 格式；
-    // sender.email 为空或非合法邮箱时降级为 noreply@localhost 避免 422。
-    const effectiveEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sender.email || '') ? sender.email : 'noreply@localhost';
+    const asciiName = /^[\x20-\x7E]*$/.test(sender.name);
+    /* البريد الفعّال: يجب أن يكون عنواناً صالحاً بنطاق حقيقي — البديل عند غياب
+       SMTP_USER على السحابة هو onboarding@resend.dev (المُرسِل الوحيد الذي يسمح
+       به Resend بلا نطاق مُتحقَّق). إرسال من نطاق غير موجود (localhost) يُنتج 422. */
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const effectiveEmail = EMAIL_RE.test(sender.email || '')
+      ? sender.email
+      : (process.env.SMTP_USER?.trim() && EMAIL_RE.test(process.env.SMTP_USER.trim())
+          ? process.env.SMTP_USER.trim()
+          : 'onboarding@resend.dev');
     const from = asciiName && sender.name ? `${sender.name} <${effectiveEmail}>` : effectiveEmail;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
