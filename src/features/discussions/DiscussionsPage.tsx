@@ -218,7 +218,11 @@ export const DiscussionsPage: React.FC = () => {
       const res = await fetch('/api/discussions?light=1', { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل تحميل المناقشات');
-      setDiscussions(data);
+      // Server shape guard: a malformed payload must never break the page
+      setDiscussions({
+        mine: Array.isArray(data?.mine) ? data.mine : [],
+        discoverable: Array.isArray(data?.discoverable) ? data.discoverable : [],
+      });
     } catch (err: any) {
       toast.error(isAr ? 'خطأ' : 'Error', err.message);
     }

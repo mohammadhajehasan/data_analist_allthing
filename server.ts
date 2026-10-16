@@ -3099,7 +3099,7 @@ app.get('/api/workspace/_stats', async (req, res) => {
 app.get('/api/discussions', async (req, res) => {
   const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
-  if (req.query.light === '1') return res.json(listChatSummaries(user.id));
+  if (req.query.light === '1') return res.json(await listChatSummaries(user.id));
   res.json(await listDiscussionsForUser(user.id));
 });
 
