@@ -340,10 +340,17 @@ async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
   try {
     // Dynamic import so the app still boots when nodemailer isn't installed
     const nodemailer = (await import('nodemailer')).default;
+    /* بيئات الاستضافة المجانية (مثال Render) بلا اتصال IPv6 صادر — محاولة الاتصال
+       عبر AAAA ترجع ENETUNREACH. نُجبر IPv4 ونضع مهلة اتصال قصيرة حتى لا يعلّق
+       المستخدم دقيقتين قبل ظهور الخطأ. */
     const transporter = nodemailer.createTransport({
       host,
       port: Number(process.env.SMTP_PORT || 587),
       secure: process.env.SMTP_SECURE === 'true',
+      family: 4,
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 30_000,
       auth: { user, pass },
     });
     await transporter.sendMail({
