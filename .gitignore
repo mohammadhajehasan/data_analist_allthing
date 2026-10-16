@@ -23,3 +23,5 @@ coverage/
 .freebuff/
 .agents/
 .buyer-execution-hooks/
+# Local Claude agent settings on this machine
+.claude/
