@@ -18,6 +18,7 @@ import {
   ExportProgressState,
 } from '../../utils/dashboardExport';
 import { DashboardLayoutModal } from '../../components/dashboards/DashboardLayoutModal';
+import { WidgetExpandedModal } from '../../components/dashboards/WidgetExpandedModal';
 import { LocalCsvImportModal } from '../../components/datasets/LocalCsvImportModal';
 import { ExportModal } from '../../components/common/ExportModal';
 import { VISUALIZATION_THEMES } from '../../utils/visualizationThemes';
@@ -114,6 +115,8 @@ export const DashboardBuilder: React.FC = () => {
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [activeWidgetExportMenuId, setActiveWidgetExportMenuId] = useState<string | null>(null);
+  // نافذة العرض الموسّع — تفتح بالنقر المزدوج على الرسم أو بطاقة KPI
+  const [expandedWidgetId, setExpandedWidgetId] = useState<string | null>(null);
 
   // Dashboard creation & switching state (زر "لوحة جديدة" وقائمة التبديل بين اللوحات)
   const [showDashSwitcher, setShowDashSwitcher] = useState(false);
@@ -672,6 +675,14 @@ export const DashboardBuilder: React.FC = () => {
     }
   })();
 
+  // عنصر النفذة الموسعة + مصدر بياناته (نفس منطق widgetDataset في الشبكة)
+  const expandedWidget = expandedWidgetId
+    ? activeDashboard?.widgets.find(w => w.id === expandedWidgetId) || null
+    : null;
+  const expandedDataset = expandedWidget
+    ? (datasets.find(d => d.id === expandedWidget.datasetId) || activeDataset) || null
+    : null;
+
   // Preview statistical calculation value for the modal
   const sampleValues = (currentTargetDataset?.data || []).slice(0, 100).map(r => {
     const raw = r[widgetYAxis];
@@ -730,7 +741,12 @@ export const DashboardBuilder: React.FC = () => {
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
-            <KpiCard widget={w} />
+            <div
+              onDoubleClick={() => setExpandedWidgetId(w.id)}
+              title={isAr ? 'نقرة مزدوجة للعرض الموسّع' : 'Double-click to expand'}
+            >
+              <KpiCard widget={w} />
+            </div>
           </div>
         ))}
       </div>
@@ -1256,8 +1272,12 @@ export const DashboardBuilder: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Chart Body */}
-                  <div className={`${chartBodyHeightClass} w-full`}>
+                  {/* Chart Body — النقر المزدوج يفتح العرض الموسّع */}
+                  <div
+                    className={`${chartBodyHeightClass} w-full cursor-zoom-in`}
+                    onDoubleClick={() => setExpandedWidgetId(w.id)}
+                    title={isAr ? 'نقرة مزدوجة للعرض الموسّع' : 'Double-click to expand'}
+                  >
                     <ChartFactory widget={w} dataset={widgetDataset} activeTheme={selectedTheme} />
                   </div>
                 </div>
@@ -1372,6 +1392,13 @@ export const DashboardBuilder: React.FC = () => {
       <DashboardLayoutModal
         isOpen={showLayoutModal}
         onClose={() => setShowLayoutModal(false)}
+      />
+
+      {/* نافذة العرض الموسّع بالنقر المزدوج (R + KPI) — منفصلة عن الشبكة لتتزن على الشاشة كاملة */}
+      <WidgetExpandedModal
+        widget={expandedWidget}
+        dataset={expandedDataset}
+        onClose={() => setExpandedWidgetId(null)}
       />
 
       {/* Full Modal for Adding & Configuring New / Existing Widget */}

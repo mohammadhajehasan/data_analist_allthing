@@ -512,7 +512,9 @@ export const ChartFactory: React.FC<{
   dataset: Dataset;
   customData?: any[];
   activeTheme?: string;
-}> = ({ widget, dataset, customData, activeTheme }) => {
+  /** نمط النافذة الموسعة: ارتفاع مرن يملأ الحاوية بدل الـ h-56 الثابت */
+  expanded?: boolean;
+}> = ({ widget, dataset, customData, activeTheme, expanded = false }) => {
   const { language, theme } = useApp();
   // #(live-verified) Crash when dataset is undefined (e.g., a chart widget in the
   // Slides tool references a deleted dataset) — instantly broke the app root.
@@ -1231,7 +1233,7 @@ export const ChartFactory: React.FC<{
           {widget.type === 'geo' ? (language === 'ar' ? 'خريطة' : 'MAP') : widget.type}
         </span>
       </div>
-      <div className="h-56 w-full">{renderChart()}</div>
+      <div className={`w-full ${expanded ? 'flex-1 min-h-0' : 'h-56'}`}>{renderChart()}</div>
     </div>
   );
 };
