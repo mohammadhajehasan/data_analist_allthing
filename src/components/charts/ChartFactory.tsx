@@ -23,6 +23,9 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
+  Treemap,
+  FunnelChart,
+  Funnel,
 } from 'recharts';
 // GIS upload/analysis icons for the GeoJSON source panel
 import { WidgetConfig, Dataset, AggregationFunction } from '../../types';
@@ -236,6 +239,50 @@ export function getAggregationLabel(agg: AggregationFunction = 'sum', language: 
     case 'sum_squares': return 'Sum of Squares (SS)';
     default: return 'Sum (SUM)';
   }
+}
+
+export interface HistogramBin {
+  name: string;
+  value: number;
+  count: number;
+}
+
+/**
+ * محرخ توزيع التواتر (Histogram) — دالة نقية قابلة للاختبار:
+ *  - يفلتر القيم غير الرقمية (يحوّل "$1,200"/"45%" إلى أرقام) ويفرز تصاعدياً.
+ *  - عدد الصناديق = √N محكوم بين 5 و 15 (قاعدة Sturges المبسطة)، ساوية العرض (max-min)/binCount.
+ *  - كل الصناديق مجاورة: [min+i·w, min+(i+1)·w)، والقيمة القصوى تُجبر على آخر صندوق.
+ *  - مجموع (value) على كافة الصناديق يساوي عدد القيم الصالحية بالضبط.
+ */
+export function computeHistogramBins(rows: any[] | null | undefined, yKey: string | undefined): HistogramBin[] {
+  if (!rows || rows.length === 0 || !yKey) return [];
+  const vals = rows
+    .map(r => {
+      const raw = r?.[yKey];
+      const cleaned = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[\$,\s%]/g, ''));
+      return isNaN(cleaned) ? null : cleaned;
+    })
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => a - b);
+  if (vals.length === 0) return [];
+  const min = vals[0];
+  const max = vals[vals.length - 1];
+  if (max === min) return [{ name: `${min}`, value: vals.length, count: vals.length }];
+  const binCount = Math.max(5, Math.min(15, Math.ceil(Math.sqrt(vals.length))));
+  const width = (max - min) / binCount;
+  const fmt = (v: number) =>
+    Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Number(v.toFixed(2)));
+  const bins = Array.from({ length: binCount }, (_, i) => ({
+    name: `${fmt(min + i * width)}–${fmt(min + (i + 1) * width)}`,
+    value: 0,
+    count: 0,
+  }));
+  vals.forEach(v => {
+    const idx = Math.min(binCount - 1, Math.floor((v - min) / width));
+    bins[idx].value += 1;
+    bins[idx].count += 1;
+  });
+  return bins;
 }
 
 /**
@@ -594,6 +641,12 @@ export const ChartFactory: React.FC<{
   const yField = yKey;
   const aggTitle = getAggregationLabel(aggFunc, language);
 
+  /** توزيع موزّع (Histogram) من القيم الخام — عدد الصناديق √N محكوم بين 5 و 15 */
+  const histogramBins = React.useMemo(
+    () => computeHistogramBins(customData && customData.length > 0 ? customData : (dataset?.data || []), yKey),
+    [dataset, customData, yKey, widget.id, widget.type]
+  );
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const rowItem = payload[0]?.payload;
@@ -844,6 +897,112 @@ export const ChartFactory: React.FC<{
               <Tooltip content={<CustomTooltip />} />
               <Radar name={yField} dataKey={yField} stroke={primaryColor} fill={primaryColor} fillOpacity={0.5} />
             </RadarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'histogram':
+        // توزيع تواتري بأعمدة متلاصقة (freedman-style bins محسوبة محلياً)
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={histogramBins} margin={{ top: 10, right: 10, left: -5, bottom: 25 }} barCategoryGap="6%">
+              <CartesianGrid strokeDasharray="2 2" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="name" stroke={axisStroke} fontSize={9} fontFamily="IBM Plex Mono, monospace" tickLine={false} angle={-20} textAnchor="end" interval={0} />
+              <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" fill={primaryColor} radius={[2, 2, 0, 0]}>
+                {histogramBins.map((_, index) => (
+                  <Cell key={`hcell-${index}`} fill={activePalette[index % activePalette.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'donut':
+        // نسخة رفيعة من الدائري بثقب أوسع — تُبرز نسب المكونات أكثر من الحجم
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Tooltip content={<CustomTooltip />} />
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={62}
+                outerRadius={85}
+                paddingAngle={3}
+                cornerRadius={2}
+                stroke="#262626"
+                strokeWidth={1}
+              >
+                {chartData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={activePalette[index % activePalette.length]} />
+                ))}
+              </Pie>
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                formatter={val => <span className="text-[10px] font-mono text-[var(--cds-text-01)] font-semibold">{val}</span>}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+
+      case 'treemap':
+        // طبقات مستطيلة متداخلة بحسب الحجم التعريفي — مثالية للمساهمة الهيكلية.
+        // recharts Treemap يتجاهل خلايا Cell ويستوحى الألوان من content المخصص.
+        return (() => {
+          const tmContent = (nodeProps: any) => {
+            const { x, y, width, height, index, name, value, depth } = nodeProps;
+            if (width <= 0 || height <= 0) return null;
+            const color = activePalette[(index ?? 0) % activePalette.length];
+            const stroke = isLight ? '#ffffff' : '#161616';
+            const textFill = isLight ? '#161616' : '#ffffff';
+            const leaf = depth === 1;
+            return (
+              <g>
+                <rect x={x} y={y} width={width} height={height} fill={leaf ? color : 'transparent'} stroke={stroke} strokeWidth={1} />
+                {leaf && width > 48 && height > 22 && (
+                  <text x={x + 6} y={y + 15} fill={textFill} fontSize={10} fontWeight='bold' fontFamily='IBM Plex Mono, monospace'>
+                    {String(name || '').slice(0, Math.max(1, Math.floor((width - 12) / 6)))}
+                  </text>
+                )}
+                {leaf && width > 72 && height > 38 && (
+                  <text x={x + 6} y={y + 30} fill={textFill} opacity={0.85} fontSize={9} fontFamily='IBM Plex Mono, monospace'>
+                    {Number(value).toLocaleString()}
+                  </text>
+                )}
+              </g>
+            );
+          };
+          return (
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={chartData}
+                dataKey="value"
+                nameKey="name"
+                aspectRatio={4 / 3}
+                isAnimationActive={false}
+                content={tmContent}
+              />
+            </ResponsiveContainer>
+          );
+        })();
+
+      case 'funnel':
+        // قمع التحويل: أقرب استخدام = ترتيب تنازلي لقيم الفئات
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <FunnelChart margin={{ top: 8, right: 12, left: 12, bottom: 8 }}>
+              <Tooltip content={<CustomTooltip />} />
+              <Funnel dataKey="value" data={[...chartData].sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, 8)} isAnimationActive>
+                {[...chartData].sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, 8).map((_, index) => (
+                  <Cell key={`fcell-${index}`} fill={activePalette[index % activePalette.length]} />
+                ))}
+              </Funnel>
+            </FunnelChart>
           </ResponsiveContainer>
         );
 

@@ -114,7 +114,11 @@ export const AiAgentPanel: React.FC = () => {
       
       // Basic lexical parsing heuristics to extract dimensions and metrics
       let guessedType: WidgetType = 'bar';
-      if (lower.includes('pie') || lower.includes('دائري') || lower.includes('توزيع')) guessedType = 'pie';
+      if (lower.includes('pie') || lower.includes('دائري')) guessedType = 'pie';
+      else if (lower.includes('donut') || lower.includes('حلق')) guessedType = 'donut';
+      else if (lower.includes('treemap') || lower.includes('مستطيل') || lower.includes('مساهة')) guessedType = 'treemap';
+      else if (lower.includes('funnel') || lower.includes('قمع')) guessedType = 'funnel';
+      else if (lower.includes('histogram') || lower.includes('تواتر') || lower.includes('توزي')) guessedType = 'histogram';
       else if (lower.includes('line') || lower.includes('خطي') || lower.includes('مسار') || lower.includes('اتجاه')) guessedType = 'line';
       else if (lower.includes('area') || lower.includes('مساح')) guessedType = 'area';
       else if (lower.includes('scatter') || lower.includes('مبعثر')) guessedType = 'scatter';

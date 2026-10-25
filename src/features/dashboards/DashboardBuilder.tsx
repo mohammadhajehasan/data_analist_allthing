@@ -74,6 +74,8 @@ import {
   MessageSquare,
   Globe2,
   Vibrate,
+  Boxes,
+  CircleDot,
 } from 'lucide-react';
 
 /** Full world country list for the drill-down (single-country) map scope — bilingual labels */
@@ -1464,6 +1466,10 @@ export const DashboardBuilder: React.FC = () => {
                     { type: 'heatmap' as WidgetType, labelAr: 'خريطة حرارية', labelEn: 'Heatmap', icon: LayoutGrid },
                     { type: 'timeseries' as WidgetType, labelAr: 'متجهات زمنية', labelEn: 'Time-Series', icon: Activity },
                     { type: 'geo' as WidgetType, labelAr: 'خريطة جغرافية', labelEn: 'Geo Map', icon: Globe2 },
+                    { type: 'histogram' as WidgetType, labelAr: 'توزيع تواتري', labelEn: 'Histogram', icon: Layers },
+                    { type: 'donut' as WidgetType, labelAr: 'حلقة توزيع', labelEn: 'Donut Ring', icon: CircleDot },
+                    { type: 'treemap' as WidgetType, labelAr: 'خريطة مستطيلة', labelEn: 'Treemap', icon: Boxes },
+                    { type: 'funnel' as WidgetType, labelAr: 'مخطط قمعي', labelEn: 'Funnel', icon: Filter },
                   ].map(item => {
                     const Icon = item.icon;
                     const isSelected = widgetType === item.type;

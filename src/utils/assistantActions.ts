@@ -28,7 +28,10 @@ export interface ParsedAssistantReply {
 export const KNOWN_TABS = ['datasets', 'datamodeling', 'profiling', 'dashboards', 'nl2sql', 'models', 'reports', 'guide'];
 
 /** Widget types supported by the dashboard renderer (permissive superset). */
-export const KNOWN_WIDGET_TYPES = ['bar', 'line', 'area', 'pie', 'radar', 'scatter', 'geo', 'table', 'metric'];
+export const KNOWN_WIDGET_TYPES = [
+  'bar', 'line', 'area', 'pie', 'radar', 'scatter', 'geo', 'table', 'metric',
+  'kpi', 'heatmap', 'timeseries', 'histogram', 'donut', 'treemap', 'funnel',
+];
 
 /**
  * Extract the ```json action block from an assistant reply.
