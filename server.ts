@@ -2902,6 +2902,15 @@ app.get('/api/admin/system-status', async (req, res) => {
   }
 });
 
+// ---- Email provider diagnostics (admin only): per-provider status + the
+// recent failure reasons hidden inside the chain's final error message.
+app.get('/api/admin/email-providers', async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (caller.role !== 'admin') return res.status(403).json({ error: 'تشخيص مزودي البريد متاح للمدير فقط' });
+  res.json({ providers: emailProviderDiagnostics(), checkedAt: new Date().toISOString() });
+});
+
 // Privacy-scoped contact list: the caller's own account + users who share at
 // least one discussion group with the caller (no global user enumeration).
 app.get('/api/users/contacts', async (req, res) => {
@@ -2933,6 +2942,7 @@ import {
 import {
   createEmailInvite, peekEmailInvite, consumeEmailInviteForNewUser,
   listGroupEmailInvites, revokeEmailInvite, startEmailInviteReminderScheduler,
+  emailProviderDiagnostics,
 } from './server/emailInvites';
 
 function authUserFromReq(req: express.Request) {

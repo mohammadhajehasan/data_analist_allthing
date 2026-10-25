@@ -408,7 +408,8 @@ export async function requestPasswordReset(
   }
   if (channel === 'email') {
     const mail = buildCodeEmail(code, user.name, CODE_TTL_MS / 60000);
-    const r = await sendEmail({ to: target, subject: mail.subject, text: mail.text, html: mail.html });
+    // purpose='password-reset' → يُسجَّل في تشخيص مزودي البريد بلوحة الإدارة
+    const r = await sendEmail({ to: target, subject: mail.subject, text: mail.text, html: mail.html }, 'password-reset');
     sent = r.sent; err = r.error;
   } else if (channel === 'telegram') {
     const r = await sendTelegramCode(target, code);

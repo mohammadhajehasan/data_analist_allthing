@@ -2,7 +2,8 @@
  * Email invites for UNREGISTERED users.
  * - Owner enters an email -> a pending email-invite with a 128-bit code is created
  * - An invitation email is sent through the FIRST configured provider in .env:
- *   Brevo API (BREVO_API_KEY) → Resend API (RESEND_API_KEY) → SMTP
+ *   Brevo API (BREVO_API_KEY) → Resend API (RESEND_API_KEY) →
+ *   AgentMail (AGENTMAIL_API_KEY) → SMTP
  *   (SMTP_HOST/SMTP_USER/...). The HTTP APIs work on hosts that block
  *   outbound SMTP (e.g. Render's free tier); without any provider the
  *   code/link is returned so the owner can share it manually
@@ -229,7 +230,7 @@ async function trySendInviteEmail(to: string, groupName: string, inviteUrl: stri
     subject: `📧 ${inviterName} يدعوك إلى مجموعة "${groupName}"`,
     text: `تمت دعوتك للانضمام إلى مجموعة "${groupName}" من قبل ${inviterName}.\nافتح الرابط التالي وسجّل بنفس هذا البريد (${to}) وستُضاف للمجموعة تلقائياً:\n${inviteUrl}\nالرابط صالح لمدة 14 يوماً.`,
     html: buildInviteEmailHtml(groupName, inviterName, inviteUrl, to, expiresAt),
-  });
+  }, 'invite');
 }
 
 /**
@@ -251,13 +252,100 @@ function parseSender(): { name: string; email: string } {
 }
 
 // ---------------------------------------------------------------------------
-// Outbound email transport: HTTP APIs first (Brevo / Resend — they work on
+// Outbound email transport: HTTP APIs first (Brevo / Resend / AgentMail — they work on
 // hosts that block outbound SMTP like Render's free tier), classic SMTP
 // (nodemailer) as fallback, in that order. Configured via .env only.
 // ---------------------------------------------------------------------------
 
 interface MailPayload { to: string; subject: string; text: string; html: string }
 type SendResult = { sent: boolean; error?: string; provider: string };
+
+// ---------------------------------------------------------------------------
+// Provider diagnostics — remembers the LAST attempt and the recent failure
+// reasons of every provider so the admin panel can show which provider broke
+// and why. sendEmail() only surfaces the final error to callers; the chain
+// hides the per-provider details, which is exactly what an operator needs.
+// In-memory only (reset on restart) — live troubleshooting aid, no persistence.
+// ---------------------------------------------------------------------------
+
+export interface ProviderAttemptDiag {
+  at: string;            // ISO timestamp of the attempt
+  ok: boolean;
+  error?: string;        // trimmed to 400 chars so state stays small
+  purpose?: string;      // 'invite' | 'reminder' | 'password-reset'
+}
+
+export interface ProviderDiag {
+  provider: 'brevo' | 'resend' | 'agentmail' | 'smtp';
+  configured: boolean;   // env vars present RIGHT NOW
+  totalAttempts: number; // since process start
+  totalFailures: number;
+  consecutiveFailures: number;
+  lastAttempt?: ProviderAttemptDiag;
+  lastSuccessAt?: string;
+  recentFailures: ProviderAttemptDiag[]; // newest first, capped at 8
+}
+
+const PROVIDER_NAMES = ['brevo', 'resend', 'agentmail', 'smtp'] as const;
+const RECENT_FAILURES_MAX = 8;
+
+interface ProviderState {
+  attempts: number;
+  failures: number;
+  consecutiveFailures: number;
+  lastAttempt?: ProviderAttemptDiag;
+  lastSuccessAt?: string;
+  recentFailures: ProviderAttemptDiag[];
+}
+const providerStates = new Map<string, ProviderState>();
+
+function recordAttempt(provider: string, ok: boolean, error: string | undefined, purpose?: string): void {
+  const st: ProviderState = providerStates.get(provider) || {
+    attempts: 0,
+    failures: 0,
+    consecutiveFailures: 0,
+    recentFailures: [],
+  };
+  const attempt: ProviderAttemptDiag = { at: new Date().toISOString(), ok, purpose };
+  if (!ok) attempt.error = error && error.length > 400 ? `${error.slice(0, 400)}…` : error;
+  st.attempts += 1;
+  st.lastAttempt = attempt;
+  if (ok) {
+    st.consecutiveFailures = 0;
+    st.lastSuccessAt = attempt.at;
+  } else {
+    st.failures += 1;
+    st.consecutiveFailures += 1;
+    st.recentFailures.unshift(attempt);
+    if (st.recentFailures.length > RECENT_FAILURES_MAX) st.recentFailures.length = RECENT_FAILURES_MAX;
+  }
+  providerStates.set(provider, st);
+}
+
+/** Snapshot for the admin panel: config presence + attempts/failures per provider. */
+export function emailProviderDiagnostics(): ProviderDiag[] {
+  return PROVIDER_NAMES.map(provider => {
+    const st = providerStates.get(provider);
+    const configured =
+      provider === 'brevo'
+        ? !!process.env.BREVO_API_KEY?.trim()
+        : provider === 'resend'
+          ? !!process.env.RESEND_API_KEY?.trim()
+          : provider === 'agentmail'
+            ? !!process.env.AGENTMAIL_API_KEY?.trim()
+            : !!(process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim());
+    return {
+      provider,
+      configured,
+      totalAttempts: st?.attempts ?? 0,
+      totalFailures: st?.failures ?? 0,
+      consecutiveFailures: st?.consecutiveFailures ?? 0,
+      lastAttempt: st?.lastAttempt,
+      lastSuccessAt: st?.lastSuccessAt,
+      recentFailures: st?.recentFailures ?? [],
+    };
+  });
+}
 
 /** Brevo transactional email API (free tier: 300 emails/day). */
 async function sendViaBrevo(p: MailPayload): Promise<SendResult> {
@@ -329,6 +417,110 @@ async function sendViaResend(p: MailPayload): Promise<SendResult> {
   }
 }
 
+/**
+ * AgentMail HTTP email API — المرتبة الثالثة في السلسلة (قبل SMTP).
+ * لا يحتاج منفذ SMTP صادراً ولا نطاقاً متحققاً: صندوق Inbox يُنشأ عبر API
+ * ويُرسل منه لأي عنوان، فيعمل حيث تُحجب 465/587 (Render الحرة وغيرها).
+ * AGENTMAIL_API_KEY للتوثيق (Bearer). صندوق ثابت عبر AGENTMAIL_INBOX_ID
+ * يمنع تراكم صناديق عند كل إعادة إقلاع، وإلا نبحث عن صندوقنا باسم العرض ثم
+ * ننشئ جديداً في ذاكرة الجلسة. https://api.agentmail.to/v0
+ */
+const AGENTMAIL_BASE = 'https://api.agentmail.to/v0';
+/** اسم العرض لصندوق AgentMail (أحرف لاتينية أبسط للقابلة) — قابل للتجاوز عبر AGENTMAIL_FROM_NAME. */
+function agentMailDisplayName(): string {
+  return process.env.AGENTMAIL_FROM_NAME?.trim() || 'Data Analytics Platform';
+}
+
+interface AgentMailInbox { id: string; email: string }
+let agentMailInbox: AgentMailInbox | null = null;
+
+/** إعادة تعيين ذاكرة الصندوق — للاختبارات فقط. */
+export function resetAgentMailInboxForTests(): void {
+  agentMailInbox = null;
+}
+
+async function agentMailApiError(res: Response, label: string): Promise<SendResult> {
+  const body = await res.text().catch(() => '');
+  return { sent: false, error: `AgentMail ${label} ${res.status}: ${body.slice(0, 200)}`, provider: 'agentmail' };
+}
+
+/** يضمن وجود صندوق AgentMail واحد: مُمرَّر مسبقاً → مُوجود باسمنا → جديد. */
+async function ensureAgentMailInbox(key: string): Promise<{ ok: true; inbox: AgentMailInbox; result?: undefined } | { ok: false; result: SendResult; inbox?: undefined }> {
+  if (agentMailInbox) return { ok: true, inbox: agentMailInbox };
+
+  const preset = process.env.AGENTMAIL_INBOX_ID?.trim();
+  if (preset) {
+    agentMailInbox = { id: preset, email: '' };
+    return { ok: true, inbox: agentMailInbox };
+  }
+
+  // 1) ابحث عن صندوق سابق أنشأناه (باسم عرضنا) لإعادة استخدامه
+  try {
+    const res = await fetch(`${AGENTMAIL_BASE}/inboxes`, {
+      headers: { Authorization: `Bearer ${key}`, accept: 'application/json' },
+    });
+    if (res.ok) {
+      const j: any = await res.json().catch(() => null);
+      const list = Array.isArray(j) ? j : j?.data ?? j?.inboxes ?? [];
+      const mine = (Array.isArray(list) ? list : []).find((i: any) => i?.display_name === agentMailDisplayName());
+      if (mine?.inbox_id) {
+        agentMailInbox = { id: String(mine.inbox_id), email: String(mine.email || '') };
+        return { ok: true, inbox: agentMailInbox };
+      }
+    }
+    // 404/غير جاهز — نكمل لإنشاء صندوق جديد
+  } catch { /* خطأ شبكة — نكمل للإنشاء */ }
+
+  // 2) أنشئ صندوقاً جديداً (اسم عشوائي لتفادي التضارب)
+  try {
+    const username = `analytics-${crypto.randomBytes(3).toString('hex')}`;
+    const res = await fetch(`${AGENTMAIL_BASE}/inboxes`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ username, display_name: agentMailDisplayName() }),
+    });
+    if (!res.ok) return { ok: false, result: await agentMailApiError(res, 'create inbox') };
+    const j: any = await res.json().catch(() => null);
+    const inboxId = j?.inbox_id;
+    if (!inboxId) return { ok: false, result: { sent: false, error: 'AgentMail create inbox: استجابة بلا inbox_id', provider: 'agentmail' } };
+    agentMailInbox = { id: String(inboxId), email: String(j?.email || '') };
+    console.log(`[email] AgentMail inbox ready: ${agentMailInbox.email || agentMailInbox.id}`);
+    return { ok: true, inbox: agentMailInbox };
+  } catch (err: any) {
+    return { ok: false, result: { sent: false, error: `AgentMail create inbox: ${err.message}`, provider: 'agentmail' } };
+  }
+}
+
+/** إرسال عبر AgentMail: صندوق مضمون ثم رسالة من داخله. */
+async function sendViaAgentMail(p: MailPayload): Promise<SendResult> {
+  const key = process.env.AGENTMAIL_API_KEY?.trim();
+  if (!key) return { sent: false, error: 'AGENTMAIL_API_KEY غير مضبوط', provider: 'agentmail' };
+  try {
+    const ensured = await ensureAgentMailInbox(key);
+    if (!ensured.ok) return ensured.result as SendResult;
+    if (!ensured.inbox) return { sent: false, error: 'AgentMail: صندوق غير متوفر', provider: 'agentmail' };
+    const res = await fetch(`${AGENTMAIL_BASE}/inboxes/${encodeURIComponent(ensured.inbox.id)}/messages/send`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        to: [p.to],
+        subject: p.subject,
+        text: p.text,
+        html: p.html,
+      }),
+    });
+    if (!res.ok) {
+      const r = await agentMailApiError(res, 'send');
+      // صندوق مُمرَّر مسبقاً قد يصبح غير صالح (حُذف) — صفّر الكاش ليتنشأ صندوق جديد في المحاولة القادمة
+      if (res.status === 404 && process.env.AGENTMAIL_INBOX_ID?.trim()) agentMailInbox = null;
+      return r;
+    }
+    return { sent: true, provider: 'agentmail' };
+  } catch (err: any) {
+    return { sent: false, error: `AgentMail: ${err.message}`, provider: 'agentmail' };
+  }
+}
+
 /** Classic SMTP via nodemailer (needs outbound 465/587 — blocked on Render free). */
 async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
   const host = process.env.SMTP_HOST;
@@ -340,14 +532,15 @@ async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
   try {
     // Dynamic import so the app still boots when nodemailer isn't installed
     const nodemailer = (await import('nodemailer')).default;
-    /* بيئات الاستضافة المجانية (مثال Render) بلا اتصال IPv6 صادر — محاولة الاتصال
-       عبر AAAA ترجع ENETUNREACH. نُجبر IPv4 ونضع مهلة اتصال قصيرة حتى لا يعلّق
-       المستخدم دقيقتين قبل ظهور الخطأ. */
+    /* بيئات الاستضافة المجانية (مثال Render) قد تعلّق الاتصال دقيقتين قبل ظهور
+       الخطأ — نضع مهلات اتصال/ترحيب/مقبس قصيرة حتى يعود الخطأ سريعاً.
+       ملاحظة: نودemailer 10 لا يمرّر خيار `family` إلى net.connect (تبيّن من
+       مصادره) لذا حُذف — السلوك نفسه (تَحديد IPv4 يحدث عبر فلترة resolveHostname
+       لعناوين AAAA) دون خطأ أنواع في tsc. */
     const transporter = nodemailer.createTransport({
       host,
       port: Number(process.env.SMTP_PORT || 587),
       secure: process.env.SMTP_SECURE === 'true',
-      family: 4,
       connectionTimeout: 15_000,
       greetingTimeout: 15_000,
       socketTimeout: 30_000,
@@ -368,12 +561,13 @@ async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
 
 /**
  * Send one email through the first configured provider, falling back down the
- * chain (Brevo → Resend → SMTP) if a provider errors. Returns the final status.
+ * chain (Brevo → Resend → AgentMail → SMTP) if a provider errors. Returns the final status.
  */
-export async function sendEmail(p: MailPayload): Promise<SendResult> {
+export async function sendEmail(p: MailPayload, purpose?: string): Promise<SendResult> {
   const providers: Array<[string, () => Promise<SendResult>]> = [];
   if (process.env.BREVO_API_KEY?.trim()) providers.push(['brevo', () => sendViaBrevo(p)]);
   if (process.env.RESEND_API_KEY?.trim()) providers.push(['resend', () => sendViaResend(p)]);
+  if (process.env.AGENTMAIL_API_KEY?.trim()) providers.push(['agentmail', () => sendViaAgentMail(p)]);
   if (process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim()) {
     providers.push(['smtp', () => sendViaSmtp(p)]);
   }
@@ -383,6 +577,8 @@ export async function sendEmail(p: MailPayload): Promise<SendResult> {
   const errors: string[] = [];
   for (const [name, fn] of providers) {
     const r = await fn();
+    // Diagnostic trail for the admin panel: every attempt, success or not.
+    recordAttempt(name, r.sent, r.error, purpose);
     if (r.sent) {
       console.log(`[email] sent via ${r.provider} to ${p.to}`);
       return r;
@@ -486,14 +682,14 @@ export async function revokeEmailInvite(discussionId: string, code: string, byUs
 const REMINDER_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
 const REMINDER_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // hourly sweep
 
-/** Reminder send goes through the same provider chain (Brevo → Resend → SMTP). */
+/** Reminder send goes through the same provider chain (Brevo → Resend → AgentMail → SMTP). */
 async function trySendReminderEmail(to: string, groupName: string, inviterName: string, inviteUrl: string): Promise<{ sent: boolean; error?: string }> {
   const r = await sendEmail({
     to,
     subject: `⏰ تذكير: دعوتك لمجموعة "${groupName}" لا تزال بانتظارك`,
     text: `مرحباً،\nقبل 3 أيام دعاك ${inviterName} للانضمام إلى مجموعة "${groupName}" ولم تسجّل بعد.\nالرابط لا يزال صالحاً — سجّل بنفس هذا البريد (${to}) وستُضاف تلقائياً:\n${inviteUrl}`,
     html: buildReminderEmailHtml(groupName, inviterName, inviteUrl, to),
-  });
+  }, 'reminder');
   return { sent: r.sent, error: r.error };
 }
 

@@ -16,6 +16,7 @@ import {
   Check,
   Activity,
   Globe,
+  Mail,
   Server,
   RefreshCw,
   AlertCircle,
@@ -125,6 +126,220 @@ const IdleSettingsCard: React.FC<{ isAr: boolean }> = () => {
       </div>
       {msg && (
         <p className={`text-[11px] ${msg.ok ? 'text-[#24a148]' : 'text-[#ff8389]'}`}>{msg.text}</p>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// بطاقة تشخيص مزودي البريد (للمدير فقط): حالة كل مزود في سلسلة الإرسال
+// (مُعد/غير مُعد، نجاح/فشل آخر محاولة) وأسباب الإخفاق الأخيرة —
+// البيانات من /api/admin/email-providers (ذاكرة الخادم، تُجدَّد كل 15 ثانية).
+// ---------------------------------------------------------------------------
+interface ProviderAttemptDiag {
+  at: string;
+  ok: boolean;
+  error?: string;
+  purpose?: string;
+}
+interface EmailProviderDiag {
+  provider: 'brevo' | 'resend' | 'agentmail' | 'smtp';
+  configured: boolean;
+  totalAttempts: number;
+  totalFailures: number;
+  consecutiveFailures: number;
+  lastAttempt?: ProviderAttemptDiag;
+  lastSuccessAt?: string;
+  recentFailures: ProviderAttemptDiag[];
+}
+
+const EMAIL_PROVIDER_META: Record<EmailProviderDiag['provider'], { ar: string; en: string; hint: string }> = {
+  brevo: { ar: 'Brevo API', en: 'Brevo API', hint: 'BREVO_API_KEY' },
+  resend: { ar: 'Resend API', en: 'Resend API', hint: 'RESEND_API_KEY' },
+  agentmail: { ar: 'AgentMail API', en: 'AgentMail API', hint: 'AGENTMAIL_API_KEY' },
+  smtp: { ar: 'SMTP', en: 'SMTP', hint: 'SMTP_HOST · SMTP_USER · SMTP_PASS' },
+};
+
+const EMAIL_PURPOSE_META: Record<string, { ar: string; en: string }> = {
+  invite: { ar: 'دعوة عضو', en: 'invite' },
+  reminder: { ar: 'تذكير دعوة', en: 'reminder' },
+  'password-reset': { ar: 'استعادة كلمة المرور', en: 'password reset' },
+};
+
+const EmailProvidersCard: React.FC<{ isAr: boolean }> = ({ isAr }) => {
+  const [providers, setProviders] = useState<EmailProviderDiag[]>([]);
+  const [checkedAt, setCheckedAt] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const fetchProviders = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const token = localStorage.getItem('carbon_auth_token');
+      const res = await fetch('/api/admin/email-providers', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({} as any));
+        throw new Error(d?.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setProviders(data.providers || []);
+      setCheckedAt(data.checkedAt || '');
+      setLoadError('');
+    } catch (e: any) {
+      setLoadError(e?.message || 'fetch failed');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProviders();
+    const id = setInterval(fetchProviders, 15000);
+    return () => clearInterval(id);
+  }, [fetchProviders]);
+
+  const fmtTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString(isAr ? 'ar' : 'en-GB', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+      });
+    } catch {
+      return iso;
+    }
+  };
+  const purposeLabel = (key?: string) => {
+    if (!key) return '';
+    const m = EMAIL_PURPOSE_META[key];
+    return m ? (isAr ? m.ar : m.en) : key;
+  };
+  const anyConfigured = providers.some(p => p.configured);
+
+  return (
+    <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-[#0f62fe]" />
+          <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+            {isAr ? 'تشخيص مزودي البريد' : 'Email provider diagnostics'}
+          </h3>
+          <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+            {isAr ? 'آخر محاولات وأسباب الإخفاق · تحديث كل 15 ثانية' : 'last attempts & failures · 15s refresh'}
+          </span>
+        </div>
+        <button
+          onClick={fetchProviders}
+          disabled={refreshing}
+          className="p-1.5 rounded text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-01)] disabled:opacity-60 transition-colors"
+          title={isAr ? 'تحديث الآن' : 'Refresh now'}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {loadError && (
+        <p className="text-[11px] text-[#ff8389]">
+          {isAr ? 'تعذّر جلب تشخيص المزودين' : 'Failed to load provider diagnostics'}: {loadError}
+        </p>
+      )}
+
+      {!loadError && providers.length === 0 && (
+        <p className="text-[11px] text-[var(--cds-text-03)]">
+          {isAr ? 'جارٍ جلب حالة مزودي البريد…' : 'Loading provider status…'}
+        </p>
+      )}
+
+      {!loadError && providers.length > 0 && !anyConfigured && (
+        <p className="text-[11px] px-3 py-2 rounded-lg bg-[#da1e28]/10 text-[#ff8389] border border-[#da1e28]/30 leading-relaxed">
+          {isAr
+            ? 'لا يوجد أي مزود بريد مُعد — لن تُرسل الدعوات ولا رموز استعادة كلمة المرور. أضف BREVO_API_KEY (عبر HTTPS — يعمل حتى على الاستضافة المجانية) أو RESEND_API_KEY بنطاق مُتحقَّق أو متغيرات SMTP_*.'
+            : 'No email provider configured — invites and password-reset codes will not send. Add BREVO_API_KEY (HTTPS — works even on free hosting), a verified-domain RESEND_API_KEY, or SMTP_* variables.'}
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {providers.map(p => {
+          const meta = EMAIL_PROVIDER_META[p.provider] || { ar: p.provider, en: p.provider, hint: '' };
+          const last = p.lastAttempt;
+          const state: 'ok' | 'fail' | 'idle' = last ? (last.ok ? 'ok' : 'fail') : 'idle';
+          const dotColor = state === 'ok' ? '#42be65' : state === 'fail' ? '#da1e28' : '#8d8d8d';
+          return (
+            <div key={p.provider} className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dotColor }} />
+                  <span className="text-xs font-bold text-[var(--cds-text-01)]">{isAr ? meta.ar : meta.en}</span>
+                  <span className="text-[10px] font-mono text-[var(--cds-text-03)]">{meta.hint}</span>
+                </div>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full border"
+                  style={
+                    p.configured
+                      ? { color: '#42be65', borderColor: '#42be65', background: 'rgba(66,190,101,0.1)' }
+                      : { color: '#8d8d8d', borderColor: '#8d8d8d' }
+                  }
+                >
+                  {p.configured ? (isAr ? 'مُعد' : 'configured') : isAr ? 'غير مُعد' : 'not configured'}
+                </span>
+              </div>
+
+              {last ? (
+                <>
+                  <p className={`text-[11px] ${last.ok ? 'text-[#42be65]' : 'text-[#ff8389]'}`}>
+                    {last.ok ? (isAr ? 'نجح آخر إرسال' : 'Last send succeeded') : isAr ? 'فشل آخر إرسال' : 'Last send failed'}
+                    {' · '}{fmtTime(last.at)}
+                    {last.purpose ? ` · ${purposeLabel(last.purpose)}` : ''}
+                  </p>
+                  {!last.ok && last.error && (
+                    <p
+                      className="text-[11px] text-[#ff8389] bg-[#da1e28]/10 border border-[#da1e28]/30 rounded px-2 py-1.5 font-mono break-words"
+                      title={last.error}
+                    >
+                      {last.error}
+                    </p>
+                  )}
+                  <p className="text-[10px] font-mono text-[var(--cds-text-03)] break-words">
+                    {isAr
+                      ? `محاولات: ${p.totalAttempts} · إخفاقات: ${p.totalFailures} · متتالية الفشل: ${p.consecutiveFailures}`
+                      : `attempts: ${p.totalAttempts} · failures: ${p.totalFailures} · consecutive: ${p.consecutiveFailures}`}
+                    {p.lastSuccessAt ? ` · ${isAr ? 'آخر نجاح' : 'last success'}: ${fmtTime(p.lastSuccessAt)}` : ''}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[11px] text-[var(--cds-text-03)]">
+                  {p.configured
+                    ? isAr
+                      ? 'بانتظار أول محاولة إرسال'
+                      : 'No send attempt yet'
+                    : isAr
+                      ? 'لم يُجرَّب — متغيرات البيئة غير مضبوطة'
+                      : 'Never attempted — environment variables missing'}
+                </p>
+              )}
+
+              {p.recentFailures.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold text-[var(--cds-text-03)] uppercase tracking-wide">
+                    {isAr ? 'أسباب الإخفاق الأخيرة' : 'Recent failure reasons'}
+                  </p>
+                  {p.recentFailures.slice(0, 4).map((f, i) => (
+                    <p key={`${f.at}-${i}`} className="text-[10px] font-mono text-[var(--cds-text-03)] break-words" title={f.error}>
+                      <span className="text-[#ff8389]">{fmtTime(f.at)}</span>
+                      {f.purpose ? ` · ${purposeLabel(f.purpose)}` : ''} — {f.error}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {checkedAt && (
+        <p className="text-[10px] font-mono text-[var(--cds-text-03)]">
+          {isAr ? 'آخر فحص' : 'checked'}: {fmtTime(checkedAt)}
+        </p>
       )}
     </div>
   );
@@ -520,6 +735,9 @@ export const AdminPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* تشخيص مزودي البريد: حالة المزودين وأسباب الإخفاق الأخيرة (للمدير) */}
+      {isAdmin && <EmailProvidersCard isAr={isAr} />}
 
       {/* إعدادات أمان الجلسات: مدة الخمول القابلة للتعديل (تُخزن في Turso) */}
       {isAdmin && <IdleSettingsCard isAr={isAr} />}
