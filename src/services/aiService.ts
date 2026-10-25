@@ -1,5 +1,7 @@
 import { fetchOllamaTags } from './OllamaProxy';
 import { aiAuthHeaders } from '../utils/aiAccessGuard';
+import { notifyAiActivity } from '../hooks/useAiQuota';
+import { assertAiResponseQuotaOk, parseQuotaPayload } from './aiQuotaService';
 
 /**
  * AI Service Layer - Proxy Wrapper & Health Check Utilities
@@ -204,6 +206,23 @@ export async function optimizeSqlQuery(req: OptimizeQueryRequest) {
       options: providerOptions,
     }),
   });
+
+  // 429 نفاذ الحصة → رسالة عربية واضحة (من الخادم) بدل خطأ خام، مع تحديث البادج فوراً
+  if (res.status === 429) {
+    const payload = await res.clone().json().catch(() => null);
+    const quota = parseQuotaPayload(payload);
+    notifyAiActivity();
+    if (quota) {
+      const isAr = req.language !== 'en';
+      throw new Error(
+        isAr
+          ? `انتهت الحصة اليومية لاستخدام مفتاح المنصة (${quota.used}/${quota.limit} طلب) — يتجدد تلقائياً بعد منتصف الليل بتوقيت UTC، أو أضف مفتاحك الخاص من إعدادات النماذج لاستخدام غير محدود`
+          : `Daily server-key quota exhausted (${quota.used}/${quota.limit} requests) — resets after midnight UTC, or add your own key in model settings for unlimited use`
+      );
+    }
+  } else if (res.ok) {
+    notifyAiActivity();
+  }
 
   const data = await res.json();
   if (!res.ok) {

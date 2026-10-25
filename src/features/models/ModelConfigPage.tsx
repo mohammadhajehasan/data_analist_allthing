@@ -266,8 +266,8 @@ export const ModelConfigPage: React.FC = () => {
         : 'Invalid or unauthorized key — copy it fully from the provider console';
     if (/429|quota|rate|exceeded|exhausted/i.test(m))
       return isAr
-        ? 'تم تجاوز حد الاستخدام لهذا المفتاح — انتظر قليلاً أو استخدم مفتاحاً آخر'
-        : 'Rate limit exceeded — wait a moment or use another key';
+        ? 'تم تجاوز حد الاستخدام اليومي (حصة مفتاح المنصة) — يتجدد تلقائياً بعد منتصف الليل بتوقيت UTC، أو أضف مفتاحك الخاص من الإعدادات لاستخدام غير محدود'
+        : 'Daily usage quota exhausted — it resets automatically after midnight UTC, or add your own key in settings for unlimited use';
     if (/ENOTFOUND|ECONNREFUSED|fetch|network|timeout|aborted/i.test(m))
       return isAr
         ? 'تعذر الوصول للمزود — تحقق من اتصال الإنترنت أو من عنوان نقطة النهاية'

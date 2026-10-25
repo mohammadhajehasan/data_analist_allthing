@@ -15,6 +15,10 @@ import {
 import { useApp } from '../../context/AppContext';
 import { AIProviderId } from '../../types';
 import { AIProviderModal } from './AIProviderModal';
+import { AiQuotaBadge } from './AiQuotaBadge';
+import { fetchAiQuota, type AiQuotaInfo } from '../../services/aiQuotaService';
+
+const KEY_LOOKS_PLACEHOLDER = /demo|xxxx|your[_-]?api|my[_-]?gemini|placeholder/i;
 
 interface AIModelSelectorProps {
   compact?: boolean;
@@ -45,6 +49,7 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [isRefreshingModels, setIsRefreshingModels] = useState<string | null>(null);
+  const [aiQuota, setAiQuota] = useState<AiQuotaInfo | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleRefreshCloudModels = async (provider: AIProviderId) => {
@@ -68,6 +73,25 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
     } finally {
       setIsRefreshingModels(null);
     }
+  };
+
+  // رصيد الحصة للهيدر — يوضَع داخل القائمة المنسدلة بدل الحدس.
+  useEffect(() => {
+    let mounted = true;
+    fetchAiQuota().then(q => { if (mounted) setAiQuota(q); });
+    const onActivity = () => { fetchAiQuota().then(q => { if (mounted) setAiQuota(q); }); };
+    window.addEventListener('ai-activity', onActivity);
+    return () => { mounted = false; window.removeEventListener('ai-activity', onActivity); };
+  }, []);
+
+  // هل يفلت نموذج سحابي على مفتاح الخادم (لا به مفتاح مستخدم)؟ — فحص الاستدعاء قبل بيان
+  const isServerKeyModel = (model: { provider: AIProviderId }): boolean => {
+    if (model.provider === 'ollama') return false;
+    const cfg = aiSettings.providers[model.provider];
+    if (cfg?.isLocalOnly) return false;
+    const key = (cfg?.apiKey || '').trim();
+    if (key && !KEY_LOOKS_PLACEHOLDER.test(key)) return false;
+    return true;
   };
 
   // Close dropdown on outside click
@@ -118,6 +142,18 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
   });
 
   const handleSelect = (modelId: string) => {
+    const model = availableAIModels.find((m) => m.id === modelId);
+    // حرس الحصة: منع التفعيل الصامت لنموذج سحابي يفلت على مفتاح الخادم المنتهي
+    // (طلبات المستخدم الخاص والمحلية لا تستهلك الحصة — تُسمح دائماً)
+    if (model && isServerKeyModel(model) && aiQuota && !aiQuota.unlimited && (!aiQuota.ok || aiQuota.remaining <= 0)) {
+      toast.error(
+        isAr ? 'انتهت حصة اليوم لاستخدام مفتاح المنصة' : 'Daily server-key quota exhausted',
+        isAr
+          ? `استهلكت الحصة اليومية (${aiQuota.used}/${aiQuota.limit} طلب). أضف مفتاحك الخاص من إعدادات النماذج لتصبح بلا حدود، أو انتظر التجدد بعد منتصف الليل بتوقيت UTC.`
+          : `You used your daily allowance (${aiQuota.used}/${aiQuota.limit} requests). Add your own key in model settings for unlimited use, or wait for the midnight-UTC reset.`
+      );
+      return;
+    }
     setActiveAIModel(modelId);
     if (onSelectModel) {
       onSelectModel(modelId);
@@ -302,6 +338,14 @@ export const AIModelSelector: React.FC<AIModelSelectorProps> = ({
               )}
             </div>
 
+                {/* حصة مفتاح المنصة اليومية — شريط تقدم + تنازلي + CTA على النفاذ */}
+                <AiQuotaBadge
+                  quota={aiQuota}
+                  isLoading={aiQuota === null}
+                  isAr={isAr}
+                  variant="dropdown"
+                  onManageProviders={() => { setIsOpen(false); setIsModalOpen(true); }}
+                />
             {/* Bottom Footer Action */}
             <div className="mt-2 pt-2 border-t border-[var(--cds-border-subtle)] flex items-center justify-between">
               <button
