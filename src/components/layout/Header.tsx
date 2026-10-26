@@ -24,6 +24,7 @@ import {
   SlidersHorizontal,
   HardDrive,
   Radio,
+  Menu,
   LogOut,
   KeyRound,
 } from 'lucide-react';
@@ -137,6 +138,17 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
     <header className="h-16 bg-[var(--cds-header-bg)] border-b border-[var(--cds-border-subtle)] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs select-none transition-colors duration-150">
       {/* Brand & Workspace */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Hamburger — يفتح Drawer القائمة المنزلق على الشاشات أقل من 768px فقط */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('carbon-open-mobile-sidebar'))}
+          className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-colors"
+          title={language === 'ar' ? 'فتح القائمة' : 'Open menu'}
+          aria-label={language === 'ar' ? 'فتح القائمة الجانبية' : 'Open navigation menu'}
+          data-testid="sidebar-hamburger"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <div className="w-8 h-8 rounded-lg bg-[var(--cds-interactive-01)] flex items-center justify-center text-white font-bold text-sm shadow-sm">
           <Layers className="w-4 h-4" />
         </div>
