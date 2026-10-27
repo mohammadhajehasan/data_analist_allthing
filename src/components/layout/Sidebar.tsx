@@ -174,6 +174,52 @@ export const Sidebar: React.FC = () => {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // إيماءة السحب من حافة الشاشة (swipe-to-open): تبدأ من شريط بعرض 28px عند جهة البداية
+  // (يمين الشاشة في RTL / شمالها في LTR) وتمتد نحو داخل الشاشة أفقياً. المستمعات passive
+  // ولذلك لا تعترض تمرير الصفحة العادي، والسحب العمودي الصرف لا يفتح القائمة.
+  React.useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${MOBILE_SIDEBAR_BREAKPOINT}px)`);
+    const EDGE_PX = 28; // عرض شريط الحافة المستشعر للسحب
+    const OPEN_PX = 72; // مسافة السحب الأفقية اللازمة لفتح القائمة
+    let origin: { x: number; y: number } | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (mq.matches || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const inStartEdge = isAr ? t.clientX >= window.innerWidth - EDGE_PX : t.clientX <= EDGE_PX;
+      origin = inStartEdge ? { x: t.clientX, y: t.clientY } : null;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!origin) return;
+      const t = e.touches[0];
+      // المسافة المقطوعة نحو داخل الشاشة — موجبة فقط بالاتجاه المطلوب
+      const inward = isAr ? origin.x - t.clientX : t.clientX - origin.x;
+      const vertical = Math.abs(t.clientY - origin.y);
+      // سحب بالاتجاه الخاطئ أو لمس إضافي (pinch/zoom) → إلغاء الإيماءة
+      if (inward < 0 || e.touches.length !== 1) { origin = null; return; }
+      // فتح فوري — السحب الأفقي يتجاوز التمرير العمودي بوضوح (2x)
+      if (inward > OPEN_PX && inward > vertical * 2) {
+        origin = null;
+        setMobileOpen(true);
+      }
+    };
+
+    const onTouchEnd = () => { origin = null; };
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [isAr]);
+
   // Escape يغلق الـ Drawer
   React.useEffect(() => {
     if (!mobileOpen) return;
