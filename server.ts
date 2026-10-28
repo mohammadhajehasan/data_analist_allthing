@@ -2,9 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import BetterSqlite3 from 'better-sqlite3';
 import dotenv from 'dotenv';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
   createUser, verifyLogin, getUserByToken, revokeSession,
@@ -45,6 +43,16 @@ if (!(process.env.TURSO_DATABASE_URL || '').trim()) {
 
 
 const app = express();
+
+// Netlify Functions run the same Express app without app.listen() — see
+// netlify/functions/api.mts. Long-lived bits (SSE, timers) are skipped there.
+const IS_SERVERLESS = process.env.SERVERLESS_RUNTIME === 'netlify';
+
+// better-sqlite3 is a native module used only by the legacy local-file admin
+// tools; load it on demand so serverless bundles never need it at boot.
+async function loadBetterSqlite3() {
+  return (await import('better-sqlite3')).default;
+}
 const PORT = Number(process.env.PORT) || 3000; // cloud platforms inject PORT
 
 app.use(express.json({ limit: '50mb' }));
@@ -2799,7 +2807,7 @@ app.get('/api/admin/db/export', async (req, res) => {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     tmpPath = path.join(process.cwd(), 'data', `export-${stamp}.db`);
     // Online backup: consistent snapshot, WAL-safe
-    const src = new BetterSqlite3(dbPath);
+    const src = new (await loadBetterSqlite3())(dbPath);
     src.exec(`VACUUM INTO '${tmpPath.replace(/'/g, "''")}'`);
     src.close();
     console.log('[db-export] cwd:', process.cwd(), '| tmp exists:', fs.existsSync(tmpPath), '| size:', fs.existsSync(tmpPath) ? fs.statSync(tmpPath).size : 0);
@@ -2833,13 +2841,13 @@ app.post('/api/admin/db/import', express.raw({ type: 'application/octet-stream',
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     // 1) Automatic safety backup of the CURRENT database
     const backupPath = path.join(dataDir, `pre-import-backup-${stamp}.db`);
-    const cur = new BetterSqlite3(dbPath);
+    const cur = new (await loadBetterSqlite3())(dbPath);
     cur.exec(`VACUUM INTO '${backupPath.replace(/'/g, "''")}'`);
     cur.close();
     // 2) Validate the upload can actually open as a database (integrity check)
     const tmpUpload = path.join(dataDir, `import-${stamp}.db`);
     fs.writeFileSync(tmpUpload, upload);
-    const test = new BetterSqlite3(tmpUpload);
+    const test = new (await loadBetterSqlite3())(tmpUpload);
     const integrity = (test.pragma('integrity_check') as any[])[0];
     test.close();
     if (integrity?.integrity_check !== 'ok') {
@@ -2849,7 +2857,7 @@ app.post('/api/admin/db/import', express.raw({ type: 'application/octet-stream',
     // 3) Transfer the uploaded database into the LIVE one via sqlite's online
     // backup API: open the UPLOAD as source and .backup() into the live db path.
     // Handles WAL + open connections safely, on any OS. No file swaps.
-    const uploadedDb = new BetterSqlite3(tmpUpload);
+    const uploadedDb = new (await loadBetterSqlite3())(tmpUpload);
     await uploadedDb.backup(dbPath);
     uploadedDb.close();
     fs.unlinkSync(tmpUpload);
@@ -2881,7 +2889,7 @@ app.get('/api/admin/system-status', async (req, res) => {
       dbSize = fs.statSync(dbPath).size;
       const walPath = dbPath + '-wal';
       if (fs.existsSync(walPath)) dbWalSize = fs.statSync(walPath).size;
-      const db = new BetterSqlite3(dbPath, { readonly: true });
+      const db = new (await loadBetterSqlite3())(dbPath, { readonly: true });
       userCount = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as any).c;
       const hasMsgs = (db.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='discussion_messages'").get() as any).c > 0;
       if (hasMsgs) messageCount = (db.prepare('SELECT COUNT(*) AS c FROM discussion_messages').get() as any).c;
@@ -3450,6 +3458,9 @@ app.get('/api/discussions/stream', async (req, res) => {
   const token = String(req.query.token || '');
   const user = await getUserByToken(token);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  // Serverless functions buffer responses and cannot hold a stream open;
+  // 204 tells EventSource to stop — the UI falls back to its polling loop.
+  if (IS_SERVERLESS) return res.status(204).end();
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -3630,6 +3641,7 @@ async function startServer() {
   }
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -3651,5 +3663,7 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!IS_SERVERLESS) startServer();
+
+export default app;
 

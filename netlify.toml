@@ -1,0 +1,22 @@
+[build]
+  command = "npx vite build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # Native / heavy modules only needed for local dev or legacy admin tools
+  external_node_modules = ["better-sqlite3", "vite"]
+
+# Express API → Netlify Function (path is preserved, so /api/* routes match)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback for client-side routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
