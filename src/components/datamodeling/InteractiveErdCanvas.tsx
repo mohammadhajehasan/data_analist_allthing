@@ -556,7 +556,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                 refY="3.5"
                 orient="auto"
               >
-                <polygon points="0 0, 10 3.5, 0 7" fill="#0f62fe" />
+                <polygon points="0 0, 10 3.5, 0 7" fill="var(--cds-interactive-01)" />
               </marker>
               <marker
                 id="arrowhead-selected"
@@ -587,7 +587,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                   <path
                     d={pathStr}
                     fill="none"
-                    stroke={isSelected ? '#8a3ffc' : '#0f62fe'}
+                    stroke={isSelected ? '#8a3ffc' : 'var(--cds-interactive-01)'}
                     strokeWidth={isSelected ? '3.5' : '2'}
                     strokeDasharray={rel.isAiGenerated ? '6,4' : undefined}
                     markerEnd={isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)'}
@@ -615,7 +615,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg border flex items-center justify-center gap-1 cursor-pointer transition-transform hover:scale-110 ${
                         isSelected
                           ? 'bg-[#8a3ffc] border-[#be95ff] text-white'
-                          : 'bg-[var(--cds-layer-01)] border-[#0f62fe] text-[#78a9ff] hover:bg-[#0f62fe] hover:text-white'
+                          : 'bg-[var(--cds-layer-01)] border-[var(--cds-interactive-01)] text-[#78a9ff] hover:bg-[var(--cds-interactive-01)] hover:text-white'
                       }`}
                       title={isAr ? 'اضغط لتعديل نوع الربط والعلاقة' : 'Click to edit relationship'}
                     >
@@ -651,7 +651,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               <div
                 key={tbl.name}
                 onMouseDown={e => handleNodeMouseDown(e, tbl.name)}
-                className="table-node-card absolute left-0 top-0 pointer-events-auto w-[290px] bg-[var(--cds-layer-01)] border-2 border-[var(--cds-border-subtle)] hover:border-[#0f62fe] rounded-lg shadow-2xl overflow-hidden group transition-[transform,border-color] duration-700 ease-out"
+                className="table-node-card absolute left-0 top-0 pointer-events-auto w-[290px] bg-[var(--cds-layer-01)] border-2 border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg shadow-2xl overflow-hidden group transition-[transform,border-color] duration-700 ease-out"
                 style={{
                   transform: `translate(${pos.x}px, ${pos.y}px)`,
                   transitionDuration: draggingNodeId === tbl.name ? '0ms' : undefined,
@@ -660,12 +660,12 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                 {/* Node Card Header */}
                 <div
                   className="p-3 border-b border-[var(--cds-border-subtle)] flex items-center justify-between gap-2 cursor-move"
-                  style={{ backgroundColor: `${tbl.color || '#0f62fe'}15` }}
+                  style={{ backgroundColor: `${tbl.color || 'var(--cds-interactive-01)'}15` }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: tbl.color || '#0f62fe' }}
+                      style={{ backgroundColor: tbl.color || 'var(--cds-interactive-01)' }}
                     />
                     <h4 className="text-xs font-mono font-bold text-[var(--cds-text-01)] truncate">
                       {tbl.name}
@@ -675,7 +675,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                     <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] rounded">
                       {tbl.rowCount} {isAr ? 'سجل' : 'rows'}
                     </span>
-                    <span className="text-[9px] font-mono px-1 bg-[#0f62fe]/20 text-[#78a9ff] rounded">
+                    <span className="text-[9px] font-mono px-1 bg-blue-600/20 text-[#78a9ff] rounded">
                       {tableRels.length} 🔗
                     </span>
                   </div>
@@ -811,7 +811,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                       onClick={() => setEditingRel({ ...editingRel, joinType: jType })}
                       className={`p-2 border rounded text-center font-bold cursor-pointer transition-colors ${
                         (editingRel.joinType || 'LEFT') === jType
-                          ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#78a9ff]'
+                          ? 'bg-blue-600/20 border-[var(--cds-interactive-01)] text-[#78a9ff]'
                           : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white'
                       }`}
                     >
@@ -831,7 +831,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                   value={editingRel.description || ''}
                   onChange={e => setEditingRel({ ...editingRel, description: e.target.value })}
                   placeholder={isAr ? 'مثال: ربط طلبات العملاء برقم العميل...' : 'Notes...'}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-white outline-none focus:border-[var(--cds-interactive-01)]"
                 />
               </div>
             </div>
@@ -854,7 +854,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
                 </button>
                 <button
                   onClick={handleSaveRelEdit}
-                  className="px-3.5 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded cursor-pointer shadow"
+                  className="px-3.5 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded cursor-pointer shadow"
                 >
                   {isAr ? 'حفظ التغيرات' : 'Save Changes'}
                 </button>
@@ -988,7 +988,7 @@ export const InteractiveErdCanvas: React.FC<InteractiveErdCanvasProps> = ({
               </button>
               <button
                 onClick={handleSaveAddModal}
-                className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded cursor-pointer shadow"
+                className="px-4 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded cursor-pointer shadow"
               >
                 {isAr ? 'إضافة العلاقة' : 'Create Relationship'}
               </button>

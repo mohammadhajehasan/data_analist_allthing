@@ -23,7 +23,7 @@ interface ResetPasswordPanelProps {
 
 type Step = 'target' | 'code' | 'newPassword';
 
-const inputCls = 'w-full px-3 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden focus:ring-1 focus:ring-[#0f62fe]/40 transition-colors';
+const inputCls = 'w-full px-3 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden focus:ring-1 focus:ring-blue-600/40 transition-colors';
 
 export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, onBack, onSuccess, switchToLogin, initialEmail }) => {
   const isAr = lang === 'ar';
@@ -167,7 +167,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
                 key={c} type="button"
                 onClick={() => { if (step === 'target') { setChannel(c); setError(null); } }}
                 className={`py-2 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                  channel === c ? 'bg-[#0f62fe] text-white shadow-sm' : 'text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]'
+                  channel === c ? 'bg-[var(--cds-interactive-01)] text-white shadow-sm' : 'text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]'
                 }`}
               >
                 {c === 'email' ? <Mail className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
@@ -207,7 +207,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
                             title={isWhats ? T.whatsUnavailable : undefined}
                             className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
                               active
-                                ? 'bg-[#0f62fe] text-white shadow-sm'
+                                ? 'bg-[var(--cds-interactive-01)] text-white shadow-sm'
                                 : isWhats
                                   ? 'text-[var(--cds-text-03,#8d8d8d)] opacity-50 cursor-not-allowed line-through'
                                   : 'text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]'
@@ -224,7 +224,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
               )}
               <button
                 type="button" disabled={busy || !targetString} onClick={request}
-                className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
                 {busy ? T.sending : T.send}
@@ -280,7 +280,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
               </div>
               <button
                 type="button" disabled={busy || code.replace(/[^0-9]/g, '').length < 6} onClick={verify}
-                className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 {busy ? T.verifying : T.verify}
@@ -323,7 +323,7 @@ export const ResetPasswordPanel: React.FC<ResetPasswordPanelProps> = ({ lang, on
           <button
             type="button" disabled={busy || password.length < 6 || password !== confirmPassword}
             onClick={confirm}
-            className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
             {busy ? T.saving : T.save}
@@ -354,7 +354,7 @@ export const PhoneWithCountryCode: React.FC<{
     <div className="flex gap-2 items-stretch" dir="ltr">
       <select
         value={country.code} onChange={(e) => setCountry(PHONE_COUNTRIES.find(c => c.code === e.target.value) || PHONE_COUNTRIES[0])}
-        className="w-40 shrink-0 px-2 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+        className="w-40 shrink-0 px-2 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
         aria-label={isAr ? 'رمز الدولة' : 'Country code'}
       >
         {PHONE_COUNTRIES.map(c => (

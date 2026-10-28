@@ -136,7 +136,7 @@ export async function exportDashboardAsPng(
   ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
   // Top Accent Line (IBM Blue)
-  ctx.fillStyle = '#0f62fe';
+  ctx.fillStyle = 'var(--cds-interactive-01)';
   ctx.fillRect(0, 0, finalCanvas.width, 6);
 
   // Header Banner

@@ -127,7 +127,7 @@ export const ShareToGroupModal: React.FC<ShareToGroupModalProps> = ({ isOpen, on
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-[var(--cds-text-01,#f4f4f4)] flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-[#0f62fe]" />
+            <ImageIcon className="w-4 h-4 text-[var(--cds-interactive-01)]" />
             {isAr ? 'مشاركة اللقطة في مناقشة' : 'Share snapshot to a discussion'}
           </h3>
           <button onClick={onClose} className="text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]">
@@ -144,7 +144,7 @@ export const ShareToGroupModal: React.FC<ShareToGroupModalProps> = ({ isOpen, on
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-[#0f62fe]" />
+            <Loader2 className="w-5 h-5 animate-spin text-[var(--cds-interactive-01)]" />
           </div>
         ) : groups.length === 0 ? (
           <p className="text-xs text-[var(--cds-text-03,#8d8d8d)] text-center py-6">
@@ -164,7 +164,7 @@ export const ShareToGroupModal: React.FC<ShareToGroupModalProps> = ({ isOpen, on
                   onClick={() => setSelectedId(g.id)}
                   className={`w-full text-start px-2.5 py-2 rounded-lg border flex items-center gap-2 transition-colors ${
                     selectedId === g.id
-                      ? 'bg-[#0f62fe]/15 border-[#0f62fe]/50'
+                      ? 'bg-blue-600/15 border-blue-600/50'
                       : 'bg-[var(--cds-layer-02,#161616)] border-[var(--cds-border-subtle,#393939)] hover:border-[var(--cds-border-strong,#6f6f6f)]'
                   }`}
                 >
@@ -180,14 +180,14 @@ export const ShareToGroupModal: React.FC<ShareToGroupModalProps> = ({ isOpen, on
               value={caption}
               onChange={e => setCaption(e.target.value)}
               placeholder={isAr ? 'تعليق (اختياري)...' : 'Caption (optional)...'}
-              className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden mb-3"
+              className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden mb-3"
             />
 
             <div className="flex gap-2">
               <button
                 onClick={send}
                 disabled={!selectedId || !preview || sending}
-                className="flex-1 py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
               >
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 {sending ? (isAr ? 'جاري الإرسال...' : 'Sending...') : (isAr ? 'إرسال اللقطة' : 'Send Snapshot')}

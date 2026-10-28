@@ -4,6 +4,7 @@ import { DataStory, DataStoryChapter } from '../../types';
 import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { applyBestVoice } from '../../services/bestVoice';
 import { StoryChartRenderer } from '../../components/reports/StoryChartRenderer';
+import { EmptyState } from '../../components/common/EmptyState';
 import {
   FileText,
   Sparkles,
@@ -111,6 +112,7 @@ export const ReportsPage: React.FC = () => {
     dataStories,
     saveDataStory,
     language,
+    setActiveTab: navigateTo,
     t,
     toast,
   } = useApp();
@@ -208,6 +210,15 @@ export const ReportsPage: React.FC = () => {
   }, [activeStory]);
 
   const handleGenerateStory = async () => {
+    // حارس: لا توجد مجموعة بيانات نشطة — التوليد يحتاج بيانات حقيقية
+    if (!activeDataset) {
+      toast({
+        title: isAr ? 'لا توجد مجموعة بيانات' : 'No Dataset',
+        description: isAr ? 'ارفع مجموعة بيانات أولاً من صفحة المجموعات ثم عد لتوليد التقرير.' : 'Upload a dataset via the Datasets page first, then generate the report.',
+        variant: 'warning',
+      });
+      return;
+    }
     setIsGenerating(true);
     setGenerationStep(isAr ? '1/3: استخراج الخصائص الإحصائية والانحرافات المعيارية...' : '1/3: Extracting statistical variance & data distribution...');
 
@@ -250,6 +261,12 @@ export const ReportsPage: React.FC = () => {
             ? `تم إنشاء تقرير سردي مدعوم بالرسوم البيانية باستخدام نموذج ${selectedModel}`
             : `Generated multi-chapter narrative with interactive charts via ${selectedModel}`,
           variant: 'success',
+        });
+      } else {
+        toast({
+          title: isAr ? 'استجابة غير مكتملة' : 'Incomplete Response',
+          description: isAr ? 'رد الخادم لا يحتوّي على قصة بيانات. حاول مجدداً أو اختر نموذجاً آخر.' : 'Server response contained no data story. Try again or pick another model.',
+          variant: 'error',
         });
       }
     } catch (err: any) {
@@ -428,13 +445,28 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
     });
   };
 
+  // حارس عرض: بلا مجموعة بيانات نشطة — حالة فراغ أنيقة بدل انهيار Page الصامت
+  if (!activeDataset) {
+    return (
+      <EmptyState
+        icon={<Database className="w-12 h-12" />}
+        title={isAr ? 'لا توجد مجموعة بيانات نشطة' : 'No Active Dataset'}
+        description={isAr
+          ? 'توليد التقارير السردية يحتاج بيانات حقيقية. ارفع ملف CSV/JSON من صفحة المجموعات ثم عد إلى هنا.'
+          : 'Data reports need a real dataset. Upload a CSV/JSON file via the Datasets page, then come back.'}
+        ctaLabel={isAr ? 'الذهاب إلى مجموعات البيانات' : 'Go to Datasets'}
+        onCta={() => navigateTo('datasets')}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Header Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
               <span>AI DATA STORYTELLING &amp; EXECUTIVE NARRATIVES</span>
             </span>
@@ -457,7 +489,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
             <button
               onClick={() => setActiveTab('studio')}
               className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-                activeTab === 'studio' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                activeTab === 'studio' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -466,7 +498,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
             <button
               onClick={() => setActiveTab('library')}
               className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-                activeTab === 'library' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                activeTab === 'library' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <ListFilter className="w-3.5 h-3.5" />
@@ -480,11 +512,11 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               <button
                 onClick={handleToggleSpeech}
                 className={`carbon-btn-secondary text-xs font-mono font-bold gap-1.5 ${
-                  isSpeaking ? 'border-[#0f62fe] bg-[#0f62fe]/20 text-[#33b1ff]' : ''
+                  isSpeaking ? 'border-[var(--cds-interactive-01)] bg-blue-600/20 text-[#33b1ff]' : ''
                 }`}
                 title={isSpeaking ? (isAr ? 'إيقاف القراءة الصوتية' : 'Stop Narration') : (isAr ? 'قراءة صوتية للتقرير' : 'Read Aloud Story')}
               >
-                {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#33b1ff] animate-pulse" /> : <Volume2 className="w-3.5 h-3.5 text-[#0f62fe]" />}
+                {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#33b1ff] animate-pulse" /> : <Volume2 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />}
                 <span>{isSpeaking ? (isAr ? 'إيقاف القراءة' : 'Stop') : (isAr ? 'قراءة صوتية' : 'Read Aloud')}</span>
               </button>
 
@@ -504,7 +536,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 className="carbon-btn-secondary text-xs font-mono font-bold gap-1.5"
                 title="Print or Save PDF"
               >
-                <Printer className="w-3.5 h-3.5 text-[#0f62fe]" />
+                <Printer className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                 <span>PDF / Print</span>
               </button>
 
@@ -529,7 +561,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[#0f62fe]" />
+                <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                   {isAr ? 'طريقة إنشاء القصة' : 'Story Source'}
                 </h3>
@@ -547,7 +579,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 <button
                   onClick={() => setStoryBasis('manual')}
                   className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-                    storyBasis === 'manual' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                    storyBasis === 'manual' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                   }`}
                 >
                   <PenLine className="w-3.5 h-3.5" />
@@ -562,7 +594,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 sm:p-5">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--cds-border-subtle)]">
               <div className="flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-[#0f62fe]" />
+                <Settings2 className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                   {isAr ? 'تخصيص محرك توليد قصة البيانات' : 'Data Story Intelligence Parameters'}
                 </h3>
@@ -581,7 +613,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 <select
                   value={selectedProvider}
                   onChange={e => setSelectedProvider(e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                 >
                   {PROVIDER_OPTIONS.map(p => (
                     <option key={p.id} value={p.id}>
@@ -599,7 +631,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 <select
                   value={selectedModel}
                   onChange={e => setSelectedModel(e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                 >
                   {(PROVIDER_OPTIONS.find(p => p.id === selectedProvider)?.models || []).map(m => (
                     <option key={m.id} value={m.id}>
@@ -617,7 +649,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 <select
                   value={selectedFocus}
                   onChange={e => setSelectedFocus(e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                 >
                   {FOCUS_ANGLES.map(f => (
                     <option key={f.id} value={f.id}>
@@ -635,7 +667,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 <select
                   value={selectedTone}
                   onChange={e => setSelectedTone(e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                 >
                   {TONES.map(tOption => (
                     <option key={tOption.id} value={tOption.id}>
@@ -659,7 +691,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     const found = datasets.find(d => d.id === e.target.value);
                     if (found) setActiveDataset(found);
                   }}
-                  className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
+                  className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono px-2 py-1 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                 >
                   {datasets.map(d => (
                     <option key={d.id} value={d.id}>
@@ -686,7 +718,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
             {/* Live Progress Bar when Generating */}
             {isGenerating && (
-              <div className="mt-4 p-3 bg-[var(--cds-layer-01)] border border-[#0f62fe] space-y-2 animate-pulse">
+              <div className="mt-4 p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] space-y-2 animate-pulse">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-[#33b1ff] font-bold flex items-center gap-1.5">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -695,7 +727,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   <span className="text-[var(--cds-text-03)]">Provider: {selectedProvider.toUpperCase()}</span>
                 </div>
                 <div className="w-full bg-[var(--cds-layer-02)] h-1.5 overflow-hidden">
-                  <div className="bg-[#0f62fe] h-full w-2/3 animate-pulse" />
+                  <div className="bg-[var(--cds-interactive-01)] h-full w-2/3 animate-pulse" />
                 </div>
               </div>
             )}
@@ -707,7 +739,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
             <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-[var(--cds-border-subtle)]">
                 <div className="flex items-center gap-2">
-                  <PenLine className="w-4 h-4 text-[#0f62fe]" />
+                  <PenLine className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                     {isAr ? 'كتابة التقرير يدويًا (بدون ذكاء اصطناعي)' : 'Manual Narrative Composer'}
                   </h3>
@@ -727,7 +759,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     value={manualTitle}
                     onChange={e => setManualTitle(e.target.value)}
                     placeholder={isAr ? 'مثال: تحليل الإيرادات الربع سنوية' : 'e.g. Quarterly Revenue Analysis'}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -738,7 +770,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     value={manualSubtitle}
                     onChange={e => setManualSubtitle(e.target.value)}
                     placeholder={isAr ? 'سطر تعريفي مختصر' : 'Short descriptive tagline'}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -750,7 +782,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     onChange={e => setManualSummary(e.target.value)}
                     rows={3}
                     placeholder={isAr ? 'خلاصة تحليلية موجزة أعلى التقرير...' : 'Concise analytical summary shown at the top of the report...'}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[#0f62fe] focus:outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs px-2.5 py-2 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                   />
                 </div>
               </div>
@@ -773,7 +805,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                 {manualChapters.map((ch, idx) => (
                   <div key={ch.id || idx} className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="w-6 h-6 bg-[#0f62fe] text-white font-mono text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                      <span className="w-6 h-6 bg-[var(--cds-interactive-01)] text-white font-mono text-xs font-bold flex items-center justify-center">{idx + 1}</span>
                       {manualChapters.length > 1 && (
                         <button
                           onClick={() => removeManualChapter(idx)}
@@ -788,12 +820,12 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                         value={isAr ? ch.titleAr : ch.title}
                         onChange={e => updateManualChapter(idx, isAr ? { titleAr: e.target.value } : { title: e.target.value })}
                         placeholder={isAr ? 'عنوان الفصل' : 'Chapter title'}
-                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                       />
                       <select
                         value={ch.chartType || 'bar'}
                         onChange={e => updateManualChapter(idx, { chartType: e.target.value as DataStoryChapter['chartType'] })}
-                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 font-mono focus:border-[#0f62fe] focus:outline-none"
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 font-mono focus:border-[var(--cds-interactive-01)] focus:outline-none"
                       >
                         <option value="bar">{isAr ? 'رسم أعمدة' : 'Bar chart'}</option>
                         <option value="line">{isAr ? 'رسم خطي' : 'Line chart'}</option>
@@ -804,7 +836,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                         value={isAr ? (ch.takeawayAr || '') : (ch.takeaway || '')}
                         onChange={e => updateManualChapter(idx, isAr ? { takeawayAr: e.target.value } : { takeaway: e.target.value })}
                         placeholder={isAr ? 'الخلاصة الإجرائية' : 'Key takeaway'}
-                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                        className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                       />
                     </div>
                     <textarea
@@ -812,7 +844,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                       onChange={e => updateManualChapter(idx, isAr ? { narrativeAr: e.target.value } : { narrative: e.target.value })}
                       rows={2}
                       placeholder={isAr ? 'نص السرد التحليلي لهذا الفصل...' : 'Analytical narrative text for this chapter...'}
-                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                     />
 
                     {/* Chart data rows */}
@@ -834,14 +866,14 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                             value={String(row?.name ?? '')}
                             onChange={e => setChapterChartDataRow(idx, ri, 'name', e.target.value)}
                             placeholder={isAr ? 'التسمية' : 'Label'}
-                            className="flex-1 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 focus:border-[#0f62fe] focus:outline-none"
+                            className="flex-1 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                           />
                           <input
                             type="number"
                             value={String(row?.value ?? '')}
                             onChange={e => setChapterChartDataRow(idx, ri, 'value', e.target.value)}
                             placeholder="0"
-                            className="w-24 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 font-mono focus:border-[#0f62fe] focus:outline-none"
+                            className="w-24 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1 font-mono focus:border-[var(--cds-interactive-01)] focus:outline-none"
                           />
                           <button
                             onClick={() => removeChapterChartDataRow(idx, ri)}
@@ -862,7 +894,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                         : { insights: e.target.value.split('\n').filter(s => s.trim() !== '') })}
                       rows={2}
                       placeholder={isAr ? 'رؤى تحليلية، واحدة لكل سطر...' : 'Analytical insights, one per line...'}
-                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[#0f62fe] focus:outline-none"
+                      className="w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] text-xs px-2 py-1.5 focus:border-[var(--cds-interactive-01)] focus:outline-none"
                     />
                   </div>
                 ))}
@@ -908,7 +940,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <button
                       onClick={() => setViewMode('scrolly')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'scrolly' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                        viewMode === 'scrolly' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <BookOpen className="w-3 h-3" />
@@ -917,7 +949,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <button
                       onClick={() => setViewMode('slides')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'slides' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                        viewMode === 'slides' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <Presentation className="w-3 h-3" />
@@ -926,7 +958,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <button
                       onClick={() => setViewMode('markdown')}
                       className={`px-2.5 py-1 text-xs font-mono font-bold gap-1 flex items-center transition-colors ${
-                        viewMode === 'markdown' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
+                        viewMode === 'markdown' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
                       <FileText className="w-3 h-3" />
@@ -961,7 +993,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
               {viewMode === 'scrolly' && (
                 <div className="space-y-8">
                   {/* Executive Summary Callout */}
-                  <div className="p-5 bg-[var(--cds-layer-01)] border-s-4 border-s-[#0f62fe] border border-[var(--cds-border-subtle)] space-y-2 shadow-inner">
+                  <div className="p-5 bg-[var(--cds-layer-01)] border-s-4 border-s-[var(--cds-interactive-01)] border border-[var(--cds-border-subtle)] space-y-2 shadow-inner">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#33b1ff] flex items-center gap-1.5">
                         <Layers className="w-4 h-4" />
@@ -983,7 +1015,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                         {/* Chapter Header with Number Badge */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3">
                           <div className="flex items-center gap-2.5">
-                            <span className="w-6 h-6 bg-[#0f62fe] text-white font-mono text-xs font-bold flex items-center justify-center">
+                            <span className="w-6 h-6 bg-[var(--cds-interactive-01)] text-white font-mono text-xs font-bold flex items-center justify-center">
                               {chapter.chapterNumber || index + 1}
                             </span>
                             <h3 className="text-base sm:text-lg font-bold text-[var(--cds-text-01)]">
@@ -1134,8 +1166,8 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                   {/* Slide Content */}
                   {activeSlideIndex === 0 ? (
                     // Slide 0: Executive Overview
-                    <div className="bg-[var(--cds-layer-01)] border border-[#0f62fe] p-8 sm:p-12 space-y-6 min-h-[420px] flex flex-col justify-center text-center">
-                      <span className="text-xs font-mono uppercase tracking-widest text-[#0f62fe]">
+                    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] p-8 sm:p-12 space-y-6 min-h-[420px] flex flex-col justify-center text-center">
+                      <span className="text-xs font-mono uppercase tracking-widest text-[var(--cds-interactive-01)]">
                         EXECUTIVE DATA BRIEFING
                       </span>
                       <h2 className="text-2xl sm:text-4xl font-bold text-[var(--cds-text-01)]">
@@ -1158,7 +1190,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                       return (
                         <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-6 sm:p-8 space-y-6 min-h-[420px]">
                           <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
-                            <span className="text-xs font-mono uppercase text-[#0f62fe] font-bold">
+                            <span className="text-xs font-mono uppercase text-[var(--cds-interactive-01)] font-bold">
                               {isAr ? `الفصل ${activeSlideIndex}` : `Chapter ${activeSlideIndex}`}
                             </span>
                             {ch.keyMetric && (
@@ -1177,7 +1209,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                               <p className="text-sm text-[var(--cds-text-02)] leading-relaxed">
                                 {isAr ? ch.narrativeAr || ch.narrative : ch.narrative}
                               </p>
-                              <div className="p-3 bg-[var(--cds-layer-01)] border-s-2 border-s-[#0f62fe] text-xs text-[var(--cds-text-01)]">
+                              <div className="p-3 bg-[var(--cds-layer-01)] border-s-2 border-s-[var(--cds-interactive-01)] text-xs text-[var(--cds-text-01)]">
                                 <strong>Takeaway:</strong> {isAr ? ch.takeawayAr || ch.takeaway : ch.takeaway}
                               </div>
                             </div>
@@ -1206,7 +1238,7 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
                     <span>Raw Markdown Code Representation</span>
                     <button
                       onClick={handleCopyMarkdown}
-                      className="text-[#0f62fe] hover:underline flex items-center gap-1"
+                      className="text-[var(--cds-interactive-01)] hover:underline flex items-center gap-1"
                     >
                       <Copy className="w-3 h-3" />
                       <span>{copiedMarkdown ? 'Copied' : 'Copy'}</span>
@@ -1237,7 +1269,7 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
             </div>
           ) : (
             <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)] space-y-4">
-              <FileText className="w-12 h-12 text-[#0f62fe] mx-auto opacity-80" />
+              <FileText className="w-12 h-12 text-[var(--cds-interactive-01)] mx-auto opacity-80" />
               <div className="space-y-1">
                 <p className="text-sm font-bold text-[var(--cds-text-01)]">
                   {isAr ? 'لم يتم توليد قصة بيانات بعد' : 'No Data Story Generated Yet'}
@@ -1280,8 +1312,8 @@ ${(activeStory.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
                     setActiveStory(story);
                     setActiveTab('studio');
                   }}
-                  className={`p-4 bg-[var(--cds-layer-02)] border cursor-pointer transition-all hover:border-[#0f62fe] space-y-3 ${
-                    activeStory?.id === story.id ? 'border-[#0f62fe] ring-1 ring-[#0f62fe]' : 'border-[var(--cds-border-subtle)]'
+                  className={`p-4 bg-[var(--cds-layer-02)] border cursor-pointer transition-all hover:border-[var(--cds-interactive-01)] space-y-3 ${
+                    activeStory?.id === story.id ? 'border-[var(--cds-interactive-01)] ring-1 ring-[var(--cds-interactive-01)]' : 'border-[var(--cds-border-subtle)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">

@@ -134,7 +134,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-[var(--cds-text-01,#f4f4f4)] flex items-center gap-2">
-            <Link2 className="w-4 h-4 text-[#0f62fe]" />
+            <Link2 className="w-4 h-4 text-[var(--cds-interactive-01)]" />
             {isAr ? `روابط دعوة: ${discussionName}` : `Invite links: ${discussionName}`}
           </h3>
           <button onClick={onClose} className="text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]">
@@ -154,11 +154,11 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
             value={maxUses}
             onChange={e => setMaxUses(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder={isAr ? 'حد أقصى للاستخدامات (اختياري)' : 'Max uses (optional)'}
-            className="flex-1 px-3 py-2 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+            className="flex-1 px-3 py-2 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
           />
           <button
             onClick={create} disabled={creating}
-            className="px-3 py-2 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5"
+            className="px-3 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5"
           >
             {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
             {isAr ? 'رابط جديد' : 'New link'}
@@ -166,7 +166,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-[#0f62fe]" /></div>
+          <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-[var(--cds-interactive-01)]" /></div>
         ) : invites.length === 0 && emailInvites.length === 0 ? (
           <p className="text-xs text-[var(--cds-text-03,#8d8d8d)] text-center py-4">
             {isAr ? 'لا روابط بعد — أنشئ رابطاً وشاركه' : 'No links yet — create one and share it'}
@@ -176,7 +176,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
             {invites.map(inv => {
               const dead = inv.revoked || new Date(inv.expiresAt) <= new Date();
               return (
-                <div key={inv.code} className={`border rounded-lg p-2.5 ${dead ? 'border-[var(--cds-border-subtle,#393939)] opacity-60' : 'border-[#0f62fe]/40 bg-[#0f62fe]/5'}`}>
+                <div key={inv.code} className={`border rounded-lg p-2.5 ${dead ? 'border-[var(--cds-border-subtle,#393939)] opacity-60' : 'border-blue-600/40 bg-blue-600/5'}`}>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-[10px] font-mono text-[var(--cds-text-02,#c6c6c6)] truncate" dir="ltr">
                       /join/{inv.code.slice(0, 12)}…
@@ -185,7 +185,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
                       <button
                         onClick={() => copyLink(inv.code)}
                         title={isAr ? 'نسخ الرابط' : 'Copy link'}
-                        className="p-1.5 rounded-md text-[#78a9ff] hover:bg-[#0f62fe]/20"
+                        className="p-1.5 rounded-md text-[#78a9ff] hover:bg-blue-600/20"
                       >
                         {copied === inv.code ? <Check className="w-3.5 h-3.5 text-[#42be65]" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
@@ -213,7 +213,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
             {emailInvites.length > 0 && (
               <div className="pt-2 border-t border-[var(--cds-border-subtle,#393939)]">
                 <p className="text-[11px] font-semibold text-[var(--cds-text-02,#c6c6c6)] flex items-center gap-1.5 mb-2">
-                  <Mail className="w-3.5 h-3.5 text-[#0f62fe]" />
+                  <Mail className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                   {isAr ? 'دعوات بالبريد (لغير المسجلين)' : 'Email invites (unregistered)'}
                 </p>
                 <div className="space-y-2">
@@ -270,7 +270,7 @@ export const InviteLinkModal: React.FC<InviteLinkModalProps> = ({ isOpen, onClos
 export const InviteButton: React.FC<{ onClick: () => void; label: string }> = ({ onClick, label }) => (
   <button
     onClick={onClick}
-    className="h-8 px-3 text-[11px] font-semibold rounded-lg bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center gap-1.5"
+    className="h-8 px-3 text-[11px] font-semibold rounded-lg bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center gap-1.5"
   >
     <Crown className="w-3.5 h-3.5" />
     {label}

@@ -77,13 +77,13 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
         {/* Header */}
         <div className="p-4 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#0f62fe]/20 text-[#78a9ff] rounded-lg border border-[#0f62fe]/40">
+            <div className="p-2 bg-blue-600/20 text-[#78a9ff] rounded-lg border border-blue-600/40">
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <span>{isAr ? 'دليل استخدام استوديو أتمتة سير العمل بالذكاء الاصطناعي' : 'AI Workflow Automation Studio Guide'}</span>
-                <span className="text-[10px] font-mono uppercase bg-[#0f62fe] text-white px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-mono uppercase bg-[var(--cds-interactive-01)] text-white px-2 py-0.5 rounded-full">
                   v3.8 Interactive
                 </span>
               </h2>
@@ -116,7 +116,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isAr ? 'بحث في فصول الدليل...' : 'Search guide topics...'}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[var(--cds-interactive-01)]"
               />
             </div>
 
@@ -130,7 +130,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                     onClick={() => setActiveSection(sec.id)}
                     className={`w-full flex items-center justify-between p-2.5 rounded-lg text-xs transition-colors text-left cursor-pointer ${
                       isActive
-                        ? 'bg-[#0f62fe] text-white font-bold shadow-lg shadow-[#0f62fe]/20'
+                        ? 'bg-[var(--cds-interactive-01)] text-white font-bold shadow-lg shadow-blue-600/20'
                         : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)] hover:text-white'
                     }`}
                   >
@@ -178,7 +178,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 {/* Key Pillars 3-Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-2">
-                    <div className="p-2 bg-[#0f62fe]/20 text-[#78a9ff] w-fit rounded-lg">
+                    <div className="p-2 bg-blue-600/20 text-[#78a9ff] w-fit rounded-lg">
                       <Workflow className="w-5 h-5" />
                     </div>
                     <h4 className="font-bold text-white text-sm">{isAr ? 'بناء بصري بدون كود (No-Code Canvas)' : 'Visual No-Code Canvas'}</h4>
@@ -266,7 +266,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 <div className="space-y-4">
                   {/* Zone 1 */}
                   <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg flex items-start gap-3">
-                    <div className="p-2 bg-[#0f62fe]/20 text-[#78a9ff] rounded-lg shrink-0 mt-0.5">
+                    <div className="p-2 bg-blue-600/20 text-[#78a9ff] rounded-lg shrink-0 mt-0.5">
                       <Sliders className="w-5 h-5" />
                     </div>
                     <div className="space-y-1">
@@ -351,7 +351,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
 
                   {/* Zone 6 */}
                   <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg flex items-start gap-3">
-                    <div className="p-2 bg-[#0f62fe]/20 text-[#78a9ff] rounded-lg shrink-0 mt-0.5">
+                    <div className="p-2 bg-blue-600/20 text-[#78a9ff] rounded-lg shrink-0 mt-0.5">
                       <GitBranch className="w-5 h-5" />
                     </div>
                     <div className="space-y-1">
@@ -397,7 +397,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                     <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1.5">
                       <div className="font-bold text-white text-xs flex items-center justify-between">
                         <span>{isAr ? 'مشغّل جدول البيانات (Dataset Trigger)' : 'Dataset Trigger'}</span>
-                        <span className="font-mono text-[10px] text-[#78a9ff] bg-[#0f62fe]/10 px-1.5 py-0.5 rounded">trigger_dataset</span>
+                        <span className="font-mono text-[10px] text-[#78a9ff] bg-blue-600/10 px-1.5 py-0.5 rounded">trigger_dataset</span>
                       </div>
                       <p className="text-[11px] text-[var(--cds-text-02)]">
                         {isAr
@@ -409,7 +409,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                     <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1.5">
                       <div className="font-bold text-white text-xs flex items-center justify-between">
                         <span>{isAr ? 'مشغّل مجدول دوري (Schedule Cron Trigger)' : 'Schedule Cron Trigger'}</span>
-                        <span className="font-mono text-[10px] text-[#78a9ff] bg-[#0f62fe]/10 px-1.5 py-0.5 rounded">trigger_schedule</span>
+                        <span className="font-mono text-[10px] text-[#78a9ff] bg-blue-600/10 px-1.5 py-0.5 rounded">trigger_schedule</span>
                       </div>
                       <p className="text-[11px] text-[var(--cds-text-02)]">
                         {isAr
@@ -576,7 +576,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                   {/* Step 1 */}
                   <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-2">
                     <div className="flex items-center gap-2 text-white font-bold text-xs">
-                      <span className="w-5 h-5 rounded-full bg-[#0f62fe] text-white flex items-center justify-center text-[10px]">1</span>
+                      <span className="w-5 h-5 rounded-full bg-[var(--cds-interactive-01)] text-white flex items-center justify-center text-[10px]">1</span>
                       <span>{isAr ? 'سحب خط التوصيل (Port Dragging)' : 'Dragging Port Connection'}</span>
                     </div>
                     <p className="text-xs text-[var(--cds-text-02)]">
@@ -589,7 +589,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                   {/* Step 2 */}
                   <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg space-y-2">
                     <div className="flex items-center gap-2 text-white font-bold text-xs">
-                      <span className="w-5 h-5 rounded-full bg-[#0f62fe] text-white flex items-center justify-center text-[10px]">2</span>
+                      <span className="w-5 h-5 rounded-full bg-[var(--cds-interactive-01)] text-white flex items-center justify-center text-[10px]">2</span>
                       <span>{isAr ? 'خط التوجيه المتوهج والمتحرك' : 'Animated Visual Indicator'}</span>
                     </div>
                     <p className="text-xs text-[var(--cds-text-02)]">
@@ -649,7 +649,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 <div className="space-y-3">
                   <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-white">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#0f62fe] animate-ping" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[var(--cds-interactive-01)] animate-ping" />
                       <span>{isAr ? 'الحالة: جاري المعالجة (Running)' : 'State: Running'}</span>
                     </div>
                     <span className="text-[11px] font-mono text-[#78a9ff]">{isAr ? 'نبض أزرق متوهج للعقدة النشطة' : 'Blue glowing border'}</span>
@@ -780,7 +780,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                       <span className="font-bold text-white text-sm">
                         {isAr ? '١. خط أنابيب جودة وتنقية البيانات الشامل (Enterprise Quality Pipeline)' : '1. Enterprise Quality Pipeline'}
                       </span>
-                      <span className="text-[10px] font-mono text-[#78a9ff] bg-[#0f62fe]/10 px-2 py-0.5 rounded border border-[#0f62fe]/30">6 Nodes</span>
+                      <span className="text-[10px] font-mono text-[#78a9ff] bg-blue-600/10 px-2 py-0.5 rounded border border-blue-600/30">6 Nodes</span>
                     </div>
                     <p className="text-xs text-[var(--cds-text-02)]">
                       {isAr
@@ -931,7 +931,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0043ce] text-white font-bold rounded-lg transition-colors cursor-pointer text-xs"
+            className="px-4 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0043ce] text-white font-bold rounded-lg transition-colors cursor-pointer text-xs"
           >
             {isAr ? 'فهمت، العودة إلى الاستوديو' : 'Close & Return to Studio'}
           </button>

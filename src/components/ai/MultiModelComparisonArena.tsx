@@ -370,7 +370,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
       {/* Top Banner & Strategy Intro */}
       <div className="bg-[var(--cds-layer-01)] p-5 border border-[var(--cds-border-subtle)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#0f62fe]/20 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40 shrink-0">
+          <div className="w-10 h-10 bg-blue-600/20 text-[#78a9ff] flex items-center justify-center border border-blue-600/40 shrink-0">
             <Trophy className="w-5 h-5 text-[#ff832b]" />
           </div>
           <div>
@@ -395,7 +395,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             onClick={() => setActiveTab('grid')}
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'grid'
-                ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
+                ? 'bg-[var(--cds-interactive-01)] text-white border-[var(--cds-interactive-01)]'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
@@ -407,7 +407,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             onClick={() => setActiveTab('table')}
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'table'
-                ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
+                ? 'bg-[var(--cds-interactive-01)] text-white border-[var(--cds-interactive-01)]'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
@@ -419,7 +419,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             onClick={() => setActiveTab('charts')}
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'charts'
-                ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
+                ? 'bg-[var(--cds-interactive-01)] text-white border-[var(--cds-interactive-01)]'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
@@ -431,7 +431,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             onClick={() => setActiveTab('latency')}
             className={`px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               activeTab === 'latency'
-                ? 'bg-[#0f62fe] text-white border-[#0f62fe]'
+                ? 'bg-[var(--cds-interactive-01)] text-white border-[var(--cds-interactive-01)]'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:bg-[var(--cds-layer-03)]'
             }`}
           >
@@ -462,14 +462,14 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 onClick={() => toggleModelSelection(m.id)}
                 className={`p-2 text-start text-xs border transition-all flex flex-col justify-between ${
                   isSelected
-                    ? 'border-[#0f62fe] bg-[#0f62fe]/15 text-[var(--cds-text-01)] shadow-xs'
+                    ? 'border-[var(--cds-interactive-01)] bg-blue-600/15 text-[var(--cds-text-01)] shadow-xs'
                     : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-[var(--cds-text-03)] hover:border-[var(--cds-border-strong)] hover:text-[var(--cds-text-02)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-1">
                   <div className="font-medium text-xs truncate max-w-[120px]">{m.name}</div>
                   {isSelected ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0f62fe] shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)] shrink-0" />
                   ) : (
                     <div className="w-3.5 h-3.5 rounded-full border border-[var(--cds-border-strong)] shrink-0" />
                   )}
@@ -507,13 +507,13 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder={isAr ? 'اكتب سؤالك باللغة الطبيعية...' : 'Type natural language analytical query...'}
-            className="flex-1 px-4 py-2.5 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden"
+            className="flex-1 px-4 py-2.5 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
           />
 
           <button
             onClick={handleRunComparison}
             disabled={isRunning}
-            className="px-6 py-2.5 text-xs font-semibold bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shrink-0"
+            className="px-6 py-2.5 text-xs font-semibold bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shrink-0"
           >
             {isRunning ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -551,7 +551,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
           
           {/* Winner Banner */}
           {session && (
-            <div className="p-4 bg-linear-to-r from-[#0f62fe]/20 via-[#262626] to-[var(--cds-layer-01)] border border-[#0f62fe]/40 flex items-center justify-between">
+            <div className="p-4 bg-linear-to-r from-blue-600/20 via-[#262626] to-[var(--cds-layer-01)] border border-blue-600/40 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-[#f1c21b]/20 text-[#f1c21b] flex items-center justify-center border border-[#f1c21b]/40">
                   <Trophy className="w-5 h-5" />
@@ -591,7 +591,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                       isPinned
                         ? 'border-[#f1c21b] ring-1 ring-[#f1c21b]/40 bg-[#f1c21b]/5'
                         : isWinner
-                        ? 'border-[#0f62fe] shadow-md ring-1 ring-[#0f62fe]/50'
+                        ? 'border-[var(--cds-interactive-01)] shadow-md ring-1 ring-blue-600/50'
                         : 'border-[var(--cds-border-subtle)]'
                     }`}
                   >
@@ -740,7 +740,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                               isAr ? `تم تحميل كود استعلام ${res.modelName} في بيئة التنفيذ.` : `Loaded SQL from ${res.modelName}.`
                             );
                           }}
-                          className="px-3 py-1.5 text-xs font-medium bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center gap-1.5 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center gap-1.5 transition-colors"
                         >
                           <span>{isAr ? 'تطبيق في المحرر' : 'Apply in Editor'}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -776,7 +776,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                     const isPinned = pinnedModelIds.includes(res.modelId);
 
                     return (
-                      <tr key={res.modelId} className={`hover:bg-[var(--cds-layer-02)] ${isPinned ? 'bg-[#f1c21b]/5 font-medium' : isWinner ? 'bg-[#0f62fe]/5 font-medium' : ''}`}>
+                      <tr key={res.modelId} className={`hover:bg-[var(--cds-layer-02)] ${isPinned ? 'bg-[#f1c21b]/5 font-medium' : isWinner ? 'bg-blue-600/5 font-medium' : ''}`}>
                         <td className="p-3 flex items-center gap-2">
                           <button
                             onClick={() => togglePinModel(res.modelId)}
@@ -823,7 +823,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                                   res.modelName
                                 );
                               }}
-                              className="px-2 py-1 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-[11px] transition-colors"
+                              className="px-2 py-1 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-[11px] transition-colors"
                             >
                               {isAr ? 'تطبيق SQL' : 'Apply SQL'}
                             </button>
@@ -940,7 +940,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#c6c6c6', fontSize: 10 }} />
                         <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#525252" />
                         {activeResults.map((r, idx) => {
-                          const colors = ['#42be65', '#0f62fe', '#ff832b', '#be95ff', '#33b1ff', '#f1c21b'];
+                          const colors = ['#42be65', 'var(--cds-interactive-01)', '#ff832b', '#be95ff', '#33b1ff', '#f1c21b'];
                           const color = colors[idx % colors.length];
                           return (
                             <Radar
@@ -1021,7 +1021,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                 <button
                   onClick={handlePingAllProviders}
                   disabled={isPingingProviders}
-                  className="px-4 py-2 text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[#0f62fe]/50 flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
+                  className="px-4 py-2 text-xs font-semibold bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-blue-600/50 flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
                 >
                   <RefreshCw className={`w-4 h-4 ${isPingingProviders ? 'animate-spin' : ''}`} />
                   {isPingingProviders
@@ -1041,8 +1041,8 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-[#0f62fe]/40 flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-[#0f62fe]" />
+                <div className="p-3.5 bg-[var(--cds-layer-01)] border border-blue-600/40 flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-[var(--cds-interactive-01)]" />
                   <div>
                     <div className="text-[11px] text-[var(--cds-text-03)] uppercase">{isAr ? 'سحابي سريع' : 'Fast Cloud'}</div>
                     <div className="text-sm font-bold text-[#78a9ff] font-mono">150 - 300 ms</div>
@@ -1101,7 +1101,7 @@ export const MultiModelComparisonArena: React.FC<MultiModelComparisonArenaProps>
                       <Bar dataKey="latencyMs" name="Latency (ms)" radius={[0, 4, 4, 0]}>
                         {activeResults.map((entry, index) => {
                           const val = entry.durationMs;
-                          const fill = val < 50 ? '#42be65' : val < 300 ? '#0f62fe' : val < 600 ? '#be95ff' : '#ff832b';
+                          const fill = val < 50 ? '#42be65' : val < 300 ? 'var(--cds-interactive-01)' : val < 600 ? '#be95ff' : '#ff832b';
                           return <Cell key={`cell-${index}`} fill={fill} />;
                         })}
                       </Bar>

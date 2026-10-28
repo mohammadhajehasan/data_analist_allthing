@@ -135,7 +135,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
   const activeThemeOption = THEME_OPTIONS.find(t => t.id === theme) || THEME_OPTIONS[0];
 
   return (
-    <header className="h-16 bg-[var(--cds-header-bg)] border-b border-[var(--cds-border-subtle)] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs select-none transition-colors duration-150">
+    <header className="h-16 bg-[var(--cds-header-bg)] border-b border-[var(--cds-border-subtle)] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs select-none transition-colors duration-150 overflow-x-clip">
       {/* Brand & Workspace */}
       <div className="flex items-center gap-3 shrink-0">
         {/* Hamburger — يفتح Drawer القائمة المنزلق على الشاشات أقل من 768px فقط */}
@@ -152,7 +152,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
         <div className="w-8 h-8 rounded-lg bg-[var(--cds-interactive-01)] flex items-center justify-center text-white font-bold text-sm shadow-sm">
           <Layers className="w-4 h-4" />
         </div>
-        <div className="flex flex-col">
+        <div className="hidden md:flex flex-col min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm text-[var(--cds-text-01)] tracking-tight">
               {language === 'ar' ? 'منصة ذكاء وتحليل البيانات' : 'Enterprise AI Analytics'}
@@ -170,7 +170,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
       {/* AI Model & Dataset Selector Center Cluster */}
       <div className="flex items-center gap-2">
         {/* شارة جاهزية AI (أخضر/أحمر) — قائمة منسدلة بجاهزية كل مزوّد + انتقال لحقل المفتاح */}
-        <div className="relative hidden md:block shrink-0" ref={aiBadgeRef}>
+        <div className="relative hidden lg:block shrink-0" ref={aiBadgeRef}>
           <button
             type="button"
             onClick={() => setShowAiMenu(v => !v)}
@@ -271,17 +271,19 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
           </AnimatePresence>
         </div>
 
-        {/* Global AI Engine Selector */}
-        <AIModelSelector />
+        {/* Global AI Engine Selector — على الشاشات الصغيرة يُدار النموذج من صفحة النماذج/المساعد */}
+        <div className="hidden lg:block shrink-0">
+          <AIModelSelector />
+        </div>
 
-        {/* Active Dataset Dropdown */}
-        <div className="relative" ref={datasetDropdownRef}>
+        {/* Active Dataset Dropdown — على الموبايل أيقونة فقط لتوفير الأفقي */}
+        <div className="relative min-w-0" ref={datasetDropdownRef}>
           <button
             onClick={() => setShowDatasetMenu(!showDatasetMenu)}
-            className="h-9 flex items-center gap-2 px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-medium text-[var(--cds-text-01)] transition-colors"
+            className="h-9 flex items-center gap-2 px-2 md:px-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-medium text-[var(--cds-text-01)] transition-colors"
           >
             <Database className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-            <span className="truncate max-w-[120px] sm:max-w-[170px]">
+            <span className="hidden md:inline truncate max-w-[110px] lg:max-w-[170px]">
               {activeDataset ? activeDataset.name : t.common.activeDataset}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-[var(--cds-text-03)] shrink-0" />
@@ -320,12 +322,25 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
                   </button>
                 ))}
               </div>
+
+              {/* إلغاء التفعيل: يجعل الحالة «بلا بيانات نشطة» قابلة للوصول والإختبار من الواجهة (نقد 27/10) */}
+              {activeDataset && (
+                <div className="pt-2 mt-1.5 border-t border-[var(--cds-border-subtle)]">
+                  <button
+                    onClick={() => { setActiveDatasetId(''); setShowDatasetMenu(false); }}
+                    className="w-full text-center py-1.5 text-xs text-[#ff8389] hover:bg-[#da1e28]/15 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    {language === 'ar' ? 'إلغاء تفعيل المجموعة الحالية' : 'Deactivate Current Dataset'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Visual Theme Selector Dropdown */}
-        <div className="relative" ref={themeDropdownRef}>
+        <div className="relative hidden lg:block shrink-0" ref={themeDropdownRef}>
           <button
             onClick={toggleThemeMenu}
             className="h-9 flex items-center gap-2 px-3 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] rounded-lg text-xs font-medium text-[var(--cds-text-01)] transition-all cursor-pointer"
@@ -507,14 +522,14 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
         </div>
 
         {/* Ambient Data Sonification Toggle */}
-        <div className="hidden sm:block">
+        <div className="hidden lg:block">
           <SonificationToggle compact />
         </div>
 
         {/* Zen Focus Mode Trigger */}
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('carbon-open-zen'))}
-          className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#8a3ffc] text-[var(--cds-text-02)] hover:text-[#be95ff] transition-colors"
+          className="hidden lg:flex w-9 h-9 rounded-lg items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#8a3ffc] text-[var(--cds-text-02)] hover:text-[#be95ff] transition-colors"
           title={language === 'ar' ? 'نمط الزن — مساحة تحليلية هادئة بلا مشتتات' : 'Zen Focus Mode — distraction-free analytical space'}
         >
           <Moon className="w-4 h-4" />
@@ -557,6 +572,21 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
                 <Radio className="w-4 h-4 text-[#009d9a] shrink-0" />
                 {language === 'ar' ? 'التحديث الحي' : 'Live Sync'}
               </button>
+              {/* الزن وFeature Flags: أزرار الهيدر مخفية تحت lg — متاحة من هنا على الموبايل/التابلت */}
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('carbon-open-zen')); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <Moon className="w-4 h-4 text-[#be95ff] shrink-0" />
+                {language === 'ar' ? 'نمط الزن' : 'Zen Focus Mode'}
+              </button>
+              <button
+                onClick={() => { onOpenFlags(); setShowQuickActionsMenu(false); }}
+                className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+              >
+                <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)] shrink-0" />
+                {language === 'ar' ? 'أعلام الميزات والحكومة' : 'Feature Flags'}
+              </button>
               <button
                 onClick={() => { setShowCsvModal(true); setShowQuickActionsMenu(false); }}
                 className="w-full text-start p-2 hover:bg-[var(--cds-layer-02)] rounded-lg text-xs flex items-center gap-2 text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
@@ -582,10 +612,10 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
           )}
         </div>
 
-        {/* Feature Flags Button */}
+        {/* Feature Flags Button — مخفي تحت lg والمتاح من «خيارات إضافية» */}
         <button
           onClick={onOpenFlags}
-          className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
+          className="hidden lg:flex w-9 h-9 rounded-lg items-center justify-center bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
           title="Feature Flags & Governance"
         >
           <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)]" />
@@ -602,7 +632,7 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
           aria-label={t.header.languageSwitch}
         >
           <Globe className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-          <span className="font-mono font-bold tracking-wide">
+          <span className="hidden sm:inline font-mono font-bold tracking-wide">
             {language === 'ar' ? 'English' : 'العربية'}
           </span>
         </button>
@@ -616,8 +646,8 @@ export const Header: React.FC<{ onOpenFlags: () => void }> = ({ onOpenFlags }) =
             <div className="w-6 h-6 rounded-md bg-[var(--cds-interactive-01)] text-white flex items-center justify-center text-xs font-bold shadow-xs">
               {user?.name?.charAt(0) || '?'}
             </div>
-            <span className="hidden sm:inline text-xs font-medium">{user?.name || ''}</span>
-            <span className="carbon-tag-blue hidden md:inline">
+            <span className="hidden md:inline text-xs font-medium">{user?.name || ''}</span>
+            <span className="carbon-tag-blue hidden lg:inline">
               {user.role}
             </span>
           </button>

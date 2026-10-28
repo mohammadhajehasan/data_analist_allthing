@@ -513,7 +513,7 @@ export const ModelConfigPage: React.FC = () => {
       {/* Page Header Banner */}
       <div className="bg-[var(--cds-layer-01)] p-5 sm:p-6 border border-[var(--cds-border-subtle)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 bg-[#0f62fe]/15 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40 shrink-0 rounded-xs">
+          <div className="w-11 h-11 bg-blue-600/15 text-[#78a9ff] flex items-center justify-center border border-blue-600/40 shrink-0 rounded-xs">
             <Cpu className="w-6 h-6" />
           </div>
           <div>
@@ -537,7 +537,7 @@ export const ModelConfigPage: React.FC = () => {
         <div className="flex items-center gap-3 bg-[var(--cds-layer-02)] px-3.5 py-2 border border-[var(--cds-border-subtle)] text-xs rounded-xs shrink-0">
           <span className="text-[var(--cds-text-03)] font-medium">{isAr ? 'المحرك النشط:' : 'Active Engine:'}</span>
           <div className="font-semibold text-[var(--cds-text-01)] flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${activeAIModelDef.isLocal ? 'bg-[#42be65]' : 'bg-[#0f62fe]'}`} />
+            <span className={`w-2 h-2 rounded-full ${activeAIModelDef.isLocal ? 'bg-[#42be65]' : 'bg-[var(--cds-interactive-01)]'}`} />
             <span>{activeAIModelDef.name}</span>
           </div>
         </div>
@@ -549,7 +549,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('providers')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'providers'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -561,7 +561,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('sandbox')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'sandbox'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -576,7 +576,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('tokens')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'tokens'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -591,7 +591,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('privacy')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'privacy'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -603,7 +603,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('jsonrpc')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'jsonrpc'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -618,7 +618,7 @@ export const ModelConfigPage: React.FC = () => {
           onClick={() => setActiveTab('docs')}
           className={`h-9 px-3.5 sm:px-4 text-xs font-semibold flex items-center gap-2 transition-all rounded-xs whitespace-nowrap cursor-pointer ${
             activeTab === 'docs'
-              ? 'bg-[#0f62fe] text-white shadow-xs'
+              ? 'bg-[var(--cds-interactive-01)] text-white shadow-xs'
               : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
           }`}
         >
@@ -643,7 +643,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('ollama')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'ollama'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -664,7 +664,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('gemini')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'gemini'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -685,7 +685,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('deepseek')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'deepseek'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -706,7 +706,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('qwen')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'qwen'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -727,7 +727,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('openrouter')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'openrouter'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -748,7 +748,7 @@ export const ModelConfigPage: React.FC = () => {
                 onClick={() => setSelectedProviderId('custom_openai')}
                 className={`w-full flex items-center justify-between px-3 py-3 text-xs text-start transition-all border rounded-xs cursor-pointer ${
                   selectedProviderId === 'custom_openai'
-                    ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-semibold'
+                    ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-semibold'
                     : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-white'
                 }`}
               >
@@ -823,7 +823,7 @@ export const ModelConfigPage: React.FC = () => {
                     <button
                       onClick={() => handleSaveKey(currentProvider.providerId)}
                       disabled={testingId === currentProvider.providerId}
-                      className="h-9 px-3.5 text-xs font-semibold bg-[#0f62fe]/15 hover:bg-[#0f62fe]/25 text-[#78a9ff] border border-[#0f62fe]/40 flex items-center gap-2 transition-all rounded-xs disabled:opacity-50 cursor-pointer"
+                      className="h-9 px-3.5 text-xs font-semibold bg-blue-600/15 hover:bg-blue-600/25 text-[#78a9ff] border border-blue-600/40 flex items-center gap-2 transition-all rounded-xs disabled:opacity-50 cursor-pointer"
                     >
                       <Save className={`w-3.5 h-3.5 ${testingId === currentProvider.providerId ? 'animate-pulse' : ''}`} />
                       {testingId === currentProvider.providerId
@@ -841,7 +841,7 @@ export const ModelConfigPage: React.FC = () => {
                           isAr ? currentProvider.nameAr : currentProvider.name
                         );
                       }}
-                      className="h-9 px-4 text-xs font-semibold bg-[#0f62fe] hover:bg-[#0353e9] text-white transition-all rounded-xs cursor-pointer shadow-xs"
+                      className="h-9 px-4 text-xs font-semibold bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white transition-all rounded-xs cursor-pointer shadow-xs"
                     >
                       {isAr ? 'تعيين كمزود نشط' : 'Set as Active'}
                     </button>
@@ -924,7 +924,7 @@ export const ModelConfigPage: React.FC = () => {
                               ollamaPing.status === 'online'
                                 ? 'bg-[#24a148]/20 text-[#42be65] border-[#24a148]/40'
                                 : ollamaPing.status === 'pinging'
-                                ? 'bg-[#0f62fe]/20 text-[#78a9ff] border-[#0f62fe]/40'
+                                ? 'bg-blue-600/20 text-[#78a9ff] border-blue-600/40'
                                 : 'bg-[#da1e28]/20 text-[#ff8389] border-[#da1e28]/40'
                             }`}
                           >
@@ -944,7 +944,7 @@ export const ModelConfigPage: React.FC = () => {
                     <button
                       onClick={handlePingOllamaBaseUrl}
                       disabled={ollamaPing.status === 'pinging'}
-                      className="h-8 px-3 text-xs font-mono bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[#0f62fe]/40 flex items-center gap-1.5 transition-all rounded-xs disabled:opacity-50 shrink-0 cursor-pointer"
+                      className="h-8 px-3 text-xs font-mono bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-blue-600/40 flex items-center gap-1.5 transition-all rounded-xs disabled:opacity-50 shrink-0 cursor-pointer"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${ollamaPing.status === 'pinging' ? 'animate-spin' : ''}`} />
                       {isAr ? 'إعادة الفحص' : 'Re-ping'}
@@ -977,11 +977,11 @@ export const ModelConfigPage: React.FC = () => {
                       value={currentProvider.endpointUrl || ''}
                       onChange={(e) => updateProviderConfig(currentProvider.providerId, { endpointUrl: e.target.value })}
                       placeholder="e.g. http://localhost:11434 or https://openrouter.ai/api/v1"
-                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs"
+                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-xs"
                     />
                     
                     {(currentProvider.isLocalOnly || currentProvider.providerId === 'custom_openai') && (
-                      <div className="mt-3 p-3 bg-[#0f62fe]/10 border border-[#0f62fe]/30 rounded-xs text-[var(--cds-text-01)] text-xs">
+                      <div className="mt-3 p-3 bg-blue-600/10 border border-blue-600/30 rounded-xs text-[var(--cds-text-01)] text-xs">
                          <div className="font-semibold text-[#78a9ff] mb-1.5 flex items-center gap-1.5">
                            <Globe className="w-3.5 h-3.5" />
                            {isAr ? 'إرشادات الربط: إنشاء نفق (Tunnel) للأجهزة المحلية' : 'Connection Guide: Tunneling Local Devices'}
@@ -1026,7 +1026,7 @@ export const ModelConfigPage: React.FC = () => {
                       value={currentProvider.apiKey || ''}
                       onChange={(e) => updateProviderConfig('gemini', { apiKey: e.target.value })}
                       placeholder="AIza... (من https://aistudio.google.com/apikey)"
-                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs"
+                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-xs"
                     />
                     <p className="text-[11px] text-[var(--cds-text-03)] mt-1">
                       {isAr
@@ -1057,7 +1057,7 @@ export const ModelConfigPage: React.FC = () => {
                       value={currentProvider.apiKey || ''}
                       onChange={(e) => updateProviderConfig(currentProvider.providerId, { apiKey: e.target.value })}
                       placeholder="sk-or-v1-... or your API token"
-                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs"
+                      className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-xs"
                     />
                   </div>
                 )}
@@ -1084,7 +1084,7 @@ export const ModelConfigPage: React.FC = () => {
                         }}
                         className={`p-4 border cursor-pointer transition-all rounded-xs ${
                           isSelected
-                            ? 'border-[#0f62fe] bg-[#0f62fe]/10 shadow-xs ring-1 ring-[#0f62fe]'
+                            ? 'border-[var(--cds-interactive-01)] bg-blue-600/10 shadow-xs ring-1 ring-[var(--cds-interactive-01)]'
                             : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] hover:border-[var(--cds-border-strong)]'
                         }`}
                       >
@@ -1096,7 +1096,7 @@ export const ModelConfigPage: React.FC = () => {
                             </div>
                           </div>
                           {isSelected && (
-                            <span className="w-3 h-3 rounded-full bg-[#0f62fe] shrink-0 mt-0.5" />
+                            <span className="w-3 h-3 rounded-full bg-[var(--cds-interactive-01)] shrink-0 mt-0.5" />
                           )}
                         </div>
 
@@ -1150,7 +1150,7 @@ export const ModelConfigPage: React.FC = () => {
               <select
                 value={sandboxModelId}
                 onChange={(e) => setSandboxModelId(e.target.value)}
-                className="h-9 px-3 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs cursor-pointer"
+                className="h-9 px-3 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-xs cursor-pointer"
               >
                 {availableAIModels.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -1213,7 +1213,7 @@ export const ModelConfigPage: React.FC = () => {
                 value={sandboxSystemInstruction}
                 onChange={(e) => setSandboxSystemInstruction(e.target.value)}
                 placeholder="Set background persona or rules..."
-                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-xs"
+                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-xs"
               />
             </div>
 
@@ -1230,7 +1230,7 @@ export const ModelConfigPage: React.FC = () => {
                 step="0.05"
                 value={sandboxTemperature}
                 onChange={(e) => setSandboxTemperature(parseFloat(e.target.value))}
-                className="w-full accent-[#0f62fe] cursor-pointer mt-2"
+                className="w-full accent-[var(--cds-interactive-01)] cursor-pointer mt-2"
               />
             </div>
 
@@ -1247,7 +1247,7 @@ export const ModelConfigPage: React.FC = () => {
                 step="128"
                 value={sandboxMaxTokens}
                 onChange={(e) => setSandboxMaxTokens(parseInt(e.target.value))}
-                className="w-full accent-[#0f62fe] cursor-pointer mt-2"
+                className="w-full accent-[var(--cds-interactive-01)] cursor-pointer mt-2"
               />
             </div>
 
@@ -1264,7 +1264,7 @@ export const ModelConfigPage: React.FC = () => {
               value={sandboxPrompt}
               onChange={(e) => setSandboxPrompt(e.target.value)}
               placeholder={isAr ? 'أدخل استعلامك هنا لاختبار استجابة النموذج...' : 'Enter your prompt here to test model response...'}
-              className="w-full p-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono leading-relaxed rounded-xs"
+              className="w-full p-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono leading-relaxed rounded-xs"
             />
           </div>
 
@@ -1284,7 +1284,7 @@ export const ModelConfigPage: React.FC = () => {
             <button
               onClick={handleRunSandbox}
               disabled={sandboxIsRunning}
-              className="h-10 px-6 text-xs font-bold bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center justify-center gap-2 transition-all rounded-xs shadow-sm disabled:opacity-50 cursor-pointer"
+              className="h-10 px-6 text-xs font-bold bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center justify-center gap-2 transition-all rounded-xs shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {sandboxIsRunning ? (
                 <>
@@ -1313,7 +1313,7 @@ export const ModelConfigPage: React.FC = () => {
                       🔒 100% Local (Free)
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 bg-[#0f62fe]/20 text-[#78a9ff] border border-[#0f62fe]/40 text-[10px] font-bold rounded-xs">
+                    <span className="px-2 py-0.5 bg-blue-600/20 text-[#78a9ff] border border-blue-600/40 text-[10px] font-bold rounded-xs">
                       ☁️ Cloud Model
                     </span>
                   )}
@@ -1472,7 +1472,7 @@ export const ModelConfigPage: React.FC = () => {
                     {/* Progress Bar */}
                     <div className="w-full bg-[var(--cds-layer-01)] h-2 rounded-xs overflow-hidden border border-[var(--cds-border-subtle)]">
                       <div
-                        className={`h-full ${prov.isLocal ? 'bg-[#42be65]' : 'bg-[#0f62fe]'}`}
+                        className={`h-full ${prov.isLocal ? 'bg-[#42be65]' : 'bg-[var(--cds-interactive-01)]'}`}
                         style={{ width: `${Math.max(percentage, 2)}%` }}
                       />
                     </div>
@@ -1517,7 +1517,7 @@ export const ModelConfigPage: React.FC = () => {
                     step="10"
                     value={simDailyQueries}
                     onChange={(e) => setSimDailyQueries(parseInt(e.target.value))}
-                    className="w-full accent-[#0f62fe] cursor-pointer"
+                    className="w-full accent-[var(--cds-interactive-01)] cursor-pointer"
                   />
                 </div>
 
@@ -1533,7 +1533,7 @@ export const ModelConfigPage: React.FC = () => {
                     step="250"
                     value={simAvgTokensPerQuery}
                     onChange={(e) => setSimAvgTokensPerQuery(parseInt(e.target.value))}
-                    className="w-full accent-[#0f62fe] cursor-pointer"
+                    className="w-full accent-[var(--cds-interactive-01)] cursor-pointer"
                   />
                 </div>
               </div>
@@ -1662,7 +1662,7 @@ export const ModelConfigPage: React.FC = () => {
               }}
               className={`p-4 border cursor-pointer transition-all rounded-xs ${
                 aiSettings.privacyMode === 'hybrid'
-                  ? 'border-[#0f62fe] bg-[#0f62fe]/10 ring-1 ring-[#0f62fe]'
+                  ? 'border-[var(--cds-interactive-01)] bg-blue-600/10 ring-1 ring-[var(--cds-interactive-01)]'
                   : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] hover:border-[var(--cds-border-strong)]'
               }`}
             >
@@ -1674,7 +1674,7 @@ export const ModelConfigPage: React.FC = () => {
                   </span>
                 </div>
                 {aiSettings.privacyMode === 'hybrid' && (
-                  <span className="text-[10px] bg-[#0f62fe] text-white font-bold px-2 py-0.5 rounded-xs">
+                  <span className="text-[10px] bg-[var(--cds-interactive-01)] text-white font-bold px-2 py-0.5 rounded-xs">
                     {isAr ? 'مفعل حالياً' : 'Active'}
                   </span>
                 )}

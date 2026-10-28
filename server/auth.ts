@@ -134,7 +134,18 @@ export async function createUser(email: string, name: string, password: string, 
   await init();
   const emailNorm = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) throw new Error('البريد الإلكتروني غير صالح');
-  if (password.length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+  // سياسة كلمة مرور أقوى من "6 أحرف فقط": 8+ أحرف مع حرف ورقم، ورفض الكلمات الشهيرة.
+  // (سُجن الدخول لا يعيد التحقق القوي — التغيير لا يعطّل الحسابات الموجودة)
+  if (typeof password !== 'string' || password.length < 8) {
+    throw new Error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+  }
+  if (!/[a-zA-Z\u0600-\u06FF]/.test(password) || !/\d/.test(password)) {
+    throw new Error('كلمة المرور يجب أن تتضمن حرفاً واحداً ورقماً واحداً على الأقل');
+  }
+  const COMMON_PASSWORDS = new Set(['password', 'password1', '12345678', '123456789', '1234567890', 'qwerty123', '11111111', 'iloveyou', 'admin123', 'abc12345']);
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    throw new Error('كلمة المرور شائعة جداً — اختر كلمة مرور أقوى');
+  }
   // الهاتف اختياري لكن إن جاء فلا بُد أن يكون E.164 صالحاً حسب نمط دولته
   let phoneE164: string | null = null;
   if (phone && String(phone).trim()) {

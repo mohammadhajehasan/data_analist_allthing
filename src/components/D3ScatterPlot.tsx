@@ -49,7 +49,7 @@ export const D3ScatterPlot: React.FC<D3ScatterPlotProps> = ({ data }) => {
       .attr('cx', (d: DataPoint) => x(d.x))
       .attr('cy', (d: DataPoint) => y(d.y))
       .attr('r', 5)
-      .attr('fill', (d: DataPoint) => d.cluster !== undefined ? color(d.cluster.toString()) : '#0f62fe');
+      .attr('fill', (d: DataPoint) => d.cluster !== undefined ? color(d.cluster.toString()) : 'var(--cds-interactive-01)');
 
   }, [data]);
 

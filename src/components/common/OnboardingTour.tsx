@@ -171,11 +171,11 @@ export const OnboardingTour: React.FC = () => {
   const getStepIcon = (index: number) => {
     switch (index) {
       case 0:
-        return <Sparkles className="w-5 h-5 text-[#0f62fe]" />;
+        return <Sparkles className="w-5 h-5 text-[var(--cds-interactive-01)]" />;
       case 1:
         return <FileSpreadsheet className="w-5 h-5 text-[#24a148]" />;
       case 2:
-        return <LayoutDashboard className="w-5 h-5 text-[#0f62fe]" />;
+        return <LayoutDashboard className="w-5 h-5 text-[var(--cds-interactive-01)]" />;
       case 3:
         return <Terminal className="w-5 h-5 text-[#33b1ff]" />;
       case 4:
@@ -183,22 +183,25 @@ export const OnboardingTour: React.FC = () => {
       case 5:
         return <FileDown className="w-5 h-5 text-[#8a3ffc]" />;
       default:
-        return <Layers className="w-5 h-5 text-[#0f62fe]" />;
+        return <Layers className="w-5 h-5 text-[var(--cds-interactive-01)]" />;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none animate-fade-in">
-      <div className="bg-[var(--cds-layer-02)] border border-[#0f62fe] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none animate-fade-in"
+      onClick={completeTour}
+    >
+      <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-interactive-01)] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Top Header */}
         <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center">
+            <div className="w-9 h-9 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center">
               {getStepIcon(currentStepIndex)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#0f62fe] text-white px-2 py-0.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white px-2 py-0.5">
                   {isAr ? currentStep.badgeAr : currentStep.badge}
                 </span>
                 <span className="text-xs font-mono text-[var(--cds-text-03)]">
@@ -214,7 +217,7 @@ export const OnboardingTour: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setIsTourOpen(false)}
+            onClick={completeTour}
             className="p-1.5 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition-colors"
             title={isAr ? 'إغلاق الجولة' : 'Close Tour'}
           >
@@ -284,7 +287,7 @@ export const OnboardingTour: React.FC = () => {
                 onClick={() => setCurrentStepIndex(idx)}
                 className={`h-1.5 transition-all duration-200 ${
                   idx === currentStepIndex
-                    ? 'w-6 bg-[#0f62fe]'
+                    ? 'w-6 bg-[var(--cds-interactive-01)]'
                     : 'w-2 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)]'
                 }`}
                 title={`Step ${idx + 1}`}

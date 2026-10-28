@@ -46,9 +46,9 @@ describe('auth — إدارة الجلسات النشطة', () => {
 
   it('listSessionsForUser يعرض بادئات فقط ويميّز الجلسة الحالية', async () => {
     useTursoClient(createTestClient());
-    await createUser('sessions@test.com', 'مستخدم الجلسات', 'secret1');
-    const a = await verifyLogin('sessions@test.com', 'secret1', 'Chrome على Windows');
-    const b = await verifyLogin('sessions@test.com', 'secret1', 'Safari على iOS');
+    await createUser('sessions@test.com', 'مستخدم الجلسات', 'secret1x');
+    const a = await verifyLogin('sessions@test.com', 'secret1x', 'Chrome على Windows');
+    const b = await verifyLogin('sessions@test.com', 'secret1x', 'Safari على iOS');
 
     const rows = await listSessionsForUser('usr-none', a.token);
     expect(rows).toHaveLength(0); // بدون ملكية: صفر جلسات
@@ -64,9 +64,9 @@ describe('auth — إدارة الجلسات النشطة', () => {
 
   it('revokeSessionForUser يبطل جلسة واحدة ببادئتها بلا مساس الأخرى', async () => {
     useTursoClient(createTestClient());
-    await createUser('revoke-one@test.com', 'أ', 'secret1');
-    const a = await verifyLogin('revoke-one@test.com', 'secret1', 'Chrome على Windows');
-    const b = await verifyLogin('revoke-one@test.com', 'secret1', 'Firefox على Linux');
+    await createUser('revoke-one@test.com', 'أ', 'secret1x');
+    const a = await verifyLogin('revoke-one@test.com', 'secret1x', 'Chrome على Windows');
+    const b = await verifyLogin('revoke-one@test.com', 'secret1x', 'Firefox على Linux');
 
     const target = (await listSessionsForUser((await getUserByToken(a.token))!.id, '')).find(s => s.current === false)!;
     // نبطئ الجلسة البعيدة (b) — بعد إبطالها لا تجد بـ getUserByToken
@@ -82,10 +82,10 @@ describe('auth — إدارة الجلسات النشطة', () => {
 
   it('revokeAllSessionsForUser يبطل كل ما عدا الجلسة الحالية', async () => {
     useTursoClient(createTestClient());
-    await createUser('revoke-all@test.com', 'ب', 'secret1');
-    const a = await verifyLogin('revoke-all@test.com', 'secret1', 'Edge على Windows');
-    const b = await verifyLogin('revoke-all@test.com', 'secret1', 'Chrome على Android');
-    const c = await verifyLogin('revoke-all@test.com', 'secret1', 'Safari على macOS');
+    await createUser('revoke-all@test.com', 'ب', 'secret1x');
+    const a = await verifyLogin('revoke-all@test.com', 'secret1x', 'Edge على Windows');
+    const b = await verifyLogin('revoke-all@test.com', 'secret1x', 'Chrome على Android');
+    const c = await verifyLogin('revoke-all@test.com', 'secret1x', 'Safari على macOS');
     const me = (await getUserByToken(a.token))!;
 
     expect(await revokeAllSessionsForUser(me.id, a.token)).toBe(2);
@@ -114,8 +114,8 @@ describe('auth — الجلسة تنتهي بعد الخمول', () => {
     const prevIdle = process.env.SESSION_IDLE_MS;
     process.env.SESSION_IDLE_MS = '1000'; // ثانية واحدة: سقف خمول مضغوط للاختبار
     try {
-      await createUser('idle@test.com', 'اختبار', 'secret1');
-      const { token } = await verifyLogin('idle@test.com', 'secret1');
+      await createUser('idle@test.com', 'اختبار', 'secret1x');
+      const { token } = await verifyLogin('idle@test.com', 'secret1x');
       const active = await getUserByToken(token);
       expect(active?.email).toBe('idle@test.com');
 
@@ -129,8 +129,8 @@ describe('auth — الجلسة تنتهي بعد الخمول', () => {
 
   it('revokeSession يبطل الرمز فوراً حتى قبل فحص الخمول', async () => {
     useTursoClient(createTestClient());
-    await createUser('revoked@test.com', 'اختبار', 'secret1');
-    const { token } = await verifyLogin('revoked@test.com', 'secret1');
+    await createUser('revoked@test.com', 'اختبار', 'secret1x');
+    const { token } = await verifyLogin('revoked@test.com', 'secret1x');
     expect((await getUserByToken(token))?.email).toBe('revoked@test.com');
     await revokeSession(token);
     expect(await getUserByToken(token)).toBeNull();

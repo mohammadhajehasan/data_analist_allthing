@@ -282,7 +282,7 @@ export const AudioBriefingPanel: React.FC = () => {
         ctx.beginPath();
         
         const opacity = 1 - w * 0.3;
-        const color = w === 0 ? '#8a3ffc' : w === 1 ? '#0f62fe' : '#33b1ff';
+        const color = w === 0 ? '#8a3ffc' : w === 1 ? 'var(--cds-interactive-01)' : '#33b1ff';
         ctx.strokeStyle = isPlaying ? color : '#393939';
         ctx.strokeStyle = isPlaying ? `${color}${Math.floor(opacity * 255).toString(16)}` : '#393939';
 

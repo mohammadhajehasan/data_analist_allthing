@@ -53,7 +53,7 @@ const LazyPlot = lazy(() => import('../common/LazyPlot'));
 
 // IBM Carbon Design System Official Chart Categorical 14 Palette
 export const CARBON_PALETTE = [
-  '#0f62fe', // IBM Blue 60
+  'var(--cds-interactive-01)', // IBM Blue 60
   '#009d9a', // Teal 50
   '#8a3ffc', // Purple 60
   '#ee5396', // Magenta 50
@@ -398,7 +398,7 @@ const CARBON_MAP_SCALE: Array<[number, string]> = [
   [0, '#f1c21b'],
   [0.35, '#42be65'],
   [0.7, '#009d9a'],
-  [1, '#0f62fe'],
+  [1, 'var(--cds-interactive-01)'],
 ];
 
 /** Viewport lat/lon ranges per map scope */
@@ -451,7 +451,7 @@ const CountryFocusLoader: React.FC<{
   }
   return (
     <div className="h-full flex flex-col items-center justify-center gap-2">
-      <div className="w-6 h-6 border-2 border-[#0f62fe] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-[var(--cds-interactive-01)] border-t-transparent rounded-full animate-spin" />
       <p className="text-[11px] font-mono text-[var(--cds-text-03)]">
         {isAr ? 'جارِ توسيط الخريطة على الدولة المحددة...' : 'Centering map on the selected country...'}
       </p>
@@ -541,7 +541,7 @@ export const ChartFactory: React.FC<{
   // Resolved palette based on active theme or widget color scheme
   const themeKey = activeTheme || widget.colorScheme || 'professional';
   const activePalette = getThemePalette(themeKey);
-  const primaryColor = activePalette[0] || '#0f62fe';
+  const primaryColor = activePalette[0] || 'var(--cds-interactive-01)';
 
   // Aggregate or transform dataset data based on xAxis / yAxis / category
   const xKey = widget.xAxis || widget.categoryField || dataset.columns[0]?.name || 'name';

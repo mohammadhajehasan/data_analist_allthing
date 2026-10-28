@@ -133,7 +133,7 @@ export const SavedModelsDrawer: React.FC<SavedModelsDrawerProps> = ({
             value={modelName}
             onChange={e => setModelName(e.target.value)}
             placeholder={isAr ? 'اسم النموذج (مثال: نموذج المبيعات العملاء)...' : 'Model name...'}
-            className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-xs font-mono text-white outline-none focus:border-[#0f62fe]"
+            className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-xs font-mono text-white outline-none focus:border-[var(--cds-interactive-01)]"
           />
 
           <input
@@ -141,13 +141,13 @@ export const SavedModelsDrawer: React.FC<SavedModelsDrawerProps> = ({
             value={modelDesc}
             onChange={e => setModelDesc(e.target.value)}
             placeholder={isAr ? 'وصف مختصر (اختياري)...' : 'Description (optional)...'}
-            className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-xs font-mono text-white outline-none focus:border-[#0f62fe]"
+            className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded p-2 text-xs font-mono text-white outline-none focus:border-[var(--cds-interactive-01)]"
           />
 
           <button
             onClick={handleSaveCurrentModel}
             disabled={!modelName.trim()}
-            className="w-full py-2 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-50 text-white font-mono font-bold text-xs rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow"
+            className="w-full py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-50 text-white font-mono font-bold text-xs rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{isAr ? 'تخزين في قاعدة بيانات المستخدم' : 'Save to User Database'}</span>
@@ -172,7 +172,7 @@ export const SavedModelsDrawer: React.FC<SavedModelsDrawerProps> = ({
               {savedModels.map(m => (
                 <div
                   key={m.id}
-                  className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] rounded-lg space-y-2 transition-colors group"
+                  className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg space-y-2 transition-colors group"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -208,7 +208,7 @@ export const SavedModelsDrawer: React.FC<SavedModelsDrawerProps> = ({
                       onLoadModel(m);
                       onClose();
                     }}
-                    className="w-full py-1.5 bg-[var(--cds-layer-02)] hover:bg-[#0f62fe] text-white text-xs font-bold rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="w-full py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-interactive-01)] text-white text-xs font-bold rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <BookmarkCheck className="w-3.5 h-3.5 text-[#42be65]" />
                     <span>{isAr ? 'تحميل هذا النموذج' : 'Load Model'}</span>

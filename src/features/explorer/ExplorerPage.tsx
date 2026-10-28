@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { AggregationFunction, FilterCondition, QueryRequest, QueryResult, WidgetType } from '../../types';
 import { executeAnalyticalQuery, executeSqlOnDataset } from '../../utils/analyticsEngine';
 import { ChartFactory, AGGREGATION_OPTIONS } from '../../components/charts/ChartFactory';
+import { EmptyState } from '../../components/common/EmptyState';
 import { CarbonDataTable } from '../../components/common/CarbonDataTable';
 import {
   Table as TableIcon,
@@ -30,7 +31,7 @@ import {
 } from 'lucide-react';
 
 export const ExplorerPage: React.FC = () => {
-  const { activeDataset, datasets, setActiveDatasetId, language, t } = useApp();
+  const { activeDataset, datasets, setActiveDatasetId, language, t, setActiveTab } = useApp();
 
   // Primary interactive views: Table | Chart Analytics | Interactive SQL
   const [activeView, setActiveView] = useState<'table' | 'chart' | 'sql'>('table');
@@ -68,7 +69,7 @@ export const ExplorerPage: React.FC = () => {
       setSearchKeyword('');
       setSortColumn(null);
     }
-  }, [activeDataset.id]);
+  }, [activeDataset?.id]);
 
   // Reactive Analytical OLAP Query Execution
   const queryResult: QueryResult = useMemo(() => {
@@ -197,6 +198,27 @@ export const ExplorerPage: React.FC = () => {
     };
   }, [queryResult.rows, queryResult.totalCount, selectedYAxis, selectedXAxis]);
 
+  // بعد تنفيذ استعلام SQL (خاصة مع GROUP BY) أدوم النتيجة أعمدة جديدة غير محاور الاختيار —
+  // هذا ما يجعل بطاقات KPI تصفّر (selectedYAxis غير موجود في الصفوف). أعد الاختيار من أعمدة النتيجة نفسها.
+  useEffect(() => {
+    if (activeView !== 'sql' || !executedSql.trim()) return;
+    const cols = queryResult.columns;
+    if (!cols || cols.length === 0) return;
+    if (!cols.includes(selectedYAxis) || !selectedXAxis || !cols.includes(selectedXAxis)) {
+      const numericCol =
+        cols.find(c => queryResult.columnTypes[c] === 'float' || queryResult.columnTypes[c] === 'integer') || cols[cols.length - 1];
+      if (!cols.includes(selectedYAxis)) setSelectedYAxis(numericCol);
+      if (!selectedXAxis || !cols.includes(selectedXAxis)) setSelectedXAxis(cols[0]);
+    }
+  }, [
+    activeView,
+    executedSql,
+    queryResult.columns,
+    queryResult.columnTypes,
+    selectedXAxis,
+    selectedYAxis,
+  ]);
+
   // Data Profiling metrics calculation
   const profilingMetrics = useMemo(() => {
     if (!activeDataset || !activeDataset.columns || !activeDataset.data) return [];
@@ -290,9 +312,9 @@ export const ExplorerPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${activeDataset.name.replace(/\s+/g, '_')}_export.csv`;
+    link.download = `${(activeDataset?.name || 'export').replace(/\s+/g, '_')}_export.csv`;
     link.click();
-  }, [queryResult, activeDataset.name]);
+  }, [queryResult, activeDataset?.name]);
 
   const handleExportJson = useCallback(() => {
     if (queryResult.rows.length === 0) return;
@@ -301,16 +323,21 @@ export const ExplorerPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${activeDataset.name.replace(/\s+/g, '_')}_export.json`;
+    link.download = `${(activeDataset?.name || 'export').replace(/\s+/g, '_')}_export.json`;
     link.click();
-  }, [queryResult, activeDataset.name]);
+  }, [queryResult, activeDataset?.name]);
 
   if (!activeDataset) {
     return (
-      <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)]">
-        <Database className="w-12 h-12 text-[#0f62fe] mx-auto mb-3" />
-        <p className="text-sm font-mono font-bold">No active dataset selected</p>
-      </div>
+      <EmptyState
+        icon={<Database className="w-12 h-12" />}
+        title={language === 'ar' ? 'لا توجد مجموعة بيانات نشطة' : 'No Active Dataset'}
+        description={language === 'ar'
+          ? 'مستكشف البيانات يحتاج مجموعة بيانات ليعمل. ارفع ملف CSV/JSON من صفحة المجموعات ثم عد إلى هنا للاستكشاف والاستعلام.'
+          : 'The Data Explorer needs a dataset to work. Upload a CSV/JSON file via the Datasets page, then come back.'}
+        ctaLabel={language === 'ar' ? 'الذهاب إلى مجموعات البيانات' : 'Go to Datasets'}
+        onCta={() => setActiveTab('datasets')}
+      />
     );
   }
 
@@ -656,6 +683,7 @@ export const ExplorerPage: React.FC = () => {
         <CarbonDataTable
           id="explorer-carbon-table"
           data={queryResult.rows}
+          serverTotalCount={activeView === 'sql' && executedSql ? queryResult.totalCount : undefined}
           columnMeta={activeDataset.columns}
           title={`${activeDataset.name}`}
           description={

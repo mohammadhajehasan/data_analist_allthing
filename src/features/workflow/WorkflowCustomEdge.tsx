@@ -44,7 +44,7 @@ export const WorkflowCustomEdge: React.FC<EdgeProps> = ({
     ? '#da1e28'
     : selected
     ? '#78a9ff'
-    : '#0f62fe';
+    : 'var(--cds-interactive-01)';
 
   const onDelete = (data as any)?.onDelete;
 

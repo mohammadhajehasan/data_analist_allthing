@@ -73,7 +73,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-[#0f62fe]/15 text-[#78a9ff] border border-[#0f62fe]/30">
+            <div className="p-2.5 rounded-lg bg-blue-600/15 text-[#78a9ff] border border-blue-600/30">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -81,7 +81,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                 <h2 className="text-base font-bold text-white tracking-tight">
                   {isAr ? 'مكتبة القوالب الجاهزة لسلاسل الأتمتة' : 'Workflow Templates Library'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#0f62fe]/20 text-[#78a9ff] border border-[#0f62fe]/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-600/20 text-[#78a9ff] border border-blue-600/30">
                   {WORKFLOW_TEMPLATES.length} {isAr ? 'قوالب معتمدة' : 'Verified Templates'}
                 </span>
               </div>
@@ -112,7 +112,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                 onClick={() => setSelectedCategory(c.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   selectedCategory === c.id
-                    ? 'bg-[#0f62fe] text-white font-bold shadow-md'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-bold shadow-md'
                     : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)]'
                 }`}
               >
@@ -130,7 +130,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
               placeholder={isAr ? 'بحث في القوالب والمهام...' : 'Search templates...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[#0f62fe] ${
+              className={`w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[var(--cds-interactive-01)] ${
                 isAr ? 'pr-9 pl-3' : 'pl-9 pr-3'
               }`}
             />
@@ -141,7 +141,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
         <div className="flex-1 overflow-y-auto p-5 bg-[var(--cds-background)]">
           {filteredTemplates.length === 0 ? (
             <div className="text-center py-16 text-[var(--cds-text-03)] space-y-2">
-              <Layers className="w-10 h-10 mx-auto opacity-40 text-[#0f62fe]" />
+              <Layers className="w-10 h-10 mx-auto opacity-40 text-[var(--cds-interactive-01)]" />
               <p className="text-sm">{isAr ? 'لم يتم العثور على قوالب تطابق معايير البحث.' : 'No templates match your search criteria.'}</p>
               <button
                 onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
@@ -161,7 +161,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                     key={template.id}
                     className={`p-4 rounded-lg border transition-all duration-200 flex flex-col justify-between group ${
                       isActive
-                        ? 'bg-[#0f62fe]/10 border-[#0f62fe] shadow-[0_0_20px_rgba(15,98,254,0.25)]'
+                        ? 'bg-blue-600/10 border-[var(--cds-interactive-01)] shadow-[0_0_20px_rgba(15,98,254,0.25)]'
                         : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] hover:bg-[var(--cds-layer-02)]'
                     }`}
                   >
@@ -170,7 +170,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                       <div className="flex items-start justify-between gap-3 mb-2.5">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-[#0f62fe]/15 text-[#78a9ff] border border-[#0f62fe]/30">
+                            <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-blue-600/15 text-[#78a9ff] border border-blue-600/30">
                               {isAr ? template.categoryAr : template.category}
                             </span>
                             <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-[var(--cds-layer-03)] text-[var(--cds-text-02)]">
@@ -211,7 +211,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                                 {step}
                               </span>
                               {idx < steps.length - 1 && (
-                                isAr ? <ArrowLeft className="w-3 h-3 text-[#0f62fe] shrink-0" /> : <ArrowRight className="w-3 h-3 text-[#0f62fe] shrink-0" />
+                                isAr ? <ArrowLeft className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" /> : <ArrowRight className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" />
                               )}
                             </React.Fragment>
                           ))}
@@ -244,7 +244,7 @@ export const WorkflowTemplateModal: React.FC<WorkflowTemplateModalProps> = ({
                         className={`px-4 py-2 rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer ${
                           isActive
                             ? 'bg-[var(--cds-layer-02)] text-white hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-strong)]'
-                            : 'bg-[#0f62fe] hover:bg-[#0353e9] text-white shadow-md'
+                            : 'bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white shadow-md'
                         }`}
                       >
                         <Zap className="w-3.5 h-3.5" />

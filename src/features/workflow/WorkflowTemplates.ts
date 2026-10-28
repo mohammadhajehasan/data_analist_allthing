@@ -164,8 +164,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-c1-2', source: 'node-clean-1', target: 'node-clean-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
-      { id: 'e-c2-3', source: 'node-clean-2', target: 'node-clean-3', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-c1-2', source: 'node-clean-1', target: 'node-clean-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
+      { id: 'e-c2-3', source: 'node-clean-2', target: 'node-clean-3', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-c3-pass', source: 'node-clean-3', sourceHandle: 'pass', target: 'node-clean-4', label: 'Pass (>= 80%)', style: { stroke: '#24a148', strokeWidth: 2 } },
       { id: 'e-c3-fail', source: 'node-clean-3', sourceHandle: 'fail', target: 'node-clean-alert', label: 'Fail (< 80%)', style: { stroke: '#da1e28', strokeWidth: 2 } },
       { id: 'e-c4-5', source: 'node-clean-4', target: 'node-clean-5', animated: true, style: { stroke: '#24a148', strokeWidth: 2 } },
@@ -287,7 +287,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-r1-2', source: 'node-rep-1', target: 'node-rep-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-r1-2', source: 'node-rep-1', target: 'node-rep-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-r2-3', source: 'node-rep-2', target: 'node-rep-3', animated: true, style: { stroke: '#009d9a', strokeWidth: 2 } },
       { id: 'e-r3-4', source: 'node-rep-3', target: 'node-rep-4', animated: true, style: { stroke: '#8a3ffc', strokeWidth: 2 } },
       { id: 'e-r4-5', source: 'node-rep-4', target: 'node-rep-5', animated: true, style: { stroke: '#24a148', strokeWidth: 2 } },
@@ -403,7 +403,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-etl-1-2', source: 'node-etl-1', target: 'node-etl-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-etl-1-2', source: 'node-etl-1', target: 'node-etl-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-etl-2-3', source: 'node-etl-2', target: 'node-etl-3', animated: true, style: { stroke: '#009d9a', strokeWidth: 2 } },
       { id: 'e-etl-3-4', source: 'node-etl-3', target: 'node-etl-4', animated: true, style: { stroke: '#8a3ffc', strokeWidth: 2 } },
       { id: 'e-etl-4-5', source: 'node-etl-4', target: 'node-etl-5', animated: true, style: { stroke: '#24a148', strokeWidth: 2 } },
@@ -520,7 +520,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-anom-1-2', source: 'node-anom-1', target: 'node-anom-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-anom-1-2', source: 'node-anom-1', target: 'node-anom-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-anom-2-3', source: 'node-anom-2', target: 'node-anom-3', animated: true, style: { stroke: '#8a3ffc', strokeWidth: 2 } },
       { id: 'e-anom-pass', source: 'node-anom-3', sourceHandle: 'pass', target: 'node-anom-alert', label: 'Anomaly Detected', style: { stroke: '#da1e28', strokeWidth: 2 } },
       { id: 'e-anom-fail', source: 'node-anom-3', sourceHandle: 'fail', target: 'node-anom-ok', label: 'Healthy (No Outliers)', style: { stroke: '#24a148', strokeWidth: 2 } },
@@ -621,7 +621,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-priv-1-2', source: 'node-priv-1', target: 'node-priv-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-priv-1-2', source: 'node-priv-1', target: 'node-priv-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-priv-2-3', source: 'node-priv-2', target: 'node-priv-3', animated: true, style: { stroke: '#009d9a', strokeWidth: 2 } },
       { id: 'e-priv-3-4', source: 'node-priv-3', target: 'node-priv-4', animated: true, style: { stroke: '#24a148', strokeWidth: 2 } },
     ]
@@ -734,7 +734,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
       }
     ],
     edges: [
-      { id: 'e-fore-1-2', source: 'node-fore-1', target: 'node-fore-2', animated: true, style: { stroke: '#0f62fe', strokeWidth: 2 } },
+      { id: 'e-fore-1-2', source: 'node-fore-1', target: 'node-fore-2', animated: true, style: { stroke: 'var(--cds-interactive-01)', strokeWidth: 2 } },
       { id: 'e-fore-2-3', source: 'node-fore-2', target: 'node-fore-3', animated: true, style: { stroke: '#009d9a', strokeWidth: 2 } },
       { id: 'e-fore-3-4', source: 'node-fore-3', target: 'node-fore-4', animated: true, style: { stroke: '#8a3ffc', strokeWidth: 2 } },
       { id: 'e-fore-4-5', source: 'node-fore-4', target: 'node-fore-5', animated: true, style: { stroke: '#24a148', strokeWidth: 2 } },

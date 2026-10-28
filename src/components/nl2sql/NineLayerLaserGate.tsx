@@ -118,7 +118,7 @@ export const NineLayerLaserGate: React.FC<NineLayerLaserGateProps> = ({
           const isPassed = i < crossed && (!breachAt || i !== breachAt);
           const isBreach = breachAt === i;
           const isPending = phase === 'idle' || (i >= crossed && !isBreach);
-          const color = isBreach ? '#da1e28' : isPassed ? '#24a148' : isPending ? '#334155' : '#0f62fe';
+          const color = isBreach ? '#da1e28' : isPassed ? '#24a148' : isPending ? '#334155' : 'var(--cds-interactive-01)';
           const label = layer ? (isAr ? layer.nameAr || layer.name : layer.name) : isAr ? `الطبقة ${i + 1}` : `Layer ${i + 1}`;
 
           return (

@@ -25,7 +25,7 @@ export const LandingPage: React.FC = () => {
       {/* Hero Section - IBM Carbon Style */}
       <section className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-6 sm:p-10 relative">
         <div className="max-w-4xl space-y-5">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[#0f62fe] text-xs font-mono font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-interactive-01)] text-xs font-mono font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{t.landing.badge}</span>
           </div>
@@ -51,7 +51,7 @@ export const LandingPage: React.FC = () => {
               onClick={() => setActiveTab('nl2sql')}
               className="carbon-btn-secondary text-xs uppercase font-mono font-bold tracking-wider"
             >
-              <Terminal className="w-3.5 h-3.5 text-[#0f62fe]" />
+              <Terminal className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
               <span>{t.landing.viewNl2sql}</span>
             </button>
           </div>
@@ -60,7 +60,7 @@ export const LandingPage: React.FC = () => {
         {/* Carbon Stats Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-[var(--cds-border-subtle)]">
           <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
-            <div className="text-2xl font-bold text-[#0f62fe] font-mono">100K+</div>
+            <div className="text-2xl font-bold text-[var(--cds-interactive-01)] font-mono">100K+</div>
             <div className="text-[11px] text-[var(--cds-text-03)] font-mono mt-0.5">{t.landing.stats.datasets}</div>
           </div>
           <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
@@ -92,9 +92,9 @@ export const LandingPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             onClick={() => setActiveTab('explorer')}
-            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-colors cursor-pointer space-y-3"
+            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-colors cursor-pointer space-y-3"
           >
-            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
+            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)]">
               <Database className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-[var(--cds-text-01)]">{t.landing.features.olap.title}</h3>
@@ -105,9 +105,9 @@ export const LandingPage: React.FC = () => {
 
           <div
             onClick={() => setActiveTab('nl2sql')}
-            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-colors cursor-pointer space-y-3"
+            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-colors cursor-pointer space-y-3"
           >
-            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
+            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)]">
               <Terminal className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-[var(--cds-text-01)]">{t.landing.features.nl2sql.title}</h3>
@@ -118,9 +118,9 @@ export const LandingPage: React.FC = () => {
 
           <div
             onClick={() => setActiveTab('profiling')}
-            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-colors cursor-pointer space-y-3"
+            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-colors cursor-pointer space-y-3"
           >
-            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
+            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)]">
               <BarChart3 className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-[var(--cds-text-01)]">{t.landing.features.profiling.title}</h3>
@@ -131,9 +131,9 @@ export const LandingPage: React.FC = () => {
 
           <div
             onClick={() => setActiveTab('assistant')}
-            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-colors cursor-pointer space-y-3"
+            className="p-5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-colors cursor-pointer space-y-3"
           >
-            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
+            <div className="w-9 h-9 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)]">
               <Bot className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-[var(--cds-text-01)]">{t.landing.features.ai.title}</h3>

@@ -54,7 +54,7 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
       <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] max-w-xl w-full p-6 shadow-2xl space-y-5 rounded-none">
         <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
           <div>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
               GOVERNANCE & RUNTIME TOGGLES
             </span>
             <h3 className="text-base font-bold text-[var(--cds-text-01)]">{t.common.featureFlags}</h3>
@@ -77,7 +77,7 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
                 className="flex items-center justify-between p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)] transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe] shrink-0 mt-0.5">
+                  <div className="w-7 h-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)] shrink-0 mt-0.5">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -93,7 +93,7 @@ export const FeatureFlagsModal: React.FC<{ isOpen: boolean; onClose: () => void 
                     onChange={e => updateFeatureFlags({ [item.key]: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-[var(--cds-layer-03)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0f62fe]" />
+                  <div className="w-9 h-5 bg-[var(--cds-layer-03)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--cds-interactive-01)]" />
                 </label>
               </div>
             );

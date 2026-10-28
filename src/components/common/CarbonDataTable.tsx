@@ -60,9 +60,10 @@ export interface CarbonDataTableProps<T = Record<string, any>> {
   onExportJson?: () => void;
   emptyMessage?: string;
   emptyIcon?: React.ReactNode;
-  maxHeight?: string | number;
-  selectable?: boolean;
-  selectedRows?: Set<number>;
+  maxHeight?: string | number;   selectable?: boolean;
+   selectedRows?: Set<number>;
+  /** عدد نتائج الاستعلام الحقيقية قبل حذف LIMIT على الخادم — يجعل الترقيم متسقاً مع عدّاد الإجمالي */
+  serverTotalCount?: number;
   onSelectionChange?: (selectedIndices: Set<number>) => void;
   toolbarActions?: React.ReactNode;
   language?: 'en' | 'ar';
@@ -91,9 +92,9 @@ export const CarbonDataTable = <T extends Record<string, any>>({
   onExportJson,
   emptyMessage,
   emptyIcon,
-  maxHeight = 620,
-  selectable = false,
-  selectedRows,
+  maxHeight = 620,   selectable = false,
+   selectedRows,
+  serverTotalCount,
   onSelectionChange,
   toolbarActions,
   language = 'en',
@@ -246,9 +247,16 @@ export const CarbonDataTable = <T extends Record<string, any>>({
     return map;
   }, [data, resolvedColumns]);
 
-  // Pagination slicing
-  const totalRecords = sortedData.length;
+  // Pagination slicing — serverTotalCount يمكّن ترقيماً صحيحاً حين تُحدّد النتيجة بحذف LIMIT
+  const totalRecords = serverTotalCount != null && serverTotalCount > sortedData.length
+    ? serverTotalCount
+    : sortedData.length;
+  const pagesWithData = Math.max(1, Math.ceil(sortedData.length / pageSize));
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  // لا يمكن إخفاء صفوف أكثر من المُسلَّمة فعلياً — أزرار الصفحات الفارغة معطلة بدل النتائج الفارغة
+  const maxNavigablePage = serverTotalCount != null && serverTotalCount > sortedData.length
+    ? pagesWithData
+    : totalPages;
   const currentPageSafe = Math.min(currentPage, totalPages);
 
   const paginatedData = useMemo(() => {
@@ -369,7 +377,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {title && (
             <div className="flex items-center gap-2">
-              <TableIcon className="w-4 h-4 text-[#0f62fe]" />
+              <TableIcon className="w-4 h-4 text-[var(--cds-interactive-01)]" />
               <h3 className="text-sm font-bold text-[#ffffff] tracking-tight">{title}</h3>
             </div>
           )}
@@ -394,7 +402,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   setCurrentPage(1);
                 }}
                 placeholder={searchPlaceholder || (language === 'ar' ? 'بحث في الجدول...' : 'Search table...')}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] text-[#ffffff] placeholder-[#8d8d8d] ps-8 pe-3 py-1.5 text-xs font-mono outline-none transition-colors"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] text-[#ffffff] placeholder-[#8d8d8d] ps-8 pe-3 py-1.5 text-xs font-mono outline-none transition-colors"
               />
               {internalSearch && (
                 <button
@@ -416,7 +424,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   onClick={() => setDensity(d)}
                   className={`px-2 py-1.5 text-[11px] font-mono capitalize transition-colors ${
                     density === d
-                      ? 'bg-[#0f62fe] text-[#ffffff] font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-[#ffffff] font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-[#ffffff]'
                   }`}
                   title={`Density: ${d}`}
@@ -433,7 +441,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
               onClick={() => setIsZebra(!isZebra)}
               className={`px-2.5 py-1.5 border text-xs font-mono flex items-center gap-1.5 transition-colors ${
                 isZebra
-                  ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#33b1ff] font-bold'
+                  ? 'bg-blue-600/20 border-[var(--cds-interactive-01)] text-[#33b1ff] font-bold'
                   : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)] hover:text-[#ffffff]'
               }`}
               title="Toggle Zebra striping"
@@ -452,7 +460,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             >
               <EyeOff className="w-3.5 h-3.5 text-[#33b1ff]" />
               <span>{language === 'ar' ? 'الأعمدة' : 'Columns'}</span>
-              <span className="text-[10px] text-[#0f62fe] bg-[#0f62fe]/20 px-1 py-0.2 font-bold">
+              <span className="text-[10px] text-[var(--cds-interactive-01)] bg-blue-600/20 px-1 py-0.2 font-bold">
                 {visibleColumns.length}
               </span>
             </button>
@@ -463,7 +471,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                   <span className="font-bold">{language === 'ar' ? 'إظهار الأعمدة' : 'Toggle Columns'}</span>
                   <button
                     onClick={() => setHiddenColumns(new Set())}
-                    className="text-[10px] text-[#0f62fe] hover:underline"
+                    className="text-[10px] text-[var(--cds-interactive-01)] hover:underline"
                   >
                     {language === 'ar' ? 'إظهار الكل' : 'Show All'}
                   </button>
@@ -477,7 +485,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                       type="checkbox"
                       checked={!hiddenColumns.has(col.key)}
                       onChange={() => toggleColumnVisibility(col.key)}
-                      className="accent-[#0f62fe]"
+                      className="accent-[var(--cds-interactive-01)]"
                     />
                     <span className="truncate">{language === 'ar' && col.headerAr ? col.headerAr : col.header}</span>
                   </label>
@@ -489,7 +497,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
           {/* Centralized Export Action Button */}
           <button
             onClick={() => setShowExportModal(true)}
-            className="px-3 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow-xs rounded cursor-pointer"
+            className="px-3 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow-xs rounded cursor-pointer"
             title={language === 'ar' ? 'فتح خيارات التصدير المركزية (CSV, JSON, Excel, PDF)' : 'Open Centralized Export Hub (CSV, JSON, Excel, PDF)'}
           >
             <Download className="w-3.5 h-3.5" />
@@ -515,7 +523,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                     type="checkbox"
                     checked={paginatedData.length > 0 && selectedRows?.size === paginatedData.length}
                     onChange={toggleSelectAll}
-                    className="accent-[#0f62fe] cursor-pointer"
+                    className="accent-[var(--cds-interactive-01)] cursor-pointer"
                   />
                 </th>
               )}
@@ -546,7 +554,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                     style={{ width: col.width }}
                     className={`${headerDensityStyles[density]} font-bold text-[#ffffff] bg-[var(--cds-layer-01)] border-e border-[var(--cds-border-subtle)] whitespace-nowrap transition-colors relative group/th ${
                       col.sortable !== false ? 'cursor-pointer hover:bg-[var(--cds-layer-02)] hover:text-[#ffffff]' : ''
-                    } ${isSorted ? 'bg-[var(--cds-layer-02)] border-b-2 border-b-[#0f62fe]' : ''}`}
+                    } ${isSorted ? 'bg-[var(--cds-layer-02)] border-b-2 border-b-[var(--cds-interactive-01)]' : ''}`}
                   >
                     <div className={`flex items-center gap-2 ${alignClass}`}>
                       <span className="tracking-tight text-sm text-[#ffffff] font-bold">
@@ -560,9 +568,9 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                         <div className="shrink-0 flex items-center">
                           {isSorted ? (
                             sortDirection === 'asc' ? (
-                              <ArrowUp className="w-3.5 h-3.5 text-[#0f62fe]" />
+                              <ArrowUp className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                             ) : (
-                              <ArrowDown className="w-3.5 h-3.5 text-[#0f62fe]" />
+                              <ArrowDown className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                             )
                           ) : (
                             <ArrowUpDown className="w-3 h-3 text-[var(--cds-text-03)] group-hover/th:text-[#ffffff]" />
@@ -588,7 +596,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                         className="absolute start-1/2 -translate-x-1/2 top-full mt-1.5 w-64 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] p-3 text-xs font-mono shadow-2xl z-50 text-start pointer-events-none rounded-none"
                       >
                         {/* Carbon Accent Top Line */}
-                        <div className="h-1 bg-[#0f62fe] -mx-3 -mt-3 mb-2" />
+                        <div className="h-1 bg-[var(--cds-interactive-01)] -mx-3 -mt-3 mb-2" />
 
                         {/* Title & Type Badge */}
                         <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-1.5 mb-2">
@@ -659,8 +667,8 @@ export const CarbonDataTable = <T extends Record<string, any>>({
             {isLoading ? (
               <tr>
                 <td colSpan={visibleColumns.length + (selectable ? 2 : 1)} className="p-12 text-center">
-                  <div className="inline-flex items-center gap-3 text-xs font-mono text-[#0f62fe]">
-                    <div className="w-4 h-4 border-2 border-[#0f62fe] border-t-transparent animate-spin" />
+                  <div className="inline-flex items-center gap-3 text-xs font-mono text-[var(--cds-interactive-01)]">
+                    <div className="w-4 h-4 border-2 border-[var(--cds-interactive-01)] border-t-transparent animate-spin" />
                     <span>Processing & Streaming Table Data...</span>
                   </div>
                 </td>
@@ -676,7 +684,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                     {internalSearch && (
                       <button
                         onClick={() => setInternalSearch('')}
-                        className="text-xs text-[#0f62fe] hover:underline font-mono"
+                        className="text-xs text-[var(--cds-interactive-01)] hover:underline font-mono"
                       >
                         {language === 'ar' ? 'مسح عبارة البحث' : 'Clear search query'}
                       </button>
@@ -690,7 +698,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                 const isSelected = selectedRows?.has(rowIdx);
                 const isRowEven = rowIdx % 2 === 0;
                 const rowBg = isSelected
-                  ? 'bg-[#002d9c]/30 border-s-4 border-s-[#0f62fe]'
+                  ? 'bg-[#002d9c]/30 border-s-4 border-s-[var(--cds-interactive-01)]'
                   : isZebra
                   ? isRowEven
                     ? 'bg-[var(--cds-layer-01)]'
@@ -708,7 +716,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleSelectRow(rowIdx)}
-                          className="accent-[#0f62fe] cursor-pointer"
+                          className="accent-[var(--cds-interactive-01)] cursor-pointer"
                         />
                       </td>
                     )}
@@ -792,7 +800,7 @@ export const CarbonDataTable = <T extends Record<string, any>>({
               setPageSize(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[#ffffff] font-bold px-2 py-1 text-xs outline-none focus:border-[#0f62fe]"
+            className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[#ffffff] font-bold px-2 py-1 text-xs outline-none focus:border-[var(--cds-interactive-01)]"
           >
             {pageSizeOptions.map(opt => (
               <option key={opt} value={opt}>
@@ -836,8 +844,8 @@ export const CarbonDataTable = <T extends Record<string, any>>({
 
           {/* Next Page */}
           <button
-            disabled={currentPageSafe >= totalPages}
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPageSafe >= maxNavigablePage}
+            onClick={() => setCurrentPage(prev => Math.min(maxNavigablePage, prev + 1))}
             className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="Next Page"
           >
@@ -846,8 +854,8 @@ export const CarbonDataTable = <T extends Record<string, any>>({
 
           {/* Last Page */}
           <button
-            disabled={currentPageSafe >= totalPages}
-            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPageSafe >= maxNavigablePage}
+            onClick={() => setCurrentPage(maxNavigablePage)}
             className="p-1.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] text-[#ffffff] disabled:opacity-30 disabled:hover:bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] transition-colors"
             title="Last Page"
           >

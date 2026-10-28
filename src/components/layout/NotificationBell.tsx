@@ -227,8 +227,8 @@ export const NotificationBell: React.FC = () => {
                   onKeyDown={clickable ? (e => { if (e.key === 'Enter') openNotification(n); }) : undefined}
                   title={clickable ? (isAr ? 'انقر لفتح المجموعة' : 'Click to open the group') : undefined}
                   className={`rounded-lg p-2.5 border transition-colors ${
-                    clickable ? 'cursor-pointer hover:border-[#0f62fe]/60' : ''
-                  } ${!n.read ? 'bg-[#0f62fe]/10 border-[#0f62fe]/30' : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)]'}`}
+                    clickable ? 'cursor-pointer hover:border-blue-600/60' : ''
+                  } ${!n.read ? 'bg-blue-600/10 border-blue-600/30' : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)]'}`}
                 >
                   <div className="flex items-start gap-2">
                     {n.type === 'discussion_invite' ? (

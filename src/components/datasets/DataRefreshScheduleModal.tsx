@@ -202,7 +202,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
           {/* Schedule Configuration Form */}
           <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-4">
             <h4 className="text-xs font-semibold text-[var(--cds-text-01)] flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-[#0f62fe]" />
+              <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)]" />
               <span>{language === 'ar' ? 'إنشاء أو تعديل جدولة تحديث لمجموعة بيانات' : 'Configure New Refresh Schedule'}</span>
             </h4>
 
@@ -214,7 +214,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
               <select
                 value={selectedDatasetId}
                 onChange={e => setSelectedDatasetId(e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] px-3 py-2 text-xs text-white outline-hidden"
               >
                 {datasets.map(d => (
                   <option key={d.id} value={d.id}>
@@ -233,7 +233,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
                 <select
                   value={method}
                   onChange={e => setMethod(e.target.value as any)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-2 text-xs text-white outline-hidden"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] px-3 py-2 text-xs text-white outline-hidden"
                 >
                   <option value="GET">GET</option>
                   <option value="POST">POST</option>
@@ -288,7 +288,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
                   type="checkbox"
                   checked={autoImpute}
                   onChange={e => setAutoImpute(e.target.checked)}
-                  className="rounded text-[#0f62fe] focus:ring-0"
+                  className="rounded text-[var(--cds-interactive-01)] focus:ring-0"
                 />
                 <span className="text-xs text-[var(--cds-text-02)]">
                   {language === 'ar' ? 'تنظيف وتعويض القيم المفقودة آلياً' : 'Auto-impute missing values'}
@@ -300,7 +300,7 @@ export const DataRefreshScheduleModal: React.FC = () => {
                   type="checkbox"
                   checked={notifyOnAnomaly}
                   onChange={e => setNotifyOnAnomaly(e.target.checked)}
-                  className="rounded text-[#0f62fe] focus:ring-0"
+                  className="rounded text-[var(--cds-interactive-01)] focus:ring-0"
                 />
                 <span className="text-xs text-[var(--cds-text-02)]">
                   {language === 'ar' ? 'تنبيه فوري عند اكتشاف شذوذ إحصائي' : 'Alert on anomaly detection'}

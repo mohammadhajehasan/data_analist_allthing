@@ -16,9 +16,9 @@ export const VISUALIZATION_THEMES: Record<string, VisualizationTheme> = {
     nameAr: 'كار بون الاحترافي (Corporate)',
     descriptionEn: 'Standard corporate palette with IBM Blue, Teal, Purple, and Cyan.',
     descriptionAr: 'الألوان المؤسسية الرسمية بأزرق وأرجواني وتكواز ناصع.',
-    colors: ['#0f62fe', '#009d9a', '#8a3ffc', '#ee5396', '#33b1ff', '#f1c21b', '#24a148', '#ff832b'],
-    gradientStop: '#0f62fe',
-    primaryColor: '#0f62fe',
+    colors: ['var(--cds-interactive-01)', '#009d9a', '#8a3ffc', '#ee5396', '#33b1ff', '#f1c21b', '#24a148', '#ff832b'],
+    gradientStop: 'var(--cds-interactive-01)',
+    primaryColor: 'var(--cds-interactive-01)',
   },
   vibrant: {
     id: 'vibrant',

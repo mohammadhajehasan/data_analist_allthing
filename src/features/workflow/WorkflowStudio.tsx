@@ -429,7 +429,7 @@ const WorkflowStudioContent: React.FC = () => {
       const isPassBranch = params.sourceHandle === 'pass';
       const isFailBranch = params.sourceHandle === 'fail';
 
-      const edgeColor = isPassBranch ? '#24a148' : isFailBranch ? '#da1e28' : '#0f62fe';
+      const edgeColor = isPassBranch ? '#24a148' : isFailBranch ? '#da1e28' : 'var(--cds-interactive-01)';
       const edgeLabel = isPassBranch ? (isAr ? 'ناجح (Pass)' : 'Pass') : isFailBranch ? (isAr ? 'فشل (Fail)' : 'Fail') : undefined;
 
       setEdges((eds) =>
@@ -466,7 +466,7 @@ const WorkflowStudioContent: React.FC = () => {
 
       const isPass = sourceHandle === 'pass';
       const isFail = sourceHandle === 'fail';
-      const edgeColor = isPass ? '#24a148' : isFail ? '#da1e28' : '#0f62fe';
+      const edgeColor = isPass ? '#24a148' : isFail ? '#da1e28' : 'var(--cds-interactive-01)';
       const edgeLabel = isPass ? (isAr ? 'ناجح (Pass)' : 'Pass') : isFail ? (isAr ? 'فشل (Fail)' : 'Fail') : undefined;
 
       const newEdge: Edge = {
@@ -1038,7 +1038,7 @@ const WorkflowStudioContent: React.FC = () => {
       {/* Top Studio Header */}
       <div className="bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] px-6 py-3.5 shrink-0 flex flex-wrap items-center justify-between gap-4 z-10 shadow-lg relative">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-[#0f62fe]/15 text-[#78a9ff] border border-[#0f62fe]/30">
+          <div className="p-2.5 rounded-lg bg-blue-600/15 text-[#78a9ff] border border-blue-600/30">
             <Workflow className="w-5 h-5" />
           </div>
           <div>
@@ -1096,7 +1096,7 @@ const WorkflowStudioContent: React.FC = () => {
             <select
               value={activeWorkflowId}
               onChange={(e) => setActiveWorkflowId(e.target.value)}
-              className="bg-[var(--cds-layer-02)] text-white border border-[var(--cds-border-strong)] rounded-lg px-3 py-1.5 text-xs font-mono font-bold appearance-none pr-8 focus:outline-none focus:border-[#0f62fe] cursor-pointer"
+              className="bg-[var(--cds-layer-02)] text-white border border-[var(--cds-border-strong)] rounded-lg px-3 py-1.5 text-xs font-mono font-bold appearance-none pr-8 focus:outline-none focus:border-[var(--cds-interactive-01)] cursor-pointer"
             >
               {workflows.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -1121,7 +1121,7 @@ const WorkflowStudioContent: React.FC = () => {
             onClick={() => setIsOutputPanelOpen(!isOutputPanelOpen)}
             className={`px-3 py-1.5 text-xs font-mono font-bold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
               isOutputPanelOpen
-                ? 'bg-[#0f62fe]/20 text-[#78a9ff] border-[#0f62fe]/50 shadow-[0_0_12px_rgba(15,98,254,0.25)]'
+                ? 'bg-blue-600/20 text-[#78a9ff] border-blue-600/50 shadow-[0_0_12px_rgba(15,98,254,0.25)]'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:text-white'
             }`}
             title={isAr ? 'عرض / إخفاء لوحة معاينة المخرجات والنتائج' : 'Toggle Output Inspector Panel'}
@@ -1135,14 +1135,14 @@ const WorkflowStudioContent: React.FC = () => {
             onClick={() => setIsLogsOpen(!isLogsOpen)}
             className={`px-3 py-1.5 text-xs font-mono font-bold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
               isLogsOpen
-                ? 'bg-[#0f62fe]/20 text-[#78a9ff] border-[#0f62fe]/50'
+                ? 'bg-blue-600/20 text-[#78a9ff] border-blue-600/50'
                 : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:text-white'
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
             <span>{isAr ? 'سجل التشغيل' : 'Console'}</span>
             {logs.length > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#0f62fe] text-white text-[10px] rounded-full">
+              <span className="px-1.5 py-0.2 bg-[var(--cds-interactive-01)] text-white text-[10px] rounded-full">
                 {logs.length}
               </span>
             )}
@@ -1158,7 +1158,7 @@ const WorkflowStudioContent: React.FC = () => {
             }}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm border ${
               isVersionHistoryOpen
-                ? 'bg-[#0f62fe]/25 text-[#78a9ff] border-[#0f62fe]/60 shadow-[0_0_12px_rgba(15,98,254,0.3)]'
+                ? 'bg-blue-600/25 text-[#78a9ff] border-blue-600/60 shadow-[0_0_12px_rgba(15,98,254,0.3)]'
                 : 'bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-white border-[var(--cds-border-strong)]'
             }`}
             title={isAr ? 'سجل النسخ والإصدارات واستعادة الحالات السابقة' : 'Pipeline Version History & Snapshots'}
@@ -1183,7 +1183,7 @@ const WorkflowStudioContent: React.FC = () => {
           <button
             onClick={handleRunWorkflow}
             disabled={isRunning}
-            className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] active:bg-[#002d9c] text-white rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-md disabled:opacity-50 cursor-pointer"
+            className="px-4 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] active:bg-[#002d9c] text-white rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-md disabled:opacity-50 cursor-pointer"
           >
             <Play className={`w-4 h-4 fill-current ${isRunning ? 'animate-spin' : ''}`} />
             <span>{isRunning ? (isAr ? 'جاري المعالجة...' : 'Running...') : (isAr ? 'تشغيل السلسلة الآن' : 'Run Pipeline')}</span>
@@ -1198,7 +1198,7 @@ const WorkflowStudioContent: React.FC = () => {
           <div className="p-3 border-b border-[var(--cds-border-subtle)] space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold text-[var(--cds-text-02)] uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#0f62fe]" />
+                <Layers className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                 {isAr ? 'مكتبة الأدوات والعناصر' : 'Tool & Node Palette'}
               </span>
               <span className="text-[10px] text-[var(--cds-text-03)] font-mono">
@@ -1206,7 +1206,7 @@ const WorkflowStudioContent: React.FC = () => {
               </span>
             </div>
 
-            <div className="p-1.5 rounded-lg bg-[#0f62fe]/10 border border-[#0f62fe]/20 text-[10px] text-[#78a9ff] flex items-center gap-1.5">
+            <div className="p-1.5 rounded-lg bg-blue-600/10 border border-blue-600/20 text-[10px] text-[#78a9ff] flex items-center gap-1.5">
               <Move className="w-3.5 h-3.5 shrink-0" />
               <span>{isAr ? 'اسحب أي عنصر وأفلته في اللوحة مباشرة' : 'Drag & drop any node directly to canvas'}</span>
             </div>
@@ -1219,7 +1219,7 @@ const WorkflowStudioContent: React.FC = () => {
                 placeholder={isAr ? 'بحث في الأدوات والعمليات...' : 'Search nodes...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[#0f62fe] ${
+                className={`w-full bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg py-1.5 text-xs text-white placeholder-[#8d8d8d] focus:outline-none focus:border-[var(--cds-interactive-01)] ${
                   isAr ? 'pr-8 pl-2.5' : 'pl-8 pr-2.5'
                 }`}
               />
@@ -1238,7 +1238,7 @@ const WorkflowStudioContent: React.FC = () => {
                   onClick={() => setSelectedCategory(c.id)}
                   className={`py-1 rounded-lg text-center transition-colors cursor-pointer ${
                     selectedCategory === c.id
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:text-white'
                   }`}
                 >
@@ -1258,10 +1258,10 @@ const WorkflowStudioContent: React.FC = () => {
                   draggable={true}
                   onDragStart={(e) => onDragStart(e, item)}
                   onClick={() => handleAddNode(item)}
-                  className="group p-2.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] rounded-lg cursor-grab active:cursor-grabbing transition-all duration-150 flex items-start gap-2.5 shadow-sm select-none"
+                  className="group p-2.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] rounded-lg cursor-grab active:cursor-grabbing transition-all duration-150 flex items-start gap-2.5 shadow-sm select-none"
                   title={isAr ? 'اسحب إلى اللوحة أو انقر للإضافة' : 'Drag to canvas or click to add'}
                 >
-                  <div className="p-2 rounded-lg bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] group-hover:border-[#0f62fe] text-[#78a9ff] shrink-0">
+                  <div className="p-2 rounded-lg bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] group-hover:border-[var(--cds-interactive-01)] text-[#78a9ff] shrink-0">
                     <IconComp className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1269,7 +1269,7 @@ const WorkflowStudioContent: React.FC = () => {
                       <h4 className="text-xs font-bold text-white truncate">
                         {isAr ? item.labelAr : item.label}
                       </h4>
-                      <Plus className="w-3.5 h-3.5 text-[var(--cds-text-03)] group-hover:text-[#0f62fe] transition-colors shrink-0" />
+                      <Plus className="w-3.5 h-3.5 text-[var(--cds-text-03)] group-hover:text-[var(--cds-interactive-01)] transition-colors shrink-0" />
                     </div>
                     <p className="text-[10px] text-[var(--cds-text-02)] line-clamp-2 mt-0.5 leading-tight">
                       {isAr ? item.descAr : item.desc}
@@ -1323,7 +1323,7 @@ const WorkflowStudioContent: React.FC = () => {
             defaultEdgeOptions={{
               type: 'workflowCustomEdge',
               animated: true,
-              style: { strokeWidth: 2.5, stroke: '#0f62fe' },
+              style: { strokeWidth: 2.5, stroke: 'var(--cds-interactive-01)' },
             }}
           >
             <Background variant={BackgroundVariant.Dots} gap={16} size={1.2} color="#333333" />
@@ -1332,7 +1332,7 @@ const WorkflowStudioContent: React.FC = () => {
               className="!bg-[var(--cds-layer-01)] !border-[var(--cds-border-subtle)] !rounded-lg overflow-hidden"
               nodeColor={(n) => {
                 const cat = (n.data as any)?.category;
-                if (cat === 'trigger') return '#0f62fe';
+                if (cat === 'trigger') return 'var(--cds-interactive-01)';
                 if (cat === 'ai') return '#8a3ffc';
                 if (cat === 'logic') return '#009d9a';
                 if (cat === 'action') return '#24a148';
@@ -1378,7 +1378,7 @@ const WorkflowStudioContent: React.FC = () => {
                       onClick={() => setActiveLogTab('logs')}
                       className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
                         activeLogTab === 'logs'
-                          ? 'bg-[#0f62fe] text-white font-bold'
+                          ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                           : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
@@ -1388,7 +1388,7 @@ const WorkflowStudioContent: React.FC = () => {
                       onClick={() => setActiveLogTab('results')}
                       className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
                         activeLogTab === 'results'
-                          ? 'bg-[#0f62fe] text-white font-bold'
+                          ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                           : 'text-[var(--cds-text-02)] hover:text-white'
                       }`}
                     >
@@ -1455,7 +1455,7 @@ const WorkflowStudioContent: React.FC = () => {
                 {activeLogTab === 'logs' ? (
                   filteredLogs.length === 0 ? (
                     <div className="text-center py-10 text-[var(--cds-text-03)] space-y-1">
-                      <Terminal className="w-6 h-6 mx-auto opacity-30 text-[#0f62fe]" />
+                      <Terminal className="w-6 h-6 mx-auto opacity-30 text-[var(--cds-interactive-01)]" />
                       <p>{isAr ? 'لا توجد سجلات تطابق البحث. انقر على "تشغيل السلسلة الآن" لبدء التنفيذ.' : 'No logs yet. Click "Run Pipeline" to execute.'}</p>
                     </div>
                   ) : (

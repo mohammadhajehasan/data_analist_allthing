@@ -115,7 +115,7 @@ const IdleSettingsCard: React.FC<{ isAr: boolean }> = () => {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="h-9 px-4 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
+          className="h-9 px-4 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
           حفظ المدة
@@ -220,7 +220,7 @@ const EmailProvidersCard: React.FC<{ isAr: boolean }> = ({ isAr }) => {
     <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-[#0f62fe]" />
+          <Mail className="w-4 h-4 text-[var(--cds-interactive-01)]" />
           <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
             {isAr ? 'تشخيص مزودي البريد' : 'Email provider diagnostics'}
           </h3>
@@ -596,7 +596,7 @@ export const AdminPage: React.FC = () => {
       key: 'role',
       header: t.admin.userTable.role,
       render: val => (
-        <span className="bg-[#0f62fe]/20 text-[#33b1ff] border border-[#0f62fe]/40 px-2 py-0.5 text-[10px] font-mono uppercase font-bold">
+        <span className="bg-blue-600/20 text-[#33b1ff] border border-blue-600/40 px-2 py-0.5 text-[10px] font-mono uppercase font-bold">
           {val}
         </span>
       ),
@@ -633,7 +633,7 @@ export const AdminPage: React.FC = () => {
       {/* Top Header */}
       <div className="border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
             IBM CARBON / WORKSPACE ADMINISTRATION
           </span>
         </div>
@@ -746,7 +746,7 @@ export const AdminPage: React.FC = () => {
       {isAdmin && (
         <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-3">
           <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-[#0f62fe]" />
+            <Database className="w-4 h-4 text-[var(--cds-interactive-01)]" />
             <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
               {isAr ? 'ترحيل قاعدة البيانات (تجربة ⇄ إنتاج)' : 'Database migration (staging ⇄ production)'}
             </h3>
@@ -767,7 +767,7 @@ export const AdminPage: React.FC = () => {
             <button
               onClick={exportDatabase}
               disabled={dbBusy !== null}
-              className="h-9 px-4 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
+              className="h-9 px-4 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center gap-2"
             >
               {dbBusy === 'export' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               {isAr ? 'تصدير قاعدة البيانات' : 'Export database'}
@@ -789,7 +789,7 @@ export const AdminPage: React.FC = () => {
         <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
           <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
             <span>{t.admin.workspacePlan}</span>
-            <Building2 className="w-4 h-4 text-[#0f62fe]" />
+            <Building2 className="w-4 h-4 text-[var(--cds-interactive-01)]" />
           </div>
           <div className="text-2xl font-bold text-[var(--cds-text-01)] font-mono">{workspace.plan.toUpperCase()}</div>
           <p className="text-[11px] text-[var(--cds-text-03)] font-mono">
@@ -844,7 +844,7 @@ export const AdminPage: React.FC = () => {
                 value={tunnelUrl}
                 onChange={(e) => setTunnelUrl(e.target.value)}
                 placeholder="https://broadly-precision-shakiness.ngrok-free.dev"
-                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
+                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-none font-mono text-sm rounded-none"
               />
             </div>
             
@@ -857,7 +857,7 @@ export const AdminPage: React.FC = () => {
                 value={tunnelPort}
                 onChange={(e) => setTunnelPort(e.target.value)}
                 placeholder="11434"
-                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-none font-mono text-sm rounded-none"
+                className="w-full h-10 px-3 bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-none font-mono text-sm rounded-none"
               />
             </div>
 
@@ -957,7 +957,7 @@ export const AdminPage: React.FC = () => {
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] max-w-md w-full p-6 shadow-2xl space-y-4 rounded-none">
             <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
                   INVITE COLLABORATOR
                 </span>
                 <h3 className="text-base font-bold text-[var(--cds-text-01)]">{t.admin.inviteMember}</h3>

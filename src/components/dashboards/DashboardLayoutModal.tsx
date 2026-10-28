@@ -45,7 +45,7 @@ export const THEME_OPTIONS: {
     descEn: 'Ultra-dark contrast theme for high-focus telemetry',
     bgHex: '#161616',
     cardHex: '#262626',
-    accentHex: '#0f62fe',
+    accentHex: 'var(--cds-interactive-01)',
     borderHex: '#393939',
     isDark: true,
   },
@@ -81,7 +81,7 @@ export const THEME_OPTIONS: {
     descEn: 'Sophisticated modern light gray theme for daytime reporting',
     bgHex: '#f4f4f4',
     cardHex: '#ffffff',
-    accentHex: '#0f62fe',
+    accentHex: 'var(--cds-interactive-01)',
     borderHex: '#e0e0e0',
     isDark: false,
   },
@@ -93,7 +93,7 @@ export const THEME_OPTIONS: {
     descEn: 'High-contrast pure white theme for executive sharing',
     bgHex: '#ffffff',
     cardHex: '#f8f9fa',
-    accentHex: '#0f62fe',
+    accentHex: 'var(--cds-interactive-01)',
     borderHex: '#e2e8f0',
     isDark: false,
   },
@@ -105,7 +105,7 @@ export const ACCENT_COLOR_OPTIONS: {
   nameEn: string;
   hex: string;
 }[] = [
-  { id: 'blue', nameAr: 'أزرق IBM القياسي', nameEn: 'IBM Blue', hex: '#0f62fe' },
+  { id: 'blue', nameAr: 'أزرق IBM القياسي', nameEn: 'IBM Blue', hex: 'var(--cds-interactive-01)' },
   { id: 'teal', nameAr: 'تيل زمردي (Teal)', nameEn: 'Teal', hex: '#009d9a' },
   { id: 'purple', nameAr: 'بنفسجي ملكي (Purple)', nameEn: 'Purple', hex: '#8a3ffc' },
   { id: 'cyan', nameAr: 'سماوي كهربائي (Cyan)', nameEn: 'Cyan', hex: '#1192e8' },

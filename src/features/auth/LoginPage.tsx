@@ -68,6 +68,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
       }
       phoneE164 = `+${regCountry.dial}${v.nationalDigits}`;
     }
+    // توافق مباشر مع سياسة الخادم (الحد الأدنى 8 أحرف مع حرف ورقم) — رسالة
+    // inline واضحة فوراً بدل نموذج معلّق دون تفسير
+    if (mode === 'register') {
+      if (password.length < 8) {
+        setError(isAr ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' : 'Password must be at least 8 characters');
+        return;
+      }
+      if (!/[a-zA-Z\u0600-\u06FF]/.test(password) || !/\d/.test(password)) {
+        setError(isAr ? 'أضف حرفاً واحداً ورقماً واحداً على الأقل لكلمة المرور' : 'Add at least one letter and one number to the password');
+        return;
+      }
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/auth/${mode}`, {
@@ -88,7 +100,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const inputCls = 'w-full ps-9 pe-3 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden focus:ring-1 focus:ring-[#0f62fe]/40 transition-colors';
+  const inputCls = 'w-full ps-9 pe-3 py-2.5 text-sm bg-[var(--cds-layer-02,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden focus:ring-1 focus:ring-blue-600/40 transition-colors';
 
   // Bilingual copy for the login gate
   const T = isAr
@@ -121,7 +133,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     <div className="min-h-screen flex items-center justify-center bg-[var(--cds-background,#161616)] p-4" dir={isAr ? 'rtl' : 'ltr'} lang={lang}>
       {/* Ambient background accents */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div className="absolute -top-32 -start-32 w-96 h-96 rounded-full bg-[#0f62fe]/10 blur-3xl" />
+        <div className="absolute -top-32 -start-32 w-96 h-96 rounded-full bg-blue-600/10 blur-3xl" />
         <div className="absolute -bottom-40 -end-24 w-[28rem] h-[28rem] rounded-full bg-[#33b1ff]/8 blur-3xl" />
       </div>
 
@@ -130,17 +142,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         <div className="absolute -top-2 end-0">
           <button
             type="button" onClick={toggleLang}
-            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[var(--cds-border-subtle,#393939)] bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-02,#c6c6c6)] hover:text-[var(--cds-text-01,#f4f4f4)] hover:border-[#0f62fe] transition-colors"
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[var(--cds-border-subtle,#393939)] bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-02,#c6c6c6)] hover:text-[var(--cds-text-01,#f4f4f4)] hover:border-[var(--cds-interactive-01)] transition-colors"
             aria-label={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
             title={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
           >
-            <Languages className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <Languages className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             <span dir="ltr">{isAr ? 'EN' : 'ع'}</span>
           </button>
         </div>
         {/* Brand header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0f62fe] shadow-lg shadow-[#0f62fe]/30 mb-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--cds-interactive-01)] shadow-lg shadow-blue-600/30 mb-3">
             <BarChart3 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--cds-text-01,#f4f4f4)]">
@@ -156,7 +168,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
           {/* Mode tabs — مخفية داخل نافذة الاستعادة */}
           {forgotMode ? (
             <div className="text-center mb-5">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#0f62fe]/15 border border-[#0f62fe]/30 mb-2">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600/15 border border-blue-600/30 mb-2">
                 <KeyRound className="w-5 h-5 text-[#78a9ff]" />
               </div>
               <h2 className="text-base font-bold text-[var(--cds-text-01,#f4f4f4)]">{T.forgotTitle}</h2>
@@ -170,7 +182,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 onClick={() => { setMode(m); setError(null); }}
                 className={`py-2 text-xs font-semibold rounded-md transition-all ${
                   mode === m
-                    ? 'bg-[#0f62fe] text-white shadow-sm'
+                    ? 'bg-[var(--cds-interactive-01)] text-white shadow-sm'
                     : 'text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]'
                 }`}
               >
@@ -218,7 +230,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <input
                 type={showPassword ? 'text' : 'password'} value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={T.password} required minLength={6} dir="ltr"
+                placeholder={T.password} required minLength={8} dir="ltr"
                 className={`${inputCls} text-left pe-10`}
               />
               <button
@@ -229,12 +241,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {mode === 'register' && password.length > 0 && password.length < 8 && (
+              <p className="text-[11px] text-[#f1c21b]" dir="auto">
+                {isAr ? 'كلمة المرور قصيرة — الحد الأدنى 8 أحرف، ويجب أن تحتوي حرفاً ورقماً' : 'Short password — minimum 8 characters with at least one letter and one number'}
+              </p>
+            )}
             {mode === 'register' && (
               <div className="space-y-1.5">
                 {!showPhone && !regNational ? (
                   <button
                     type="button" onClick={() => setShowPhone(true)}
-                    className="text-xs text-[#78a9ff] hover:text-[#0f62fe] font-medium flex items-center gap-1"
+                    className="text-xs text-[#78a9ff] hover:text-[var(--cds-interactive-01)] font-medium flex items-center gap-1"
                   >
                     <Smartphone className="w-3.5 h-3.5" />
                     {T.addPhone}
@@ -267,7 +284,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 <button
                   type="button"
                   onClick={() => { setForgotMode(true); setError(null); }}
-                  className="text-xs text-[#78a9ff] hover:text-[#0f62fe] font-medium"
+                  className="text-xs text-[#78a9ff] hover:text-[var(--cds-interactive-01)] font-medium"
                 >
                   {T.forgot}
                 </button>
@@ -282,7 +299,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
             <button
               type="submit" disabled={busy}
-              className="w-full py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#0f62fe]/25"
+              className="w-full py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
             >
               {mode === 'login' ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
               {busy ? T.processing : mode === 'login' ? T.enter : T.create}

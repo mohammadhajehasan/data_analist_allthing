@@ -248,7 +248,7 @@ export const AssistantPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
               IBM CARBON / AI ANALYTICS AGENT
             </span>
           </div>
@@ -289,7 +289,7 @@ export const AssistantPage: React.FC = () => {
             onClick={createNewChatSession}
             className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
           >
-            <Plus className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <Plus className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             <span>{t.assistant.newSession}</span>
           </button>
         </div>
@@ -317,8 +317,8 @@ export const AssistantPage: React.FC = () => {
                 <div
                   className={`w-7 h-7 flex items-center justify-center shrink-0 font-mono text-xs font-bold ${
                     isUser
-                      ? 'bg-[#0f62fe] text-white'
-                      : 'bg-[var(--cds-layer-01)] text-[#0f62fe] border border-[var(--cds-border-subtle)]'
+                      ? 'bg-[var(--cds-interactive-01)] text-white'
+                      : 'bg-[var(--cds-layer-01)] text-[var(--cds-interactive-01)] border border-[var(--cds-border-subtle)]'
                   }`}
                 >
                   {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
@@ -328,7 +328,7 @@ export const AssistantPage: React.FC = () => {
                   <div
                     className={`p-3.5 border ${
                       isUser
-                        ? 'bg-[#0f62fe]/10 border-[#0f62fe]/40 text-[var(--cds-text-01)]'
+                        ? 'bg-blue-600/10 border-blue-600/40 text-[var(--cds-text-01)]'
                         : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]'
                     }`}
                   >
@@ -337,7 +337,7 @@ export const AssistantPage: React.FC = () => {
                     {/* SQL Snippet in Assistant Message */}
                     {msg.sqlSnippet && (
                       <div className="mt-3 border border-[var(--cds-border-subtle)] bg-[var(--cds-background)] p-2.5 font-mono text-[11px]">
-                        <div className="text-[#0f62fe] font-bold uppercase text-[10px] mb-1 flex items-center gap-1.5">
+                        <div className="text-[var(--cds-interactive-01)] font-bold uppercase text-[10px] mb-1 flex items-center gap-1.5">
                           <Terminal className="w-3 h-3" />
                           <span>Generated SQL Execution</span>
                         </div>
@@ -350,7 +350,7 @@ export const AssistantPage: React.FC = () => {
                       <div className="mt-3 space-y-1 pt-2 border-t border-[var(--cds-border-subtle)]">
                         {msg.insights.map((ins, i) => (
                           <div key={i} className="flex items-start gap-1.5 text-xs text-[var(--cds-text-01)]">
-                            <Sparkles className="w-3.5 h-3.5 text-[#0f62fe] shrink-0 mt-0.5" />
+                            <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)] shrink-0 mt-0.5" />
                             <span>{ins}</span>
                           </div>
                         ))}
@@ -368,10 +368,10 @@ export const AssistantPage: React.FC = () => {
 
           {isThinking && (
             <div className="flex gap-3 max-w-2xl">
-              <div className="w-7 h-7 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe]">
+              <div className="w-7 h-7 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)]">
                 <Bot className="w-3.5 h-3.5 animate-spin" />
               </div>
-              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-[#0f62fe] flex items-center gap-2">
+              <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-[var(--cds-interactive-01)] flex items-center gap-2">
                 <span>Analyzing data context &amp; synthesizing insights...</span>
               </div>
             </div>

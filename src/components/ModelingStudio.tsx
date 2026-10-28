@@ -896,7 +896,7 @@ print(f"Example prediction: {prediction[0]:.6f}")
     });
   }, [savedModels, language]);
 
-  const modelColors = ['#0f62fe', '#8a3ffc', '#198038', '#ff832b', '#0072c3', '#da1e28', '#1192e8', '#6929c4'];
+  const modelColors = ['var(--cds-interactive-01)', '#8a3ffc', '#198038', '#ff832b', '#0072c3', '#da1e28', '#1192e8', '#6929c4'];
 
   const sortedSavedModels = useMemo(() => {
     if (modelsSortField === 'none') return savedModels;
@@ -2215,7 +2215,7 @@ metrics: {
           mode: xAxisCols.length === 1 ? 'lines' : 'markers+lines',
           type: 'scatter',
           name: `${modelA.name} (${language === 'ar' ? 'النموذج أ' : 'Model A'})`,
-          line: { color: '#0f62fe', width: 3.5 }
+          line: { color: 'var(--cds-interactive-01)', width: 3.5 }
         });
       }
       

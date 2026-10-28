@@ -255,12 +255,12 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
       <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
         {/* Left: Title & Dataset Selector */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="w-9 h-9 bg-[#0f62fe] text-white flex items-center justify-center font-bold shrink-0">
+          <div className="w-9 h-9 bg-[var(--cds-interactive-01)] text-white flex items-center justify-center font-bold shrink-0">
             <GitFork className="w-5 h-5 rotate-90" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
                 DATA LINEAGE & PROVENANCE ENGINE
               </span>
               <span className="bg-[var(--cds-layer-01)] text-[#42be65] border border-[#24a148] px-1.5 py-0.2 text-[9px] font-mono font-bold">
@@ -350,11 +350,11 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
             onClick={() => setActiveTabMode('graph')}
             className={`px-4 py-2 text-xs font-mono font-semibold flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'graph'
-                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                ? 'border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
-            <Workflow className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <Workflow className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             <span>{isAr ? 'المسار المرئي الكامل (Pipeline DAG)' : 'Visual Pipeline Graph'}</span>
             <span className="text-[10px] bg-[var(--cds-layer-03)] px-1.5 py-0.2 text-[var(--cds-text-02)]">
               {manifest.sources.length + manifest.transformations.length + manifest.destinations.length + 1}
@@ -365,7 +365,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
             onClick={() => setActiveTabMode('columns')}
             className={`px-4 py-2 text-xs font-mono font-semibold flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'columns'
-                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                ? 'border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
@@ -380,7 +380,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
             onClick={() => setActiveTabMode('impact')}
             className={`px-4 py-2 text-xs font-mono font-semibold flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'impact'
-                ? 'border-[#0f62fe] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
+                ? 'border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] bg-[var(--cds-layer-02)]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
             }`}
           >
@@ -399,7 +399,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={isAr ? 'بحث في العقد...' : 'Filter lineage nodes...'}
-                className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-[var(--cds-text-01)] ps-8 pe-3 py-1 w-44 placeholder-[#6f6f6f] outline-hidden focus:border-[#0f62fe]"
+                className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-xs font-mono text-[var(--cds-text-01)] ps-8 pe-3 py-1 w-44 placeholder-[#6f6f6f] outline-hidden focus:border-[var(--cds-interactive-01)]"
               />
               {searchQuery && (
                 <button
@@ -431,7 +431,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
               </button>
               <button
                 onClick={() => setZoomLevel(100)}
-                className="text-[10px] font-mono text-[#0f62fe] px-1 hover:underline"
+                className="text-[10px] font-mono text-[var(--cds-interactive-01)] px-1 hover:underline"
               >
                 Reset
               </button>
@@ -532,7 +532,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
 
             {/* SVG Connector Stage 1 -> 2 */}
             <div className="hidden lg:flex flex-col items-center justify-center pt-24 text-[var(--cds-text-03)]">
-              <ArrowRight className="w-5 h-5 text-[#0f62fe] animate-pulse" />
+              <ArrowRight className="w-5 h-5 text-[var(--cds-interactive-01)] animate-pulse" />
               <span className="text-[9px] font-mono text-[var(--cds-text-03)] mt-1 uppercase">CDC / Stream</span>
             </div>
 
@@ -603,7 +603,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
 
             {/* SVG Connector Stage 2 -> 3 */}
             <div className="hidden lg:flex flex-col items-center justify-center pt-24 text-[var(--cds-text-03)]">
-              <ArrowRight className="w-5 h-5 text-[#0f62fe] animate-pulse" />
+              <ArrowRight className="w-5 h-5 text-[var(--cds-interactive-01)] animate-pulse" />
               <span className="text-[9px] font-mono text-[var(--cds-text-03)] mt-1 uppercase">Validated</span>
             </div>
 
@@ -613,12 +613,12 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
             <div className="flex-1 space-y-3 min-w-[250px]">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--cds-border-subtle)]">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 bg-[#0f62fe] rounded-none" />
+                  <div className="w-2.5 h-2.5 bg-[var(--cds-interactive-01)] rounded-none" />
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--cds-text-01)]">
                     3. {isAr ? 'مجموعة البيانات المختارة' : 'Active Dataset (Core)'}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono bg-[#0f62fe] text-white px-2 py-0.5">
+                <span className="text-[10px] font-mono bg-[var(--cds-interactive-01)] text-white px-2 py-0.5">
                   CORE NODE
                 </span>
               </div>
@@ -630,13 +630,13 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                 }
                 className={`bg-[#1f2937] border-2 p-4 transition-all cursor-pointer relative shadow-xl ${
                   selectedNode?.id === dataset.id
-                    ? 'border-[#0f62fe] ring-2 ring-[#0f62fe]/50'
-                    : 'border-[#0f62fe] hover:border-[#33b1ff]'
+                    ? 'border-[var(--cds-interactive-01)] ring-2 ring-blue-600/50'
+                    : 'border-[var(--cds-interactive-01)] hover:border-[#33b1ff]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-[#0f62fe] text-white flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 bg-[var(--cds-interactive-01)] text-white flex items-center justify-center font-bold">
                       <Database className="w-4 h-4" />
                     </div>
                     <div>
@@ -704,7 +704,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
 
             {/* SVG Connector Stage 3 -> 4 */}
             <div className="hidden lg:flex flex-col items-center justify-center pt-24 text-[var(--cds-text-03)]">
-              <ArrowRight className="w-5 h-5 text-[#0f62fe] animate-pulse" />
+              <ArrowRight className="w-5 h-5 text-[var(--cds-interactive-01)] animate-pulse" />
               <span className="text-[9px] font-mono text-[var(--cds-text-03)] mt-1 uppercase">Consumes</span>
             </div>
 
@@ -947,7 +947,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                           key={trace.columnName}
                           onClick={() => setSelectedColumn(trace.columnName)}
                           className={`cursor-pointer transition-colors ${
-                            isSel ? 'bg-[var(--cds-layer-02)] border-s-4 border-s-[#0f62fe]' : 'hover:bg-[var(--cds-layer-02)]'
+                            isSel ? 'bg-[var(--cds-layer-02)] border-s-4 border-s-[var(--cds-interactive-01)]' : 'hover:bg-[var(--cds-layer-02)]'
                           }`}
                         >
                           <td className="px-4 py-3 font-bold text-white">
@@ -968,7 +968,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                                 e.stopPropagation();
                                 setSelectedColumn(trace.columnName);
                               }}
-                              className="px-2 py-1 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-white text-[11px] transition-colors"
+                              className="px-2 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-interactive-01)] text-white text-[11px] transition-colors"
                             >
                               {isAr ? 'تفصيل' : 'Trace'}
                             </button>
@@ -1062,7 +1062,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
                         setShowSimResult(false);
                       }}
                       placeholder={isAr ? 'مثال: المبيعات_الجديدة' : 'e.g. sales_v2'}
-                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden focus:border-[#0f62fe]"
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-xs font-mono text-[var(--cds-text-01)] px-3 py-2 outline-hidden focus:border-[var(--cds-interactive-01)]"
                     />
                   </>
                 ) : (
@@ -1244,7 +1244,7 @@ export const DataLineageView: React.FC<DataLineageViewProps> = ({
         <div className="fixed inset-y-0 end-0 w-full sm:w-96 bg-[var(--cds-layer-02)] border-s border-[var(--cds-border-subtle)] shadow-2xl z-50 p-5 overflow-y-auto space-y-5 animate-in slide-in-from-right duration-200">
           <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
                 NODE INSPECTOR
               </span>
               <span className="text-[10px] font-mono bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] px-1.5 py-0.5 uppercase">

@@ -342,7 +342,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
         {/* Top Header */}
         <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff]">
+            <div className="w-8 h-8 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#78a9ff]">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
@@ -377,7 +377,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
           {!file ? (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[var(--cds-border-strong)] hover:border-[#0f62fe] bg-[var(--cds-layer-01)] p-10 text-center cursor-pointer transition-colors space-y-3"
+              className="border-2 border-dashed border-[var(--cds-border-strong)] hover:border-[var(--cds-interactive-01)] bg-[var(--cds-layer-01)] p-10 text-center cursor-pointer transition-colors space-y-3"
             >
               <input
                 ref={fileInputRef}
@@ -388,7 +388,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   if (e.target.files?.[0]) handleFileChange(e.target.files[0]);
                 }}
               />
-              <div className="w-12 h-12 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center mx-auto text-[#0f62fe]">
+              <div className="w-12 h-12 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex items-center justify-center mx-auto text-[var(--cds-interactive-01)]">
                 <UploadCloud className="w-6 h-6" />
               </div>
               <div>
@@ -462,7 +462,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                     type="text"
                     value={datasetName}
                     onChange={e => setDatasetName(e.target.value)}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
                   />
                 </div>
                 <div>
@@ -473,7 +473,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                     type="text"
                     value={datasetDesc}
                     onChange={e => setDatasetDesc(e.target.value)}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] px-3 py-1.5 text-xs font-mono text-[var(--cds-text-01)] outline-none"
                   />
                 </div>
               </div>
@@ -484,7 +484,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   onClick={() => setActiveTabState('schema')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'schema'
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -495,7 +495,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                   onClick={() => setActiveTabState('preview')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'preview'
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -532,7 +532,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               type="checkbox"
                               checked={col.included}
                               onChange={() => toggleColumnInclusion(idx)}
-                              className="accent-[#0f62fe] w-4 h-4 cursor-pointer"
+                              className="accent-[var(--cds-interactive-01)] w-4 h-4 cursor-pointer"
                             />
                           </td>
                           <td className="p-2.5">
@@ -541,7 +541,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                               value={col.name}
                               disabled={!col.included}
                               onChange={e => updateColumnName(idx, e.target.value)}
-                              className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] px-2 py-1 text-xs text-[var(--cds-text-01)] outline-none font-bold"
+                              className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] px-2 py-1 text-xs text-[var(--cds-text-01)] outline-none font-bold"
                             />
                           </td>
                           <td className="p-2.5">
@@ -648,7 +648,7 @@ export const LocalCsvImportModal: React.FC<LocalCsvImportModalProps> = ({
                 onClick={() => finalizeDatasetCreation(false)}
                 className="px-3 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
               >
-                <Database className="w-3.5 h-3.5 text-[#0f62fe]" />
+                <Database className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                 <span>{isAr ? 'استيراد كمجموعة بيانات نشطة' : 'Ingest as Active Dataset'}</span>
               </button>
 

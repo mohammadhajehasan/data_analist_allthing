@@ -196,8 +196,8 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
       {/* HEADER BAR */}
       <div className="bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-start">
         <div>
-          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-[#0f62fe]" />
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             {isAr ? 'تقرير جودة المخطط التلقائي' : 'Automated Diagnostic Quality Report'}
           </span>
           <h2 className="text-sm font-bold text-[var(--cds-text-01)] mt-1.5 flex items-center gap-2">
@@ -260,10 +260,10 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
           <div className="bg-[var(--cds-layer-01)] p-3 border border-[var(--cds-border-subtle)]">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[var(--cds-text-02)] font-medium">{isAr ? 'معدل التفرّد والتميز' : 'Uniqueness'}</span>
-              <span className="text-xs font-mono font-bold text-[#0f62fe]">{quality.uniquenessScore}%</span>
+              <span className="text-xs font-mono font-bold text-[var(--cds-interactive-01)]">{quality.uniquenessScore}%</span>
             </div>
             <div className="w-full h-1.5 bg-[var(--cds-layer-02)] mt-2 overflow-hidden rounded-full">
-              <div className="h-full bg-[#0f62fe]" style={{ width: `${quality.uniquenessScore}%` }} />
+              <div className="h-full bg-[var(--cds-interactive-01)]" style={{ width: `${quality.uniquenessScore}%` }} />
             </div>
             <span className="text-[10px] text-[var(--cds-text-03)] mt-1.5 block">
               {schemaInconsistencies.some(i => i.type === 'duplicate_keys')
@@ -301,7 +301,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('summary')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'summary' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
+                expandedSection === 'summary' ? 'border-[var(--cds-interactive-01)] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Info className="w-3.5 h-3.5" />
@@ -310,7 +310,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('missing')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'missing' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
+                expandedSection === 'missing' ? 'border-[var(--cds-interactive-01)] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('outliers')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'outliers' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
+                expandedSection === 'outliers' ? 'border-[var(--cds-interactive-01)] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <TrendingDown className="w-3.5 h-3.5" />
@@ -338,7 +338,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
             <button
               onClick={() => setExpandedSection('schema')}
               className={`px-4 py-2 text-xs font-mono font-bold border-b-2 flex items-center gap-1.5 transition-colors ${
-                expandedSection === 'schema' ? 'border-[#0f62fe] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
+                expandedSection === 'schema' ? 'border-[var(--cds-interactive-01)] text-white bg-[var(--cds-layer-02)]' : 'border-transparent text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -503,7 +503,7 @@ export const DataQualityReport: React.FC<DataQualityReportProps> = ({
                   {profile?.anomalies && profile.anomalies.length > 6 && (
                     <button
                       onClick={() => setShowAllIssues(!showAllIssues)}
-                      className="text-xs text-[#0f62fe] font-mono font-bold hover:underline flex items-center gap-1 mt-1 text-start"
+                      className="text-xs text-[var(--cds-interactive-01)] font-mono font-bold hover:underline flex items-center gap-1 mt-1 text-start"
                     >
                       <span>{showAllIssues ? (isAr ? 'عرض أقل' : 'Show Less') : (isAr ? `عرض جميع القيم الـ ${profile.anomalies.length}` : `Show all ${profile.anomalies.length} outliers`)}</span>
                     </button>

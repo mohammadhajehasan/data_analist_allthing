@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { EmptyState } from '../../components/common/EmptyState';
 import { validateSqlWithNineLayers } from '../../utils/sqlValidator';
 import { executeAnalyticalQuery } from '../../utils/analyticsEngine';
 import { analyzeSqlErrors } from '../../utils/sqlErrorParser';
@@ -391,10 +392,15 @@ addAuditLog({
 
   if (!activeDataset) {
     return (
-      <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)]">
-        <Database className="w-12 h-12 text-[#0f62fe] mx-auto mb-3" />
-        <p className="text-sm font-bold">No active dataset selected</p>
-      </div>
+      <EmptyState
+        icon={<Database className="w-12 h-12" />}
+        title={language === 'ar' ? 'لا توجد مجموعة بيانات نشطة' : 'No Active Dataset'}
+        description={language === 'ar'
+          ? 'مختبر SQL باللغة الطبيعية يحتاج مخطط بيانات فعلياً. ارفع ملف CSV/JSON من صفحة المجموعات ثم عد إلى هنا.'
+          : 'The NL2SQL Lab needs a real dataset schema. Upload a CSV/JSON file via the Datasets page, then come back.'}
+        ctaLabel={language === 'ar' ? 'الذهاب إلى مجموعات البيانات' : 'Go to Datasets'}
+        onCta={() => setActiveTab('datasets')}
+      />
     );
   }
 
@@ -404,7 +410,7 @@ addAuditLog({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
               IBM CARBON / 9-LAYER SECURE NL2SQL PIPELINE
             </span>
           </div>
@@ -426,7 +432,7 @@ addAuditLog({
           onClick={() => setActiveSubTab('editor')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'editor'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              ? 'border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)]'
               : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
@@ -438,7 +444,7 @@ addAuditLog({
           onClick={() => setActiveSubTab('arena')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'arena'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              ? 'border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)]'
               : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
@@ -453,7 +459,7 @@ addAuditLog({
           onClick={() => setActiveSubTab('config')}
           className={`px-4 py-2.5 text-xs font-mono font-bold uppercase transition-colors flex items-center gap-2 border-b-2 ${
             activeSubTab === 'config'
-              ? 'border-[#0f62fe] text-[#0f62fe] bg-[var(--cds-layer-02)]'
+              ? 'border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)]'
               : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
           }`}
         >
@@ -511,7 +517,7 @@ addAuditLog({
       {/* Query Presets & Quick Testing Bar */}
       <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-mono text-[var(--cds-text-03)]">
-          <TestTube2 className="w-3.5 h-3.5 text-[#0f62fe]" />
+          <TestTube2 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
           <span>{isAr ? 'نماذج استعلام سريعة للفحص:' : 'Quick Query Scenarios:'}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -571,7 +577,7 @@ addAuditLog({
             {errorAnalysis.suggestions.some(s => s.autoFixAvailable && s.fixedSql) && (
               <button
                 onClick={() => applyCorrection(errorAnalysis.suggestions.find(s => s.autoFixAvailable)?.fixedSql)}
-                className="px-3 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold uppercase shrink-0 flex items-center gap-1.5 shadow transition-colors"
+                className="px-3 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold uppercase shrink-0 flex items-center gap-1.5 shadow transition-colors"
               >
                 <Wrench className="w-3.5 h-3.5" />
                 <span>{isAr ? 'تطبيق الإصلاح التلقائي' : 'One-Click Auto-Fix'}</span>
@@ -590,7 +596,7 @@ addAuditLog({
                 {errorAnalysis.suggestions.map(sug => (
                   <div
                     key={sug.id}
-                    className="p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] flex flex-col justify-between transition-colors"
+                    className="p-2.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] flex flex-col justify-between transition-colors"
                   >
                     <div>
                       <span className="text-xs font-mono font-bold text-[var(--cds-text-01)] block">
@@ -608,7 +614,7 @@ addAuditLog({
                         </span>
                         <button
                           onClick={() => applyCorrection(sug.fixedSql)}
-                          className="px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
+                          className="px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-interactive-01)] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
                         >
                           <Check className="w-3 h-3" />
                           <span>{isAr ? 'تطبيق هذا المقترح' : 'Apply Fix'}</span>
@@ -632,7 +638,7 @@ addAuditLog({
         <div className="lg:col-span-7 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] flex flex-col justify-between">
           <div className="p-3 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-[#0f62fe]" />
+              <Terminal className="w-4 h-4 text-[var(--cds-interactive-01)]" />
               <span className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
                 Synthesized SQL Query
               </span>
@@ -659,7 +665,7 @@ addAuditLog({
               <button
                 onClick={handleOptimizeSql}
                 disabled={!sqlCode.trim()}
-                className="px-2.5 py-1 bg-[#0f62fe]/20 hover:bg-[#0f62fe]/30 border border-[#0f62fe] text-[#78a9ff] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-[var(--cds-interactive-01)] text-[#78a9ff] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
                 title="Optimize Query with Gemini AI"
                 id="nl2sql-optimize-btn"
               >
@@ -695,7 +701,7 @@ addAuditLog({
             <div className={`w-full bg-[var(--cds-layer-01)] border text-xs font-mono outline-none leading-relaxed transition-colors overflow-auto max-h-[300px] ${
                 errorAnalysis?.hasError
                   ? 'border-[#da1e28] text-[#ff8389] focus-within:border-[#ff8389]'
-                  : 'border-[var(--cds-border-subtle)] focus-within:border-[#0f62fe]'
+                  : 'border-[var(--cds-border-subtle)] focus-within:border-[var(--cds-interactive-01)]'
               }`}>
               <Editor
                 value={sqlCode}
@@ -761,7 +767,7 @@ addAuditLog({
           {/* 9-Layer Laser Gate — the query as a photon crossing security rings */}
           <div className="rounded-lg overflow-hidden border border-[var(--cds-border-subtle)]">
             <div className="px-3 py-1.5 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
                 <ShieldCheck className="w-3 h-3" />
                 {isAr ? 'البوابة الليزرية — 9 طبقات' : 'Laser Gate — 9 Layers'}
               </span>
@@ -823,7 +829,7 @@ addAuditLog({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#0f62fe]" />
+            <Layers className="w-4 h-4 text-[var(--cds-interactive-01)]" />
             <h3 className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase">
               {isAr ? 'خطة المعالجة والتنفيذ لمحرك البيانات (Visual Execution Engine)' : 'Visual SQL Execution Plan (D3 Engine)'}
             </h3>
@@ -870,7 +876,7 @@ addAuditLog({
                 onClick={() => setShowChart(!showChart)}
                 className="px-3 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
               >
-                <BarChart3 className="w-3.5 h-3.5 text-[#0f62fe]" />
+                <BarChart3 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                 <span>{showChart ? 'Show Table' : 'Visualize Chart'}</span>
               </button>
             </div>

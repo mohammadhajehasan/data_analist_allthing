@@ -553,9 +553,9 @@ export const DashboardBuilder: React.FC = () => {
   };
 
   const renderCreateForm = () => (
-    <div className="bg-[var(--cds-layer-01)] border border-[#0f62fe]/60 p-4 space-y-3 shadow-lg">
+    <div className="bg-[var(--cds-layer-01)] border border-blue-600/60 p-4 space-y-3 shadow-lg">
       <div className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase tracking-wider flex items-center gap-2">
-        <Plus className="w-3.5 h-3.5 text-[#0f62fe]" />
+        <Plus className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
         {isAr ? 'إنشاء لوحة تحكم جديدة' : 'Create New Dashboard'}
       </div>
       <input
@@ -565,7 +565,7 @@ export const DashboardBuilder: React.FC = () => {
         placeholder={isAr ? 'اسم اللوحة (مثال: لوحة المبيعات الشهرية)' : 'Dashboard name (e.g. Monthly Sales)'}
         maxLength={60}
         autoFocus
-        className="w-full px-3 py-2 text-sm bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] focus:outline-hidden focus:ring-1 focus:ring-[#0f62fe]/40 rounded-lg transition-colors"
+        className="w-full px-3 py-2 text-sm bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden focus:ring-1 focus:ring-blue-600/40 rounded-lg transition-colors"
       />
       <input
         value={newDashDesc}
@@ -573,7 +573,7 @@ export const DashboardBuilder: React.FC = () => {
         onKeyDown={e => { if (e.key === 'Enter') handleCreateDashboard(); }}
         placeholder={isAr ? 'وصف اختياري للوحة' : 'Optional description'}
         maxLength={140}
-        className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] focus:outline-hidden focus:ring-1 focus:ring-[#0f62fe]/40 rounded-lg transition-colors"
+        className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden focus:ring-1 focus:ring-blue-600/40 rounded-lg transition-colors"
       />
       <div className="flex items-center gap-2">
         <button
@@ -596,7 +596,7 @@ export const DashboardBuilder: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
           <div>
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
               <LayoutDashboard className="w-3.5 h-3.5" />
               IBM CARBON / DASHBOARD ANALYTICS & STATISTICAL ENGINE
             </span>
@@ -708,14 +708,14 @@ export const DashboardBuilder: React.FC = () => {
             >
               <button
                 onClick={() => handleOpenEditModal(w)}
-                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white transition-colors"
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-interactive-01)] text-[var(--cds-text-02)] hover:text-white transition-colors"
                 title={isAr ? 'تعديل العنصر' : 'Edit Widget'}
               >
                 <Edit3 className="w-3 h-3" />
               </button>
               <button
                 onClick={() => handleShareWidgetToGroup(w.id, isAr ? w.titleAr || w.title : w.title)}
-                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white transition-colors"
+                className="p-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-interactive-01)] text-[var(--cds-text-02)] hover:text-white transition-colors"
                 title={isAr ? 'مشاركة في مناقشة جماعية' : 'Share to group discussion'}
               >
                 <MessageSquare className="w-3 h-3" />
@@ -759,7 +759,7 @@ export const DashboardBuilder: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
               <LayoutDashboard className="w-3.5 h-3.5" />
               IBM CARBON / DASHBOARD ANALYTICS & STATISTICAL ENGINE
             </span>
@@ -778,14 +778,14 @@ export const DashboardBuilder: React.FC = () => {
             className={`flex items-center gap-1.5 px-2.5 py-2 border text-[11px] font-mono font-bold transition-colors ${
               dashboardAutosave.paused
                 ? 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] text-[var(--cds-text-03)]'
-                : 'border-[#0f62fe]/40 bg-[#0f62fe]/5 text-[#0f62fe]'
+                : 'border-blue-600/40 bg-blue-600/5 text-[var(--cds-interactive-01)]'
             }`}
             title={autosaveLastSaved
               ? (isAr ? `آخر حفظ تلقائي: ${autosaveLastSaved}` : `Last auto-save: ${autosaveLastSaved}`)
               : (isAr ? 'لم يحدث حفظ تلقائي بعد' : 'No auto-save happened yet')
             }
           >
-            <CloudUpload className={`w-3.5 h-3.5 ${dashboardAutosave.paused ? 'text-[var(--cds-text-03)]' : 'text-[#0f62fe]'}`} />
+            <CloudUpload className={`w-3.5 h-3.5 ${dashboardAutosave.paused ? 'text-[var(--cds-text-03)]' : 'text-[var(--cds-interactive-01)]'}`} />
             <span>
               {dashboardAutosave.paused
                 ? (isAr ? 'الحفظ التلقائي موقوف' : 'Auto-save paused')
@@ -796,10 +796,10 @@ export const DashboardBuilder: React.FC = () => {
           </div>
           <button
             onClick={() => saveModifiedDashboardsNow()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[#0f62fe] text-[var(--cds-text-01)] text-xs font-mono font-bold transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] border border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] text-xs font-mono font-bold transition-colors shadow-xs"
             title={isAr ? 'حفظ كل التغييرات غير المحفوظة الآن' : 'Save all unsaved changes now'}
           >
-            <CloudUpload className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <CloudUpload className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             <span>{isAr ? 'حفظ الآن' : 'Save now'}</span>
           </button>
           <button
@@ -846,7 +846,7 @@ export const DashboardBuilder: React.FC = () => {
                       onClick={() => { setActiveDashboardId(d.id); setShowDashSwitcher(false); }}
                       className={`flex-1 min-w-0 text-start px-3 py-2 text-xs font-mono flex items-center gap-2 transition-colors ${
                         d.id === activeDashboard.id
-                          ? 'bg-[#0f62fe]/15 text-[#78a9ff] font-bold'
+                          ? 'bg-blue-600/15 text-[#78a9ff] font-bold'
                           : 'text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)]'
                       }`}
                       title={isAr ? (d.nameAr || d.name || d.title || d.id) : (d.name || d.title || d.id)}
@@ -877,7 +877,7 @@ export const DashboardBuilder: React.FC = () => {
                 <div className="border-t border-[var(--cds-border-subtle)] mt-1 pt-1">
                   <button
                     onClick={() => { setShowDashSwitcher(false); setShowCreateForm(true); }}
-                    className="w-full text-start px-3 py-2 text-xs font-mono text-[#78a9ff] hover:bg-[#0f62fe]/20 flex items-center gap-2 transition-colors"
+                    className="w-full text-start px-3 py-2 text-xs font-mono text-[#78a9ff] hover:bg-blue-600/20 flex items-center gap-2 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span className="font-bold">{isAr ? 'لوحة تحكم جديدة…' : 'New dashboard…'}</span>
@@ -992,7 +992,7 @@ export const DashboardBuilder: React.FC = () => {
                   className="w-full text-start px-3 py-2 text-xs font-mono text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)] flex items-center gap-2.5 transition-colors disabled:opacity-60"
                 >
                   {sharingDashboard
-                    ? <Loader2 className="w-4 h-4 text-[#0f62fe] animate-spin" />
+                    ? <Loader2 className="w-4 h-4 text-[var(--cds-interactive-01)] animate-spin" />
                     : <MessageSquare className="w-4 h-4 text-[#78a9ff]" />}
                   <div>
                     <div className="font-bold">{isAr ? 'مشاركة لقطة اللوحة كاملة في مناقشة' : 'Share full dashboard snapshot'}</div>
@@ -1002,9 +1002,9 @@ export const DashboardBuilder: React.FC = () => {
 
                 <button
                   onClick={() => { setShowExportMenu(false); setShowCentralizedExportModal(true); }}
-                  className="w-full text-start px-3 py-2 text-xs font-mono text-[#78a9ff] hover:bg-[#0f62fe]/20 flex items-center gap-2.5 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs font-mono text-[#78a9ff] hover:bg-blue-600/20 flex items-center gap-2.5 transition-colors"
                 >
-                  <Download className="w-4 h-4 text-[#0f62fe]" />
+                  <Download className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                   <div>
                     <div className="font-bold">{isAr ? 'خيارات التصدير الشاملة (CSV, JSON, Excel, SQL)' : 'Centralized Multi-Format Export'}</div>
                     <div className="text-[10px] text-[var(--cds-text-03)]">{isAr ? 'مركز تصدير البيانات والتقارير المتقدم' : 'Advanced multi-format data export hub'}</div>
@@ -1031,7 +1031,7 @@ export const DashboardBuilder: React.FC = () => {
       {/* Visualization Themes Palette Selector */}
       <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#0f62fe]/15 border border-[#0f62fe] text-[#0f62fe]">
+          <div className="p-2 bg-blue-600/15 border border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)]">
             <Palette className="w-4 h-4" />
           </div>
           <div>
@@ -1064,7 +1064,7 @@ export const DashboardBuilder: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 px-2.5 py-1.5 text-xs font-mono transition-all border ${
                   isSelected
-                    ? 'bg-[var(--cds-layer-02)] border-[#0f62fe] text-[var(--cds-text-01)] shadow-md ring-1 ring-[#0f62fe]'
+                    ? 'bg-[var(--cds-layer-02)] border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] shadow-md ring-1 ring-[var(--cds-interactive-01)]'
                     : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:border-[var(--cds-border-strong)] hover:text-[var(--cds-text-01)]'
                 }`}
                 title={isAr ? vt.descriptionAr : vt.descriptionEn}
@@ -1126,7 +1126,7 @@ export const DashboardBuilder: React.FC = () => {
                   {/* Visual Calculating Loading Overlay on specific widget */}
                   {isWidgetCalculating && (
                     <div className="absolute inset-0 z-20 bg-[var(--cds-layer-01)]/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 transition-all">
-                      <Loader2 className="w-6 h-6 text-[#0f62fe] animate-spin" />
+                      <Loader2 className="w-6 h-6 text-[var(--cds-interactive-01)] animate-spin" />
                       <span className="text-xs font-mono text-[var(--cds-text-01)] font-bold">
                         {isAr ? 'جارِ إعادة احتساب الدالة الإحصائية...' : 'Recalculating statistical aggregation...'}
                       </span>
@@ -1199,7 +1199,7 @@ export const DashboardBuilder: React.FC = () => {
                     <div className="flex items-center gap-1.5 shrink-0" data-export-ignore="true">
 
                       {layoutSettings.showCardBadges && (
-                        <span className="text-[10px] font-mono uppercase bg-[var(--cds-layer-01)] text-[#0f62fe] border border-[var(--cds-border-subtle)] px-2 py-0.5 font-bold">
+                        <span className="text-[10px] font-mono uppercase bg-[var(--cds-layer-01)] text-[var(--cds-interactive-01)] border border-[var(--cds-border-subtle)] px-2 py-0.5 font-bold">
                           {w.type}
                         </span>
                       )}
@@ -1249,7 +1249,7 @@ export const DashboardBuilder: React.FC = () => {
                       {/* Edit Button */}
                       <button
                         onClick={() => handleOpenEditModal(w)}
-                        className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[#0f62fe] text-[var(--cds-text-02)] hover:text-white border border-[var(--cds-border-subtle)] transition-colors"
+                        className="p-1.5 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-interactive-01)] text-[var(--cds-text-02)] hover:text-white border border-[var(--cds-border-subtle)] transition-colors"
                         title={isAr ? 'تعديل المحاور والخيارات' : 'Edit Axes & Settings'}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -1353,13 +1353,13 @@ export const DashboardBuilder: React.FC = () => {
 
       {/* Export Toast / Progress Indicator */}
       {exportProgress && (
-        <div className="fixed bottom-6 end-6 z-50 bg-[var(--cds-layer-01)] border border-[#0f62fe] shadow-2xl p-4 w-80 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 end-6 z-50 bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] shadow-2xl p-4 w-80 animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {exportProgress.status === 'done' ? (
                 <CheckCircle2 className="w-4 h-4 text-[#24a148]" />
               ) : (
-                <Loader2 className="w-4 h-4 text-[#0f62fe] animate-spin" />
+                <Loader2 className="w-4 h-4 text-[var(--cds-interactive-01)] animate-spin" />
               )}
               <span className="text-xs font-mono font-bold text-white uppercase">
                 {exportProgress.status === 'done'
@@ -1376,7 +1376,7 @@ export const DashboardBuilder: React.FC = () => {
           <div className="w-full bg-[var(--cds-layer-01)] h-1.5 overflow-hidden mb-1.5">
             <div
               className={`h-full transition-all duration-200 ${
-                exportProgress.status === 'done' ? 'bg-[#24a148]' : 'bg-[#0f62fe]'
+                exportProgress.status === 'done' ? 'bg-[#24a148]' : 'bg-[var(--cds-interactive-01)]'
               }`}
               style={{ width: `${exportProgress.progress}%` }}
             />
@@ -1408,7 +1408,7 @@ export const DashboardBuilder: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-3">
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
                   <Sliders className="w-3 h-3" />
                   IBM CARBON / WIDGET & MATHEMATICAL CONFIGURATOR
                 </span>
@@ -1431,7 +1431,7 @@ export const DashboardBuilder: React.FC = () => {
               {datasets.length > 1 && (
                 <div>
                   <label className="block text-[var(--cds-text-01)] font-bold mb-1 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-[#0f62fe]" />
+                    <Database className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                     <span>{isAr ? 'مجموعة البيانات المصدرية' : 'Source Dataset'}</span>
                   </label>
                   <select
@@ -1507,11 +1507,11 @@ export const DashboardBuilder: React.FC = () => {
                         onClick={() => setWidgetType(item.type)}
                         className={`p-2.5 flex flex-col items-center justify-center gap-1.5 border text-center transition-all ${
                           isSelected
-                            ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-white font-bold shadow-md'
+                            ? 'bg-blue-600/20 border-[var(--cds-interactive-01)] text-white font-bold shadow-md'
                             : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-strong)] hover:text-white'
                         }`}
                       >
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[#0f62fe]' : 'text-[var(--cds-text-03)]'}`} />
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[var(--cds-interactive-01)]' : 'text-[var(--cds-text-03)]'}`} />
                         <span className="text-[11px]">{isAr ? item.labelAr : item.labelEn}</span>
                       </button>
                     );
@@ -1529,7 +1529,7 @@ export const DashboardBuilder: React.FC = () => {
                         name="kpiMode"
                         checked={kpiMode === 'auto'}
                         onChange={() => setKpiMode('auto')}
-                        className="accent-[#0f62fe]"
+                        className="accent-[var(--cds-interactive-01)]"
                       />
                       <span>{isAr ? 'حساب رياضي وإحصائي آلي من البيانات' : 'Auto Compute from Dataset'}</span>
                     </label>
@@ -1539,7 +1539,7 @@ export const DashboardBuilder: React.FC = () => {
                         name="kpiMode"
                         checked={kpiMode === 'manual'}
                         onChange={() => setKpiMode('manual')}
-                        className="accent-[#0f62fe]"
+                        className="accent-[var(--cds-interactive-01)]"
                       />
                       <span>{isAr ? 'إدخال قيمة مخصصة يدوياً' : 'Manual Metric Value'}</span>
                     </label>
@@ -1676,7 +1676,7 @@ export const DashboardBuilder: React.FC = () => {
                     <div>
                       <label className="block text-[var(--cds-text-01)] font-bold mb-1.5 flex items-center justify-between">
                         <span>{isAr ? 'المحور الأفقي / التصنيف (X-Axis)' : 'Dimension / Category (X-Axis)'}</span>
-                        <span className="text-[10px] text-[#0f62fe] font-normal font-mono">Category / Time</span>
+                        <span className="text-[10px] text-[var(--cds-interactive-01)] font-normal font-mono">Category / Time</span>
                       </label>
                       <select
                         value={widgetXAxis}
@@ -1722,7 +1722,7 @@ export const DashboardBuilder: React.FC = () => {
                                 onClick={() => setGeoMode('choropleth')}
                                 className={`p-2 border text-[11px] font-bold ${
                                   geoMode === 'choropleth'
-                                    ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                    ? 'bg-blue-600/25 border-[var(--cds-interactive-01)] text-white'
                                     : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
                                 }`}
                               >
@@ -1733,7 +1733,7 @@ export const DashboardBuilder: React.FC = () => {
                                 onClick={() => setGeoMode('markers')}
                                 className={`p-2 border text-[11px] font-bold ${
                                   geoMode === 'markers'
-                                    ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                    ? 'bg-blue-600/25 border-[var(--cds-interactive-01)] text-white'
                                     : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
                                 }`}
                               >
@@ -1777,7 +1777,7 @@ export const DashboardBuilder: React.FC = () => {
                                     }}
                                     className={`px-2 py-1 text-[10px] font-mono font-bold border transition-colors ${
                                       focusContinent === f.key
-                                        ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                                        ? 'bg-blue-600/25 border-[var(--cds-interactive-01)] text-white'
                                         : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white'
                                     }`}
                                   >
@@ -1838,8 +1838,8 @@ export const DashboardBuilder: React.FC = () => {
                                   : 'Upload a FeatureCollection GeoJSON of governorates/cities to draw sub-regions on the map instead of built-in countries.'}
                               </p>
                               {!geoJsonData ? (
-                                <label className="flex items-center justify-center gap-2 py-3 border border-dashed border-[var(--cds-border-strong)] cursor-pointer hover:border-[#0f62fe] transition-colors text-[11px] font-mono text-[var(--cds-text-02)] hover:text-white">
-                                  <FileUp className="w-4 h-4 text-[#0f62fe]" />
+                                <label className="flex items-center justify-center gap-2 py-3 border border-dashed border-[var(--cds-border-strong)] cursor-pointer hover:border-[var(--cds-interactive-01)] transition-colors text-[11px] font-mono text-[var(--cds-text-02)] hover:text-white">
+                                  <FileUp className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                                   <span>{isAr ? 'اختر ملف ‎.geojson / ‏.json' : 'Pick a .geojson / .json file'}</span>
                                   <input
                                     type="file"
@@ -1946,7 +1946,7 @@ export const DashboardBuilder: React.FC = () => {
                       {/* Live Calculation Indicator Badge */}
                       <div className="flex items-center gap-2">
                         {isCalculatingAgg ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#0f62fe]/20 text-[#33b1ff] border border-[#0f62fe] text-[10px] font-mono animate-pulse font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-600/20 text-[#33b1ff] border border-[var(--cds-interactive-01)] text-[10px] font-mono animate-pulse font-bold">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             {isAr ? 'جارِ معالجة الحساب الرياضي...' : 'Computing statistics...'}
                           </span>
@@ -1971,7 +1971,7 @@ export const DashboardBuilder: React.FC = () => {
                       <select
                         value={widgetAggregation}
                         onChange={e => handleAggregationChange(e.target.value as AggregationFunction)}
-                        className="carbon-input w-full text-xs font-mono font-bold text-[#33b1ff] bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] focus:border-[#0f62fe] py-2 cursor-pointer"
+                        className="carbon-input w-full text-xs font-mono font-bold text-[#33b1ff] bg-[var(--cds-layer-01)] border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] py-2 cursor-pointer"
                         id="math-function-select"
                       >
                         <optgroup label={isAr ? '── مقاييس النزعة المركزية (Central Tendency) ──' : '── Central Tendency Measures ──'}>
@@ -2029,15 +2029,15 @@ export const DashboardBuilder: React.FC = () => {
                               onClick={() => handleAggregationChange(opt.value)}
                               className={`p-1.5 border text-start flex flex-col justify-between transition-all text-[10px] ${
                                 isSelected
-                                  ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white shadow-sm font-bold'
+                                  ? 'bg-blue-600/25 border-[var(--cds-interactive-01)] text-white shadow-sm font-bold'
                                   : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-strong)] hover:text-white'
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
-                                <span className={`font-mono px-1 py-0.2 text-[9px] ${isSelected ? 'bg-[#0f62fe] text-white' : 'bg-[var(--cds-layer-01)] text-[#33b1ff]'}`}>
+                                <span className={`font-mono px-1 py-0.2 text-[9px] ${isSelected ? 'bg-[var(--cds-interactive-01)] text-white' : 'bg-[var(--cds-layer-01)] text-[#33b1ff]'}`}>
                                   {opt.symbol}
                                 </span>
-                                {isSelected && <Check className="w-3 h-3 text-[#0f62fe]" />}
+                                {isSelected && <Check className="w-3 h-3 text-[var(--cds-interactive-01)]" />}
                               </div>
                               <span className="font-bold truncate mt-1 text-[var(--cds-text-01)]">
                                 {isAr ? opt.labelAr.split('(')[0] : opt.labelEn.split('(')[0]}
@@ -2052,15 +2052,15 @@ export const DashboardBuilder: React.FC = () => {
                   {/* Mathematical Calculation Formula Preview Banner with Live Loading State */}
                   <div className={`p-3 border transition-colors flex items-center gap-3 relative ${
                     isCalculatingAgg
-                      ? 'bg-[#0f62fe]/10 border-[#0f62fe]'
+                      ? 'bg-blue-600/10 border-[var(--cds-interactive-01)]'
                       : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-strong)]'
                   }`}>
                     {isCalculatingAgg ? (
-                      <div className="w-8 h-8 bg-[#0f62fe] text-white flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 bg-[var(--cds-interactive-01)] text-white flex items-center justify-center shrink-0">
                         <Loader2 className="w-4 h-4 animate-spin" />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#0f62fe] font-mono font-bold shrink-0">
+                      <div className="w-8 h-8 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[var(--cds-interactive-01)] font-mono font-bold shrink-0">
                         {selectedAggOption.symbol}
                       </div>
                     )}

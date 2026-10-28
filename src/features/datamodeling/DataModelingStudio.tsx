@@ -46,7 +46,7 @@ import {
 
 // Color palette for table cards
 const TABLE_ACCENTS = [
-  '#0f62fe', // IBM Blue
+  'var(--cds-interactive-01)', // IBM Blue
   '#8a3ffc', // Purple
   '#007d79', // Teal
   '#ee538b', // Magenta
@@ -753,7 +753,7 @@ export const DataModelingStudio: React.FC = () => {
       {/* Carbon Studio Header Banner */}
       <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff] shrink-0">
+          <div className="w-12 h-12 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#78a9ff] shrink-0">
             <Workflow className="w-6 h-6" />
           </div>
           <div className="min-w-0">
@@ -761,7 +761,7 @@ export const DataModelingStudio: React.FC = () => {
               <h1 className="text-xl font-mono font-bold uppercase text-[var(--cds-text-01)] truncate">
                 {isAr ? 'استوديو نمذجة البيانات والعلاقات' : 'Data Modeling & ERD Studio'}
               </h1>
-              <span className="px-2 py-0.5 bg-[#0f62fe]/20 border border-[#0f62fe]/40 text-[#78a9ff] text-xs font-mono font-bold">
+              <span className="px-2 py-0.5 bg-blue-600/20 border border-blue-600/40 text-[#78a9ff] text-xs font-mono font-bold">
                 {tables.length} {isAr ? 'شيتات / جداول' : 'Sheets / Tables'}
               </span>
               <span className="px-2 py-0.5 bg-[#8a3ffc]/20 border border-[#8a3ffc]/40 text-[#be95ff] text-xs font-mono font-bold">
@@ -779,7 +779,7 @@ export const DataModelingStudio: React.FC = () => {
         {/* Action Controls Group */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Upload Multi-CSV / Excel Files */}
-          <label className="px-3 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors shadow-lg">
+          <label className="px-3 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors shadow-lg">
             <FileSpreadsheet className="w-4 h-4" />
             <span>{isAr ? 'تحميل ملفات CSV / أكسيل' : 'Upload CSV / Excel Files'}</span>
             <input
@@ -848,7 +848,7 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('canvas')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'canvas'
-                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)] text-[#78a9ff]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
@@ -863,7 +863,7 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('relationships')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'relationships'
-                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)] text-[#78a9ff]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
@@ -878,7 +878,7 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('preview')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'preview'
-                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)] text-[#78a9ff]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
@@ -890,7 +890,7 @@ export const DataModelingStudio: React.FC = () => {
             onClick={() => setActiveTab('export')}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 font-bold transition-colors ${
               activeTab === 'export'
-                ? 'border-[#0f62fe] bg-[var(--cds-layer-02)] text-[#78a9ff]'
+                ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)] text-[#78a9ff]'
                 : 'border-transparent text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]'
             }`}
           >
@@ -1020,7 +1020,7 @@ export const DataModelingStudio: React.FC = () => {
         <div className="space-y-6">
           {tables.length === 0 ? (
             <div className="p-12 border-2 border-dashed border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] text-center space-y-4">
-              <div className="w-16 h-16 bg-[#0f62fe]/10 border border-[#0f62fe]/40 flex items-center justify-center mx-auto text-[#78a9ff]">
+              <div className="w-16 h-16 bg-blue-600/10 border border-blue-600/40 flex items-center justify-center mx-auto text-[#78a9ff]">
                 <FileSpreadsheet className="w-8 h-8" />
               </div>
               <h3 className="text-base font-mono font-bold text-[var(--cds-text-01)]">
@@ -1032,7 +1032,7 @@ export const DataModelingStudio: React.FC = () => {
                   : 'Please upload a multi-sheet Excel workbook or import workspace datasets to begin visual ERD data modeling.'}
               </p>
               <div className="flex items-center justify-center gap-3 pt-2">
-                <label className="px-4 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold cursor-pointer transition-colors flex items-center gap-2">
+                <label className="px-4 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold cursor-pointer transition-colors flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4" />
                   <span>{isAr ? 'تحميل ملف أكسيل' : 'Upload Excel Workbook'}</span>
                   <input
@@ -1061,12 +1061,12 @@ export const DataModelingStudio: React.FC = () => {
                 return (
                   <div
                     key={tbl.id}
-                    className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] transition-all duration-200 shadow-xl flex flex-col overflow-hidden group"
+                    className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] transition-all duration-200 shadow-xl flex flex-col overflow-hidden group"
                   >
                     {/* Table Header Accent */}
                     <div
                       className="p-3 text-white flex items-center justify-between border-b border-[var(--cds-border-subtle)]"
-                      style={{ backgroundColor: `${tbl.color || '#0f62fe'}20`, borderColor: tbl.color || '#0f62fe' }}
+                      style={{ backgroundColor: `${tbl.color || 'var(--cds-interactive-01)'}20`, borderColor: tbl.color || 'var(--cds-interactive-01)' }}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <Table className="w-4 h-4 shrink-0" style={{ color: tbl.color || '#78a9ff' }} />
@@ -1092,7 +1092,7 @@ export const DataModelingStudio: React.FC = () => {
                               isPk
                                 ? 'bg-[#f1c21b]/10 border-[#f1c21b]/40 text-[#f1c21b]'
                                 : isFk
-                                ? 'bg-[#0f62fe]/10 border-[#0f62fe]/40 text-[#78a9ff]'
+                                ? 'bg-blue-600/10 border-blue-600/40 text-[#78a9ff]'
                                 : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:border-[var(--cds-border-subtle)]'
                             }`}
                           >
@@ -1131,7 +1131,7 @@ export const DataModelingStudio: React.FC = () => {
                     {/* Footer Relations Count */}
                     <div className="p-2.5 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between text-[11px] font-mono text-[var(--cds-text-03)]">
                       <div className="flex items-center gap-1">
-                        <LinkIcon className="w-3 h-3 text-[#0f62fe]" />
+                        <LinkIcon className="w-3 h-3 text-[var(--cds-interactive-01)]" />
                         <span>{tableRels.length} {isAr ? 'علاقات' : 'linked'}</span>
                       </div>
                       <button
@@ -1165,7 +1165,7 @@ export const DataModelingStudio: React.FC = () => {
             <button
               onClick={() => handleOpenAddRelationModal()}
               disabled={tables.length < 2}
-              className="px-3 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow"
+              className="px-3 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow"
             >
               <Plus className="w-4 h-4" />
               <span>{isAr ? 'إضافة علاقة جديدة' : 'Add New Constraint'}</span>
@@ -1201,7 +1201,7 @@ export const DataModelingStudio: React.FC = () => {
                       <td className="p-3 text-[var(--cds-text-03)]">{idx + 1}</td>
                       <td className="p-3 font-bold text-[#78a9ff]">{r.sourceTable}</td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 bg-[#0f62fe]/10 border border-[#0f62fe]/30 text-[#78a9ff]">
+                        <span className="px-2 py-0.5 bg-blue-600/10 border border-blue-600/30 text-[#78a9ff]">
                           {r.sourceColumn}
                         </span>
                       </td>
@@ -1362,7 +1362,7 @@ export const DataModelingStudio: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff]">
+                    <div className="w-10 h-10 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#78a9ff]">
                       <Database className="w-5 h-5" />
                     </div>
                     <div>
@@ -1402,7 +1402,7 @@ export const DataModelingStudio: React.FC = () => {
                 <button
                   onClick={handleDownloadSqlFile}
                   disabled={tables.length === 0}
-                  className="py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors shadow"
+                  className="py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors shadow"
                 >
                   <Download className="w-4 h-4" />
                   <span>{isAr ? 'تحميل .sql' : 'Download .sql'}</span>
@@ -1441,7 +1441,7 @@ export const DataModelingStudio: React.FC = () => {
               <div className="flex items-center border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-2 text-xs font-mono">
                 <button
                   onClick={() => setExportSqlDialect('postgres')}
-                  className="px-3 py-2 text-[#78a9ff] border-b-2 border-[#0f62fe] font-bold"
+                  className="px-3 py-2 text-[#78a9ff] border-b-2 border-[var(--cds-interactive-01)] font-bold"
                 >
                   Prisma Schema (.prisma)
                 </button>
@@ -1482,7 +1482,7 @@ export const DataModelingStudio: React.FC = () => {
           <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] w-full max-w-lg shadow-2xl overflow-hidden">
             <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <LinkIcon className="w-4 h-4 text-[#0f62fe]" />
+                <LinkIcon className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 <h3 className="text-sm font-mono font-bold uppercase text-[var(--cds-text-01)]">
                   {editingRelId
                     ? (isAr ? 'تعديل علاقة هيكلية' : 'Edit Relationship')
@@ -1601,7 +1601,7 @@ export const DataModelingStudio: React.FC = () => {
 
               <button
                 onClick={handleSaveRelationship}
-                className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-bold flex items-center gap-1.5"
+                className="px-4 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white font-bold flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>{isAr ? 'حفظ العلاقة' : 'Save Relationship'}</span>
@@ -1637,7 +1637,7 @@ export const DataModelingStudio: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Download SQL DDL Option */}
-                <div className="p-4 bg-[var(--cds-layer-01)] border border-[#0f62fe] space-y-3 flex flex-col justify-between">
+                <div className="p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] space-y-3 flex flex-col justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[#78a9ff] font-mono font-bold text-xs">
                       <Database className="w-4 h-4" />
@@ -1653,7 +1653,7 @@ export const DataModelingStudio: React.FC = () => {
                       handleDownloadSqlFile();
                       setShowDownloadSchemaModal(false);
                     }}
-                    className="w-full py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-mono text-xs font-bold flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white font-mono text-xs font-bold flex items-center justify-center gap-2"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>{isAr ? 'تحميل .sql' : 'Download .sql'}</span>

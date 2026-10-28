@@ -34,7 +34,7 @@ export const SonificationToggle: React.FC<{ compact?: boolean }> = ({ compact = 
       onClick={toggle}
       className={`h-9 flex items-center gap-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-colors ${
         enabled
-          ? 'bg-[#0f62fe]/15 border-[#0f62fe]/50 text-[#78a9ff]'
+          ? 'bg-blue-600/15 border-blue-600/50 text-[#78a9ff]'
           : 'bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)]'
       }`}
       title={

@@ -132,7 +132,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-none bg-[#0f62fe]/20 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40">
+            <div className="w-9 h-9 rounded-none bg-blue-600/20 text-[#78a9ff] flex items-center justify-center border border-blue-600/40">
               <Cpu className="w-5 h-5" />
             </div>
             <div>
@@ -140,7 +140,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 <h2 className="text-base font-semibold tracking-tight text-[var(--cds-text-01)]">
                   {isAr ? 'مركز مزودي نماذج الذكاء الاصطناعي والخصوصية' : 'AI Models & Privacy Provider Hub'}
                 </h2>
-                <span className="px-2 py-0.5 text-xs bg-[#0f62fe]/20 text-[#78a9ff] border border-[#0f62fe]/30">
+                <span className="px-2 py-0.5 text-xs bg-blue-600/20 text-[#78a9ff] border border-blue-600/30">
                   Multi-Provider V2
                 </span>
               </div>
@@ -175,7 +175,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('ollama')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'ollama'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -196,7 +196,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('gemini')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'gemini'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -217,7 +217,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('deepseek')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'deepseek'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -238,7 +238,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('qwen')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'qwen'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -259,7 +259,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('openrouter')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'openrouter'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -280,7 +280,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                 onClick={() => setActiveTab('custom_openai')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-start transition-colors ${
                   activeTab === 'custom_openai'
-                    ? 'bg-[#0f62fe] text-white font-medium'
+                    ? 'bg-[var(--cds-interactive-01)] text-white font-medium'
                     : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                 }`}
               >
@@ -388,7 +388,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                     onClick={() => setAIPrivacyMode('hybrid')}
                     className={`p-4 border cursor-pointer transition-all ${
                       aiSettings.privacyMode === 'hybrid'
-                        ? 'border-[#0f62fe] bg-[#0f62fe]/10 shadow-xs'
+                        ? 'border-[var(--cds-interactive-01)] bg-blue-600/10 shadow-xs'
                         : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] hover:border-[var(--cds-border-strong)]'
                     }`}
                   >
@@ -400,7 +400,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                         </span>
                       </div>
                       {aiSettings.privacyMode === 'hybrid' && (
-                        <span className="text-[11px] bg-[#0f62fe] text-white font-semibold px-2 py-0.5">
+                        <span className="text-[11px] bg-[var(--cds-interactive-01)] text-white font-semibold px-2 py-0.5">
                           {isAr ? 'مفعل حالياً' : 'Active'}
                         </span>
                       )}
@@ -483,7 +483,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                             isAr ? `المزود النشط الآن هو ${currentProvider.nameAr}` : `Active provider set to ${currentProvider.name}`
                           );
                         }}
-                        className="px-3 py-1.5 text-xs font-medium bg-[#0f62fe] hover:bg-[#0353e9] text-white transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white transition-colors"
                       >
                         {isAr ? 'تعيين كمزود نشط' : 'Set as Active Provider'}
                       </button>
@@ -540,7 +540,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                         value={currentProvider.endpointUrl || ''}
                         onChange={(e) => updateProviderConfig(currentProvider.providerId, { endpointUrl: e.target.value })}
                         placeholder="e.g. http://localhost:11434 or https://api.deepseek.com/v1"
-                        className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono"
+                        className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono"
                       />
                       <p className="text-[11px] text-[var(--cds-text-03)] mt-1">
                         {currentProvider.providerId === 'ollama'
@@ -570,7 +570,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                           value={currentProvider.apiKey || ''}
                           onChange={(e) => updateProviderConfig(currentProvider.providerId, { apiKey: e.target.value })}
                           placeholder="sk-..."
-                          className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono"
+                          className="w-full px-3 py-2 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono"
                         />
                       </div>
                       <p className="text-[11px] text-[var(--cds-text-03)] mt-1">
@@ -702,7 +702,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                           }}
                           className={`p-3 border cursor-pointer transition-all ${
                             isSelected
-                              ? 'border-[#0f62fe] bg-[#0f62fe]/10 shadow-xs'
+                              ? 'border-[var(--cds-interactive-01)] bg-blue-600/10 shadow-xs'
                               : 'border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] hover:border-[var(--cds-border-strong)]'
                           }`}
                         >
@@ -714,7 +714,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
                               </div>
                             </div>
                             {isSelected && (
-                              <span className="w-2 h-2 rounded-full bg-[#0f62fe] shrink-0 mt-1" />
+                              <span className="w-2 h-2 rounded-full bg-[var(--cds-interactive-01)] shrink-0 mt-1" />
                             )}
                           </div>
 
@@ -758,7 +758,7 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({ isOpen, onClos
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-1.5 text-xs font-medium bg-[#0f62fe] hover:bg-[#0353e9] text-white transition-colors"
+              className="px-4 py-1.5 text-xs font-medium bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white transition-colors"
             >
               {isAr ? 'تم وحفظ الإعدادات' : 'Done & Apply'}
             </button>

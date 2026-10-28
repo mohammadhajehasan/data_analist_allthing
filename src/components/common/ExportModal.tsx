@@ -237,7 +237,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const tableHeadersHtml = activeCols.map(c => `<th style="padding: 10px; border: 1px solid #ddd; background: #0f62fe; color: white; text-align: left;">${c.header}</th>`).join('');
+    const tableHeadersHtml = activeCols.map(c => `<th style="padding: 10px; border: 1px solid #ddd; background: var(--cds-interactive-01); color: white; text-align: left;">${c.header}</th>`).join('');
     const tableRowsHtml = targetData.map((row, idx) => {
       const bg = idx % 2 === 0 ? '#f9f9f9' : '#ffffff';
       const cells = activeCols.map(c => `<td style="padding: 8px; border: 1px solid #ddd;">${row[c.key] ?? ''}</td>`).join('');
@@ -251,7 +251,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
           <title>${filename} - PDF Report</title>
           <style>
             body { font-family: system-ui, -apple-system, sans-serif; padding: 30px; color: #161616; }
-            .header { border-bottom: 2px solid #0f62fe; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+            .header { border-bottom: 2px solid var(--cds-interactive-01); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
             .meta-box { background: #f4f4f4; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 12px; display: flex; gap: 20px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             .footer { margin-top: 30px; border-top: 1px solid #ddd; pt-10px; font-size: 10px; color: #666; text-align: center; }
@@ -353,7 +353,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0f62fe]/15 text-[#78a9ff] flex items-center justify-center border border-[#0f62fe]/40 rounded-lg shrink-0">
+            <div className="w-10 h-10 bg-blue-600/15 text-[#78a9ff] flex items-center justify-center border border-blue-600/40 rounded-lg shrink-0">
               <Download className="w-5 h-5" />
             </div>
             <div>
@@ -401,7 +401,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                     onClick={() => setFormat(item.id as ExportFormat)}
                     className={`p-3 text-start border transition-all rounded-lg cursor-pointer flex flex-col justify-between h-20 ${
                       isSelected
-                        ? 'bg-[#0f62fe]/15 border-[#0f62fe] ring-1 ring-[#0f62fe]'
+                        ? 'bg-blue-600/15 border-[var(--cds-interactive-01)] ring-1 ring-[var(--cds-interactive-01)]'
                         : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
                     }`}
                   >
@@ -433,7 +433,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                 value={filename}
                 onChange={e => setFilename(e.target.value)}
                 placeholder="export-report"
-                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md"
+                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-md"
               />
             </div>
 
@@ -445,7 +445,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
               <select
                 value={scope}
                 onChange={e => setScope(e.target.value as any)}
-                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[#0f62fe] focus:outline-hidden font-mono rounded-md cursor-pointer"
+                className="w-full h-9 px-3 text-xs bg-[var(--cds-layer-01)] text-[var(--cds-text-01)] border border-[var(--cds-border-strong)] focus:border-[var(--cds-interactive-01)] focus:outline-hidden font-mono rounded-md cursor-pointer"
               >
                 <option value="all">{isAr ? `جميع السجلات (${data.length} سجل)` : `All Records (${data.length} rows)`}</option>
                 {selectedRowIndices && selectedRowIndices.size > 0 && (
@@ -472,7 +472,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                       onClick={() => setDelimiter(d.id as any)}
                       className={`h-9 px-3 text-xs font-mono border rounded-md cursor-pointer transition-colors ${
                         delimiter === d.id
-                          ? 'bg-[#0f62fe] border-[#0f62fe] text-white font-bold'
+                          ? 'bg-[var(--cds-interactive-01)] border-[var(--cds-interactive-01)] text-white font-bold'
                           : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
                       }`}
                     >
@@ -490,7 +490,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                   type="checkbox"
                   checked={includeHeader}
                   onChange={e => setIncludeHeader(e.target.checked)}
-                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[#0f62fe] focus:ring-0"
+                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[var(--cds-interactive-01)] focus:ring-0"
                 />
                 <span>{isAr ? 'تضمين أسماء الأعمدة (Header Row)' : 'Include Header Row'}</span>
               </label>
@@ -500,7 +500,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                   type="checkbox"
                   checked={includeMetadata}
                   onChange={e => setIncludeMetadata(e.target.checked)}
-                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[#0f62fe] focus:ring-0"
+                  className="rounded border-[var(--cds-border-strong)] bg-[var(--cds-layer-01)] text-[var(--cds-interactive-01)] focus:ring-0"
                 />
                 <span>{isAr ? 'تضمين بيانات وصفية وتاريخ التقرير (Metadata Note)' : 'Include Metadata Header'}</span>
               </label>
@@ -536,11 +536,11 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
                       onClick={() => toggleColumn(col.key)}
                       className={`px-2.5 py-1 text-xs font-mono border rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                         isChecked
-                          ? 'bg-[#0f62fe]/20 border-[#0f62fe] text-[#78a9ff] font-semibold'
+                          ? 'bg-blue-600/20 border-[var(--cds-interactive-01)] text-[#78a9ff] font-semibold'
                           : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:text-white'
                       }`}
                     >
-                      {isChecked ? <CheckSquare className="w-3.5 h-3.5 text-[#0f62fe]" /> : <Square className="w-3.5 h-3.5" />}
+                      {isChecked ? <CheckSquare className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" /> : <Square className="w-3.5 h-3.5" />}
                       <span>{col.header}</span>
                     </button>
                   );
@@ -592,7 +592,7 @@ Click "Print / Save PDF" to open a styled print document in your browser.`;
             <button
               type="button"
               onClick={handleDownload}
-              className="h-9 px-5 text-xs font-semibold bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center gap-2 transition-all rounded-md cursor-pointer shadow-md"
+              className="h-9 px-5 text-xs font-semibold bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center gap-2 transition-all rounded-md cursor-pointer shadow-md"
             >
               <Download className="w-4 h-4" />
               <span>{format === 'pdf' ? (isAr ? 'طباعة / حفظ PDF' : 'Print / Save PDF') : (isAr ? 'تنزيل الملف الان' : 'Download File')}</span>

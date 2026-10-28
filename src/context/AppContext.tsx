@@ -151,7 +151,7 @@ interface AppContextType {
  }
 
 const ACCENT_COLOR_MAP: Record<string, { primary: string; hover: string; active: string }> = {
-  blue: { primary: '#0f62fe', hover: '#0353e9', active: '#002d9c' },
+  blue: { primary: 'var(--cds-interactive-01)', hover: '#0353e9', active: '#002d9c' },
   teal: { primary: '#009d9a', hover: '#007d79', active: '#005d5d' },
   purple: { primary: '#8a3ffc', hover: '#6929c4', active: '#491d8b' },
   cyan: { primary: '#1192e8', hover: '#0072c3', active: '#00539a' },
@@ -401,15 +401,31 @@ export const AppProvider: React.FC<{
   }, []);
 
   // حفظ/تحديث مجموعة على الخادم (fire-and-forget — لا يبطئ الاستيراد)
+  // يعتمد XMLHttpRequest لقياس رجع تقدّم الرفع الحقيقي (fetch لا يوفره للمُرسل)،
+  // ويُبثّ الحالة عبر حدث window موحّد «carbon-dataset-sync-progress» لأي واجهة تريد عرض شريط تقدّم.
   const syncDatasetToServer = useCallback((ds: Dataset) => {
     if (!authUserRef.current) return;
     try {
-      fetch(`/api/datasets/${encodeURIComponent(ds.id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(ds),
-        keepalive: true,
-      }).catch(() => {});
+      const announce = (progress: number) => {
+        try {
+          window.dispatchEvent(new CustomEvent('carbon-dataset-sync-progress', { detail: { datasetId: ds.id, progress } }));
+        } catch { /* noop */ }
+      };
+      announce(0.02);
+      // التسلسل خارج تزامن اللقطات الصغيرة يُحرَّك مباشرة — قبله نمنح المتصفح قسماً للرسم
+      const body = JSON.stringify(ds);
+      announce(0.35);
+      const headers = authHeaders();
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', `/api/datasets/${encodeURIComponent(ds.id)}`);
+      Object.entries(headers).forEach(([k, v]) => (k !== 'Content-Type') && xhr.setRequestHeader(k, String(v)));
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) announce(0.35 + 0.6 * (e.loaded / e.total));
+      };
+      xhr.onload = () => announce(1);
+      xhr.onerror = () => announce(-1);
+      xhr.send(body);
     } catch { /* الاستمرارية تحسين — لا تُعطّل الواجهة أبداً */ }
   }, [authHeaders]);
 
@@ -530,9 +546,19 @@ export const AppProvider: React.FC<{
       .then((resp: { datasets?: Dataset[] }) => {
         const serverRows = Array.isArray(resp?.datasets) ? resp.datasets : [];
         if (serverRows.length === 0) return;
+        // تطبيع المجموعات القادمة من الخادم: مخازن قديمة قد تفتقد columnCount/rowCount المحسوبين
+        const normalized = serverRows.map(d => ({
+          ...d,
+          columnCount: d?.columnCount ?? d?.columns?.length ?? 0,
+          rowCount: d?.rowCount ?? d?.data?.length ?? 0,
+          data: Array.isArray(d?.data) ? d.data : [],
+          columns: Array.isArray(d?.columns) ? d.columns : [],
+          sizeBytes: d?.sizeBytes ?? JSON.stringify(d?.data ?? []).length,
+          updatedAt: d?.updatedAt ?? d?.createdAt ?? '',
+        }));
         setDatasets(prev => {
           const byId = new Map(prev.map(d => [d.id, d]));
-          for (const row of serverRows) byId.set(row.id, row);
+          for (const row of normalized) byId.set(row.id, row);
           return Array.from(byId.values());
         });
         // أول مجموعة تعود من الخادم تصبح النشطة تلقائياً إذا لم تُعين واحدة بعد

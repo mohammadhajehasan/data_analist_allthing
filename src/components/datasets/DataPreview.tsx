@@ -129,7 +129,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
     switch (type) {
       case 'integer':
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#0f62fe]/15 text-[#4589ff] border border-[#0f62fe]/40 text-[9px] font-mono font-bold uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-600/15 text-[#4589ff] border border-blue-600/40 text-[9px] font-mono font-bold uppercase tracking-wider">
             <Hash className="w-2.5 h-2.5" />
             <span>INT</span>
           </span>
@@ -301,7 +301,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
       {/* Header Toolbar */}
       <div className="bg-[var(--cds-layer-02)] p-4 border-b border-[var(--cds-border-subtle)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#4589ff]">
+          <div className="w-8 h-8 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#4589ff]">
             <Table className="w-4 h-4" />
           </div>
           <div>
@@ -334,7 +334,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
               placeholder={isAr ? 'بحث في الـ 50 صفاً...' : 'Search preview sample...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-6 py-1.5 focus:border-[#0f62fe] focus:outline-none font-mono placeholder:text-[var(--cds-text-03)]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-6 py-1.5 focus:border-[var(--cds-interactive-01)] focus:outline-none font-mono placeholder:text-[var(--cds-text-03)]"
             />
             {searchQuery && (
               <button
@@ -491,7 +491,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
                         {getTypeBadge(col.type)}
                         <ArrowUpDown
                           className={`w-3 h-3 transition-opacity ${
-                            isSorted ? 'opacity-100 text-[#0f62fe]' : 'opacity-0 group-hover:opacity-40 text-[var(--cds-text-03)]'
+                            isSorted ? 'opacity-100 text-[var(--cds-interactive-01)]' : 'opacity-0 group-hover:opacity-40 text-[var(--cds-text-03)]'
                           }`}
                         />
                       </div>
@@ -567,7 +567,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
       <div className="bg-[var(--cds-layer-02)] px-4 py-2.5 border-t border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex items-center gap-3 text-[var(--cds-text-02)] text-[11px]">
           <span className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#0f62fe]" />
+            <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             <span>{isAr ? 'عينة المعاينة المباشرة (50 صف)' : 'Live 50-Row Active Preview'}</span>
           </span>
           <span className="text-[var(--cds-text-03)]">|</span>
@@ -579,7 +579,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({ dataset, onClose }) =>
         <div className="flex items-center gap-4 text-[11px] text-[var(--cds-text-03)]">
           <span>
             {isAr ? 'الحجم التقديري:' : 'Size:'}{' '}
-            <strong className="text-[var(--cds-text-01)]">{Math.round(dataset.sizeBytes / 1024)} KB</strong>
+            <strong className="text-[var(--cds-text-01)]">{Math.round((dataset.sizeBytes || 0) / 1024)} KB</strong>
           </span>
           <span>
             {isAr ? 'جودة البيانات:' : 'Health:'}{' '}

@@ -55,7 +55,7 @@ interface OutputPanelProps {
 
 type OutputTab = 'table' | 'charts' | 'ai' | 'errors' | 'raw';
 
-const CHART_COLORS = ['#0f62fe', '#8a3ffc', '#009d9a', '#24a148', '#ff7eb6', '#f1c21b', '#fa4d56'];
+const CHART_COLORS = ['var(--cds-interactive-01)', '#8a3ffc', '#009d9a', '#24a148', '#ff7eb6', '#f1c21b', '#fa4d56'];
 
 export const OutputPanel: React.FC<OutputPanelProps> = ({
   nodes,
@@ -232,7 +232,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               {status === 'running' && (
-                <span className="flex items-center gap-1 text-[#78a9ff] bg-[#0f62fe]/15 px-2 py-0.5 rounded border border-[#0f62fe]/30 animate-pulse">
+                <span className="flex items-center gap-1 text-[#78a9ff] bg-blue-600/15 px-2 py-0.5 rounded border border-blue-600/30 animate-pulse">
                   <Clock className="w-3 h-3 animate-spin" />
                   <span>{isAr ? 'جاري المعالجة...' : 'Processing...'}</span>
                 </span>
@@ -260,7 +260,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               onClick={() => setActiveTab('table')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'table' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                activeTab === 'table' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <TableIcon className="w-3.5 h-3.5" />
@@ -271,7 +271,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               onClick={() => setActiveTab('charts')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'charts' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                activeTab === 'charts' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -282,7 +282,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               <button
                 onClick={() => setActiveTab('ai')}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'ai' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                  activeTab === 'ai' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
                 }`}
               >
                 <Bot className="w-3.5 h-3.5 text-[#be95ff]" />
@@ -305,7 +305,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               onClick={() => setActiveTab('raw')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors cursor-pointer ${
-                activeTab === 'raw' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                activeTab === 'raw' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <Code2 className="w-3.5 h-3.5" />
@@ -371,7 +371,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
+                      className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[var(--cds-interactive-01)]"
                     />
                   </div>
 
@@ -597,7 +597,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                             <Bar key={col.name} dataKey={col.name} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
                           ))
                         ) : (
-                          <Bar dataKey="value" fill="#0f62fe" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="value" fill="var(--cds-interactive-01)" radius={[4, 4, 0, 0]} />
                         )}
                       </BarChart>
                     </ResponsiveContainer>

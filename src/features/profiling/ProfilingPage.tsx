@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { EmptyState } from '../../components/common/EmptyState';
 import {
   BarChart2,
   ShieldCheck,
@@ -19,7 +20,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { CARBON_PALETTE } from '../../components/charts/ChartFactory';
 
 export const ProfilingPage: React.FC = () => {
-  const { activeDataset, language, t, aiSettings } = useApp();
+  const { activeDataset, language, t, aiSettings, setActiveTab } = useApp();
   const activeProviderConf = aiSettings.providers[aiSettings.activeProvider];
   const [selectedColumn, setSelectedColumn] = useState<string | null>(
     activeDataset?.columns?.[0]?.name || null
@@ -32,12 +33,15 @@ export const ProfilingPage: React.FC = () => {
   const profile = activeDataset?.profile;
   if (!profile) {
     return (
-      <div className="carbon-tile p-12 text-center text-[var(--cds-text-02)]">
-        <Database className="w-12 h-12 text-[#0f62fe] mx-auto mb-3" />
-        <p className="text-sm font-bold">
-          {language === 'ar' ? 'لا يوجد توصيف إحصائي لمجموعة البيانات الحالية.' : 'No profiling stats available for active dataset.'}
-        </p>
-      </div>
+      <EmptyState
+        icon={<Database className="w-12 h-12" />}
+        title={language === 'ar' ? 'لا يوجد توصيف إحصائي لمجموعة البيانات الحالية.' : 'No profiling stats available for active dataset.'}
+        description={language === 'ar'
+          ? 'ارفع ملف CSV/JSON من صفحة المجموعات ليُبنى ملف الجودة تلقائياً بعد الاستيراد.'
+          : 'Upload a CSV/JSON file via the Datasets page — the profiling profile builds automatically after import.'}
+        ctaLabel={language === 'ar' ? 'الذهاب إلى مجموعات البيانات' : 'Go to Datasets'}
+        onCta={() => setActiveTab('datasets')}
+      />
     );
   }
 
@@ -78,7 +82,7 @@ export const ProfilingPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
               IBM CARBON / STATISTICAL PROFILER
             </span>
           </div>
@@ -93,14 +97,14 @@ export const ProfilingPage: React.FC = () => {
           disabled={isSummarizing}
           className="carbon-btn-secondary gap-2 text-xs font-mono font-bold uppercase tracking-wider"
         >
-          <Sparkles className={`w-3.5 h-3.5 text-[#0f62fe] ${isSummarizing ? 'animate-spin' : ''}`} />
+          <Sparkles className={`w-3.5 h-3.5 text-[var(--cds-interactive-01)] ${isSummarizing ? 'animate-spin' : ''}`} />
           <span>{isSummarizing ? t.common.loading : language === 'ar' ? 'تحديث التلخيص الذكي' : 'Refresh AI Insights'}</span>
         </button>
       </div>
 
       {/* AI Profiling Summary Banner - Carbon Callout Style */}
-      <div className="p-4 bg-[var(--cds-layer-02)] border-s-4 border-s-[#0f62fe] border border-[var(--cds-border-subtle)] flex items-start gap-3">
-        <div className="w-8 h-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[#0f62fe] shrink-0 mt-0.5">
+      <div className="p-4 bg-[var(--cds-layer-02)] border-s-4 border-s-[var(--cds-interactive-01)] border border-[var(--cds-border-subtle)] flex items-start gap-3">
+        <div className="w-8 h-8 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] flex items-center justify-center text-[var(--cds-interactive-01)] shrink-0 mt-0.5">
           <Sparkles className="w-4 h-4" />
         </div>
         <div className="space-y-1 flex-1">
@@ -140,7 +144,7 @@ export const ProfilingPage: React.FC = () => {
         <div className="p-4 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-2">
           <div className="flex items-center justify-between text-[var(--cds-text-03)] text-xs font-mono font-semibold uppercase">
             <span>{t.profiling.totalRows}</span>
-            <Database className="w-4 h-4 text-[#0f62fe]" />
+            <Database className="w-4 h-4 text-[var(--cds-interactive-01)]" />
           </div>
           <div className="text-3xl font-black text-[var(--cds-text-01)] font-mono">
             {profile.rowCount.toLocaleString()}
@@ -198,7 +202,7 @@ export const ProfilingPage: React.FC = () => {
                   onClick={() => setSelectedColumn(col.name)}
                   className={`w-full text-start p-2.5 flex items-center justify-between transition-colors ${
                     isSelected
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -295,7 +299,7 @@ export const ProfilingPage: React.FC = () => {
                             fontSize: '11px',
                           }}
                         />
-                        <Bar dataKey="count" fill="#0f62fe" radius={0}>
+                        <Bar dataKey="count" fill="var(--cds-interactive-01)" radius={0}>
                           {activeColStats.histogram.map((_, idx) => (
                             <Cell key={`bin-${idx}`} fill={CARBON_PALETTE[idx % CARBON_PALETTE.length]} />
                           ))}
@@ -320,7 +324,7 @@ export const ProfilingPage: React.FC = () => {
                       >
                         <span className="text-[var(--cds-text-01)] truncate">{String(fv.value)}</span>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[#0f62fe] font-bold">{fv.count}x</span>
+                          <span className="text-[var(--cds-interactive-01)] font-bold">{fv.count}x</span>
                           <span className="text-[var(--cds-text-03)] text-[10px]">({fv.percentage}%)</span>
                         </div>
                       </div>

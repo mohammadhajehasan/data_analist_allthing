@@ -28,7 +28,7 @@ interface StoryChartRendererProps {
 }
 
 const PALETTE = [
-  '#0f62fe', // Carbon Blue 60
+  'var(--cds-interactive-01)', // Carbon Blue 60
   '#009d9a', // Carbon Teal 50
   '#8a3ffc', // Carbon Purple 60
   '#ee5396', // Carbon Magenta 50
@@ -113,7 +113,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('bar')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'bar' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
+              chartType === 'bar' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Bar Chart"
           >
@@ -123,7 +123,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('line')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'line' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
+              chartType === 'line' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Line Chart"
           >
@@ -133,7 +133,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('area')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'area' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
+              chartType === 'area' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Area Chart"
           >
@@ -143,7 +143,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             type="button"
             onClick={() => setChartType('pie')}
             className={`p-1 text-xs transition-colors ${
-              chartType === 'pie' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
+              chartType === 'pie' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-02)] hover:text-white hover:bg-[var(--cds-layer-03)]'
             }`}
             title="Pie Chart"
           >
@@ -176,9 +176,9 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#0f62fe"
+                stroke="var(--cds-interactive-01)"
                 strokeWidth={2.5}
-                dot={{ r: 4, fill: '#0f62fe', stroke: '#161616', strokeWidth: 2 }}
+                dot={{ r: 4, fill: 'var(--cds-interactive-01)', stroke: '#161616', strokeWidth: 2 }}
                 activeDot={{ r: 6, fill: '#33b1ff' }}
               />
             </LineChart>
@@ -186,8 +186,8 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
             <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0f62fe" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#0f62fe" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="var(--cds-interactive-01)" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="var(--cds-interactive-01)" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
@@ -197,7 +197,7 @@ export const StoryChartRenderer: React.FC<StoryChartRendererProps> = ({
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="#0f62fe"
+                stroke="var(--cds-interactive-01)"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#areaGradient)"

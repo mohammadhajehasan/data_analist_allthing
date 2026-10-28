@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 const TABLE_ACCENTS = [
-  '#0f62fe', '#8a3ffc', '#1192e8', '#007d79',
+  'var(--cds-interactive-01)', '#8a3ffc', '#1192e8', '#007d79',
   '#fa4d56', '#673ab7', '#009688', '#3f51b5'
 ];
 
@@ -347,7 +347,7 @@ export const AdvancedModelingPage: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[var(--cds-text-01)]">
-                <Workflow className="w-4 h-4 text-[#0f62fe]" />
+                <Workflow className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 <h2 className="text-sm font-mono font-bold uppercase">
                   {isAr ? 'مخطط تصور العلاقات بين الجداول (Relationship Visualization)' : 'Table Relationship Diagram'}
                 </h2>

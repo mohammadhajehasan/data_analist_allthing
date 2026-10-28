@@ -80,7 +80,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
         {/* Modal Header */}
         <div className="p-4 bg-[var(--cds-layer-01)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#78a9ff]">
+            <div className="w-8 h-8 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#78a9ff]">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
@@ -116,7 +116,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
           {isLoading ? (
             <div className="py-20 text-center space-y-3">
               <div className="inline-block p-4 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] animate-pulse">
-                <Sparkles className="w-8 h-8 text-[#0f62fe] animate-spin mx-auto" />
+                <Sparkles className="w-8 h-8 text-[var(--cds-interactive-01)] animate-spin mx-auto" />
               </div>
               <h4 className="text-sm font-mono font-bold text-[var(--cds-text-01)]">
                 {isAr ? 'جاري فحص الاستعلام واقتراح التحسينات عبر نموذج الذكاء الاصطناعي...' : 'Analyzing Query & Synthesizing Optimizations with AI Engine...'}
@@ -146,7 +146,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                   onClick={() => setActiveTab('diff')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'diff'
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -157,7 +157,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                   onClick={() => setActiveTab('indexes')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'indexes'
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -168,7 +168,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                   onClick={() => setActiveTab('notes')}
                   className={`px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     activeTab === 'notes'
-                      ? 'bg-[#0f62fe] text-white font-bold'
+                      ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                       : 'text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
                   }`}
                 >
@@ -193,8 +193,8 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                   </div>
 
                     {/* Optimized SQL */}
-                    <div className="bg-[var(--cds-layer-01)] border border-[#0f62fe] flex flex-col">
-                      <div className="p-2 bg-[#0f62fe]/10 border-b border-[#0f62fe] flex items-center justify-between flex-wrap gap-1">
+                    <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] flex flex-col">
+                      <div className="p-2 bg-blue-600/10 border-b border-[var(--cds-interactive-01)] flex items-center justify-between flex-wrap gap-1">
                         <span className="text-[11px] font-mono font-bold uppercase text-[#78a9ff] flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>{isAr ? 'الاستعلام المُحسّن' : 'Optimized Query'}</span>
@@ -306,7 +306,7 @@ export const SqlOptimizerModal: React.FC<SqlOptimizerModalProps> = ({
                   {/* Refactoring Notes */}
                   <div className="space-y-2">
                     <h5 className="text-xs font-mono font-bold uppercase text-[var(--cds-text-01)] flex items-center gap-1.5">
-                      <Sliders className="w-4 h-4 text-[#0f62fe]" />
+                      <Sliders className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                       <span>{isAr ? 'تفاصيل التحسينات التقنية' : 'Refactoring Actions Taken'}</span>
                     </h5>
                     <div className="space-y-2">

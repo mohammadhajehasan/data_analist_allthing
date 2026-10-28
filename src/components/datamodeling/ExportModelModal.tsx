@@ -176,7 +176,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
               onClick={() => setExportFormat('json')}
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'json'
-                  ? 'bg-[#0f62fe] text-white'
+                  ? 'bg-[var(--cds-interactive-01)] text-white'
                   : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
@@ -187,7 +187,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
               onClick={() => setExportFormat('sql')}
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'sql'
-                  ? 'bg-[#0f62fe] text-white'
+                  ? 'bg-[var(--cds-interactive-01)] text-white'
                   : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
@@ -198,7 +198,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
               onClick={() => setExportFormat('mermaid')}
               className={`px-3 py-1.5 rounded font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 exportFormat === 'mermaid'
-                  ? 'bg-[#0f62fe] text-white'
+                  ? 'bg-[var(--cds-interactive-01)] text-white'
                   : 'text-[var(--cds-text-03)] hover:text-white'
               }`}
             >
@@ -246,7 +246,7 @@ export const ExportModelModal: React.FC<ExportModelModalProps> = ({
 
             <button
               onClick={handleDownload}
-              className="px-4 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 rounded cursor-pointer shadow"
+              className="px-4 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold flex items-center gap-1.5 rounded cursor-pointer shadow"
             >
               <Download className="w-3.5 h-3.5" />
               <span>{isAr ? 'تحميل الملف' : 'Download File'}</span>

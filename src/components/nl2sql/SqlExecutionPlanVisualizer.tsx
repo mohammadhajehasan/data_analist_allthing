@@ -23,7 +23,7 @@ interface SqlExecutionPlanVisualizerProps {
 }
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; icon: string }> = {
-  SCAN: { bg: '#0f62fe15', border: '#0f62fe', text: '#78a9ff', icon: 'Database' },
+  SCAN: { bg: '#2563eb15', border: 'var(--cds-interactive-01)', text: '#78a9ff', icon: 'Database' },
   FILTER: { bg: '#f1c21b15', border: '#f1c21b', text: '#f1c21b', icon: 'Filter' },
   AGGREGATE: { bg: '#8a3ffc15', border: '#8a3ffc', text: '#be95ff', icon: 'Sigma' },
   SORT: { bg: '#1192e815', border: '#1192e8', text: '#33b1ff', icon: 'ArrowUpDown' },
@@ -137,7 +137,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
       .attr('cx', d => (d.source.x + d.target.x) / 2)
       .attr('cy', d => (d.source.y + d.target.y) / 2)
       .attr('r', 3)
-      .attr('fill', '#0f62fe');
+      .attr('fill', 'var(--cds-interactive-01)');
 
     // Node groups
     const nodes = g
@@ -168,7 +168,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
       .append('rect')
       .attr('width', nodeWidth)
       .attr('height', 3)
-      .attr('fill', d => TYPE_COLORS[d.data.type]?.border || '#0f62fe');
+      .attr('fill', d => TYPE_COLORS[d.data.type]?.border || 'var(--cds-interactive-01)');
 
     // Stage Type Badge
     nodes
@@ -291,7 +291,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
       {/* Top Action Bar */}
       <div className="p-3 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-[#0f62fe]" />
+          <Layers className="w-4 h-4 text-[var(--cds-interactive-01)]" />
           <h4 className="text-xs font-mono font-bold uppercase text-[var(--cds-text-01)] tracking-wide">
             {isAr ? 'خطة تنفيذ الاستعلام التفاعلية (EXPLAIN Plan)' : 'Interactive SQL Execution Plan (D3.js)'}
           </h4>
@@ -305,7 +305,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
             <button
               onClick={() => setViewMode('graph')}
               className={`px-2 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
-                viewMode === 'graph' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                viewMode === 'graph' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <Network className="w-3.5 h-3.5" />
@@ -314,7 +314,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
             <button
               onClick={() => setViewMode('tree')}
               className={`px-2 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
-                viewMode === 'tree' ? 'bg-[#0f62fe] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
+                viewMode === 'tree' ? 'bg-[var(--cds-interactive-01)] text-white font-bold' : 'text-[var(--cds-text-02)] hover:text-white'
               }`}
             >
               <ListTree className="w-3.5 h-3.5" />
@@ -380,7 +380,7 @@ export const SqlExecutionPlanVisualizer: React.FC<SqlExecutionPlanVisualizerProp
           {viewMode === 'graph' && (
             <div className="absolute bottom-2 left-2 bg-[var(--cds-layer-01)]/90 border border-[var(--cds-border-subtle)] p-1.5 flex flex-wrap gap-2 text-[10px] font-mono text-[var(--cds-text-02)] backdrop-blur-sm pointer-events-none">
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#0f62fe]" /> Scan
+                <span className="w-2 h-2 rounded-full bg-[var(--cds-interactive-01)]" /> Scan
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-[#f1c21b]" /> Filter

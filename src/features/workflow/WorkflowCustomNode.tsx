@@ -28,11 +28,11 @@ import { WorkflowNodeData, WorkflowNodeCategory } from './types';
 
 const CATEGORY_STYLES: Record<WorkflowNodeCategory, { border: string; bg: string; badgeBg: string; text: string; dot: string }> = {
   trigger: {
-    border: 'border-[#0f62fe]',
+    border: 'border-[var(--cds-interactive-01)]',
     bg: 'bg-[var(--cds-layer-01)]',
-    badgeBg: 'bg-[#0f62fe]/15 text-[#78a9ff] border-[#0f62fe]/30',
+    badgeBg: 'bg-blue-600/15 text-[#78a9ff] border-blue-600/30',
     text: 'text-[#78a9ff]',
-    dot: 'bg-[#0f62fe]'
+    dot: 'bg-[var(--cds-interactive-01)]'
   },
   ai: {
     border: 'border-[#8a3ffc]',
@@ -94,6 +94,15 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
   const isCondition = nodeData?.nodeType === 'condition_rule';
   const isTrigger = category === 'trigger';
 
+  // شارة الفئة: تسمية عربية على RTL وإنجليزية على LTR (نفس المصدر — لا نص عربي في الوضع الإنجليزي)
+  const CATEGORY_LABELS: Record<WorkflowNodeCategory, { ar: string; en: string }> = {
+    trigger: { ar: 'مشغّل', en: 'Trigger' },
+    ai: { ar: 'ذكاء اصطناعي', en: 'AI' },
+    logic: { ar: 'منطق وشرط', en: 'Logic' },
+    action: { ar: 'إجراء', en: 'Action' },
+  };
+  const categoryLabel = CATEGORY_LABELS[category] || CATEGORY_LABELS.ai;
+
   const status = nodeData?.status || 'idle';
 
   return (
@@ -103,7 +112,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
         selected ? 'ring-2 ring-white/80 scale-[1.02] shadow-2xl' : ''
       } ${
         status === 'running'
-          ? 'border-[#0f62fe] shadow-[0_0_20px_rgba(15,98,254,0.4)] animate-pulse'
+          ? 'border-[var(--cds-interactive-01)] shadow-[0_0_20px_rgba(15,98,254,0.4)] animate-pulse'
           : status === 'success'
           ? 'border-[#24a148]'
           : status === 'failed'
@@ -117,10 +126,10 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
           <Handle
             type="target"
             position={Position.Top}
-            className="!w-4.5 !h-4.5 !bg-[#0f62fe] !border-2 !border-white hover:!bg-[#78a9ff] hover:!scale-130 transition-all !cursor-crosshair shadow-[0_0_8px_rgba(15,98,254,0.6)] !static !transform-none"
+            className="!w-4.5 !h-4.5 !bg-[var(--cds-interactive-01)] !border-2 !border-white hover:!bg-[#78a9ff] hover:!scale-130 transition-all !cursor-crosshair shadow-[0_0_8px_rgba(15,98,254,0.6)] !static !transform-none"
             title={isArabic ? 'منفذ الاستلام: اسحب رابطاً إلى هنا للتوصيل' : 'Input Port: Drop connection here'}
           />
-          <span className="hidden group-hover/handle:block absolute -top-5 text-[9px] font-mono bg-[var(--cds-layer-01)] text-[#78a9ff] border border-[#0f62fe] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+          <span className="hidden group-hover/handle:block absolute -top-5 text-[9px] font-mono bg-[var(--cds-layer-01)] text-[#78a9ff] border border-[var(--cds-interactive-01)] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
             {isArabic ? '📥 منفذ إدخال البيانات' : '📥 Input Port'}
           </span>
         </div>
@@ -134,7 +143,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
           </div>
           <div className="min-w-0">
             <span className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border inline-block ${theme.badgeBg}`}>
-              {category}
+              {isArabic ? categoryLabel.ar : categoryLabel.en}
             </span>
           </div>
         </div>
@@ -142,25 +151,25 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
         {/* Execution Status Badge */}
         <div className="shrink-0 flex items-center gap-1.5">
           {status === 'running' && (
-            <span className="flex items-center gap-1 text-[11px] font-mono text-[#78a9ff] bg-[#0f62fe]/20 px-2 py-0.5 rounded-full border border-[#0f62fe]/40">
+            <span className="flex items-center gap-1 text-[11px] font-mono text-[#78a9ff] bg-blue-600/20 px-2 py-0.5 rounded-full border border-blue-600/40">
               <Loader2 className="w-3 h-3 animate-spin" />
-              <span>جاري التنفيذ...</span>
+              <span>{isArabic ? 'جاري التنفيذ...' : 'Running...'}</span>
             </span>
           )}
           {status === 'success' && (
             <span className="flex items-center gap-1 text-[11px] font-mono text-[#42be65] bg-[#24a148]/20 px-2 py-0.5 rounded-full border border-[#24a148]/40">
               <CheckCircle2 className="w-3 h-3" />
-              <span>{nodeData?.executionTimeMs ? `${nodeData.executionTimeMs}ms` : 'ناجح'}</span>
+              <span>{nodeData?.executionTimeMs ? `${nodeData.executionTimeMs}ms` : (isArabic ? 'ناجح' : 'Success')}</span>
             </span>
           )}
           {status === 'failed' && (
             <span className="flex items-center gap-1 text-[11px] font-mono text-[#fa4d56] bg-[#da1e28]/20 px-2 py-0.5 rounded-full border border-[#da1e28]/40">
               <XCircle className="w-3 h-3" />
-              <span>فشل</span>
+              <span>{isArabic ? 'فشل' : 'Failed'}</span>
             </span>
           )}
           {status === 'idle' && (
-            <span className="w-2 h-2 rounded-full bg-[var(--cds-border-strong)]" title="جاهز للتشغيل" />
+            <span className="w-2 h-2 rounded-full bg-[var(--cds-border-strong)]" title={isArabic ? 'جاهز للتشغيل' : 'Ready to run'} />
           )}
         </div>
       </div>
@@ -180,12 +189,13 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
         <div className="bg-[var(--cds-layer-02)]/80 rounded px-2 py-1 text-[10px] font-mono text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] flex items-center justify-between gap-1 mb-1 truncate">
           <span className="text-[var(--cds-text-03)]">{isArabic ? 'الإعداد:' : 'Config:'}</span>
           <span className="truncate text-white">
-            {nodeData.config.model || 
-             nodeData.config.threshold !== undefined ? `Threshold: ${nodeData.config.threshold}` :
-             nodeData.config.frequency || 
-             nodeData.config.cleanStrategy || 
-             nodeData.config.channel || 
-             'مخصص'}
+            {(nodeData.config.model && String(nodeData.config.model)) ||
+             (nodeData.config.threshold !== undefined && nodeData.config.threshold !== null && nodeData.config.threshold !== ''
+               ? `${isArabic ? 'الحد الأقصى' : 'Threshold'}: ${nodeData.config.threshold}` : '') ||
+             nodeData.config.frequency ||
+             nodeData.config.cleanStrategy ||
+             nodeData.config.channel ||
+             (isArabic ? 'مخصص' : 'Custom')}
           </span>
         </div>
       )}
@@ -202,7 +212,7 @@ export const WorkflowCustomNode: React.FC<NodeProps> = ({ id, data, selected }) 
       {status === 'success' && nodeData?.lastOutput && (
         <div className="mt-2 p-1.5 rounded bg-[#24a148]/10 border border-[#24a148]/30 text-[10px] font-mono text-[#42be65] flex items-center justify-between">
           <span className="truncate">
-            {typeof nodeData.lastOutput === 'string' ? nodeData.lastOutput : 'تمت المعالجة بنجاح'}
+            {typeof nodeData.lastOutput === 'string' ? nodeData.lastOutput : (isArabic ? 'تمت المعالجة بنجاح' : 'Processed successfully')}
           </span>
           <CheckCircle2 className="w-3 h-3 shrink-0 text-[#24a148]" />
         </div>

@@ -286,7 +286,7 @@ export const AiAgentPanel: React.FC = () => {
 
                   <button
                     onClick={() => handleAddWidgetToDashboard(w)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{isAr ? 'إدراج باللوحة' : 'Place on Grid'}</span>

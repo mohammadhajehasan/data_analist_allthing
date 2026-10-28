@@ -68,7 +68,7 @@ const DEFAULT_BENCHMARK_MODELS: ModelBenchmarkItem[] = [
     generalizationScore: 92,
     cvMeanR2: 0.795,
     cvStd: 0.021,
-    color: '#0f62fe',
+    color: 'var(--cds-interactive-01)',
   },
   {
     id: 'ridge',

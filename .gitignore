@@ -25,3 +25,8 @@ coverage/
 .buyer-execution-hooks/
 # Local Claude agent settings on this machine
 .claude/
+
+# آثار جلسات تطوير قديمة — ممنوع الالتزام بها بعد الآن
+/patch_*.js
+/page-*.yml
+/test*.json

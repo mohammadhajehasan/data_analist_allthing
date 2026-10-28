@@ -179,7 +179,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
         );
       case 'PARTIAL_PRESENCE':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#0f62fe]/20 text-[#4589ff] border border-[#0f62fe]/40 text-[10px] font-mono font-bold">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-600/20 text-[#4589ff] border border-blue-600/40 text-[10px] font-mono font-bold">
             <Info className="w-3 h-3" />
             <span>{isAr ? 'غير متوفر في الكل' : 'Partial / Unique'}</span>
           </span>
@@ -193,12 +193,12 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
         {/* Modal Header */}
         <div className="bg-[var(--cds-layer-01)] px-6 py-4 border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#0f62fe]/20 border border-[#0f62fe] flex items-center justify-center text-[#4589ff]">
+            <div className="w-9 h-9 bg-blue-600/20 border border-[var(--cds-interactive-01)] flex items-center justify-center text-[#4589ff]">
               <ArrowRightLeft className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe]">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
                   SCHEMA COMPARISON ENGINE
                 </span>
                 <span className="bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] px-2 py-0.5 text-[10px] font-mono">
@@ -249,7 +249,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
           ))}
 
           {/* Compatibility Score Summary Card */}
-          <div className="p-3 bg-[#0f62fe]/10 border border-[#0f62fe]/50 space-y-1">
+          <div className="p-3 bg-blue-600/10 border border-blue-600/50 space-y-1">
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#4589ff] font-bold flex items-center justify-between">
               <span>{isAr ? 'مؤشر التطابق' : 'Compatibility'}</span>
               <Sparkles className="w-3.5 h-3.5" />
@@ -271,7 +271,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               onClick={() => setActiveTab('all')}
               className={`px-3 py-1 text-xs font-mono transition-colors ${
                 activeTab === 'all'
-                  ? 'bg-[#0f62fe] text-white font-bold'
+                  ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                   : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
               }`}
             >
@@ -303,7 +303,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               onClick={() => setActiveTab('unique')}
               className={`px-3 py-1 text-xs font-mono transition-colors ${
                 activeTab === 'unique'
-                  ? 'bg-[#0f62fe] text-white font-bold'
+                  ? 'bg-[var(--cds-interactive-01)] text-white font-bold'
                   : 'bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-03)]'
               }`}
             >
@@ -319,7 +319,7 @@ export const SchemaCompareModal: React.FC<SchemaCompareModalProps> = ({ datasets
               placeholder={isAr ? 'تصفية أسماء الأعمدة...' : 'Filter column names...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-3 py-1 focus:border-[#0f62fe] focus:outline-none font-mono"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs ps-8 pe-3 py-1 focus:border-[var(--cds-interactive-01)] focus:outline-none font-mono"
             />
           </div>
         </div>

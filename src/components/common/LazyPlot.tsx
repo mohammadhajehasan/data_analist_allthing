@@ -11,7 +11,7 @@ export type LazyPlotProps = React.ComponentProps<PlotlyModule['default']>;
 const PlotFallback: React.FC = () => (
   <div className="flex items-center justify-center h-full min-h-[240px]" dir="rtl">
     <div className="text-center space-y-2">
-      <div className="w-6 h-6 mx-auto border-2 border-[#0f62fe] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 mx-auto border-2 border-[var(--cds-interactive-01)] border-t-transparent rounded-full animate-spin" />
       <p className="text-xs text-[var(--cds-text-03,#8d8d8d)]">جاري تحميل محرك الرسوم البيانية...</p>
     </div>
   </div>

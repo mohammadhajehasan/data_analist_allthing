@@ -29,6 +29,14 @@ import { CustomWorkflowNode, WorkflowNodeData } from './types';
 import { Edge } from '@xyflow/react';
 import { useApp } from '../../context/AppContext';
 
+/** تسميات فئات العقد بالعربية — تُستخدم في قوئة المنسدلة للتوصيل السريع */
+const CATEGORY_LABELS_AR: Record<string, string> = {
+  trigger: 'مشغّل',
+  ai: 'ذكاء اصطناعي',
+  logic: 'منطق وشرط',
+  action: 'إجراء',
+};
+
 interface NodeConfigDrawerProps {
   node: CustomWorkflowNode | null;
   allNodes?: CustomWorkflowNode[];
@@ -146,18 +154,18 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
       {/* Body / Scrollable Form */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
         {/* Connection Management Section (Quick Connect & Active Links) */}
-        <div className="space-y-3 p-3 bg-[var(--cds-layer-02)] rounded-lg border border-[#0f62fe]/40 shadow-sm">
+        <div className="space-y-3 p-3 bg-[var(--cds-layer-02)] rounded-lg border border-blue-600/40 shadow-sm">
           <div className="flex items-center justify-between">
             <h4 className="font-bold text-white flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-[#78a9ff]" />
               {isAr ? 'مسارات وتوصيلات العقدة' : 'Node Connections & Flow'}
             </h4>
-            <span className="text-[10px] font-mono text-[#78a9ff] bg-[#0f62fe]/15 px-1.5 py-0.5 rounded border border-[#0f62fe]/30">
-              {incomingEdges.length} دخل / {outgoingEdges.length} خرج
+            <span className="text-[10px] font-mono text-[#78a9ff] bg-blue-600/15 px-1.5 py-0.5 rounded border border-blue-600/30">
+              {incomingEdges.length} {isAr ? 'دخل' : 'in'} / {outgoingEdges.length} {isAr ? 'خرج' : 'out'}
             </span>
           </div>
 
-          <div className="p-2 rounded-lg bg-[#0f62fe]/10 border border-[#0f62fe]/20 text-[10px] text-[var(--cds-text-02)] flex items-start gap-1.5 leading-relaxed">
+          <div className="p-2 rounded-lg bg-blue-600/10 border border-blue-600/20 text-[10px] text-[var(--cds-text-02)] flex items-start gap-1.5 leading-relaxed">
             <Info className="w-3.5 h-3.5 text-[#78a9ff] shrink-0 mt-0.5" />
             <span>
               {isAr 
@@ -176,14 +184,14 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               <select
                 value={selectedTargetId}
                 onChange={(e) => setSelectedTargetId(e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#0f62fe]"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[var(--cds-interactive-01)]"
               >
                 <option value="">{isAr ? '-- اختر العقدة التالية للربط بها --' : '-- Select Target Node --'}</option>
                 {availableTargetNodes.map((targetNode) => {
                   const label = isAr ? (targetNode.data.labelAr || targetNode.data.label) : (targetNode.data.label || targetNode.data.labelAr);
                   return (
                     <option key={targetNode.id} value={targetNode.id}>
-                      [{targetNode.data.category.toUpperCase()}] {label} ({targetNode.id})
+                      [{isAr ? CATEGORY_LABELS_AR[targetNode.data.category] || targetNode.data.category : targetNode.data.category}] {label} ({targetNode.id})
                     </option>
                   );
                 })}
@@ -221,7 +229,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 type="button"
                 onClick={handleQuickConnect}
                 disabled={!selectedTargetId}
-                className="w-full py-1.5 px-3 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow"
+                className="w-full py-1.5 px-3 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{isAr ? 'إنشاء رابط التوصيل الآن' : 'Create Connection Now'}</span>
@@ -247,8 +255,8 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                       <div className="flex items-center gap-1.5 min-w-0">
                         <ArrowRight className="w-3 h-3 text-[#78a9ff] shrink-0" />
                         <span className="text-white truncate font-bold">{targetLabel}</span>
-                        {isPass && <span className="text-[9px] text-[#42be65] px-1 bg-[#24a148]/20 rounded shrink-0">Pass</span>}
-                        {isFail && <span className="text-[9px] text-[#fa4d56] px-1 bg-[#da1e28]/20 rounded shrink-0">Fail</span>}
+                        {isPass && <span className="text-[9px] text-[#42be65] px-1 bg-[#24a148]/20 rounded shrink-0">{isAr ? 'ناجح' : 'Pass'}</span>}
+                        {isFail && <span className="text-[9px] text-[#fa4d56] px-1 bg-[#da1e28]/20 rounded shrink-0">{isAr ? 'فشل' : 'Fail'}</span>}
                       </div>
                       {onDeleteEdge && (
                         <button
@@ -317,7 +325,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               type="text"
               value={data.labelAr || ''}
               onChange={(e) => handleFieldChange('labelAr', e.target.value)}
-              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
               dir="rtl"
             />
           </div>
@@ -330,7 +338,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               type="text"
               value={data.label || ''}
               onChange={(e) => handleFieldChange('label', e.target.value)}
-              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
               dir="ltr"
             />
           </div>
@@ -343,7 +351,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               rows={2}
               value={isAr ? (data.descriptionAr || '') : (data.description || '')}
               onChange={(e) => handleFieldChange(isAr ? 'descriptionAr' : 'description', e.target.value)}
-              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe] text-[11px]"
+              className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)] text-[11px]"
             />
           </div>
         </div>
@@ -364,7 +372,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               <select
                 value={config.datasetId || 'active'}
                 onChange={(e) => handleConfigChange('datasetId', e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
               >
                 <option value="active">{isAr ? '📌 الجدول النشط حالياً' : '📌 Currently Active Dataset'}</option>
                 <option value="all">{isAr ? '🌐 جميع الجداول (All Datasets)' : '🌐 All Datasets'}</option>
@@ -391,7 +399,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               <select
                 value={config.model || activeAIModelDef.id || 'gemini-3.8-flash'}
                 onChange={(e) => handleConfigChange('model', e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe] text-xs font-mono"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)] text-xs font-mono"
               >
                 <optgroup label={isAr ? '🤖 النماذج المحلية (Local / Ollama)' : '🤖 Local Models (Ollama / LocalAI)'}>
                   {availableAIModels.filter(m => m.isLocal).map((m) => (
@@ -425,7 +433,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               <select
                 value={config.frequency || 'daily'}
                 onChange={(e) => handleConfigChange('frequency', e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
               >
                 <option value="hourly">{isAr ? 'كل ساعة (Hourly)' : 'Hourly'}</option>
                 <option value="daily">{isAr ? 'يومياً الساعة 08:00 صباحاً (Daily)' : 'Daily at 08:00 AM'}</option>
@@ -447,7 +455,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                   placeholder={currentCols[0]?.name || 'status'}
                   value={config.field || ''}
                   onChange={(e) => handleConfigChange('field', e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 />
               </div>
 
@@ -459,7 +467,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                   <select
                     value={config.operator || 'not_equals'}
                     onChange={(e) => handleConfigChange('operator', e.target.value)}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   >
                     <option value="not_equals">{isAr ? 'لا يساوي (!=)' : 'Not Equals (!=)'}</option>
                     <option value="equals">{isAr ? 'يساوي (==)' : 'Equals (==)'}</option>
@@ -477,7 +485,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                     type="text"
                     value={config.value !== undefined ? config.value : 'cancelled'}
                     onChange={(e) => handleConfigChange('value', e.target.value)}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   />
                 </div>
               </div>
@@ -494,7 +502,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 <select
                   value={config.field || 'overallScore'}
                   onChange={(e) => handleConfigChange('field', e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 >
                   <option value="overallScore">{isAr ? 'نسبة الجودة الكلية (Quality Score %)' : 'Overall Quality Score %'}</option>
                   <option value="anomaliesCount">{isAr ? 'عدد القيم الشاذة (Anomalies Count)' : 'Anomalies Count'}</option>
@@ -511,7 +519,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                   <select
                     value={config.operator || 'gte'}
                     onChange={(e) => handleConfigChange('operator', e.target.value)}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   >
                     <option value="gte">&gt;= (أكبر من أو يساوي)</option>
                     <option value="gt">&gt; (أكبر من)</option>
@@ -527,7 +535,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                     type="number"
                     value={config.threshold !== undefined ? config.threshold : 80}
                     onChange={(e) => handleConfigChange('threshold', parseFloat(e.target.value))}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   />
                 </div>
               </div>
@@ -544,7 +552,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 <select
                   value={config.cleanStrategy || 'smart_impute'}
                   onChange={(e) => handleConfigChange('cleanStrategy', e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 >
                   <option value="smart_impute">{isAr ? 'تعويض ذكي (المتوسط / الوسيط الحسابي)' : 'Smart Impute (Mean/Median)'}</option>
                   <option value="drop_nulls">{isAr ? 'حذف الصفوف غير المكتملة' : 'Drop Incomplete Rows'}</option>
@@ -556,7 +564,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                   type="checkbox"
                   checked={config.removeDuplicates !== false}
                   onChange={(e) => handleConfigChange('removeDuplicates', e.target.checked)}
-                  className="rounded border-[var(--cds-border-strong)] text-[#0f62fe] focus:ring-0"
+                  className="rounded border-[var(--cds-border-strong)] text-[var(--cds-interactive-01)] focus:ring-0"
                 />
                 <span>{isAr ? 'إزالة السجلات المكررة آلياً' : 'Automatically Remove Duplicate Rows'}</span>
               </label>
@@ -577,7 +585,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                     max={12}
                     value={config.periods || 3}
                     onChange={(e) => handleConfigChange('periods', parseInt(e.target.value))}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   />
                 </div>
                 <div>
@@ -588,7 +596,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                     type="number"
                     value={config.confidence || 95}
                     onChange={(e) => handleConfigChange('confidence', parseInt(e.target.value))}
-                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                    className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                   />
                 </div>
               </div>
@@ -638,7 +646,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 <select
                   value={config.channel || 'system_toast'}
                   onChange={(e) => handleConfigChange('channel', e.target.value)}
-                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                  className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 >
                   <option value="system_toast">{isAr ? 'إشعار النظام الفوري (In-App Toast)' : 'In-App Toast Notification'}</option>
                   <option value="audit_log">{isAr ? 'سجل التدقيق الأمني (Audit Log)' : 'Security Audit Log'}</option>
@@ -658,7 +666,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 type="text"
                 value={config.suffix || '_Auto_Cleaned'}
                 onChange={(e) => handleConfigChange('suffix', e.target.value)}
-                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[#0f62fe]"
+                className="w-full bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
               />
             </div>
           )}
@@ -691,7 +699,7 @@ export const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
         <button
           onClick={() => onTestNode(node)}
           disabled={isTesting}
-          className="px-4 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+          className="px-4 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
         >
           <Play className="w-3.5 h-3.5" />
           <span>{isTesting ? (isAr ? 'جاري الفحص...' : 'Testing...') : (isAr ? 'اختبار هذه العقدة' : 'Test Node')}</span>

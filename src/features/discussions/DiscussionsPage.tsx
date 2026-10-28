@@ -736,12 +736,12 @@ export const DiscussionsPage: React.FC = () => {
       onClick={() => { setActiveId(d.id); markActiveRead(d.id); }}
       className={`w-full text-start px-3 py-3 rounded-lg transition-colors border ${
         activeId === d.id
-          ? 'bg-[#0f62fe]/15 border-[#0f62fe]/50'
+          ? 'bg-blue-600/15 border-blue-600/50'
           : 'bg-[var(--cds-layer-01,#262626)] border-transparent hover:bg-[var(--cds-layer-02,#161616)] hover:border-[var(--cds-border-subtle,#393939)]'
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 shrink-0 rounded-lg bg-[#0f62fe]/20 border border-[#0f62fe]/40 flex items-center justify-center">
+        <div className="w-9 h-9 shrink-0 rounded-lg bg-blue-600/20 border border-blue-600/40 flex items-center justify-center">
           <Users className="w-4 h-4 text-[#78a9ff]" />
         </div>
         <div className="flex-1 min-w-0">
@@ -800,7 +800,7 @@ export const DiscussionsPage: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-[var(--cds-text-01,#f4f4f4)] flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#0f62fe]" />
+            <MessageSquare className="w-5 h-5 text-[var(--cds-interactive-01)]" />
             {isAr ? 'المناقشات الجماعية' : 'Group Discussions'}
           </h1>
           <p className="text-xs text-[var(--cds-text-03,#8d8d8d)] mt-1">
@@ -811,7 +811,7 @@ export const DiscussionsPage: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="h-9 px-4 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-sm transition-colors"
+          className="h-9 px-4 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-sm transition-colors"
         >
           <Plus className="w-4 h-4" />
           {isAr ? 'مجموعة جديدة' : 'New Group'}
@@ -829,14 +829,14 @@ export const DiscussionsPage: React.FC = () => {
                 <input
                   value={filter} onChange={e => setFilter(e.target.value)}
                   placeholder={isAr ? 'ابحث في المجموعات...' : 'Search groups...'}
-                  className="w-full ps-9 pe-3 py-2 text-xs bg-[var(--cds-layer-01,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+                  className="w-full ps-9 pe-3 py-2 text-xs bg-[var(--cds-layer-01,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
                 />
               </div>
               {discussions.mine.some(g => g.unreadCount > 0) && (
                 <button
                   onClick={markAllRead}
                   title={isAr ? 'تعليم كل الرسائل كمقروءة' : 'Mark all as read'}
-                  className="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-[#78a9ff] hover:bg-[#0f62fe]/15 border border-[var(--cds-border-subtle,#393939)]"
+                  className="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-[#78a9ff] hover:bg-blue-600/15 border border-[var(--cds-border-subtle,#393939)]"
                 >
                   <CheckCheck className="w-4 h-4" />
                 </button>
@@ -896,7 +896,7 @@ export const DiscussionsPage: React.FC = () => {
                     onClick={manualRefresh}
                     disabled={manualRefreshing}
                     title={isAr ? 'تحديث الرسائل الآن' : 'Refresh messages now'}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#78a9ff] hover:bg-[#0f62fe]/15 border border-[var(--cds-border-subtle,#393939)]"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#78a9ff] hover:bg-blue-600/15 border border-[var(--cds-border-subtle,#393939)]"
                   >
                     <RefreshCw className={`w-4 h-4 ${manualRefreshing ? 'animate-spin' : ''}`} />
                   </button>
@@ -939,7 +939,7 @@ export const DiscussionsPage: React.FC = () => {
                   {(active.isOwner || active.isModerator) && (
                     <button
                       onClick={() => setShowInviteLinks(true)}
-                      className="h-8 px-3 text-[11px] font-semibold rounded-lg bg-[#0f62fe] hover:bg-[#0353e9] text-white flex items-center gap-1.5"
+                      className="h-8 px-3 text-[11px] font-semibold rounded-lg bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white flex items-center gap-1.5"
                       title={isAr ? 'دعوة أعضاء / إدارة الدعوات' : 'Invite members / manage invites'}
                     >
                       <UserPlus className="w-3.5 h-3.5" />
@@ -975,7 +975,7 @@ export const DiscussionsPage: React.FC = () => {
                 )}
                 {loadingMessages && messages.length === 0 && (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-[#0f62fe]" />
+                    <Loader2 className="w-5 h-5 animate-spin text-[var(--cds-interactive-01)]" />
                   </div>
                 )}
                 {!loadingMessages && messages.length === 0 && (
@@ -990,7 +990,7 @@ export const DiscussionsPage: React.FC = () => {
                       <div
                         className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl ${
                           isMine
-                            ? 'bg-[#0f62fe] text-white rounded-te-sm'
+                            ? 'bg-[var(--cds-interactive-01)] text-white rounded-te-sm'
                             : 'bg-[var(--cds-layer-01,#262626)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-ts-sm'
                         }`}
                       >
@@ -1092,11 +1092,11 @@ export const DiscussionsPage: React.FC = () => {
                       }}
                       rows={1}
                       placeholder={isAr ? 'اكتب رسالة...' : 'Type a message...'}
-                      className="flex-1 resize-none max-h-32 px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+                      className="flex-1 resize-none max-h-32 px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
                     />
                     <button
                       onClick={send} disabled={(!draft.trim() && !pendingImage) || sending}
-                      className="w-10 h-10 shrink-0 rounded-full bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-50 text-white flex items-center justify-center transition-colors"
+                      className="w-10 h-10 shrink-0 rounded-full bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-50 text-white flex items-center justify-center transition-colors"
                       aria-label={isAr ? 'إرسال' : 'Send'}
                     >
                       {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 rtl:-scale-x-100" />}
@@ -1124,7 +1124,7 @@ export const DiscussionsPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-[var(--cds-text-01,#f4f4f4)] flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#0f62fe]" />
+                <Users className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 {isAr ? 'إنشاء مجموعة مناقشة' : 'Create Discussion Group'}
               </h3>
               <button onClick={() => setShowCreate(false)} className="text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]">
@@ -1135,12 +1135,12 @@ export const DiscussionsPage: React.FC = () => {
               <input
                 value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder={isAr ? 'اسم المجموعة *' : 'Group name *'}
-                className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+                className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
               />
               <input
                 value={newTopic} onChange={e => setNewTopic(e.target.value)}
                 placeholder={isAr ? 'الموضوع (اختياري) — مثال: تحليل بيانات الربع الثالث' : 'Topic (optional) — e.g., Q3 data review'}
-                className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden"
+                className="w-full px-3 py-2.5 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden"
               />
               <div>
                 <p className="text-[11px] font-semibold text-[var(--cds-text-02,#c6c6c6)] mb-1.5">
@@ -1163,7 +1163,7 @@ export const DiscussionsPage: React.FC = () => {
                         onChange={e => setSelectedUsers(prev =>
                           e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id)
                         )}
-                        className="accent-[#0f62fe]"
+                        className="accent-[var(--cds-interactive-01)]"
                       />
                       <span className="text-xs text-[var(--cds-text-01,#f4f4f4)]">{u.name}</span>
                       <span className="text-[10px] text-[var(--cds-text-03,#8d8d8d)] font-mono truncate">{u.email}</span>
@@ -1180,7 +1180,7 @@ export const DiscussionsPage: React.FC = () => {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={createGroup} disabled={!newName.trim() || creating}
-                className="flex-1 py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg"
+                className="flex-1 py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg"
               >
                 {creating ? (isAr ? 'جاري الإنشاء...' : 'Creating...') : (isAr ? 'إنشاء المجموعة' : 'Create Group')}
               </button>
@@ -1214,7 +1214,7 @@ export const DiscussionsPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-[var(--cds-text-01,#f4f4f4)] flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#0f62fe]" />
+                <UserPlus className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                 {isAr ? `دعوة أعضاء إلى ${active.name}` : `Invite to ${active.name}`}
               </h3>
               <button onClick={() => setShowInvite(false)} className="text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)]">
@@ -1233,13 +1233,13 @@ export const DiscussionsPage: React.FC = () => {
                   onChange={e => setInviteEmail(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); inviteByEmail(); } }}
                   placeholder="user@company.com"
-                  className="flex-1 px-3 py-2 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[#0f62fe] focus:outline-hidden text-left"
+                  className="flex-1 px-3 py-2 text-xs bg-[var(--cds-layer-02,#161616)] text-[var(--cds-text-01,#f4f4f4)] border border-[var(--cds-border-subtle,#393939)] rounded-lg focus:border-[var(--cds-interactive-01)] focus:outline-hidden text-left"
                 />
                 <button
                   onClick={inviteByEmail}
                   disabled={!inviteEmail.trim() || sendingEmailInvite}
                   title={isAr ? 'دعوة حساب مسجل — تصل له إشعار داخل النظام' : 'Invite a registered account — they get an in-app notification'}
-                  className="px-3 py-2 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-[11px] font-semibold rounded-lg flex items-center gap-1.5 shrink-0"
+                  className="px-3 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-[11px] font-semibold rounded-lg flex items-center gap-1.5 shrink-0"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   {sendingEmailInvite ? (isAr ? '...' : '...') : (isAr ? 'توجيه دعوة' : 'Invite')}
@@ -1248,7 +1248,7 @@ export const DiscussionsPage: React.FC = () => {
                   onClick={inviteNewUserByEmail}
                   disabled={!inviteEmail.trim() || sendingEmailInvite}
                   title={isAr ? 'دعوة شخص غير مسجل — يصله بريد بالرابط وينضم تلقائياً بعد التسجيل (يتطلب SMTP)' : 'Invite an unregistered person — emails them a link, auto-joins after signup (needs SMTP)'}
-                  className="px-3 py-2 border border-[#0f62fe] text-[#78a9ff] hover:bg-[#0f62fe]/15 disabled:opacity-60 text-[11px] font-semibold rounded-lg flex items-center gap-1.5 shrink-0"
+                  className="px-3 py-2 border border-[var(--cds-interactive-01)] text-[#78a9ff] hover:bg-blue-600/15 disabled:opacity-60 text-[11px] font-semibold rounded-lg flex items-center gap-1.5 shrink-0"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {isAr ? 'دعوة بالبريد' : 'Email invite'}
@@ -1281,7 +1281,7 @@ export const DiscussionsPage: React.FC = () => {
                         onClick={() => resendPendingInvite(p.id)}
                         disabled={busyInviteId === p.id}
                         title={isAr ? 'إعادة إرسال الدعوة (تذكير)' : 'Resend invite (reminder)'}
-                        className="p-1.5 rounded-md text-[#78a9ff] hover:bg-[#0f62fe]/20 disabled:opacity-50"
+                        className="p-1.5 rounded-md text-[#78a9ff] hover:bg-blue-600/20 disabled:opacity-50"
                       >
                         {busyInviteId === p.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1318,7 +1318,7 @@ export const DiscussionsPage: React.FC = () => {
                     onChange={e => setInviteSelected(prev =>
                       e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id)
                     )}
-                    className="accent-[#0f62fe]"
+                    className="accent-[var(--cds-interactive-01)]"
                   />
                   <span className="text-xs text-[var(--cds-text-01,#f4f4f4)]">{u.name}</span>
                   <span className="text-[10px] text-[var(--cds-text-03,#8d8d8d)] font-mono truncate">{u.email}</span>
@@ -1378,7 +1378,7 @@ export const DiscussionsPage: React.FC = () => {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={inviteMembers} disabled={inviteSelected.length === 0 || inviting}
-                className="flex-1 py-2.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg"
+                className="flex-1 py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-semibold rounded-lg"
               >
                 {inviting ? (isAr ? 'جاري الدعوة...' : 'Inviting...') : (isAr ? 'دعوة المحددين' : 'Invite Selected')}
               </button>

@@ -21,7 +21,7 @@ export const WorkflowConnectionLine: React.FC<ConnectionLineComponentProps> = ({
 
   const isPass = fromHandle?.id === 'pass';
   const isFail = fromHandle?.id === 'fail';
-  const strokeColor = isPass ? '#24a148' : isFail ? '#da1e28' : '#0f62fe';
+  const strokeColor = isPass ? '#24a148' : isFail ? '#da1e28' : 'var(--cds-interactive-01)';
 
   return (
     <g>

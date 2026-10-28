@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import net from 'net';
+import { promises as dnsPromises } from 'dns';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -55,8 +57,53 @@ async function loadBetterSqlite3() {
 }
 const PORT = Number(process.env.PORT) || 3000; // cloud platforms inject PORT
 
+app.set('trust proxy', 1); // وراء وكيل Render/proxy: req.ip = IP العميل الحقيقي وليس الـ proxy
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ---------------------------------------------------------------------------
+// Rate limiting على طبقة HTTP للمسارات المعرّضة للأسيء (حماية brute-force
+// على /api/auth/login، إنشاء الحسابات بالجملة على /api/auth/register،
+// واستنزاف الشبكة عبر بروكسي جلب البيانات). خزّان في الذاكرة يكفي هنا:
+// النشر وحيد النسخة (Render instance واحد) مباشرةً فخزّان الذاكرة يكفي تماماً.
+// ---------------------------------------------------------------------------
+interface RateBucketEntry { windowStart: number; count: number; }
+const rateBuckets = new Map<string, RateBucketEntry>();
+
+function createRateLimiter(name: string, max: number, windowMs: number) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      const key = `${name}:${req.ip || 'unknown'}`;
+      const now = Date.now();
+      let entry = rateBuckets.get(key);
+      if (!entry || now - entry.windowStart >= windowMs) {
+        entry = { windowStart: now, count: 0 };
+        rateBuckets.set(key, entry);
+      }
+      entry.count += 1;
+      // نظافة دورية حتى لا ينمو الخزّان بلا نهاية
+      if (rateBuckets.size > 10000) {
+        for (const [k, v] of rateBuckets) {
+          if (now - v.windowStart >= windowMs) rateBuckets.delete(k);
+        }
+      }
+      if (entry.count > max) {
+        const retryAfterSec = Math.ceil((entry.windowStart + windowMs - now) / 1000);
+        res.setHeader('Retry-After', String(retryAfterSec));
+        return res.status(429).json({ error: `محاولات كثيرة جداً — حاول مجدداً بعد ${retryAfterSec} ثانية` });
+      }
+      return next();
+    } catch {
+      return next(); // أعطال الحد لا تعطّل الميزة أبدًا
+    }
+  };
+}
+
+const loginRateLimiter = createRateLimiter('login', 10, 5 * 60 * 1000);       // 10 محاولات دخول / 5 دقائق لكل IP
+const registerRateLimiter = createRateLimiter('register', 5, 60 * 60 * 1000); // 5 حسابات جديدة / ساعة لكل IP
+const fetchDataRateLimiter = createRateLimiter('fetch-data', 30, 5 * 60 * 1000); // بروكسي البيانات: 30 طلب / 5 دقائق لكل IP
+const ollamaProxyRateLimiter = createRateLimiter('ollama-proxy', 120, 5 * 60 * 1000); // بروكسي Ollama: 120 طلب / 5 دقائق
 
 // Patterns that indicate a placeholder / demo API key mistakenly left in configuration
 const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemini|placeholder|xxxx/i;
@@ -1251,35 +1298,48 @@ app.get('/api/ai/openrouter/balance', async (req, res) => {
 // 1d. Unified API Proxy Layer for Local Ollama & Custom Endpoints
 // Prevents CORS preflight and 400 Bad Request errors by creating a server-side proxy boundary
 app.options('/api/proxy/ollama', (_req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  return res.sendStatus(200);
+  // بلا رؤوس Access-Control لأي أصل خارجي: التطبيق يستدعي البروكسي من نفس
+  // الأصل (same-origin) فلا يحتاج CORS إطلاقاً، وفسد الصفحات الخارجية
+  // من الاتصال بهذا البروكسي من متصفح المستخدم (تقليل مسح الفحص الاستكشافي).
+  return res.sendStatus(204);
 });
 
-app.all('/api/proxy/ollama', async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+app.all('/api/proxy/ollama', ollamaProxyRateLimiter, async (req, res) => {
   const targetHost = ((req.body?.endpointUrl || req.query?.endpointUrl || 'http://localhost:11434') as string).replace(/\/+$/, '');
   const path = (req.body?.path || req.query?.path || '/api/tags') as string;
   const method = req.method === 'OPTIONS' ? 'GET' : (req.body?.method || req.method || 'GET');
   const payload = req.body?.payload || req.body?.body;
+  const isLocalhost = targetHost.includes('localhost') || targetHost.includes('127.0.0.1');
 
-  const url = `${targetHost}${path.startsWith('/') ? path : '/' + path}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  // نفس منطق resolveReachableOllamaEndpoint: على Windows قد يفصل localhost
+  // عبر IPv6 بينما 127.0.0.1 يعمل (والعكس) — جرّب كلا المرشّحين للواجهة المحلية
+  // فقط، حتى تتطابق نتيجة المسارين (البروكسي و /api/ai/ollama/tags).
+  const candidates = isLocalhost
+    ? [...new Set([targetHost, 'http://127.0.0.1:11434', 'http://localhost:11434'])]
+    : [targetHost];
 
   try {
-    const fetchOptions: RequestInit = {
+    const fetchOptions = (host: string): RequestInit => ({
       method: method.toUpperCase(),
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(20000),
       ...(payload ? { body: typeof payload === 'string' ? payload : JSON.stringify(payload) } : {}),
-    };
+    });
 
-    const upstreamRes = await fetch(url, fetchOptions);
-    clearTimeout(timeoutId);
+    let upstreamRes: Response | null = null;
+    let lastError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        const attempt = await fetch(`${candidate}${path.startsWith('/') ? path : '/' + path}`, fetchOptions(candidate));
+        if (attempt.ok) { upstreamRes = attempt; break; }
+        upstreamRes = attempt; // HTTP خطأ حقيقي من المصدار — لا مرشّح إضافي لتغييره
+        break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
 
-    if (upstreamRes.ok) {
+    if (upstreamRes?.ok) {
       const contentType = upstreamRes.headers.get('content-type') || '';
       if (contentType.includes('json')) {
         const data = await upstreamRes.json();
@@ -1290,17 +1350,18 @@ app.all('/api/proxy/ollama', async (req, res) => {
       }
     }
 
-    const errText = await upstreamRes.text().catch(() => 'Upstream request failed');
-    return res.json({
-      success: false,
-      status: upstreamRes.status,
-      error: `Ollama endpoint returned HTTP ${upstreamRes.status}`,
-      details: errText.substring(0, 300),
-      isLocalhostNotice: targetHost.includes('localhost') || targetHost.includes('127.0.0.1'),
-    });
+    if (upstreamRes) {
+      const errText = await upstreamRes.text().catch(() => 'Upstream request failed');
+      return res.json({
+        success: false,
+        status: upstreamRes.status,
+        error: `Ollama endpoint returned HTTP ${upstreamRes.status}`,
+        details: errText.substring(0, 300),
+        isLocalhostNotice: isLocalhost,
+      });
+    }
+    throw lastError || new Error('Connection refused');
   } catch (err: any) {
-    clearTimeout(timeoutId);
-    const isLocalhost = targetHost.includes('localhost') || targetHost.includes('127.0.0.1');
     return res.json({
       success: false,
       status: 200,
@@ -1324,22 +1385,65 @@ app.all('/api/proxy/ollama', async (req, res) => {
 // - Google Sheets يُحوّل تلقائياً إلى رابط تصدير CSV
 // ------------------------------------------------------------
 const DATA_FETCH_LIMIT_BYTES = 20 * 1024 * 1024;
-function sanitizeDataFetchUrl(raw: string): { url: URL | null; error?: string } {
-  try {
-    const url = new URL(raw);
-    if (!['http:', 'https:'].includes(url.protocol)) return { url: null, error: 'مقبول فقط http/https' };
-    const host = url.hostname.toLowerCase();
-    if (
-      host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local') ||
-      /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host) ||
-      /^169\.254\./.test(host)
-    ) {
-      return { url: null, error: 'الروابط الداخلية/الشبكية المحلية غير مسموحة' };
+function sanitizeDataFetchUrl(raw: string): Promise<{ url: URL | null; error?: string }> {
+  return (async () => {
+    try {
+      const url = new URL(raw);
+      if (!['http:', 'https:'].includes(url.protocol)) return { url: null, error: 'مقبول فقط http/https' };
+      const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+      if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.localhost')) {
+        return { url: null, error: 'الروابط الداخلية/الشبكية المحلية غير مسموحة' };
+      }
+      // عنوان IP صريح (IPv4/IPv6) — تحقّق مباشر بالنطاقات الخاصة الكاملة
+      if (net.isIPv4(host) || net.isIPv6(host)) {
+        if (isPrivateIp(host)) return { url: null, error: 'الروابط الداخلية/الشبكية المحلية غير مسموحة' };
+        return { url };
+      }
+      // اسم نطاق: حِلّيه وتحقق من كل العناوين الناتجة — تُغلق شبكة DNS rebinding
+      // في مرحلة التحقق (لا يكفي فحص النص فقط).
+      let addrs: Array<{ address: string; family: number }>;
+      try {
+        addrs = await dnsPromises.lookup(host, { all: true });
+      } catch {
+        return { url: null, error: 'تعذر حلّ اسم النطاق' };
+      }
+      if (!addrs.length) return { url: null, error: 'تعذر حلّ اسم النطاق' };
+      if (addrs.some(a => isPrivateIp(a.address))) {
+        return { url: null, error: 'الرابط يحلّ إلى عنوان شبكي داخلي — غير مسموح' };
+      }
+      return { url };
+    } catch {
+      return { url: null, error: 'رابط غير صالح' };
     }
-    return { url };
-  } catch {
-    return { url: null, error: 'رابط غير صالح' };
+  })();
+}
+/**
+ * تصنيف IP: يحبس كل النطاقات المحلية/الخاصة/المحجوزة IPv4 مباشرةً ولـ
+ * IPv6 (unique-local fc00::/7، link-local fe80::/10، loopback، وتعيينات
+ * ::ffff: من IPv4، مع النطاقات غير المُسندة 0.0.0.0/8 و224+/8).
+ */
+function isPrivateIp(ip: string): boolean {
+  const v = ip.toLowerCase().replace(/^\[|\]$/g, '');
+  if (v === '::' || v === '::1') return true;
+  const mapped = v.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  const v4 = mapped ? mapped[1] : (net.isIPv4(v) ? v : null);
+  if (v4) {
+    const p = v4.split('.').map(Number);
+    if (p.length !== 4 || p.some(n => Number.isNaN(n))) return true;
+    if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+    if (p[0] === 192 && p[1] === 168) return true;
+    if (p[0] === 169 && p[1] === 254) return true;
+    if (p[0] >= 224) return true; // multicast/reserved
+    return false;
   }
+  if (net.isIPv6(v)) {
+    const clean = v.replace(/^\//g, '').split('/')[0];
+    if (/^f[cd]/.test(clean)) return true;    // fc00::/7 unique-local
+    if (/^fe[89ab]/.test(clean)) return true; // fe80::/10 link-local
+    if (clean.startsWith('2001:db8')) return true; // documented-reserved
+  }
+  return false;
 }
 function googleSheetsCsvUrl(raw: string): string | null {
   try {
@@ -1352,7 +1456,7 @@ function googleSheetsCsvUrl(raw: string): string | null {
   } catch { return null; }
 }
 
-app.post('/api/proxy/fetch-data', async (req, res) => {
+app.post('/api/proxy/fetch-data', fetchDataRateLimiter, async (req, res) => {
   const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
   const raw = String(req.body?.url || '').trim();
@@ -1360,24 +1464,50 @@ app.post('/api/proxy/fetch-data', async (req, res) => {
 
   const sheetCsv = googleSheetsCsvUrl(raw);
   const target = sheetCsv || raw;
-  const check = sanitizeDataFetchUrl(target);
+  const check = await sanitizeDataFetchUrl(target);
   if (!check.url) return res.status(400).json({ error: check.error || 'رابط غير صالح' });
 
   const customHeaders = (req.body?.headers && typeof req.body.headers === 'object') ? req.body.headers : {};
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
+  // تحقق من كل نقلة تحويل (redirect) قبل متابعتها أمانياً — بدل redirect: 'follow'
+  // الذي يسمح بالالتفاف على الحرس بإعادة توجيه إلى عنوان داخلي بعد الفحص الأولي.
   try {
-    const response = await fetch(target, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DataAnalyticsPlatform/1.0)',
-        'Accept': 'text/csv, application/json, text/plain, */*',
-        ...customHeaders,
-      },
-      redirect: 'follow',
-      signal: controller.signal,
-    });
+    let response: Response | null = null;
+    let currentUrl = target;
+    for (let hop = 0; hop < 5; hop++) {
+      const hopCheck = await sanitizeDataFetchUrl(currentUrl);
+      if (!hopCheck.url) {
+        clearTimeout(timeout);
+        return res.status(400).json({ error: hopCheck.error || 'رابط غير صالح (أثناء التحويل)' });
+      }
+      const hopResp = await fetch(hopCheck.url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; DataAnalyticsPlatform/1.0)',
+          'Accept': 'text/csv, application/json, text/plain, */*',
+          ...customHeaders,
+        },
+        redirect: 'manual',
+        signal: controller.signal,
+      });
+      if ([301, 302, 303, 307, 308].includes(hopResp.status)) {
+        const loc = hopResp.headers.get('location');
+        response = hopResp;
+        if (!loc) break;
+        currentUrl = new URL(loc, hopCheck.url).toString();
+        continue;
+      }
+      response = hopResp;
+      currentUrl = hopCheck.url.toString();
+      break;
+    }
+
+    if (!response || [301, 302, 303, 307, 308].includes(response.status)) {
+      clearTimeout(timeout);
+      return res.status(508).json({ error: 'سلسلة إعادة توجيه طويلة جداً (الحد 5 نقاط) أو رابط تحويل معطوب' });
+    }
 
     if (!response.ok) {
       clearTimeout(timeout);
@@ -1402,7 +1532,7 @@ app.post('/api/proxy/fetch-data', async (req, res) => {
     return res.json({
       text: buf.toString('utf8'),
       contentType: response.headers.get('content-type') || '',
-      finalUrl: response.url || target,
+      finalUrl: response.url || currentUrl,
       fromSheets: Boolean(sheetCsv),
     });
   } catch (err: any) {
@@ -2624,7 +2754,7 @@ app.get('/api/audit', (_req, res) => {
 // ---------------------------------------------------------------------------
 // Authentication (SQLite-backed): register / login / logout / session
 // ---------------------------------------------------------------------------
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', registerRateLimiter, async (req, res) => {
   const { email, name, password, phone } = req.body || {};
   if (!email || !name || !password) {
     return res.status(400).json({ error: 'البريد والاسم وكلمة المرور مطلوبة' });
@@ -2643,7 +2773,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginRateLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });

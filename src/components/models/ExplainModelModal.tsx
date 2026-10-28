@@ -111,7 +111,7 @@ export const ExplainModelModal: React.FC = () => {
             </div>
             <div>
               <span className="text-[var(--cds-text-03)] block">{language === 'ar' ? 'المتغير التابع:' : 'Target:'}</span>
-              <span className="font-semibold text-[#0f62fe]">{defaultReq.targetColumn}</span>
+              <span className="font-semibold text-[var(--cds-interactive-01)]">{defaultReq.targetColumn}</span>
             </div>
             <div>
               <span className="text-[var(--cds-text-03)] block">{language === 'ar' ? 'معامل التحديد R²:' : 'R² Score:'}</span>
@@ -154,7 +154,7 @@ export const ExplainModelModal: React.FC = () => {
               {/* Key Drivers (Feature Importance & Direct Interpretations) */}
               <div>
                 <h4 className="text-xs font-semibold text-[var(--cds-text-02)] uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#0f62fe]" />
+                  <TrendingUp className="w-4 h-4 text-[var(--cds-interactive-01)]" />
                   <span>{language === 'ar' ? 'المحركات الأساسية وتأثير المتغيرات' : 'Key Drivers & Feature Impact'}</span>
                 </h4>
 

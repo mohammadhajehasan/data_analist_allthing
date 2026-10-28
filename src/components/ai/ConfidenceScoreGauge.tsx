@@ -43,14 +43,14 @@ export const ConfidenceScoreGauge: React.FC<ConfidenceScoreGaugeProps> = ({
 
   const getScoreColor = (val: number) => {
     if (val >= 85) return 'text-[#42be65] bg-[#42be65]/10 border-[#42be65]/30';
-    if (val >= 70) return 'text-[#78a9ff] bg-[#0f62fe]/10 border-[#0f62fe]/30';
+    if (val >= 70) return 'text-[#78a9ff] bg-blue-600/10 border-blue-600/30';
     if (val >= 50) return 'text-[#ff832b] bg-[#ff832b]/10 border-[#ff832b]/30';
     return 'text-[#ff8389] bg-[#da1e28]/10 border-[#da1e28]/30';
   };
 
   const getBarColor = (val: number) => {
     if (val >= 85) return 'bg-[#42be65]';
-    if (val >= 70) return 'bg-[#0f62fe]';
+    if (val >= 70) return 'bg-[var(--cds-interactive-01)]';
     if (val >= 50) return 'bg-[#ff832b]';
     return 'bg-[#da1e28]';
   };

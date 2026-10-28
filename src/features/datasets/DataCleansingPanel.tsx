@@ -296,7 +296,7 @@ Authority: IBM Carbon / AI Data Governance Officer
       {/* Top Banner Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--cds-border-subtle)] pb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-[#0f62fe]" />
+          <Sparkles className="w-5 h-5 text-[var(--cds-interactive-01)]" />
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               {isAr ? 'استوديو معالجة وتطهير البيانات (Data Healing Studio)' : 'Auto-Data Healing Studio'}
@@ -314,7 +314,7 @@ Authority: IBM Carbon / AI Data Governance Officer
           <button
             onClick={() => setCleansingMode('impute')}
             className={`px-3 py-1 transition-colors ${
-              cleansingMode === 'impute' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
+              cleansingMode === 'impute' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             {isAr ? 'معالجة الفراغات' : 'Imputation'}
@@ -322,7 +322,7 @@ Authority: IBM Carbon / AI Data Governance Officer
           <button
             onClick={() => setCleansingMode('dedup')}
             className={`px-3 py-1 transition-colors ${
-              cleansingMode === 'dedup' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
+              cleansingMode === 'dedup' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             {isAr ? 'الدمج الذكي' : 'Fuzzy Dedup'}
@@ -330,7 +330,7 @@ Authority: IBM Carbon / AI Data Governance Officer
           <button
             onClick={() => setCleansingMode('outliers')}
             className={`px-3 py-1 transition-colors ${
-              cleansingMode === 'outliers' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
+              cleansingMode === 'outliers' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             {isAr ? 'تقييد الشذوذ' : 'Outliers Cap'}
@@ -338,7 +338,7 @@ Authority: IBM Carbon / AI Data Governance Officer
           <button
             onClick={() => setCleansingMode('certificate')}
             className={`px-3 py-1 transition-colors ${
-              cleansingMode === 'certificate' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
+              cleansingMode === 'certificate' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             {isAr ? 'شهادة الامتثال' : 'Governance Cert'}
@@ -346,7 +346,7 @@ Authority: IBM Carbon / AI Data Governance Officer
           <button
             onClick={() => setCleansingMode('schema')}
             className={`px-3 py-1 transition-colors ${
-              cleansingMode === 'schema' ? 'bg-[#0f62fe] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
+              cleansingMode === 'schema' ? 'bg-[var(--cds-interactive-01)] text-white' : 'text-[var(--cds-text-03)] hover:text-white'
             }`}
           >
             {isAr ? 'أنواع الأعمدة' : 'Column Types'}
@@ -398,7 +398,7 @@ Authority: IBM Carbon / AI Data Governance Officer
                       onClick={() => setImputeStrategy(s.v as typeof imputeStrategy)}
                       className={`p-2 border text-start transition-colors ${
                         imputeStrategy === s.v
-                          ? 'bg-[#0f62fe]/25 border-[#0f62fe] text-white'
+                          ? 'bg-blue-600/25 border-[var(--cds-interactive-01)] text-white'
                           : 'bg-[var(--cds-layer-01)] border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-white hover:border-[var(--cds-border-strong)]'
                       }`}
                     >
@@ -441,7 +441,7 @@ Authority: IBM Carbon / AI Data Governance Officer
                 <button
                   onClick={handleImpute}
                   disabled={isProcessing}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-bold transition-all uppercase"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white font-bold transition-all uppercase"
                 >
                   {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                   <span>{isAr ? 'بدء التعويض التلقائي' : 'Apply Imputation'}</span>
@@ -504,7 +504,7 @@ Authority: IBM Carbon / AI Data Governance Officer
               <button
                 onClick={handleFuzzyMerge}
                 disabled={isProcessing}
-                className="w-full py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold transition-colors uppercase flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold transition-colors uppercase flex items-center justify-center gap-1.5"
               >
                 {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
                 <span>{isAr ? 'دمج التكرارات وتطهير النصوص' : 'Merge Selected & Purge duplicates'}</span>
@@ -537,7 +537,7 @@ Authority: IBM Carbon / AI Data Governance Officer
                 <button
                   onClick={handleCapOutliers}
                   disabled={isProcessing}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-bold transition-all uppercase"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white font-bold transition-all uppercase"
                 >
                   {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   <span>{isAr ? 'تحجيم القيم فوراً' : 'Normalize Outliers'}</span>
@@ -715,7 +715,7 @@ Authority: IBM Carbon / AI Data Governance Officer
                   <span className="font-bold text-white">{activeDataset?.profile?.quality.uniquenessScore || 92}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-[var(--cds-layer-01)]">
-                  <div className="h-full bg-[#0f62fe]" style={{ width: `${activeDataset?.profile?.quality.uniquenessScore || 92}%` }} />
+                  <div className="h-full bg-[var(--cds-interactive-01)]" style={{ width: `${activeDataset?.profile?.quality.uniquenessScore || 92}%` }} />
                 </div>
               </div>
 
@@ -733,7 +733,7 @@ Authority: IBM Carbon / AI Data Governance Officer
 
           {/* Recommendation Info Area */}
           <div className="p-3 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[11px] font-mono text-[var(--cds-text-03)] space-y-1 leading-relaxed">
-            <span className="text-[#0f62fe] font-bold block uppercase">
+            <span className="text-[var(--cds-interactive-01)] font-bold block uppercase">
               {isAr ? '💡 حوكمة أوتوماتيكية' : '💡 Automated Governance'}
             </span>
             <p>

@@ -40,13 +40,13 @@ export const WidgetExpandedModal: React.FC<{
       aria-label={title}
     >
       <div
-        className="w-full max-w-6xl max-h-[92vh] bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] shadow-2xl rounded-lg flex flex-col overflow-hidden"
+        className="w-full max-w-6xl h-[88vh] bg-[var(--cds-layer-02)] border border-[var(--cds-border-strong)] shadow-2xl rounded-lg flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--cds-border-subtle)] px-5 py-3 shrink-0">
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0f62fe] flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)] flex items-center gap-1.5">
               <Maximize2 className="w-3 h-3" />
               {isAr ? 'عرض موسّع للعنصر' : 'Expanded Widget View'}
             </span>
@@ -68,7 +68,7 @@ export const WidgetExpandedModal: React.FC<{
               <KpiCard widget={widget} />
             </div>
           ) : dataset ? (
-            <div className="w-full h-full min-h-[62vh]">
+            <div className="w-full h-full min-h-[300px]">
               <ChartFactory widget={widget} dataset={dataset} expanded />
             </div>
           ) : (

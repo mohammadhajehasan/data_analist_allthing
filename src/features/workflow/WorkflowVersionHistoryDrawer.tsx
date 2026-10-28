@@ -167,7 +167,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
       {/* Header */}
       <div className="p-4 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#0f62fe]/15 text-[#78a9ff] rounded-lg border border-[#0f62fe]/30">
+          <div className="p-2 bg-blue-600/15 text-[#78a9ff] rounded-lg border border-blue-600/30">
             <History className="w-4 h-4" />
           </div>
           <div>
@@ -205,7 +205,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                 );
                 setIsCreating(true);
               }}
-              className="flex-1 py-2 px-3 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+              className="flex-1 py-2 px-3 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{isAr ? 'حفظ نسخة جديدة الآن' : 'Save New Snapshot'}</span>
@@ -217,7 +217,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
             </div>
           </div>
         ) : (
-          <form onSubmit={handleCreateSubmit} className="p-3 bg-[var(--cds-layer-02)] rounded-lg border border-[#0f62fe]/40 space-y-2.5 animate-in fade-in duration-150">
+          <form onSubmit={handleCreateSubmit} className="p-3 bg-[var(--cds-layer-02)] rounded-lg border border-blue-600/40 space-y-2.5 animate-in fade-in duration-150">
             <div className="flex items-center justify-between text-xs text-white font-bold">
               <span className="flex items-center gap-1.5 text-[#78a9ff]">
                 <Save className="w-3.5 h-3.5" />
@@ -242,7 +242,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                 onChange={(e) => setNewVersionName(e.target.value)}
                 placeholder={isAr ? 'مثال: v2.0 - قبل تنقية العناوين' : 'e.g. v2.0 - Pre-cleanup'}
                 required
-                className="w-full px-2.5 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
+                className="w-full px-2.5 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 autoFocus
               />
             </div>
@@ -255,7 +255,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                 <select
                   value={newVersionTag}
                   onChange={(e) => setNewVersionTag(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white focus:outline-none focus:border-[#0f62fe]"
+                  className="w-full px-2 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white focus:outline-none focus:border-[var(--cds-interactive-01)]"
                 >
                   <option value="checkpoint">{isAr ? 'نقطة حفظ عادية' : 'Checkpoint'}</option>
                   <option value="stable">{isAr ? 'مستقرة (Stable)' : 'Stable'}</option>
@@ -283,13 +283,13 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                 onChange={(e) => setNewVersionDesc(e.target.value)}
                 placeholder={isAr ? 'ما التعديلات التي أجريتها في هذا الإصدار؟' : 'What changed in this version?'}
                 rows={2}
-                className="w-full px-2.5 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe] resize-none"
+                className="w-full px-2.5 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[var(--cds-interactive-01)] resize-none"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="w-full py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] text-white text-xs font-mono font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{isAr ? 'تأكيد وحفظ النسخة' : 'Confirm & Save'}</span>
@@ -306,7 +306,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isAr ? 'بحث في النسخ المحفوظة...' : 'Search versions...'}
-              className="w-full pl-8 pr-3 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[#0f62fe]"
+              className="w-full pl-8 pr-3 py-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg text-xs text-white placeholder-[#6f6f6f] focus:outline-none focus:border-[var(--cds-interactive-01)]"
             />
           </div>
         )}
@@ -338,7 +338,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                     'stable'
                   );
                 }}
-                className="px-3.5 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-[#0f62fe]/40 rounded-lg text-xs font-mono font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 bg-[var(--cds-layer-02)] hover:bg-[var(--cds-layer-03)] text-[#78a9ff] border border-blue-600/40 rounded-lg text-xs font-mono font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isAr ? 'إنشاء النسخة الأولى v1.0' : 'Create Initial v1.0'}</span>
@@ -359,13 +359,13 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                 ? 'bg-[#8a3ffc]/15 text-[#be95ff] border-[#8a3ffc]/30'
                 : v.tag === 'backup'
                 ? 'bg-[#f1c21b]/15 text-[#f1c21b] border-[#f1c21b]/30'
-                : 'bg-[#0f62fe]/15 text-[#78a9ff] border-[#0f62fe]/30';
+                : 'bg-blue-600/15 text-[#78a9ff] border-blue-600/30';
 
             return (
               <div
                 key={v.id}
                 className={`bg-[var(--cds-layer-01)] border rounded-lg transition-all duration-150 overflow-hidden ${
-                  isExpanded ? 'border-[#0f62fe]/60 shadow-lg' : 'border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
+                  isExpanded ? 'border-blue-600/60 shadow-lg' : 'border-[var(--cds-border-subtle)] hover:border-[var(--cds-border-strong)]'
                 }`}
               >
                 {/* Main Card Header */}
@@ -382,7 +382,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              className="w-full px-2 py-1 bg-[var(--cds-layer-01)] border border-[#0f62fe] rounded text-xs text-white focus:outline-none"
+                              className="w-full px-2 py-1 bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] rounded text-xs text-white focus:outline-none"
                             />
                             <input
                               type="text"
@@ -394,7 +394,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                             <div className="flex items-center gap-1 pt-1">
                               <button
                                 onClick={() => handleSaveEdit(v.id)}
-                                className="px-2 py-0.5 bg-[#0f62fe] text-white text-[10px] rounded font-bold"
+                                className="px-2 py-0.5 bg-[var(--cds-interactive-01)] text-white text-[10px] rounded font-bold"
                               >
                                 {isAr ? 'حفظ' : 'Save'}
                               </button>
@@ -411,7 +411,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                             <h4 className="text-xs font-bold text-white truncate leading-tight flex items-center gap-1.5">
                               <span>{v.name}</span>
                               {isLatest && (
-                                <span className="px-1.5 py-0.2 bg-[#0f62fe]/20 text-[#78a9ff] text-[9px] font-mono rounded">
+                                <span className="px-1.5 py-0.2 bg-blue-600/20 text-[#78a9ff] text-[9px] font-mono rounded">
                                   {isAr ? 'الأحدث' : 'Latest'}
                                 </span>
                               )}
@@ -457,7 +457,7 @@ export const WorkflowVersionHistoryDrawer: React.FC<WorkflowVersionHistoryDrawer
                     {/* Revert Action */}
                     <button
                       onClick={() => onRevertVersion(v)}
-                      className="flex-1 py-1.5 px-2 bg-[#0f62fe]/15 hover:bg-[#0f62fe]/25 text-[#78a9ff] border border-[#0f62fe]/30 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="flex-1 py-1.5 px-2 bg-blue-600/15 hover:bg-blue-600/25 text-[#78a9ff] border border-blue-600/30 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                       title={isAr ? 'استعادة هذه النسخة وتطبيقها على مساحة العمل' : 'Revert canvas to this version'}
                     >
                       <RotateCcw className="w-3.5 h-3.5" />

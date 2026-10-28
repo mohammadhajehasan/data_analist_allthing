@@ -769,7 +769,7 @@ export const SlidesExportPanel: React.FC = () => {
 
         // شارة نوع الشريحة
         const badgeColor: Record<Slide['type'], string> = {
-          cover: '8a3ffc', summary: '0f62fe', stats: '24a148', conclusion: '33b1ff',
+          cover: '8a3ffc', summary: '2563eb', stats: '24a148', conclusion: '33b1ff',
         };
         slide.addText(s.type.toUpperCase(), {
           x: rtl ? W - 2.0 : 0.5, y: 0.45, w: 1.5, h: 0.3,
@@ -806,7 +806,7 @@ export const SlidesExportPanel: React.FC = () => {
         }
 
         // شريط سفلي بلون الهوية
-        slide.addShape(pptx.ShapeType.rect, { x: 0, y: H - 0.12, w: W, h: 0.12, fill: { color: '0f62fe' } });
+        slide.addShape(pptx.ShapeType.rect, { x: 0, y: H - 0.12, w: W, h: 0.12, fill: { color: '2563eb' } });
         addFooter(slide, i);
       }
 
@@ -881,7 +881,7 @@ export const SlidesExportPanel: React.FC = () => {
 
   const typeBadgeClass: Record<Slide['type'], string> = {
     cover: 'bg-[#8a3ffc]/20 text-[#d4bbff]',
-    summary: 'bg-[#0f62fe]/20 text-[#78a9ff]',
+    summary: 'bg-blue-600/20 text-[#78a9ff]',
     stats: 'bg-[#24a148]/20 text-[#42be65]',
     conclusion: 'bg-[#33b1ff]/20 text-[#33b1ff]',
   };
@@ -924,7 +924,7 @@ export const SlidesExportPanel: React.FC = () => {
           <button
             onClick={handleGenerateWithAI}
             disabled={isGeneratingAI || isGenerating}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8a3ffc] to-[#0f62fe] hover:from-[#7c2ee6] hover:to-[#0353e9] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8a3ffc] to-[var(--cds-interactive-01)] hover:from-[#7c2ee6] hover:to-[#0353e9] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
             title={isAr ? 'يحلل الذكاء الاصطناعي بيانات اللوحة ويولّد نقاطاً تنفيذية حقيقية بدل النصوص الجاهزة' : 'AI analyzes the dashboard data and generates real executive bullets'}
           >
             {isGeneratingAI ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
@@ -964,7 +964,7 @@ export const SlidesExportPanel: React.FC = () => {
           <button
             onClick={handleExportSlides}
             disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f62fe] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-xs font-mono font-bold uppercase transition-colors"
           >
             {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
             <span>{isAr ? 'تنزيل العرض التقديمي' : 'Export Slides'}</span>
@@ -1055,10 +1055,10 @@ export const SlidesExportPanel: React.FC = () => {
 
           {/* Slide Editor (titles + bullet add/remove) */}
           {showEditor && (
-            <div className="bg-[var(--cds-layer-01)] border border-[#0f62fe]/60 p-4 space-y-3">
+            <div className="bg-[var(--cds-layer-01)] border border-blue-600/60 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-[var(--cds-text-01)] uppercase tracking-wider flex items-center gap-2">
-                  <Edit3 className="w-3.5 h-3.5 text-[#0f62fe]" />
+                  <Edit3 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
                   {isAr ? 'تحرير الشريحة الحالية' : 'Edit Current Slide'}
                 </span>
                 <button onClick={() => setShowEditor(false)} className="p-1 text-[var(--cds-text-03)] hover:text-white" title={isAr ? 'إغلاق المحرر' : 'Close editor'}>
@@ -1072,7 +1072,7 @@ export const SlidesExportPanel: React.FC = () => {
                   value={activeSlide.titleAr}
                   onChange={e => handleUpdateTitle(activeSlide.id, 'titleAr', e.target.value)}
                   placeholder={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
-                  className="px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] outline-none"
+                  className="px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none"
                 />
                 <input
                   type="text"
@@ -1080,7 +1080,7 @@ export const SlidesExportPanel: React.FC = () => {
                   onChange={e => handleUpdateTitle(activeSlide.id, 'title', e.target.value)}
                   placeholder={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
                   dir="ltr"
-                  className="px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] outline-none text-left"
+                  className="px-3 py-2 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none text-left"
                 />
               </div>
 
@@ -1091,7 +1091,7 @@ export const SlidesExportPanel: React.FC = () => {
                       type="text"
                       value={b}
                       onChange={e => handleUpdateBullet(activeSlide.id, idx, e.target.value)}
-                      className="flex-1 px-3 py-1.5 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[#0f62fe] outline-none"
+                      className="flex-1 px-3 py-1.5 text-xs bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none"
                     />
                     <button
                       onClick={() => handleRemoveBullet(activeSlide.id, idx)}
@@ -1104,7 +1104,7 @@ export const SlidesExportPanel: React.FC = () => {
                 ))}
                 <button
                   onClick={() => handleAddBullet(activeSlide.id)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-mono text-[#78a9ff] border border-[var(--cds-border-subtle)] hover:border-[#0f62fe] hover:bg-[#0f62fe]/10 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-mono text-[#78a9ff] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] hover:bg-blue-600/10 transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   {isAr ? 'إضافة نقطة' : 'Add bullet'}
@@ -1124,14 +1124,14 @@ export const SlidesExportPanel: React.FC = () => {
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleAddSlide}
-                  className="p-1 text-[#78a9ff] hover:bg-[#0f62fe]/20 transition-colors"
+                  className="p-1 text-[#78a9ff] hover:bg-blue-600/20 transition-colors"
                   title={isAr ? 'إضافة شريحة جديدة بعد الحالية' : 'Add a new slide after the current one'}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowEditor(v => !v)}
-                  className={`p-1 transition-colors ${showEditor ? 'text-[#0f62fe]' : 'text-[var(--cds-text-03)] hover:text-white'}`}
+                  className={`p-1 transition-colors ${showEditor ? 'text-[var(--cds-interactive-01)]' : 'text-[var(--cds-text-03)] hover:text-white'}`}
                   title={isAr ? 'تحرير الشريحة الحالية' : 'Edit current slide'}
                 >
                   <Edit3 className="w-4 h-4" />
@@ -1433,7 +1433,7 @@ export const SlidesExportPanel: React.FC = () => {
           {/* شريط التقدم الكلي */}
           <div className="h-1 bg-[var(--cds-layer-02)] shrink-0">
             <div
-              className="h-full bg-[#0f62fe] transition-all duration-300"
+              className="h-full bg-[var(--cds-interactive-01)] transition-all duration-300"
               style={{ width: `${((activeSlideIndex + 1) / Math.max(1, slides.length)) * 100}%` }}
             />
           </div>

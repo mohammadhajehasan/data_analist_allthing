@@ -65,11 +65,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose, language }) => {
       case 'info':
       default:
         return {
-          border: 'border-s-4 border-s-[#0f62fe] border-t border-b border-e border-[var(--cds-border-subtle)]',
+          border: 'border-s-4 border-s-[var(--cds-interactive-01)] border-t border-b border-e border-[var(--cds-border-subtle)]',
           icon: <Info className="w-4 h-4 text-[#78a9ff] shrink-0" />,
-          barBg: 'bg-[#0f62fe]',
+          barBg: 'bg-[var(--cds-interactive-01)]',
           badgeText: isAr ? 'معلومات' : 'Info',
-          badgeStyle: 'bg-[#0f62fe]/20 text-[#78a9ff]',
+          badgeStyle: 'bg-blue-600/20 text-[#78a9ff]',
         };
     }
   };
@@ -108,7 +108,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose, language }) => {
                 toast.action?.onClick();
                 onClose();
               }}
-              className="px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[#0f62fe] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
+              className="px-2 py-0.5 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-interactive-01)] text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
             >
               <span>{isAr ? toast.action.labelAr || toast.action.label : toast.action.label}</span>
               <ArrowUpRight className="w-3 h-3" />
