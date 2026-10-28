@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<style>
+html, body { margin: 0; padding: 0; }
+body {
+  width: 720pt; height: 405pt;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: #0b1220;
+  font-family: Arial, sans-serif;
+  position: relative;
+}
+.bgimg { position: absolute; top: 0; left: 0; width: 720pt; height: 405pt; opacity: 0.45; object-fit: cover; }
+.overlay { position: absolute; top: 0; left: 0; width: 720pt; height: 405pt; background: #0b1220; opacity: 0.45; }
+.content {
+  position: relative; z-index: 2;
+  flex: 1 1 0; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  text-align: center; padding: 0 70pt;
+}
+h1 { color: #ffffff; font-size: 32pt; margin: 0 0 14pt 0; }
+h2 { color: #cbd5e1; font-size: 15pt; margin: 0 0 26pt 0; font-weight: normal; line-height: 1.5; }
+.cta {
+  background: #2563eb; border-radius: 10pt; padding: 12pt 30pt; display: inline-flex;
+}
+.cta p { color: #ffffff; font-size: 14pt; font-weight: bold; margin: 0; }
+</style>
+</head>
+<body>
+<img class="bgimg" src="../assets/hero.png" />
+<div class="overlay"></div>
+<div class="content">
+  <h1>ابدأ رحلة بياناتك نحو قرارات أذكى اليوم</h1>
+  <h2>انضم إلى الشركات التي تحوّلت من جداول بيانات مبعثرة إلى تحليلات ذكية فورية مدعومة بالذكاء الاصطناعي</h2>
+  <div class="cta"><p>احجز عرضاً تجريبياً مجانياً الآن</p></div>
+</div>
+</body>
+</html>

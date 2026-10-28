@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>منصة التحليلات الذكية للبيانات</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-alt: #0f1729;
+    --card: #141b2e;
+    --card-border: #1f2a44;
+    --text-main: #f1f5f9;
+    --text-sub: #94a3b8;
+    --blue: #2563eb;
+    --blue-light: #60a5fa;
+    --purple: #8a3ffc;
+    --purple-light: #a78bfa;
+    --green: #34d399;
+    --amber: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-main);
+    font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+    line-height: 1.6;
+  }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  a { text-decoration: none; color: inherit; }
+
+  /* ===== Nav ===== */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,18,32,0.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--card-border);
+  }
+  nav .container { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; }
+  .logo { font-weight: bold; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue-light); box-shadow: 0 0 12px var(--blue-light); }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { color: var(--text-sub); font-size: 14px; transition: color .2s; }
+  .nav-links a:hover { color: #fff; }
+  .nav-cta {
+    background: var(--blue); color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: bold;
+  }
+
+  /* ===== Hero ===== */
+  .hero { position: relative; overflow: hidden; padding: 90px 0 70px; }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url('assets/hero.png') center/cover no-repeat;
+    opacity: 0.28; z-index: 0;
+  }
+  .hero::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(11,18,32,0.4) 0%, rgba(11,18,32,0.95) 100%);
+    z-index: 0;
+  }
+  .hero .container { position: relative; z-index: 1; text-align: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #0f2744; border: 1px solid var(--blue); border-radius: 30px;
+    padding: 8px 18px; font-size: 13px; color: var(--blue-light); font-weight: bold; margin-bottom: 24px;
+  }
+  .hero h1 { font-size: 46px; font-weight: 800; color: #fff; margin: 0 0 20px; line-height: 1.3; max-width: 880px; margin-inline: auto; }
+  .hero h1 span { background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.sub { font-size: 18px; color: var(--text-sub); max-width: 700px; margin: 0 auto 36px; }
+  .hero-ctas { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 50px; }
+  .btn-primary {
+    background: var(--blue); color: #fff; padding: 15px 34px; border-radius: 10px; font-weight: bold; font-size: 15px;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.35); transition: transform .2s;
+  }
+  .btn-secondary {
+    background: transparent; color: #fff; padding: 15px 34px; border-radius: 10px; font-weight: bold; font-size: 15px;
+    border: 1px solid #334155;
+  }
+  .hero-stats { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; }
+  .hero-stats .stat { text-align: center; }
+  .hero-stats .stat strong { display: block; font-size: 15px; color: #fff; }
+  .hero-stats .stat span { font-size: 12.5px; color: var(--text-sub); }
+
+  /* ===== Section generic ===== */
+  section { padding: 90px 0; }
+  .section-tag {
+    display: inline-block; font-size: 13px; font-weight: bold; color: var(--blue-light);
+    background: #0f2744; padding: 6px 16px; border-radius: 20px; margin-bottom: 18px;
+  }
+  .section-title { font-size: 34px; font-weight: 800; color: #fff; margin: 0 0 16px; max-width: 700px; }
+  .section-sub { font-size: 16px; color: var(--text-sub); max-width: 640px; margin-bottom: 50px; }
+
+  /* ===== Problem ===== */
+  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .problem-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 28px;
+  }
+  .problem-card .num {
+    width: 38px; height: 38px; border-radius: 10px; background: #2a0f0f; color: #fca5a5;
+    display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;
+  }
+  .problem-card h3 { font-size: 17px; color: #fff; margin: 0 0 10px; }
+  .problem-card p { font-size: 14px; color: var(--text-sub); margin: 0; }
+
+  /* ===== Features (alternating) ===== */
+  .feature-row { display: flex; align-items: center; gap: 60px; margin-bottom: 90px; }
+  .feature-row:nth-child(even) { flex-direction: row-reverse; }
+  .feature-row .text-col { flex: 1; min-width: 0; }
+  .feature-row .visual-col { flex: 1; min-width: 0; display: flex; justify-content: center; }
+  .feature-icon {
+    width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 20px;
+  }
+  .feature-row h3 { font-size: 26px; color: #fff; margin: 0 0 14px; }
+  .feature-row p.desc { font-size: 15.5px; color: var(--text-sub); margin-bottom: 22px; }
+  .feature-row ul { margin: 0; padding-inline-start: 20px; }
+  .feature-row li { font-size: 14.5px; color: #cbd5e1; margin-bottom: 10px; }
+  .visual-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 10px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35); width: 100%; max-width: 460px;
+  }
+  .visual-card img { width: 100%; border-radius: 12px; display: block; }
+
+  /* ===== Feature grid (compact, for remaining features) ===== */
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .fg-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px;
+    transition: transform .2s, border-color .2s;
+  }
+  .fg-card:hover { transform: translateY(-4px); border-color: var(--blue); }
+  .fg-icon {
+    width: 44px; height: 44px; border-radius: 10px; background: #1e2a44;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px;
+  }
+  .fg-card h4 { font-size: 15.5px; color: #fff; margin: 0 0 8px; }
+  .fg-card p { font-size: 13px; color: var(--text-sub); margin: 0; }
+
+  /* ===== Journey ===== */
+  .journey-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .journey-step { flex: 1; min-width: 150px; text-align: center; padding: 10px; }
+  .journey-circle {
+    width: 52px; height: 52px; border-radius: 50%; background: #1e2a44; border: 2px solid var(--blue);
+    display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--blue-light);
+    margin: 0 auto 14px;
+  }
+  .journey-step h4 { font-size: 14px; color: #fff; margin: 0 0 6px; }
+  .journey-step p { font-size: 12px; color: var(--text-sub); margin: 0; }
+
+  /* ===== Why / value props ===== */
+  .value-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .value-card {
+    background: var(--card); border-inline-start: 3px solid var(--amber); border-radius: 12px; padding: 24px;
+  }
+  .value-card h4 { font-size: 16px; color: #fff; margin: 0 0 8px; }
+  .value-card p { font-size: 13.5px; color: var(--text-sub); margin: 0; }
+
+  /* ===== Audience ===== */
+  .audience-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .audience-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 22px; text-align: center;
+  }
+  .audience-card .emoji { font-size: 30px; margin-bottom: 12px; }
+  .audience-card h4 { font-size: 14.5px; color: #fff; margin: 0 0 8px; }
+  .audience-card p { font-size: 12.5px; color: var(--text-sub); margin: 0; }
+
+  /* ===== Trust / security ===== */
+  .trust-bg { background: var(--bg-alt); }
+  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .trust-card { text-align: center; padding: 20px; }
+  .trust-card .ic { font-size: 28px; margin-bottom: 10px; }
+  .trust-card h4 { font-size: 14px; color: #fff; margin: 0 0 6px; }
+  .trust-card p { font-size: 12px; color: var(--text-sub); margin: 0; }
+
+  /* ===== CTA ===== */
+  .cta-section { position: relative; overflow: hidden; padding: 100px 0; text-align: center; }
+  .cta-section::before {
+    content: ''; position: absolute; inset: 0;
+    background: url('assets/team.png') center/cover no-repeat; opacity: 0.22;
+  }
+  .cta-section::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(11,18,32,0.85) 0%, rgba(11,18,32,0.96) 100%);
+  }
+  .cta-section .container { position: relative; z-index: 1; }
+  .cta-section h2 { font-size: 34px; color: #fff; margin: 0 0 16px; }
+  .cta-section p { font-size: 16px; color: var(--text-sub); max-width: 560px; margin: 0 auto 32px; }
+
+  footer { background: var(--bg-alt); border-top: 1px solid var(--card-border); padding: 36px 0; text-align: center; }
+  footer p { font-size: 13px; color: var(--text-sub); margin: 0; }
+
+  @media (max-width: 860px) {
+    .problem-grid, .feature-grid, .audience-grid, .trust-grid, .value-grid { grid-template-columns: 1fr 1fr; }
+    .feature-row, .feature-row:nth-child(even) { flex-direction: column; }
+    .hero h1 { font-size: 32px; }
+    .nav-links { display: none; }
+  }
+  @media (max-width: 560px) {
+    .problem-grid, .feature-grid, .audience-grid, .trust-grid, .value-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo"><span class="dot"></span> منصة التحليلات الذكية</div>
+    <div class="nav-links">
+      <a href="#features">المزايا</a>
+      <a href="#journey">كيف تعمل</a>
+      <a href="#audience">لمن هذه المنصة</a>
+      <a href="#trust">الأمان</a>
+    </div>
+    <a href="#cta" class="nav-cta">جرّب الآن مجاناً</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="badge">✨ الجيل القادم من تحليلات الذكاء الاصطناعي</div>
+    <h1>حوّل بياناتك الضخمة إلى <span>قرارات فورية</span> بلغة طبيعية وذكاء اصطناعي</h1>
+    <p class="sub">منصة واحدة تجمع استكشاف البيانات، توليد SQL بالذكاء الاصطناعي، نمذجة العلاقات، لوحات التحكم التفاعلية، والتقارير التنفيذية التلقائية — بلا حاجة لفريق تقني في كل خطوة.</p>
+    <div class="hero-ctas">
+      <a href="#cta" class="btn-primary">ابدأ تجربة مجانية</a>
+      <a href="#features" class="btn-secondary">اكتشف المزايا</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><strong>محرك OLAP فوري</strong><span>تجميع وحساب في الذاكرة</span></div>
+      <div class="stat"><strong>ساندبوكس 9 طبقات</strong><span>أمان كامل لكل استعلام</span></div>
+      <div class="stat"><strong>عربي / إنجليزي</strong><span>واجهة RTL كاملة</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="container">
+    <div class="section-tag">التحدي</div>
+    <h2 class="section-title">لماذا تفشل أغلب الشركات في استثمار بياناتها؟</h2>
+    <p class="section-sub">الاعتماد الكامل على الفرق التقنية، البيانات المبعثرة، والتقارير اليدوية تُبطئ القرار وتُكلّف الشركات فرصاً ضائعة.</p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="num">١</div>
+        <h3>الاعتماد الكامل على فريق تقني</h3>
+        <p>كل سؤال تحليلي بسيط يحتاج مهندس بيانات لكتابة استعلام SQL، مما يبطئ القرار ويُثقل فريق تكنولوجيا المعلومات.</p>
+      </div>
+      <div class="problem-card">
+        <div class="num">٢</div>
+        <h3>بيانات مبعثرة وغير موثوقة</h3>
+        <p>ملفات Excel وقواعد بيانات متفرقة بلا توصيف إحصائي أو فحص جودة، فتُتخذ القرارات على أرقام غير مؤكدة.</p>
+      </div>
+      <div class="problem-card">
+        <div class="num">٣</div>
+        <h3>تقارير تُعدّ يدوياً وتستغرق أياماً</h3>
+        <p>تحويل الأرقام إلى تقرير تنفيذي مفهوم يستهلك وقتاً طويلاً من المحللين بدل التركيز على القرارات الاستراتيجية.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <div class="section-tag">المزايا الأساسية</div>
+    <h2 class="section-title">كل ما تحتاجه رحلة البيانات، في منصة واحدة</h2>
+    <p class="section-sub">من الرفع الخام إلى التقرير التنفيذي الجاهز للعرض — بلا كود وبخطوات تفاعلية بسيطة.</p>
+
+    <div class="feature-row">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#0f2744; color:#60a5fa;">⚡</div>
+        <h3>محرك OLAP فوري + مستكشف بيانات تفاعلي</h3>
+        <p class="desc">تجميع وحساب في الذاكرة للبيانات الضخمة، بلا انتظار ولا حاجة لكتابة كود معقّد.</p>
+        <ul>
+          <li>تجميع وحساب فوري في الذاكرة ومطابقة التوزيعات الإحصائية بأقل من 10 ميلي ثانية</li>
+          <li>فلترة وتجميع تفاعلي للأعمدة دون كتابة أي استعلام</li>
+          <li>تصدير فوري لأي نتيجة استكشاف إلى CSV</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="assets/hero.png" alt="لوحة استكشاف البيانات"></div>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#1b0f44; color:#a78bfa;">💬</div>
+        <h3>توليد SQL ذكي داخل ساندبوكس 9 طبقات</h3>
+        <p class="desc">تحويل الأسئلة الطبيعية (عربي/إنجليزي) إلى SQL دقيق، مع تحقق أمني كامل قبل أي تنفيذ.</p>
+        <ul>
+          <li>تحقق نحوي وأمني من كل استعلام قبل التنفيذ</li>
+          <li>تقدير الكلفة الحسابية مسبقاً لتفادي الاستعلامات الثقيلة</li>
+          <li>سجل تدقيق كامل لكل استعلام يُنفَّذ على البيانات</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="assets/icons.png" alt="مزايا المنصة"></div>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#052e26; color:#34d399;">🧠</div>
+        <h3>AI Copilot — محادثة تحوّل الأرقام إلى قرارات</h3>
+        <p class="desc">مساعد ذكي تفاعلي يستخرج الرؤى ويولّد الرسوم البيانية تلقائياً من بياناتك.</p>
+        <ul>
+          <li>محادثة تفاعلية للحصول على رؤى فورية مدعومة بالذكاء الاصطناعي</li>
+          <li>توليد الرسم البياني الأنسب لبياناتك تلقائياً</li>
+          <li>تأليف سردي تلقائي يحوّل النتائج إلى قصة تنفيذية مفهومة</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="assets/team.png" alt="فريق يستخدم المنصة"></div>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">🗂️</div>
+        <h4>نمذجة علاقات ذكية (AI ERD)</h4>
+        <p>اقتراح العلاقات بين الجداول تلقائياً وبناء مخطط كيانات-علاقات تفاعلي قابل للتعديل.</p>
+      </div>
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">📊</div>
+        <h4>توصيف إحصائي وفحص جودة</h4>
+        <p>كشف القيم الشاذة والمفقودة، حساب المتوسطات والانحراف المعياري، وتحليل التوزيعات.</p>
+      </div>
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">🖥️</div>
+        <h4>لوحات تحكم تفاعلية</h4>
+        <p>تصميم لوحات مخصصة بالسحب والإفلات، مع تحديث فوري للمؤشرات الرئيسية.</p>
+      </div>
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">📤</div>
+        <h4>تصدير احترافي</h4>
+        <p>تصدير أي لوحة تحكم أو نتيجة مباشرة لمشاركتها مع الإدارة أو العملاء.</p>
+      </div>
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">🔌</div>
+        <h4>دعم متعدد لمزوّدي الذكاء الاصطناعي</h4>
+        <p>اختر مزوّد الذكاء الاصطناعي الأنسب (سحابي أو محلي عبر Ollama) حسب سياسات خصوصيتك.</p>
+      </div>
+      <div class="fg-card">
+        <div class="fg-icon" style="color:#6ee7b7;">🌐</div>
+        <h4>ثنائية اللغة بالكامل</h4>
+        <p>واجهة عربية RTL كاملة وإنجليزية جنباً إلى جنب لفرق العمل متعددة الجنسيات.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="journey" class="trust-bg">
+  <div class="container">
+    <div class="section-tag">كيف تعمل المنصة</div>
+    <h2 class="section-title">خمس خطوات بسيطة من البيانات الخام إلى القرار</h2>
+    <div class="journey-row">
+      <div class="journey-step"><div class="journey-circle">١</div><h4>رفع البيانات</h4><p>استيراد CSV/Excel وتوصيف تلقائي للجودة</p></div>
+      <div class="journey-step"><div class="journey-circle">٢</div><h4>الاستكشاف</h4><p>استعلام بلغة طبيعية أو تصفية فورية</p></div>
+      <div class="journey-step"><div class="journey-circle">٣</div><h4>النمذجة</h4><p>بناء علاقات الجداول بمساعدة AI</p></div>
+      <div class="journey-step"><div class="journey-circle">٤</div><h4>لوحة التحكم</h4><p>تصميم لوحة تفاعلية بالمؤشرات</p></div>
+      <div class="journey-step"><div class="journey-circle">٥</div><h4>التقرير التنفيذي</h4><p>تأليف AI جاهز للتصدير</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="value">
+  <div class="container">
+    <div class="section-tag">لماذا تحتاجها شركتك</div>
+    <h2 class="section-title">عائد استثمار ملموس من اليوم الأول</h2>
+    <div class="value-grid">
+      <div class="value-card"><h4>قرارات أسرع</h4><p>تقليص وقت الوصول للإجابة من أيام إلى دقائق عبر الاستعلام بلغة طبيعية بدل انتظار فريق تقني.</p></div>
+      <div class="value-card"><h4>استقلالية الفرق غير التقنية</h4><p>تمكين المبيعات، التسويق، والمالية من استكشاف بياناتهم بأنفسهم دون الاعتماد على المبرمجين.</p></div>
+      <div class="value-card"><h4>تقليل الأخطاء وتحسين الجودة</h4><p>كشف القيم الشاذة والمفقودة تلقائياً قبل اتخاذ أي قرار مبني على بيانات غير دقيقة.</p></div>
+      <div class="value-card"><h4>تقارير تنفيذية جاهزة للعرض</h4><p>توفير ساعات العمل اليدوي في إعداد التقارير عبر توليد سردية تنفيذية مباشرة من البيانات.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="audience" class="trust-bg">
+  <div class="container">
+    <div class="section-tag">الفئات المستهدفة</div>
+    <h2 class="section-title">مصمّمة لكل شركة تتعامل مع بيانات حقيقية</h2>
+    <div class="audience-grid">
+      <div class="audience-card"><div class="emoji">🚀</div><h4>الشركات الناشئة والمتوسطة</h4><p>ثقافة قرارات مبنية على بيانات دون فريق تحليل كامل من اليوم الأول.</p></div>
+      <div class="audience-card"><div class="emoji">📈</div><h4>فرق المبيعات والتسويق</h4><p>استكشاف أداء الحملات بالأسئلة الطبيعية ولوحات متابعة لحظية.</p></div>
+      <div class="audience-card"><div class="emoji">💼</div><h4>الإدارة المالية والتنفيذية</h4><p>تقارير تنفيذية جاهزة وموثوقة لدعم القرار الاستراتيجي.</p></div>
+      <div class="audience-card"><div class="emoji">🛠️</div><h4>فرق تقنية المعلومات والبيانات</h4><p>تفريغ الفريق التقني من الاستعلامات الروتينية مع أمان كامل.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="trust">
+  <div class="container">
+    <div class="section-tag">الأمان والثقة</div>
+    <h2 class="section-title">بياناتك تبقى تحت سيطرتك الكاملة</h2>
+    <div class="trust-grid">
+      <div class="trust-card"><div class="ic">🔐</div><h4>تشفير bcrypt</h4><p>حماية كاملة لكلمات مرور المستخدمين</p></div>
+      <div class="trust-card"><div class="ic">🧩</div><h4>ساندبوكس 9 طبقات</h4><p>تحقق أمني شامل لكل استعلام SQL</p></div>
+      <div class="trust-card"><div class="ic">📜</div><h4>سجل تدقيق كامل</h4><p>تتبّع كل عملية لضمان الشفافية والامتثال</p></div>
+      <div class="trust-card"><div class="ic">🌍</div><h4>مرونة اختيار AI</h4><p>مزوّد سحابي أو محلي عبر Ollama حسب سياستك</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="cta" class="cta-section">
+  <div class="container">
+    <h2>ابدأ رحلة بياناتك نحو قرارات أذكى اليوم</h2>
+    <p>انضم إلى الشركات التي تحوّلت من جداول بيانات مبعثرة إلى تحليلات ذكية فورية مدعومة بالذكاء الاصطناعي.</p>
+    <a href="#" class="btn-primary">احجز عرضاً تجريبياً مجانياً</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>منصة التحليلات الذكية للبيانات — AI Analytics Platform</p>
+  </div>
+</footer>
+
+</body>
+</html>

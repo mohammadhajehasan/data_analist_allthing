@@ -30,3 +30,12 @@ coverage/
 /patch_*.js
 /page-*.yml
 /test*.json
+
+# مخلفات جلسات الاختبار والتوليد — أداة تولد ملفات ضخمة لا تُلتزم
+/big_test_dataset.csv
+/media-output/
+/ux_*.png
+/ux_findings_checkpoint.txt
+
+# مخلفات بناء Netlify المحلية (سجل وحزمة الدوال)
+/.netlify/
