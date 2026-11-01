@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-11-01T00:00:00.000Z" agent="stress-test">
+  <diagram id="enterprise-erd" name="Enterprise ERD">
+    <mxGraphModel dx="2400" dy="1800" grid="1" gridSize="10" page="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+<mxCell id="customers" value="customers" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="customers-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="customers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customers-r1" value="full_name : VARCHAR(150)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customers-r2" value="email : VARCHAR(320)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customers-r3" value="phone : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customers-r4" value="created_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customer_addresses" value="customer_addresses" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="customer_addresses-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="customer_addresses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customer_addresses-r1" value="customer_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customer_addresses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customer_addresses-r2" value="street : VARCHAR(200)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customer_addresses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customer_addresses-r3" value="city : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customer_addresses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="customer_addresses-r4" value="postal_code : VARCHAR(20)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="customer_addresses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="suppliers" value="suppliers" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="suppliers-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="suppliers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="suppliers-r1" value="company_name : VARCHAR(200)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="suppliers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="suppliers-r2" value="contact_email : VARCHAR(320)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="suppliers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="suppliers-r3" value="rating : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="suppliers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="categories" value="categories" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="categories-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="categories"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="categories-r1" value="name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="categories"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="categories-r2" value="description : TEXT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="categories"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="products" value="products" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="products-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="products"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="products-r1" value="title : VARCHAR(220)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="products-r2" value="price : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="products-r3" value="supplier_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="products-r4" value="in_stock : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="warehouses" value="warehouses" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="warehouses-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="warehouses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="warehouses-r1" value="location_code : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="warehouses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="warehouses-r2" value="capacity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="warehouses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="warehouses-r3" value="manager_name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="warehouses"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements" value="stock_movements" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="stock_movements-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r1" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r2" value="warehouse_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r4" value="direction : VARCHAR(16)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r5" value="moved_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r6" value="batch_no : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="stock_movements-r7" value="lot_code : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="stock_movements"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_orders" value="purchase_orders" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="purchase_orders-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="purchase_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_orders-r1" value="supplier_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_orders-r2" value="po_number : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_orders-r3" value="ordered_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_orders-r4" value="status : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items" value="purchase_order_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r1" value="purchase_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r4" value="unit_price : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="purchase_order_items-r5" value="received_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="purchase_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_channels" value="sales_channels" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="sales_channels-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="sales_channels"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_channels-r1" value="channel_name : VARCHAR(80)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_channels"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_channels-r2" value="is_active : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_channels"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders" value="sales_orders" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="sales_orders-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders-r1" value="customer_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders-r2" value="sales_channel_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders-r3" value="status : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders-r4" value="total_amount : DECIMAL(12,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_orders-r5" value="ordered_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_orders"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items" value="sales_order_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r1" value="sales_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r4" value="unit_price : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="sales_order_items-r5" value="discount_pct : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="sales_order_items"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="payments" value="payments" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="payments-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="payments"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="payments-r1" value="sales_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="payments"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="payments-r2" value="amount : DECIMAL(12,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="payments"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="payments-r3" value="method : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="payments"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="payments-r4" value="paid_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="payments"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="refunds" value="refunds" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="refunds-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="refunds"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="refunds-r1" value="payment_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="refunds"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="refunds-r2" value="amount : DECIMAL(12,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="refunds"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="refunds-r3" value="reason : VARCHAR(200)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="refunds"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="refunds-r4" value="refunded_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="refunds"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="invoices" value="invoices" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="invoices-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="invoices"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="invoices-r1" value="sales_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="invoices-r2" value="invoice_number : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="invoices-r3" value="issued_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="invoices-r4" value="total_due : DECIMAL(12,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="carriers" value="carriers" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="carriers-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="carriers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="carriers-r1" value="name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="carriers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="carriers-r2" value="region : VARCHAR(60)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="carriers"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="shippings" value="shippings" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="shippings-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="shippings"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="shippings-r1" value="sales_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="shippings"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="shippings-r2" value="carrier_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="shippings"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="shippings-r3" value="tracking_number : VARCHAR(60)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="shippings"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="shippings-r4" value="shipped_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="shippings"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupons" value="coupons" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="coupons-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="coupons"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupons-r1" value="code : VARCHAR(40)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupons"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupons-r2" value="discount_pct : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupons"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupons-r3" value="max_uses : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupons"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupons-r4" value="expires_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupons"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupon_redemptions" value="coupon_redemptions" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="coupon_redemptions-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="coupon_redemptions"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupon_redemptions-r1" value="coupon_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupon_redemptions"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupon_redemptions-r2" value="sales_order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupon_redemptions"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="coupon_redemptions-r3" value="redeemed_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="coupon_redemptions"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="tags" value="tags" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="tags-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="tags"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="tags-r1" value="name : VARCHAR(60)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="tags"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="tags-r2" value="color : VARCHAR(16)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="tags"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews" value="product_reviews" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="220" height="240" as="geometry" /></mxCell>
+<mxCell id="product_reviews-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews-r1" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews-r2" value="customer_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews-r3" value="rating : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews-r4" value="review_text : TEXT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="product_reviews-r5" value="created_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="product_reviews"><mxGeometry as="geometry" /></mxCell>
+<mxCell id="e1" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="customers" target="customer_addresses"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e2" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="suppliers" target="products"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e3" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="products" target="stock_movements"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e4" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="warehouses" target="stock_movements"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e5" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="suppliers" target="purchase_orders"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e6" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="purchase_orders" target="purchase_order_items"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e7" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="products" target="purchase_order_items"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e8" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="customers" target="sales_orders"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e9" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_channels" target="sales_orders"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e10" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_orders" target="sales_order_items"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e11" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="products" target="sales_order_items"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e12" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_orders" target="payments"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e13" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="payments" target="refunds"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e14" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_orders" target="invoices"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e15" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_orders" target="shippings"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e16" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="carriers" target="shippings"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e17" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="coupons" target="coupon_redemptions"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e18" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="sales_orders" target="coupon_redemptions"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e19" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="products" target="product_reviews"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e20" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="customers" target="product_reviews"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="e21" value="" style="edgeStyle=entityRelationEdgeStyle;startArrow=ERmany;endArrow=ERmany;" edge="1" parent="1" source="products" target="tags"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

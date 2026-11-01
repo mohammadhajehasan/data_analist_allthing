@@ -1,0 +1,639 @@
+/**
+ * DDL Generator — توليد سكيمّا SQL من نموذج ErModel المستخرج من draw.io
+ * ----------------------------------------------------------------
+ * الأصناف المدعومة: MySQL / PostgreSQL / SQLite / SQL Server / Oracle
+ *
+ * ما يولّده:
+ *   • CREATE TABLE بأعمدة وأنواع مطابقة لكل محرك (mapping كامل)
+ *   • PRIMARY KEY (مفرد أو مركّب)
+ *   • FOREIGN KEY: 1-N → مفتاح أجنبي على الجدول الابن، 1-1 → + UNIQUE،
+ *     N-M → جدول ربط (junction) بمفتاح مركّب وحذف تتابعي (اختياري)
+ *   • AUTO_INCREMENT (MySQL) / SERIAL (PG) / AUTOINCREMENT (SQLite) /
+ *     IDENTITY(1,1) (SQL Server) / GENERATED AS IDENTITY (Oracle)
+ *   • ترتيب créations بالأولوية (Topological): الجدول الأب قبل الابن
+ *   • DROP TABLE IF EXISTS اختيارياً
+ */
+
+import type { ErModel, ErTable, ErColumn } from './drawioImporter';
+
+export type SqlDialect = 'mysql' | 'postgres' | 'sqlite' | 'sqlserver' | 'oracle';
+
+export type DdlOptions = {
+  dropIfExists: boolean;
+  createJunctionTables: boolean;
+};
+
+export const DEFAULT_DDL_OPTIONS: DdlOptions = {
+  dropIfExists: true,
+  createJunctionTables: true,
+};
+
+export type DdlResult = {
+  dialect: SqlDialect;
+  code: string;
+  stats: { tables: number; columns: number; fks: number; junctionTables: number };
+};
+
+export function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// معالجة المعرّفات (Identifiers)
+// ---------------------------------------------------------------------------
+
+export function sanitizeIdentifier(raw: string): string {
+  const cleaned = (raw || '').trim().replace(/\s+/g, '_').replace(/[^\w$]+/g, '_').replace(/^_+|_+$/g, '');
+  return cleaned || 'unnamed';
+}
+
+function quoteIdent(name: string, dialect: SqlDialect): string {
+  switch (dialect) {
+    case 'mysql':
+      return '`' + name + '`';
+    case 'postgres':
+    case 'sqlite':
+      return '"' + name + '"';
+    case 'sqlserver':
+      return '[' + name + ']';
+    case 'oracle': {
+      if (/^[A-Za-z][A-Za-z0-9_$#]*$/.test(name)) return name.toUpperCase();
+      return '"' + name.toUpperCase() + '"';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// تحليل الأنواع
+// ---------------------------------------------------------------------------
+
+export interface ParsedType {
+  base: string;       // نمط أساسي منقّى من "unsigned"
+  params: number[];   // (p[, s])
+  unsigned: boolean;
+}
+
+export function parseRawType(raw: string): ParsedType {
+  const text = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const m = text.match(/^([a-z][a-z ]*?)(?:\s*\(\s*([\d]+)(?:\s*,\s*([\d]+))?\))?$/);
+  if (!m) return { base: 'varchar', params: [255], unsigned: false };
+  return {
+    base: m[1].trim().replace(/unsigned/g, '').replace(/\s+/g, ' ').trim(),
+    params: [m[2] ? parseInt(m[2], 10) : NaN, m[3] ? parseInt(m[3], 10) : NaN].filter(n => Number.isFinite(n)),
+    unsigned: /unsigned/.test(text),
+  };
+}
+
+const NUMERIC_BASES = new Set(['int', 'integer', 'bigint', 'tinyint', 'smallint', 'mediumint', 'serial', 'bigserial', 'int8', 'int4', 'int2', 'int3']);
+
+export function isNumericType(col: ErColumn): boolean {
+  return NUMERIC_BASES.has(parseRawType(col.type).base);
+}
+
+// ---------------------------------------------------------------------------
+// خريطة الأنواع — الناتج المناسب لكل محرك
+// ---------------------------------------------------------------------------
+
+export function mapType(col: ErColumn, dialect: SqlDialect): string {
+  const { base, params, unsigned } = parseRawType(col.type);
+  const p0 = () => String(params[0] ?? 255);
+  const p1 = () => String(params[1] ?? 0);
+  const uSuffixMysql = () => (unsigned ? ' UNSIGNED' : '');
+
+  switch (dialect) {
+    case 'mysql':
+      switch (base) {
+        case 'int': case 'integer': case 'int4': case 'serial': return 'INT' + uSuffixMysql();
+        case 'bigint': case 'bigserial': case 'int8': return 'BIGINT' + uSuffixMysql();
+        case 'tinyint': case 'int2': case 'int3': return 'TINYINT' + uSuffixMysql();
+        case 'smallint': return 'SMALLINT' + uSuffixMysql();
+        case 'mediumint': return 'MEDIUMINT' + uSuffixMysql();
+        case 'varchar': case 'nvarchar': case 'character varying': return `VARCHAR(${p0()})`;
+        case 'char': case 'nchar': case 'character': return `CHAR(${params.length ? String(params[0]) : '1'})`;
+        case 'text': return 'TEXT';
+        case 'string': return 'VARCHAR(255)';
+        case 'boolean': case 'bool': case 'bit': return 'TINYINT(1)';
+        case 'float': case 'real': return 'FLOAT';
+        case 'double': case 'double precision': return 'DOUBLE';
+        case 'decimal': case 'numeric': case 'number': return params.length >= 2 ? `DECIMAL(${p0()},${p1()})` : 'DECIMAL(10,0)';
+        case 'money': return 'DECIMAL(19,4)';
+        case 'date': return 'DATE';
+        case 'time': return 'TIME';
+        case 'datetime': return 'DATETIME';
+        case 'timestamp': case 'timestamptz': return 'TIMESTAMP';
+        case 'uuid': return 'CHAR(36)';
+        case 'json': case 'jsonb': return 'JSON';
+        case 'blob': case 'bytea': case 'binary': case 'varbinary': case 'image': return 'BLOB';
+        case 'clob': return 'LONGTEXT';
+        case 'enum': return 'VARCHAR(64)';
+        default: return 'VARCHAR(255)';
+      }
+
+    case 'postgres':
+      switch (base) {
+        case 'int': case 'integer': case 'int4': case 'mediumint': case 'serial': return 'INTEGER';
+        case 'bigint': case 'bigserial': case 'int8': return 'BIGINT';
+        case 'tinyint': case 'smallint': case 'int2': case 'int3': return 'SMALLINT';
+        case 'varchar': case 'nvarchar': case 'character varying': return `VARCHAR(${p0()})`;
+        case 'char': case 'nchar': case 'character': return `CHAR(${params.length ? String(params[0]) : '1'})`;
+        case 'text': case 'string': case 'clob': return 'TEXT';
+        case 'boolean': case 'bool': return 'BOOLEAN';
+        case 'bit': return 'BIT';
+        case 'float': case 'double': case 'double precision': return 'DOUBLE PRECISION';
+        case 'real': return 'REAL';
+        case 'decimal': case 'numeric': case 'number': return params.length >= 2 ? `NUMERIC(${p0()},${p1()})` : 'NUMERIC';
+        case 'money': return 'MONEY';
+        case 'date': return 'DATE';
+        case 'time': return 'TIME';
+        case 'datetime': case 'timestamp': return 'TIMESTAMP';
+        case 'timestamptz': return 'TIMESTAMPTZ';
+        case 'uuid': return 'UUID';
+        case 'json': return 'JSON';
+        case 'jsonb': return 'JSONB';
+        case 'blob': case 'bytea': case 'binary': case 'varbinary': case 'image': return 'BYTEA';
+        case 'enum': return 'VARCHAR(64)';
+        default: return 'TEXT';
+      }
+
+    case 'sqlite':
+      switch (base) {
+        case 'int': case 'integer': case 'int4': case 'int8': case 'bigint': case 'tinyint': case 'smallint': case 'mediumint': return 'INTEGER';
+        case 'varchar': case 'nvarchar': case 'char': case 'nchar': case 'character': case 'text': case 'string': case 'clob':
+        case 'uuid': case 'date': case 'time': case 'datetime': case 'timestamp': case 'timestamptz': case 'json': case 'jsonb': case 'enum': return 'TEXT';
+        case 'float': case 'real': case 'double': case 'double precision': return 'REAL';
+        case 'decimal': case 'numeric': case 'number': case 'money': return params.length >= 2 ? `NUMERIC(${p0()},${p1()})` : 'NUMERIC';
+        case 'boolean': case 'bool': case 'bit': return 'INTEGER_CHECK01';
+        case 'blob': case 'bytea': case 'binary': case 'varbinary': case 'image': return 'BLOB';
+        default: return 'TEXT';
+      }
+
+    case 'sqlserver':
+      switch (base) {
+        case 'int': case 'integer': case 'int4': case 'mediumint': case 'serial': return 'INT';
+        case 'bigint': case 'bigserial': case 'int8': return 'BIGINT';
+        case 'tinyint': case 'smallint': case 'int2': case 'int3': return 'SMALLINT';
+        case 'varchar': case 'character varying': {
+          const len = params[0] ?? 255;
+          return len > 8000 ? 'NVARCHAR(MAX)' : `NVARCHAR(${len})`;
+        }
+        case 'nvarchar': {
+          const len = params[0] ?? 4000;
+          return len > 4000 ? 'NVARCHAR(MAX)' : `NVARCHAR(${len})`;
+        }
+        case 'char': case 'nchar': case 'character': return `NCHAR(${params.length ? p0() : '1'})`;
+        case 'text': case 'clob': case 'string': case 'json': case 'jsonb': return 'NVARCHAR(MAX)';
+        case 'boolean': case 'bool': case 'bit': return 'BIT';
+        case 'float': case 'double': case 'double precision': return 'FLOAT(53)';
+        case 'real': return 'REAL';
+        case 'decimal': case 'numeric': case 'number': return params.length >= 2 ? `DECIMAL(${p0()},${p1()})` : 'DECIMAL(10,0)';
+        case 'money': return 'MONEY';
+        case 'date': return 'DATE';
+        case 'time': return 'TIME';
+        case 'datetime': case 'timestamp': case 'timestamptz': return 'DATETIME2';
+        case 'uuid': return 'UNIQUEIDENTIFIER';
+        case 'blob': case 'bytea': case 'binary': case 'varbinary': case 'image': return 'VARBINARY(MAX)';
+        case 'enum': return 'NVARCHAR(64)';
+        default: return 'NVARCHAR(255)';
+      }
+
+    case 'oracle':
+      switch (base) {
+        case 'int': case 'integer': case 'int4': case 'tinyint': case 'smallint': case 'mediumint': case 'serial': return 'NUMBER(10)';
+        case 'bigint': case 'bigserial': case 'int8': return 'NUMBER(19)';
+        case 'varchar': case 'nvarchar': case 'character varying': case 'string': {
+          const len = Math.min(params[0] ?? 255, 4000);
+          return `VARCHAR2(${len})`;
+        }
+        case 'char': case 'nchar': case 'character': return `CHAR(${params.length ? p0() : '1'})`;
+        case 'text': case 'clob': case 'string': case 'json': case 'jsonb': return 'CLOB';
+        case 'boolean': case 'bool': case 'bit': return 'NUMBER(1)';
+        case 'float': case 'double': case 'double precision': return 'BINARY_DOUBLE';
+        case 'real': return 'BINARY_FLOAT';
+        case 'decimal': case 'numeric': case 'number': return params.length >= 2 ? `NUMBER(${p0()},${p1()})` : 'NUMBER';
+        case 'money': return 'NUMBER(19,4)';
+        case 'date': case 'time': return 'DATE';
+        case 'datetime': case 'timestamp': return 'TIMESTAMP';
+        case 'timestamptz': return 'TIMESTAMP WITH TIME ZONE';
+        case 'uuid': return 'CHAR(36)';
+        case 'blob': case 'bytea': case 'binary': case 'varbinary': case 'image': return 'BLOB';
+        case 'enum': return 'VARCHAR2(64)';
+        default: return 'VARCHAR2(255)';
+      }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// مواصفات المفاتيح الأجنبية وإحالة العلاقات
+// ---------------------------------------------------------------------------
+
+interface FkSpec {
+  childTableId: string;
+  childColumn: string;
+  parentTableId: string;
+  parentColumn: string;
+  isUnique: boolean;      // علاقة 1-1 → عمود FK UNIQUE
+  isCascade: boolean;     // جداول الربط: ON DELETE CASCADE
+  /** العمود الابن موجود فعلاً في المخطط — لا تضف عموداً جديداً */
+  columnPreexisting?: boolean;
+}
+
+interface JunctionPlan {
+  name: string;
+  leftTableId: string;
+  rightTableId: string;
+}
+
+/**
+ * يقترح اسم عمود FK تلق诣اً إذا كان الجدول الابن يحتوي فعلاً على عمود بنمط
+ * `reason_id` — مثلاً "orders" ↔ عمود "order_id" المُصرّح به في order_items —
+ * فيُعاد استخدام العمود الموجود بدل إنشاء عمود مكرر.
+ */
+function resolveAutoFkColumn(child: ErTable, parent: ErTable): string {
+  const base = sanitizeIdentifier(parent.name).toLowerCase();
+  const variants = new Set<string>([
+    `${base}_id`,
+    `${base.replace(/ies$/, 'y')}_id`,
+    `${base.replace(/s$/, '')}_id`,
+  ]);
+  for (const col of child.columns) {
+    if (variants.has(col.name.toLowerCase())) return col.name;
+  }
+  return sanitizeIdentifier(`${parent.name}_id`);
+}
+
+function firstPkColumn(table: ErTable): ErColumn | undefined {
+  return table.columns.find(c => c.isPrimaryKey);
+}
+function resolveParentKeyName(parent: ErTable, warnings: string[]): string {
+  const pk = firstPkColumn(parent);
+  if (pk) return pk.name;
+  if (parent.columns.length === 1) return parent.columns[0].name;
+  warnings.push(`Table "${parent.name}" has no explicit primary key — assuming "id" for foreign keys.`);
+  return 'id';
+}
+
+function processRelationships(
+  model: ErModel,
+  tables: ErTable[],
+  options: DdlOptions,
+  warnings: string[]
+): { fks: FkSpec[]; junctions: JunctionPlan[] } {
+  const byId = new Map<string, ErTable>(tables.map(tbl => [tbl.id, tbl]));
+  const fks: FkSpec[] = [];
+  const junctions: JunctionPlan[] = [];
+  const junctionSeen = new Set<string>();
+
+  for (const rel of model.relationships) {
+    const source = byId.get(rel.sourceTable);
+    const target = byId.get(rel.targetTable);
+    if (!source || !target) continue;
+
+    if (rel.cardinality === 'N-M') {
+      if (!options.createJunctionTables) {
+        warnings.push(`Skipping N-M relation without a junction table (${source.name} ↔ ${target.name}) — set "createJunctionTables" to generate one.`);
+        continue;
+      }
+      const a = sanitizeIdentifier(source.name);
+      const b = sanitizeIdentifier(target.name);
+      const key = [a, b].sort().join('__');
+      if (junctionSeen.has(key)) continue;
+      junctionSeen.add(key);
+      junctions.push({
+        name: sanitizeIdentifier(`${a}_${b}_junction`.slice(0, 60)),
+        leftTableId: source.id,
+        rightTableId: target.id,
+      });
+      continue;
+    }
+
+    // 1-N: parent = المصدر (side one) والابن = الهدف (side many) — وفق أسهم ER في draw.io
+    const parentTable = rel.cardinality === '1-N' ? source : target;
+    const childTable = rel.cardinality === '1-N' ? target : source;
+    if (!parentTable || !childTable) continue;
+
+    const parentKeyName = rel.cardinality === '1-N'
+      ? (rel.sourceColumn || resolveParentKeyName(parentTable, warnings))
+      : (rel.targetColumn || resolveParentKeyName(parentTable, warnings));
+
+    // عمود FK صريح متصل بالحافة؟ إن وُجد وموجود في الجدول الابن نستخدمه كما هو.
+    let childColName = rel.cardinality === '1-N'
+      ? (rel.targetColumn || resolveAutoFkColumn(childTable, parentTable))
+      : (rel.sourceColumn || resolveAutoFkColumn(childTable, parentTable));
+    const preexisting =
+      Boolean(rel.sourceColumn || rel.targetColumn) ||
+      childTable.columns.some(col => col.name.toLowerCase() === childColName.toLowerCase());
+    if (preexisting && rel.targetColumn) childColName = rel.targetColumn;
+    if (preexisting && !rel.targetColumn && !childColName) continue;
+
+    fks.push({
+      childTableId: childTable.id,
+      childColumn: childColName,
+      parentTableId: parentTable.id,
+      parentColumn: parentKeyName,
+      isUnique: rel.cardinality === '1-1',
+      isCascade: false,
+      columnPreexisting: preexisting,
+    });
+  }
+
+  return { fks, junctions };
+}
+
+// ---------------------------------------------------------------------------
+// ترتيب باحث (Topological) — الجدول الأب قبل الابن
+// ---------------------------------------------------------------------------
+
+function topoOrder(tables: ErTable[], fks: FkSpec[], junctions: JunctionPlan[]): { ordered: ErTable[]; junctionsInOrder: JunctionPlan[] } {
+  const byId = new Map<string, ErTable>(tables.map(tbl => [tbl.id, tbl]));
+  const deps = new Map<string, Set<string>>();
+  for (const tbl of tables) deps.set(tbl.id, new Set());
+  for (const fk of fks) {
+    if (fk.childTableId !== fk.parentTableId) deps.get(fk.childTableId)?.add(fk.parentTableId);
+  }
+
+  const ordered: ErTable[] = [];
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+
+  const visit = (id: string) => {
+    if (visited.has(id) || visiting.has(id)) return;
+    visiting.add(id);
+    for (const dep of deps.get(id) ?? []) visit(dep);
+    visiting.delete(id);
+    visited.add(id);
+    const tbl = byId.get(id);
+    if (tbl) ordered.push(tbl);
+  };
+  for (const tbl of tables) visit(tbl.id);
+  // حلقات التبعية: البقية بالترتيب المبدئي
+  for (const tbl of tables) if (!visited.has(tbl.id)) { ordered.push(tbl); visited.add(tbl.id); }
+
+  const pos = new Map<string, number>(ordered.map((tbl, i) => [tbl.id, i]));
+  const junctionsInOrder = [...junctions].sort((a, b) => (pos.get(b.leftTableId) ?? 0) - (pos.get(a.leftTableId) ?? 0));
+  return { ordered, junctionsInOrder };
+}
+
+// ---------------------------------------------------------------------------
+// توليد DDL لكل جدول
+// ---------------------------------------------------------------------------
+
+interface ColLine {
+  name: string;
+  type: string;
+  notNull: boolean;
+  isPk: boolean;
+  /** SQLite خاصية: مفتاح أساسي autoincrement في سطر واحد */
+  sqliteInlineAutoIncrement?: boolean;
+}
+
+function extractAutoFlag(table: ErTable): ErColumn | undefined {
+  // auto increment يُفعل على PK الوحيدة ذات النوع الرقمي فقط
+  const pks = table.columns.filter(c => c.isPrimaryKey);
+  if (pks.length !== 1) return undefined;
+  const candidate = pks[0];
+  return isNumericType(candidate) ? candidate : undefined;
+}
+
+function buildColumnLine(col: ErColumn, table: ErTable, dialect: SqlDialect, q: (x: string) => string): ColLine {
+  const pkCols = table.columns.filter(c => c.isPrimaryKey);
+  const isPk = col.isPrimaryKey && pkCols.length === 1;
+  const autoCol = extractAutoFlag(table);
+  const isAuto = isPk && autoCol === col;
+
+  let sqliteInlineAutoIncrement = false;
+  let type: string;
+  if (dialect === 'sqlite' && parseRawType(col.type).base === 'boolean') {
+    type = 'INTEGER_CHECK01';
+  } else if (dialect === 'postgres' && isAuto) {
+    type = parseRawType(col.type).base === 'bigint' ? 'BIGSERIAL' : 'SERIAL';
+  } else {
+    type = mapType(col, dialect);
+    if (isAuto) {
+      if (dialect === 'mysql') type += ' AUTO_INCREMENT';
+      else if (dialect === 'sqlserver') type += ' IDENTITY(1,1)';
+      else if (dialect === 'oracle') type += ' GENERATED BY DEFAULT AS IDENTITY';
+      else if (dialect === 'sqlite' && ['integer', 'int', 'int4', 'smallint'].includes(parseRawType(col.type).base)) {
+        type = 'INTEGER';
+        sqliteInlineAutoIncrement = true;
+      }
+    }
+  }
+  return { name: col.name, type, notNull: !col.isNullable || col.isPrimaryKey, isPk, sqliteInlineAutoIncrement };
+}
+
+function columnLineText(line: ColLine, dialect: SqlDialect, q: (x: string) => string): string {
+  if (line.sqliteInlineAutoIncrement) {
+    return `  ${q(line.name)} INTEGER PRIMARY KEY AUTOINCREMENT${line.notNull ? ' NOT NULL' : ''}`;
+  }
+  const parts = [`  ${q(line.name)} ${line.type}`];
+  if (line.notNull) parts.push('NOT NULL');
+  if (line.isPk) parts.push('PRIMARY KEY');
+  return parts.join(' ');
+}
+
+/** CHECK لعمود boolean في SQLite — صيغة `CHECK (col IN (0,1))` على الجدول */
+function sqliteBooleanChecks(table: ErTable, q: (x: string) => string): string[] {
+  return table.columns
+    .filter(c => parseRawType(c.type).base === 'boolean')
+    .map(c => `CHECK (${q(c.name)} IN (0,1))`);
+}
+
+interface TableEmitContext {
+  dialect: SqlDialect;
+  fks: FkSpec[];
+  tablesById: Map<string, ErTable>;
+  warnings: string[];
+}
+
+function buildTableDdl(table: ErTable, ctx: TableEmitContext): string {
+  const { dialect, tablesById } = ctx;
+  const q = (x: string) => quoteIdent(x, dialect);
+  const rawName = sanitizeIdentifier(table.name || table.id);
+  const tableName = rawName;
+
+  const pkCols = table.columns.filter(c => c.isPrimaryKey);
+  const existingCols = new Set<string>(table.columns.map(c => c.name.toLowerCase()));
+  const colLines: ColLine[] = table.columns.map(c => buildColumnLine(c, table, dialect, q));
+
+  // ---- FK specs الخاص بهذا الجدول
+  const tableConstraints: string[] = [];
+  const tableFks = ctx.fks.filter(fk => fk.childTableId === table.id);
+
+  for (const fk of tableFks) {
+    const parent = tablesById.get(fk.parentTableId);
+    if (!parent) continue;
+
+    const colName = fk.childColumn;
+    if (fk.columnPreexisting) {
+      // العمود مصرّح به في المخطط (مثل order_id في order_items) — القيد يكفي
+      tableConstraints.push(`FOREIGN KEY (${q(colName)}) REFERENCES ${q(parent.name)}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
+      if (fk.isUnique) tableConstraints.push(`UNIQUE (${q(colName)})`);
+      continue;
+    }
+
+    let nextName = colName;
+    let attempt = 2;
+    while (existingCols.has(nextName.toLowerCase())) nextName = `${colName}_${attempt++}`;
+    existingCols.add(nextName.toLowerCase());
+
+    // نوع عمود الابن = نوع عمود الأب
+    const parentCol = parent.columns.find(c0 => c0.name.toLowerCase() === fk.parentColumn.toLowerCase());
+    const protoCol: ErColumn = parentCol
+      ? { ...parentCol }
+      : { name: fk.parentColumn, type: 'int', isPrimaryKey: true, isNullable: false };
+    const childLine: ColLine = {
+      name: nextName,
+      type:
+        dialect === 'sqlite'
+          ? parseRawType(protoCol.type).base === 'boolean'
+            ? 'INTEGER'
+            : mapType(protoCol, dialect)
+          : mapType(protoCol, dialect),
+      notNull: fk.isCascade,
+      isPk: false,
+    };
+    colLines.push(childLine);
+
+    tableConstraints.push(`FOREIGN KEY (${q(nextName)}) REFERENCES ${q(parent.name)}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
+    if (fk.isUnique) tableConstraints.push(`UNIQUE (${q(nextName)})`);
+  }
+
+  // ---- PRIMARY KEY مركّب (أكثر من عمود) — إن لم يُولّد ضمن العمود الوحيد
+  if (pkCols.length > 1) {
+    const cols = pkCols.map(c0 => q(c0.name)).join(', ');
+    tableConstraints.unshift(`PRIMARY KEY (${cols})`);
+  }
+
+  // ---- تحقّقات bool لصيغة SQLite
+  if (dialect === 'sqlite') {
+    for (const chk of sqliteBooleanChecks(table, q)) tableConstraints.push(chk);
+  }
+
+  const linesText = colLines.map(l => columnLineText(l, dialect, q)).join(',\n');
+  const constraintsText = tableConstraints.length ? `,\n  ${tableConstraints.join(',\n  ')}` : '';
+
+  let body = `CREATE TABLE ${q(tableName)} (\n${linesText}${constraintsText}\n);`;
+  if (dialect === 'mysql') body = body.replace(/\n\);$/, '\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;');
+  return body;
+}
+
+function junctionDdl(junction: JunctionPlan, tablesById: Map<string, ErTable>, allFks: FkSpec[], dialect: SqlDialect, options: DdlOptions): { table: ErTable; fk: FkSpec[] } {
+  const left = tablesById.get(junction.leftTableId);
+  const right = tablesById.get(junction.rightTableId);
+  if (!left || !right) throw new Error('Junction endpoint missing');
+  const leftPk = firstPkColumn(left);
+  const rightPk = firstPkColumn(right);
+  const leftPkName = leftPk?.name ?? resolveParentKeyName(left, []);
+  const rightPkName = rightPk?.name ?? resolveParentKeyName(right, []);
+  const leftCol = sanitizeIdentifier(`${left.name}_id` || 'left_id');
+  const rightCol = sanitizeIdentifier(`${right.name}_id` || 'right_id');
+  const leftTypeRaw = (leftPk?.type || 'int').trim();
+  const rightTypeRaw = (rightPk?.type || 'int').trim();
+
+  const table: ErTable = {
+    id: `junction:${junction.name}`,
+    name: junction.name,
+    columns: [
+      { name: leftCol, type: leftTypeRaw, isPrimaryKey: true, isNullable: false },
+      { name: rightCol, type: rightTypeRaw, isPrimaryKey: true, isNullable: false },
+    ],
+  };
+
+  const fk: FkSpec[] = [
+    {
+      childTableId: table.id,
+      childColumn: leftCol,
+      parentTableId: junction.leftTableId,
+      parentColumn: leftPkName,
+      isUnique: false,
+      isCascade: true,
+      // عمود FK معلن فعلاً في أعمدة جداول الربط أعلاه — لا يُضاعف عمود آخر بنفسه
+      columnPreexisting: true,
+    },
+    {
+      childTableId: table.id,
+      childColumn: rightCol,
+      parentTableId: junction.rightTableId,
+      parentColumn: rightPkName,
+      isUnique: false,
+      isCascade: true,
+      columnPreexisting: true,
+    },
+  ];
+  void allFks; void options;
+  return { table, fk };
+}
+
+// ---------------------------------------------------------------------------
+// نقطة الدخول العامة — يجمع الكل
+// ---------------------------------------------------------------------------
+
+export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partial<DdlOptions> = {}): DdlResult {
+  const opts: DdlOptions = { ...DEFAULT_DDL_OPTIONS, ...options };
+  const warnings: string[] = [];
+
+  // جداول بلا أعمدة لا يمكن إنشاؤها
+  const tables = model.tables.filter(tbl => tbl.columns.length > 0);
+  for (const tbl of model.tables) {
+    if (tbl.columns.length === 0) warnings.push(`Table "${tbl.name}" skipped — no columns discovered.`);
+  }
+
+  const { fks, junctions } = processRelationships(model, tables, opts, warnings);
+  const tablesById = new Map<string, ErTable>(tables.map(tbl => [tbl.id, tbl]));
+
+  // جداول الربط المعتمدة على الجداول المصدر
+  const junctionResults = junctions.map(jn => junctionDdl(jn, tablesById, fks, dialect, opts));
+  const junctionTables = junctionResults.map(jr => jr.table);
+  const junctionFks = junctionResults.flatMap(jr => jr.fk);
+
+  const { ordered } = topoOrder(tables, fks, junctions);
+
+  // الجدول الأب أولاً ثم الجدول الابن (من الأسفل: junction يأتي نظراً لاعتماده على كلا الطرفين)
+  const emitSequence = [...ordered, ...junctionTables];
+  const allFks = [...fks, ...junctionFks];
+  const tablesByIdAll = new Map<string, ErTable>([...tables, ...junctionTables].map(tbl => [tbl.id, tbl]));
+
+  const q = (x: string) => quoteIdent(x, dialect);
+
+  const header = [
+    '-- ================================================================',
+    '--  SQL DDL generated from a draw.io ER diagram',
+    `--  Dialect: ${dialect}   ·   Tables: ${tables.length}   ·   FKs: ${fks.length}   ·   Junction tables: ${junctionTables.length}`,
+    `--  Generated: ${todayStamp()} by Schema Studio (draw.io → SQL)`,
+    '-- ================================================================',
+    '',
+  ];
+
+  const dropStatements: string[] = [];
+  const createStatements: string[] = [];
+
+  for (const tbl of emitSequence) {
+    if (opts.dropIfExists) dropStatements.push(dropStatementFor(tbl, dialect, q));
+    createStatements.push(`-- Table: ${sanitizeIdentifier(tbl.name)} (${tbl.columns.length} columns)`);
+    createStatements.push(buildTableDdl(tbl, { dialect, fks: allFks, tablesById: tablesByIdAll, warnings }));
+    createStatements.push('');
+  }
+
+  const notes = warnings.length ? ['', '-- Notes:', ...warnings.map(w => `-- • ${w}`)] : [];
+
+  const code = [...header, ...(opts.dropIfExists ? dropStatements : []), ...(opts.dropIfExists ? [''] : []), ...createStatements, ...notes].join('\n');
+
+  const totalColumns = emitSequence.reduce((sum, tbl) => sum + tbl.columns.length, 0);
+  return {
+    dialect,
+    code,
+    stats: { tables: emitSequence.length, columns: totalColumns, fks: allFks.length, junctionTables: junctionTables.length },
+  };
+}
+
+function dropStatementFor(tbl: ErTable, dialect: SqlDialect, q: (x: string) => string): string {
+  const name = sanitizeIdentifier(tbl.name || tbl.id);
+  if (dialect === 'mysql' || dialect === 'postgres' || dialect === 'sqlite') {
+    return `DROP TABLE IF EXISTS ${q(name)};`;
+  }
+  if (dialect === 'sqlserver') {
+    return `IF OBJECT_ID(N'${name}', N'U') IS NOT NULL DROP TABLE ${q(name)};`;
+  }
+  // Oracle لا يدعم IF EXISTS — نعطي DROP معلّقة
+  return `-- DROP TABLE ${q(name)} CASCADE;  -- uncomment if the table already exists`;
+}

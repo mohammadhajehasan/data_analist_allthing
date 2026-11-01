@@ -26,6 +26,7 @@ const ModelConfigPage = lazy(() => import('./features/models/ModelConfigPage').t
 const AdvancedModelingPage = lazy(() => import('./features/datamodeling/AdvancedModelingPage').then(m => ({ default: m.AdvancedModelingPage })));
 const UserGuidePage = lazy(() => import('./features/help/UserGuidePage').then(m => ({ default: m.UserGuidePage })));
 const WorkflowStudio = lazy(() => import('./features/workflow/WorkflowStudio').then(m => ({ default: m.WorkflowStudio })));
+const SchemaDesignerPage = lazy(() => import('./features/schemadesigner/SchemaDesignerPage').then(m => ({ default: m.SchemaDesignerPage })));
 const DiscussionsPage = lazy(() => import('./features/discussions/DiscussionsPage').then(m => ({ default: m.DiscussionsPage })));
 const JoinGroupPage = lazy(() => import('./features/discussions/JoinGroupPage').then(m => ({ default: m.JoinGroupPage })));
 
@@ -133,6 +134,8 @@ const MainLayout: React.FC = () => {
         return <UserGuidePage />;
       case 'workflow':
         return <WorkflowStudio />;
+      case 'schemadesigner':
+        return <SchemaDesignerPage />;
       default:
         return <LandingPage />;
     }

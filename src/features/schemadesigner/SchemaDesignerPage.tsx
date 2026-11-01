@@ -1,0 +1,548 @@
+import React, { useMemo, useRef, useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import {
+  Shapes,
+  UploadCloud,
+  Copy,
+  Check,
+  Download,
+  AlertTriangle,
+  Database,
+  Table as TableIcon,
+  ArrowRight,
+  Sparkles,
+  FileCode,
+  KeyRound,
+  Link2,
+  Info,
+} from 'lucide-react';
+import {
+  parseDrawioFile,
+  extractDrawioXmlFromPng,
+  extractDrawioXmlFromSvg,
+  ErModel,
+  ErCardinality,
+} from '../../utils/drawioImporter';
+import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
+import { ErdPreview } from './ErdPreview';
+
+const DIALECTS: { id: SqlDialect; label: string; labelAr: string }[] = [
+  { id: 'mysql', label: 'MySQL', labelAr: 'MySQL' },
+  { id: 'postgres', label: 'PostgreSQL', labelAr: 'PostgreSQL' },
+  { id: 'sqlite', label: 'SQLite', labelAr: 'SQLite' },
+  { id: 'sqlserver', label: 'SQL Server', labelAr: 'SQL Server' },
+  { id: 'oracle', label: 'Oracle', labelAr: 'Oracle' },
+];
+
+const CARDINALITY_LABEL: Record<ErCardinality, { en: string; ar: string }> = {
+  '1-1': { en: 'One-to-One', ar: 'واحد إلى واحد' },
+  '1-N': { en: 'One-to-Many', ar: 'واحد إلى متعدد' },
+  'N-M': { en: 'Many-to-Many', ar: 'متعدد إلى متعدد' },
+};
+
+/** مخطط تجريبي بنمط ER الرسمي من draw.io — أربع مخزنات مبيعات */
+const EXAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-10-31T00:00:00.000Z" agent="example">
+  <diagram id="shop-erd" name="Shop ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="users" value="users" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="u0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;fontStyle=1;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="u1" value="full_name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="u2" value="email : VARCHAR(255)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="u3" value="created_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="products" value="products" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="220" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="title : VARCHAR(200)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="price : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="in_stock : BOOLEAN" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="orders" value="orders" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="600" y="40" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="o0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="o1" value="total_amount : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="o2" value="status : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="order_items" value="order_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="360" y="300" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="oi0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="oi1" value="order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="oi2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="oi3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;endArrow=ERmany;startArrow=ERone;" edge="1" parent="1" source="users" target="orders">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;endArrow=ERmany;startArrow=ERone;" edge="1" parent="1" source="orders" target="order_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;endArrow=ERmany;startArrow=ERone;" edge="1" parent="1" source="products" target="order_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="billing-erd" name="Billing ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="invoices" value="invoices" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="iv0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="iv1" value="order_id : INT #fk" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="iv2" value="amount : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="iv3" value="paid : BOOLEAN" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items" value="invoice_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="220" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ii0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="ii1" value="invoice_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="ii2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="ii3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="be1" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;endArrow=ERmany;startArrow=ERone;" edge="1" parent="1" source="invoices" target="invoice_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+
+const NO_EMBEDDED_DIAGRAM_AR = 'لا يوجد مخطط مضمّن في الملف';
+const NO_EMBEDDED_DIAGRAM_EN = 'No diagram embedded in the file';
+const NO_EMBEDDED_HINT_AR =
+  'أعد التصدير من draw.io مع تفعيل خيار «تضمين نسخة من المخطط» (Include a copy of my diagram)، أو ارفع ملف .drawio / .xml.';
+const NO_EMBEDDED_HINT_EN =
+  'Re-export from draw.io with "Include a copy of my diagram" checked, or upload the .drawio / .xml file directly.';
+
+export const SchemaDesignerPage: React.FC = () => {
+  const { language, toast } = useApp();
+  const isAr = language === 'ar';
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [parsedModel, setParsedModel] = useState<ErModel | null>(null);
+  const [selectedPage, setSelectedPage] = useState<number>(-1); // -1 = كل الصفحات
+  const [fileName, setFileName] = useState<string>('');
+  const [isParsing, setIsParsing] = useState<boolean>(false);
+  const [dialect, setDialect] = useState<SqlDialect>('mysql');
+  const [dropIfExists, setDropIfExists] = useState<boolean>(DEFAULT_DDL_OPTIONS.dropIfExists);
+  const [createJunctionTables, setCreateJunctionTables] = useState<boolean>(DEFAULT_DDL_OPTIONS.createJunctionTables);
+  const [generated, setGenerated] = useState<DdlResult | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const stats = useMemo(() => {
+    if (!parsedModel) return null;
+    const columnCount = parsedModel.tables.reduce((sum, t) => sum + t.columns.length, 0);
+    return { tables: parsedModel.tables.length, columns: columnCount, relations: parsedModel.relationships.length, warnings: parsedModel.warnings.length };
+  }, [parsedModel]);
+
+  /** نموذج الصفحة المختارة: -1 = الكل، فهرس يُصفّي الجداول/العلاقات لصفحة واحدة */
+  const pageModel = useMemo(() => {
+    if (!parsedModel) return null;
+    if (selectedPage < 0 || parsedModel.diagramNames.length < 2) return parsedModel;
+    const shows = (pages?: number[]): boolean => pages === undefined || pages.length === 0 || pages.includes(selectedPage);
+    const tables = parsedModel.tables.filter(t => shows(t.pages));
+    const tableIds = new Set(tables.map(t => t.id));
+    const relationships = parsedModel.relationships.filter(r => shows(r.pages) && tableIds.has(r.sourceTable) && tableIds.has(r.targetTable));
+    return { ...parsedModel, tables, relationships };
+  }, [parsedModel, selectedPage]);
+
+  const processTextFile = async (text: string, sourceName: string): Promise<void> => {
+    setIsParsing(true);
+    try {
+      const model = await parseDrawioFile(text);
+      setParsedModel(model);
+      setSelectedPage(model.diagramNames.length > 1 ? 0 : -1);
+      setFileName(sourceName);
+      setGenerated(null);
+      const pagesHint = model.diagramNames.length > 1 ? (isAr ? ` (${model.diagramNames.length} صفحات)` : ` (${model.diagramNames.length} pages)`) : '';
+      toast.success(
+        isAr ? 'تم تحليل المخطط بنجاح' : 'Diagram parsed',
+        isAr
+          ? `اكتُشف ${model.tables.length} جداول و${model.relationships.length} علاقات${pagesHint}. اختر الصنف وولّد الـ SQL.`
+          : `${model.tables.length} tables and ${model.relationships.length} relations${pagesHint} recognized. Pick a dialect and generate.`
+      );
+    } catch (err) {
+      setParsedModel(null);
+      toast.error(isAr ? 'فشل تحليل المخطط' : 'Parsing failed', (err as Error).message);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleFiles = async (files: FileList | null): Promise<void> => {
+    const file = files?.[0];
+    if (!file) return;
+
+    let text: string | null = null;
+    try {
+      if (/\.png$/i.test(file.name)) {
+        text = await extractDrawioXmlFromPng(await file.arrayBuffer());
+      } else if (/\.svg$/i.test(file.name)) {
+        text = extractDrawioXmlFromSvg(await file.text());
+      } else if (/\.(drawio|xml|txt|mxfile)$/i.test(file.name)) {
+        text = await file.text();
+      } else {
+        toast.warning(
+          isAr ? 'أنواع مدعومة' : 'Supported files',
+          isAr ? 'ارفع ملفاً بصيغة .drawio أو .xml أو .png أو .svg' : 'Upload a .drawio, .xml, .png or .svg diagram file.'
+        );
+        return;
+      }
+      if (text === null) {
+        toast.error(
+          isAr ? NO_EMBEDDED_DIAGRAM_AR : NO_EMBEDDED_DIAGRAM_EN,
+          isAr ? NO_EMBEDDED_HINT_AR : NO_EMBEDDED_HINT_EN
+        );
+        return;
+      }
+    } catch (err) {
+      toast.error(isAr ? 'تعذّرت قراءة الملف' : 'Could not read file', (err as Error).message);
+      return;
+    }
+    await processTextFile(text, file.name);
+  };
+
+  const handleGenerate = (): void => {
+    if (!parsedModel) return;
+    const result = generateDdl(parsedModel, dialect, { dropIfExists, createJunctionTables });
+    setGenerated(result);
+  };
+
+  const handleCopy = async (): Promise<void> => {
+    if (!generated) return;
+    try {
+      await navigator.clipboard.writeText(generated.code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(isAr ? 'تعذر النسخ' : 'Copy failed', isAr ? 'انسخ الكود يدوياً من النافذة.' : 'Select and copy manually.');
+    }
+  };
+
+  const handleDownload = (): void => {
+    if (!generated) return;
+    const blob = new Blob([generated.code], { type: 'application/sql' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schema_${dialect}_${new Date().toISOString().slice(0, 10)}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* ============== Header ============== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Shapes className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
+              DRAW.IO · ERD → SQL SCHEMA STUDIO
+            </span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--cds-text-01)] tracking-tight mt-1">
+            {isAr ? 'مصمّم السكيمّا من draw.io' : 'Schema Designer from draw.io'}
+          </h2>
+          <p className="text-xs sm:text-sm text-[var(--cds-text-02)] mt-0.5">
+            {isAr
+              ? 'ارفع مخطط ER المُصدَّر من draw.io وحوّله إلى كود CREATE TABLE كامل مع العلاقات والمفاتيح — MySQL، PostgreSQL، SQLite، SQL Server، Oracle.'
+              : 'Upload a draw.io ER diagram export and turn it into full CREATE TABLE code with keys and relations — MySQL, PostgreSQL, SQLite, SQL Server, Oracle.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { void processTextFile(EXAMPLE_XML, 'example-shop-erd.drawio'); }}
+          className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
+          <span>{isAr ? 'مخطط تجريبي' : 'Load example'}</span>
+        </button>
+      </div>
+
+      {/* ============== Dropzone ============== */}
+      <div
+        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={e => { e.preventDefault(); setIsDragging(false); void handleFiles(e.dataTransfer.files); }}
+        className={`p-8 text-center border-2 border-dashed transition-colors ${
+          isDragging
+            ? 'border-[var(--cds-interactive-01)] bg-[var(--cds-interactive-01)]/5'
+            : 'border-[var(--cds-border-strong)] hover:border-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)]'
+        }`}
+      >
+        <UploadCloud className={`w-10 h-10 mx-auto mb-3 ${isDragging ? 'text-[var(--cds-interactive-01)]' : 'text-[var(--cds-text-03)]'}`} />
+        <p className="text-sm text-[var(--cds-text-01)] font-bold">
+          {isAr ? 'اسحب ملف .drawio أو .xml أو .png أو .svg هنا' : 'Drop a .drawio, .xml, .png or .svg diagram here'}
+        </p>
+        <p className="text-[11px] text-[var(--cds-text-03)] mt-1 font-mono">
+          {isAr
+            ? 'صور PNG/SVG تتطلب تصديراً من draw.io مع تفعيل «Include a copy of my diagram» ليتضمّن الملف XML المخطط.'
+            : 'PNG/SVG exports require embedding enabled in draw.io ("Include a copy of my diagram") to carry the diagram XML.'}
+        </p>
+        <p className="text-xs text-[var(--cds-text-03)] mt-1">
+          {isAr ? 'أو' : 'or'}
+        </p>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isParsing}
+          className="mt-2 inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90 disabled:opacity-50"
+        >
+          <FileCode className="w-3.5 h-3.5" />
+          {isParsing ? (isAr ? 'جاري التحليل...' : 'Parsing...') : isAr ? 'اختر ملفاً' : 'Browse files'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".drawio,.xml,.txt,.mxfile,.png,.svg"
+          className="hidden"
+          onChange={e => { void handleFiles(e.target.files); }}
+        />
+        {fileName && (
+          <p className="mt-3 text-[11px] font-mono text-[var(--cds-text-03)]">
+            {isAr ? 'آخر ملف:' : 'Last file:'} <span className="text-[var(--cds-text-01)]">{fileName}</span>
+          </p>
+        )}
+      </div>
+
+      {/* ============== Parsed model review ============== */}
+      {parsedModel && stats && (
+        <div className="space-y-4">
+          {/* وقائع عامة */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { icon: TableIcon, label: isAr ? 'جداول' : 'Tables', value: stats.tables },
+              { icon: Database, label: isAr ? 'أعمدة' : 'Columns', value: stats.columns },
+              { icon: Link2, label: isAr ? 'علاقات' : 'Relations', value: stats.relations },
+              { icon: AlertTriangle, label: isAr ? 'تحذيرات' : 'Warnings', value: stats.warnings },
+            ].map((c) => (
+              <div key={c.label} className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-3 flex items-center gap-3">
+                <c.icon className="w-4 h-4 text-[var(--cds-interactive-01)] shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xl font-bold text-[var(--cds-text-01)] font-mono leading-none">{c.value}</div>
+                  <div className="text-[10px] font-mono uppercase text-[var(--cds-text-03)] mt-1">{c.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* منتقي الصفحات للملفات متعددة الصفحات */}
+          {parsedModel.diagramNames.length > 1 && (
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] px-3 py-2 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)]">
+                {isAr ? 'صفحات الملف' : 'Document pages'}
+              </span>
+              <select
+                value={selectedPage}
+                onChange={e => setSelectedPage(Number(e.target.value))}
+                className="px-2 py-1 text-xs font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none max-w-full"
+                aria-label={isAr ? 'اختر الصفحة' : 'Select page'}
+              >
+                <option value={-1}>{isAr ? 'كل الصفحات' : 'All pages'}</option>
+                {parsedModel.diagramNames.map((n, i) => (
+                  <option key={`${i}-${n}`} value={i}>{`${i + 1}. ${n}`}</option>
+                ))}
+              </select>
+              {pageModel && (
+                <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                  {isAr ? 'المعروضة' : 'Shown'}: {pageModel.tables.length} {isAr ? 'جداول' : 'tables'} · {pageModel.relationships.length} {isAr ? 'علاقات' : 'relations'}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* المعاينة المرئية للمخطط — بطاقات + موصّلات */}
+          {pageModel && pageModel.tables.length > 0 && <ErdPreview model={pageModel} isAr={isAr} />}
+
+          {/* بطاقات الجداول */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {pageModel?.tables.map(table => (
+              <div key={table.id} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
+                <div className="px-3 py-2 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center gap-2">
+                  <TableIcon className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
+                  <span className="text-xs font-bold font-mono text-[var(--cds-text-01)] truncate">{table.name}</span>
+                  <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)]">{table.columns.length} {isAr ? 'أعمدة' : 'cols'}</span>
+                </div>
+                <div className="p-2 space-y-1 max-h-56 overflow-y-auto">
+                  {table.columns.map(col => (
+                    <div key={col.name} className="flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--cds-layer-02)]">
+                      {col.isPrimaryKey ? (
+                        <KeyRound className="w-3 h-3 text-[#f1c21b] shrink-0" />
+                      ) : (
+                        <span className="w-3 h-3 shrink-0" />
+                      )}
+                      <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
+                      <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
+                    </div>
+                  ))}
+                  {table.columns.length === 0 && (
+                    <p className="text-[10px] text-[var(--cds-text-03)] font-mono px-1.5 py-2">
+                      {isAr ? 'لم يُكتشف أعمدة — تحقق من تسميات الخلايا.' : 'No columns discovered.'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* العلاقات */}
+          {pageModel && pageModel.relationships.length > 0 && (
+            <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-3">
+              <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] mb-2">
+                {isAr ? 'العلاقات المكتشفة' : 'Recognized relations'}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {pageModel.relationships.map(rel => {
+                  const source = pageModel.tables.find(t => t.id === rel.sourceTable)?.name || '?';
+                  const target = pageModel.tables.find(t => t.id === rel.targetTable)?.name || '?';
+                  return (
+                    <div key={rel.id} className="flex items-center gap-2 text-[11px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2 py-1.5">
+                      <span className="text-[var(--cds-text-01)] truncate">{source}</span>
+                      <ArrowRight className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" />
+                      <span className="text-[var(--cds-text-01)] truncate">{target}</span>
+                      <span className="ms-auto text-[9px] px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] shrink-0">
+                        {CARDINALITY_LABEL[rel.cardinality][isAr ? 'ar' : 'en']}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* تحذيرات التحليل */}
+          {parsedModel.warnings.length > 0 && (
+            <div className="bg-[#f1c21b]/10 border border-[#f1c21b]/30 p-3 flex items-start gap-2">
+              <Info className="w-4 h-4 text-[#f1c21b] shrink-0 mt-0.5" />
+              <div className="text-[11px] font-mono text-[var(--cds-text-02)] space-y-1">
+                {parsedModel.warnings.slice(0, 6).map((w, i) => <p key={i}>• {w}</p>)}
+                {parsedModel.warnings.length > 6 && <p>… +{parsedModel.warnings.length - 6}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* ============== Dialect options + generate ============== */}
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--cds-text-03)]">
+                {isAr ? 'صنف SQL:' : 'SQL dialect:'}
+              </span>
+              {DIALECTS.map(d => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setDialect(d.id)}
+                  className={`px-3 py-1.5 text-xs font-mono font-bold border transition-colors ${
+                    dialect === d.id
+                      ? 'bg-[var(--cds-interactive-01)] text-white border-transparent'
+                      : 'bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]'
+                  }`}
+                >
+                  {isAr ? d.labelAr : d.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-xs font-mono text-[var(--cds-text-02)] cursor-pointer">
+                <input type="checkbox" checked={dropIfExists} onChange={e => setDropIfExists(e.target.checked)} className="accent-[var(--cds-interactive-01)]" />
+                {isAr ? 'أضف DROP TABLE IF EXISTS' : 'Add DROP TABLE IF EXISTS'}
+              </label>
+              <label className="flex items-center gap-2 text-xs font-mono text-[var(--cds-text-02)] cursor-pointer">
+                <input type="checkbox" checked={createJunctionTables} onChange={e => setCreateJunctionTables(e.target.checked)} className="accent-[var(--cds-interactive-01)]" />
+                {isAr ? 'أنشئ جداول ربط لعلاقات N-M' : 'Generate junction tables for N-M'}
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="ms-auto inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90"
+              >
+                <FileCode className="w-4 h-4" />
+                {isAr ? 'ولّد كود SQL' : 'Generate SQL'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============== Generated code ============== */}
+      {generated && (
+        <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)]">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
+              {generated.dialect.toUpperCase()} · {isAr ? 'جداول' : 'tables'}: {generated.stats.tables} · {isAr ? 'أعمدة' : 'cols'}: {generated.stats.columns} · FK: {generated.stats.fks}
+            </span>
+            <div className="ms-auto flex items-center gap-2">
+              <button type="button" onClick={() => { void handleCopy(); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono font-bold bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]">
+                {copied ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
+                {copied ? (isAr ? 'تم النسخ' : 'Copied') : isAr ? 'نسخ' : 'Copy'}
+              </button>
+              <button type="button" onClick={handleDownload} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono font-bold bg-[var(--cds-interactive-01)] text-white hover:opacity-90">
+                <Download className="w-3 h-3" />
+                .sql
+              </button>
+            </div>
+          </div>
+          <pre className="m-0 p-4 text-[11px] leading-relaxed font-mono text-[var(--cds-text-01)] max-h-[480px] overflow-auto text-left" dir="ltr">
+            {generated.code}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+};
