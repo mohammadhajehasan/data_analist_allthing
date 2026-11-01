@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" id="html-root">
 <head>
 <meta charset="UTF-8">
-<title>منصة التحليلات الذكية للبيانات</title>
+<title data-i18n>منصة التحليلات الذكية للبيانات</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   :root {
@@ -29,18 +29,30 @@
   .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
   a { text-decoration: none; color: inherit; }
 
+  /* ===== Lang switch ===== */
+  .lang-switch {
+    display: flex; background: #141b2e; border: 1px solid #1f2a44; border-radius: 20px;
+    padding: 3px; gap: 2px;
+  }
+  .lang-switch button {
+    border: none; background: transparent; color: var(--text-sub); font-size: 12.5px; font-weight: bold;
+    padding: 6px 14px; border-radius: 16px; cursor: pointer; font-family: inherit;
+  }
+  .lang-switch button.active { background: var(--blue); color: #fff; }
+
   /* ===== Nav ===== */
   nav {
     position: sticky; top: 0; z-index: 50;
     background: rgba(11,18,32,0.85); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--card-border);
   }
-  nav .container { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; }
+  nav .container { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; gap: 16px; flex-wrap: wrap; }
   .logo { font-weight: bold; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 8px; }
   .logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue-light); box-shadow: 0 0 12px var(--blue-light); }
   .nav-links { display: flex; gap: 28px; }
   .nav-links a { color: var(--text-sub); font-size: 14px; transition: color .2s; }
   .nav-links a:hover { color: #fff; }
+  .nav-right { display: flex; align-items: center; gap: 14px; }
   .nav-cta {
     background: var(--blue); color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: bold;
   }
@@ -69,11 +81,11 @@
   .hero-ctas { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 50px; }
   .btn-primary {
     background: var(--blue); color: #fff; padding: 15px 34px; border-radius: 10px; font-weight: bold; font-size: 15px;
-    box-shadow: 0 8px 24px rgba(37,99,235,0.35); transition: transform .2s;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.35); transition: transform .2s; display: inline-block;
   }
   .btn-secondary {
     background: transparent; color: #fff; padding: 15px 34px; border-radius: 10px; font-weight: bold; font-size: 15px;
-    border: 1px solid #334155;
+    border: 1px solid #334155; display: inline-block;
   }
   .hero-stats { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; }
   .hero-stats .stat { text-align: center; }
@@ -103,7 +115,7 @@
 
   /* ===== Features (alternating) ===== */
   .feature-row { display: flex; align-items: center; gap: 60px; margin-bottom: 90px; }
-  .feature-row:nth-child(even) { flex-direction: row-reverse; }
+  .feature-row:nth-of-type(even) { flex-direction: row-reverse; }
   .feature-row .text-col { flex: 1; min-width: 0; }
   .feature-row .visual-col { flex: 1; min-width: 0; display: flex; justify-content: center; }
   .feature-icon {
@@ -121,7 +133,7 @@
   .visual-card img { width: 100%; border-radius: 12px; display: block; }
 
   /* ===== Feature grid (compact, for remaining features) ===== */
-  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 70px; }
   .fg-card {
     background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px;
     transition: transform .2s, border-color .2s;
@@ -189,7 +201,7 @@
 
   @media (max-width: 860px) {
     .problem-grid, .feature-grid, .audience-grid, .trust-grid, .value-grid { grid-template-columns: 1fr 1fr; }
-    .feature-row, .feature-row:nth-child(even) { flex-direction: column; }
+    .feature-row, .feature-row:nth-of-type(even) { flex-direction: column; }
     .hero h1 { font-size: 32px; }
     .nav-links { display: none; }
   }
@@ -202,214 +214,400 @@
 
 <nav>
   <div class="container">
-    <div class="logo"><span class="dot"></span> منصة التحليلات الذكية</div>
+    <div class="logo"><span class="dot"></span> <span data-i18n>منصة التحليلات الذكية</span></div>
     <div class="nav-links">
-      <a href="#features">المزايا</a>
-      <a href="#journey">كيف تعمل</a>
-      <a href="#audience">لمن هذه المنصة</a>
-      <a href="#trust">الأمان</a>
+      <a href="#features" data-i18n>المزايا</a>
+      <a href="#journey" data-i18n>كيف تعمل</a>
+      <a href="#audience" data-i18n>لمن هذه المنصة</a>
+      <a href="#trust" data-i18n>الأمان</a>
     </div>
-    <a href="#cta" class="nav-cta">جرّب الآن مجاناً</a>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button type="button" data-lang-btn="ar" class="active">AR</button>
+        <button type="button" data-lang-btn="en">EN</button>
+      </div>
+      <a href="https://data-analist-allthing-z736.onrender.com/" target="_blank" rel="noopener" class="nav-cta" data-i18n>جرّب الآن مجاناً</a>
+    </div>
   </div>
 </nav>
-
 <header class="hero">
   <div class="container">
-    <div class="badge">✨ الجيل القادم من تحليلات الذكاء الاصطناعي</div>
-    <h1>حوّل بياناتك الضخمة إلى <span>قرارات فورية</span> بلغة طبيعية وذكاء اصطناعي</h1>
-    <p class="sub">منصة واحدة تجمع استكشاف البيانات، توليد SQL بالذكاء الاصطناعي، نمذجة العلاقات، لوحات التحكم التفاعلية، والتقارير التنفيذية التلقائية — بلا حاجة لفريق تقني في كل خطوة.</p>
+    <div class="badge" data-i18n-key="badge">✨ الجيل القادم من تحليلات الذكاء الاصطناعي</div>
+    <h1 data-i18n-html="heroTitle">حوّل بياناتك الضخمة إلى <span>قرارات فورية</span> بلغة طبيعية وذكاء اصطناعي</h1>
+    <p class="sub" data-i18n-key="heroSub">منصة واحدة تجمع استكشاف البيانات، توليد SQL بالذكاء الاصطناعي، نمذجة العلاقات، لوحات التحكم التفاعلية، والتقارير التنفيذية التلقائية — بلا حاجة لفريق تقني في كل خطوة.</p>
     <div class="hero-ctas">
-      <a href="#cta" class="btn-primary">ابدأ تجربة مجانية</a>
-      <a href="#features" class="btn-secondary">اكتشف المزايا</a>
+      <a href="https://data-analist-allthing-z736.onrender.com/" target="_blank" rel="noopener" class="btn-primary" data-i18n-key="ctaStart">ابدأ تجربة مجانية</a>
+      <a href="#features" class="btn-secondary" data-i18n-key="ctaExplore">اكتشف المزايا</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><strong>محرك OLAP فوري</strong><span>تجميع وحساب في الذاكرة</span></div>
-      <div class="stat"><strong>ساندبوكس 9 طبقات</strong><span>أمان كامل لكل استعلام</span></div>
-      <div class="stat"><strong>عربي / إنجليزي</strong><span>واجهة RTL كاملة</span></div>
+      <div class="stat"><strong data-i18n-key="stat1t">محرك OLAP فوري</strong><span data-i18n-key="stat1s">تجميع وحساب في الذاكرة</span></div>
+      <div class="stat"><strong data-i18n-key="stat2t">ساندبوكس 9 طبقات</strong><span data-i18n-key="stat2s">أمان كامل لكل استعلام</span></div>
+      <div class="stat"><strong data-i18n-key="stat3t">عربي / إنجليزي</strong><span data-i18n-key="stat3s">واجهة RTL كاملة</span></div>
     </div>
   </div>
 </header>
 
 <section id="problem">
   <div class="container">
-    <div class="section-tag">التحدي</div>
-    <h2 class="section-title">لماذا تفشل أغلب الشركات في استثمار بياناتها؟</h2>
-    <p class="section-sub">الاعتماد الكامل على الفرق التقنية، البيانات المبعثرة، والتقارير اليدوية تُبطئ القرار وتُكلّف الشركات فرصاً ضائعة.</p>
+    <div class="section-tag" data-i18n-key="problemTag">التحدي</div>
+    <h2 class="section-title" data-i18n-key="problemTitle">لماذا تفشل أغلب الشركات في استثمار بياناتها؟</h2>
+    <p class="section-sub" data-i18n-key="problemSub">الاعتماد الكامل على الفرق التقنية، البيانات المبعثرة، والتقارير اليدوية تُبطئ القرار وتُكلّف الشركات فرصاً ضائعة.</p>
     <div class="problem-grid">
       <div class="problem-card">
         <div class="num">١</div>
-        <h3>الاعتماد الكامل على فريق تقني</h3>
-        <p>كل سؤال تحليلي بسيط يحتاج مهندس بيانات لكتابة استعلام SQL، مما يبطئ القرار ويُثقل فريق تكنولوجيا المعلومات.</p>
+        <h3 data-i18n-key="p1h">الاعتماد الكامل على فريق تقني</h3>
+        <p data-i18n-key="p1p">كل سؤال تحليلي بسيط يحتاج مهندس بيانات لكتابة استعلام SQL، مما يبطئ القرار ويُثقل فريق تكنولوجيا المعلومات.</p>
       </div>
       <div class="problem-card">
         <div class="num">٢</div>
-        <h3>بيانات مبعثرة وغير موثوقة</h3>
-        <p>ملفات Excel وقواعد بيانات متفرقة بلا توصيف إحصائي أو فحص جودة، فتُتخذ القرارات على أرقام غير مؤكدة.</p>
+        <h3 data-i18n-key="p2h">بيانات مبعثرة وغير موثوقة</h3>
+        <p data-i18n-key="p2p">ملفات Excel وقواعد بيانات متفرقة بلا توصيف إحصائي أو فحص جودة، فتُتخذ القرارات على أرقام غير مؤكدة.</p>
       </div>
       <div class="problem-card">
         <div class="num">٣</div>
-        <h3>تقارير تُعدّ يدوياً وتستغرق أياماً</h3>
-        <p>تحويل الأرقام إلى تقرير تنفيذي مفهوم يستهلك وقتاً طويلاً من المحللين بدل التركيز على القرارات الاستراتيجية.</p>
+        <h3 data-i18n-key="p3h">تقارير تُعدّ يدوياً وتستغرق أياماً</h3>
+        <p data-i18n-key="p3p">تحويل الأرقام إلى تقرير تنفيذي مفهوم يستهلك وقتاً طويلاً من المحللين بدل التركيز على القرارات الاستراتيجية.</p>
       </div>
     </div>
   </div>
 </section>
-
 <section id="features">
   <div class="container">
-    <div class="section-tag">المزايا الأساسية</div>
-    <h2 class="section-title">كل ما تحتاجه رحلة البيانات، في منصة واحدة</h2>
-    <p class="section-sub">من الرفع الخام إلى التقرير التنفيذي الجاهز للعرض — بلا كود وبخطوات تفاعلية بسيطة.</p>
+    <div class="section-tag" data-i18n-key="featTag">المزايا الأساسية</div>
+    <h2 class="section-title" data-i18n-key="featTitle">كل ما تحتاجه رحلة البيانات، في منصة واحدة</h2>
+    <p class="section-sub" data-i18n-key="featSub">من الرفع الخام إلى التقرير التنفيذي الجاهز للعرض — بلا كود وبخطوات تفاعلية بسيطة.</p>
 
     <div class="feature-row">
       <div class="text-col">
         <div class="feature-icon" style="background:#0f2744; color:#60a5fa;">⚡</div>
-        <h3>محرك OLAP فوري + مستكشف بيانات تفاعلي</h3>
-        <p class="desc">تجميع وحساب في الذاكرة للبيانات الضخمة، بلا انتظار ولا حاجة لكتابة كود معقّد.</p>
+        <h3 data-i18n-key="f1h">محرك OLAP فوري + مستكشف بيانات تفاعلي</h3>
+        <p class="desc" data-i18n-key="f1d">تجميع وحساب في الذاكرة للبيانات الضخمة، بلا انتظار ولا حاجة لكتابة كود معقّد.</p>
         <ul>
-          <li>تجميع وحساب فوري في الذاكرة ومطابقة التوزيعات الإحصائية بأقل من 10 ميلي ثانية</li>
-          <li>فلترة وتجميع تفاعلي للأعمدة دون كتابة أي استعلام</li>
-          <li>تصدير فوري لأي نتيجة استكشاف إلى CSV</li>
+          <li data-i18n-key="f1l1">تجميع وحساب فوري في الذاكرة ومطابقة التوزيعات الإحصائية بأقل من 10 ميلي ثانية</li>
+          <li data-i18n-key="f1l2">فلترة وتجميع تفاعلي للأعمدة دون كتابة أي استعلام</li>
+          <li data-i18n-key="f1l3">تصدير فوري لأي نتيجة استكشاف إلى CSV</li>
         </ul>
       </div>
       <div class="visual-col">
-        <div class="visual-card"><img src="assets/hero.png" alt="لوحة استكشاف البيانات"></div>
+        <div class="visual-card"><img src="assets/hero.png" alt="Explorer"></div>
       </div>
     </div>
 
     <div class="feature-row">
       <div class="text-col">
         <div class="feature-icon" style="background:#1b0f44; color:#a78bfa;">💬</div>
-        <h3>توليد SQL ذكي داخل ساندبوكس 9 طبقات</h3>
-        <p class="desc">تحويل الأسئلة الطبيعية (عربي/إنجليزي) إلى SQL دقيق، مع تحقق أمني كامل قبل أي تنفيذ.</p>
+        <h3 data-i18n-key="f2h">توليد SQL ذكي داخل ساندبوكس 9 طبقات</h3>
+        <p class="desc" data-i18n-key="f2d">تحويل الأسئلة الطبيعية (عربي/إنجليزي) إلى SQL دقيق، مع تحقق أمني كامل قبل أي تنفيذ.</p>
         <ul>
-          <li>تحقق نحوي وأمني من كل استعلام قبل التنفيذ</li>
-          <li>تقدير الكلفة الحسابية مسبقاً لتفادي الاستعلامات الثقيلة</li>
-          <li>سجل تدقيق كامل لكل استعلام يُنفَّذ على البيانات</li>
+          <li data-i18n-key="f2l1">تحقق نحوي وأمني من كل استعلام قبل التنفيذ</li>
+          <li data-i18n-key="f2l2">تقدير الكلفة الحسابية مسبقاً لتفادي الاستعلامات الثقيلة</li>
+          <li data-i18n-key="f2l3">سجل تدقيق كامل لكل استعلام يُنفَّذ على البيانات</li>
         </ul>
       </div>
       <div class="visual-col">
-        <div class="visual-card"><img src="assets/icons.png" alt="مزايا المنصة"></div>
+        <div class="visual-card"><img src="assets/icons.png" alt="NL2SQL"></div>
       </div>
     </div>
 
     <div class="feature-row">
       <div class="text-col">
         <div class="feature-icon" style="background:#052e26; color:#34d399;">🧠</div>
-        <h3>AI Copilot — محادثة تحوّل الأرقام إلى قرارات</h3>
-        <p class="desc">مساعد ذكي تفاعلي يستخرج الرؤى ويولّد الرسوم البيانية تلقائياً من بياناتك.</p>
+        <h3 data-i18n-key="f3h">AI Copilot — محادثة تحوّل الأرقام إلى قرارات</h3>
+        <p class="desc" data-i18n-key="f3d">مساعد ذكي تفاعلي يستخرج الرؤى ويولّد الرسوم البيانية تلقائياً من بياناتك.</p>
         <ul>
-          <li>محادثة تفاعلية للحصول على رؤى فورية مدعومة بالذكاء الاصطناعي</li>
-          <li>توليد الرسم البياني الأنسب لبياناتك تلقائياً</li>
-          <li>تأليف سردي تلقائي يحوّل النتائج إلى قصة تنفيذية مفهومة</li>
+          <li data-i18n-key="f3l1">محادثة تفاعلية للحصول على رؤى فورية مدعومة بالذكاء الاصطناعي</li>
+          <li data-i18n-key="f3l2">توليد الرسم البياني الأنسب لبياناتك تلقائياً</li>
+          <li data-i18n-key="f3l3">تأليف سردي تلقائي يحوّل النتائج إلى قصة تنفيذية مفهومة</li>
         </ul>
       </div>
       <div class="visual-col">
-        <div class="visual-card"><img src="assets/team.png" alt="فريق يستخدم المنصة"></div>
+        <div class="visual-card"><img src="assets/team.png" alt="AI Copilot"></div>
       </div>
     </div>
 
     <div class="feature-grid">
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">🗂️</div>
-        <h4>نمذجة علاقات ذكية (AI ERD)</h4>
-        <p>اقتراح العلاقات بين الجداول تلقائياً وبناء مخطط كيانات-علاقات تفاعلي قابل للتعديل.</p>
+        <h4 data-i18n-key="g1h">نمذجة علاقات ذكية (AI ERD)</h4>
+        <p data-i18n-key="g1p">اقتراح العلاقات بين الجداول تلقائياً وبناء مخطط كيانات-علاقات تفاعلي قابل للتعديل.</p>
       </div>
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">📊</div>
-        <h4>توصيف إحصائي وفحص جودة</h4>
-        <p>كشف القيم الشاذة والمفقودة، حساب المتوسطات والانحراف المعياري، وتحليل التوزيعات.</p>
+        <h4 data-i18n-key="g2h">توصيف إحصائي وفحص جودة</h4>
+        <p data-i18n-key="g2p">كشف القيم الشاذة والمفقودة، حساب المتوسطات والانحراف المعياري، وتحليل التوزيعات.</p>
       </div>
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">🖥️</div>
-        <h4>لوحات تحكم تفاعلية</h4>
-        <p>تصميم لوحات مخصصة بالسحب والإفلات، مع تحديث فوري للمؤشرات الرئيسية.</p>
+        <h4 data-i18n-key="g3h">لوحات تحكم تفاعلية</h4>
+        <p data-i18n-key="g3p">تصميم لوحات مخصصة بالسحب والإفلات، مع تحديث فوري للمؤشرات الرئيسية.</p>
       </div>
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">📤</div>
-        <h4>تصدير احترافي</h4>
-        <p>تصدير أي لوحة تحكم أو نتيجة مباشرة لمشاركتها مع الإدارة أو العملاء.</p>
+        <h4 data-i18n-key="g4h">تصدير احترافي</h4>
+        <p data-i18n-key="g4p">تصدير أي لوحة تحكم أو نتيجة مباشرة لمشاركتها مع الإدارة أو العملاء.</p>
       </div>
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">🔌</div>
-        <h4>دعم متعدد لمزوّدي الذكاء الاصطناعي</h4>
-        <p>اختر مزوّد الذكاء الاصطناعي الأنسب (سحابي أو محلي عبر Ollama) حسب سياسات خصوصيتك.</p>
+        <h4 data-i18n-key="g5h">دعم متعدد لمزوّدي الذكاء الاصطناعي</h4>
+        <p data-i18n-key="g5p">اختر مزوّد الذكاء الاصطناعي الأنسب (سحابي أو محلي عبر Ollama) حسب سياسات خصوصيتك.</p>
       </div>
       <div class="fg-card">
         <div class="fg-icon" style="color:#6ee7b7;">🌐</div>
-        <h4>ثنائية اللغة بالكامل</h4>
-        <p>واجهة عربية RTL كاملة وإنجليزية جنباً إلى جنب لفرق العمل متعددة الجنسيات.</p>
+        <h4 data-i18n-key="g6h">ثنائية اللغة بالكامل</h4>
+        <p data-i18n-key="g6p">واجهة عربية RTL كاملة وإنجليزية جنباً إلى جنب لفرق العمل متعددة الجنسيات.</p>
+      </div>
+    </div>
+
+    <div class="feature-row" style="margin-top:0;">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#052e26; color:#34d399;">🤖</div>
+        <h3 data-i18n-key="f4h">المساعد الذكي — محادثة مباشرة مع بياناتك</h3>
+        <p class="desc" data-i18n-key="f4d">اكتب سؤالك بلغتك الطبيعية داخل نافذة محادثة تفاعلية، واحصل على رؤى وتوضيحات مبنية على بياناتك الفعلية الموجودة في المنصة.</p>
+        <ul>
+          <li data-i18n-key="f4l1">يفهم السياق الكامل لمجموعة البيانات النشطة قبل الإجابة</li>
+          <li data-i18n-key="f4l2">يقترح رسوماً بيانية ومؤشرات مناسبة للسؤال المطروح</li>
+          <li data-i18n-key="f4l3">يدعم عدة مزوّدي ذكاء اصطناعي (سحابي أو محلي) حسب ما تفعّله من إعدادات حسابك</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="video-captures/17-assistant.png" alt="Assistant"></div>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#1b0f44; color:#a78bfa;">⚙️</div>
+        <h3 data-i18n-key="f5h">أتمتة سير العمل — سلاسل عمل بلا كود</h3>
+        <p class="desc" data-i18n-key="f5d">بناء سلسلة من الخطوات المتصلة (عقد) تُنفَّذ تلقائياً: من تنظيف البيانات وفحص الجودة إلى التحليل وتوليد المخرجات — كل ذلك بالسحب والإفلات.</p>
+        <ul>
+          <li data-i18n-key="f5l1">قوالب جاهزة مثل "تنظيف البيانات وفحص الجودة الذاتي" بعدة عقد متصلة</li>
+          <li data-i18n-key="f5l2">مكتبة أدوات جاهزة لتركيب أي سلسلة عمل تناسب احتياجك</li>
+          <li data-i18n-key="f5l3">حفظ السلسلة وتشغيلها عند الطلب، مع لوحة مخرجات واضحة لكل خطوة</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="video-captures/18-workflow.png" alt="Workflow"></div>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="text-col">
+        <div class="feature-icon" style="background:#0f2744; color:#60a5fa;">👥</div>
+        <h3 data-i18n-key="f6h">المناقشات الجماعية — تعاون الفريق حول البيانات</h3>
+        <p class="desc" data-i18n-key="f6d">إنشاء مجموعات نقاش مخصصة لكل تقرير أو مجموعة بيانات، ودعوة الزملاء للتعليق والتباحث حول النتائج في مكان واحد بدل تشتت المحادثات.</p>
+        <ul>
+          <li data-i18n-key="f6l1">مجموعات نقاش منظّمة حول موضوع أو تقرير محدد</li>
+          <li data-i18n-key="f6l2">مساحة تعاون مباشرة بين فرق التحليل والإدارة والتسويق</li>
+          <li data-i18n-key="f6l3">ربط النقاش بسياق البيانات والتقارير ذات الصلة</li>
+        </ul>
+      </div>
+      <div class="visual-col">
+        <div class="visual-card"><img src="video-captures/19-discussions.png" alt="Discussions"></div>
       </div>
     </div>
   </div>
 </section>
-
 <section id="journey" class="trust-bg">
   <div class="container">
-    <div class="section-tag">كيف تعمل المنصة</div>
-    <h2 class="section-title">خمس خطوات بسيطة من البيانات الخام إلى القرار</h2>
+    <div class="section-tag" data-i18n-key="jTag">كيف تعمل المنصة</div>
+    <h2 class="section-title" data-i18n-key="jTitle">خمس خطوات بسيطة من البيانات الخام إلى القرار</h2>
     <div class="journey-row">
-      <div class="journey-step"><div class="journey-circle">١</div><h4>رفع البيانات</h4><p>استيراد CSV/Excel وتوصيف تلقائي للجودة</p></div>
-      <div class="journey-step"><div class="journey-circle">٢</div><h4>الاستكشاف</h4><p>استعلام بلغة طبيعية أو تصفية فورية</p></div>
-      <div class="journey-step"><div class="journey-circle">٣</div><h4>النمذجة</h4><p>بناء علاقات الجداول بمساعدة AI</p></div>
-      <div class="journey-step"><div class="journey-circle">٤</div><h4>لوحة التحكم</h4><p>تصميم لوحة تفاعلية بالمؤشرات</p></div>
-      <div class="journey-step"><div class="journey-circle">٥</div><h4>التقرير التنفيذي</h4><p>تأليف AI جاهز للتصدير</p></div>
+      <div class="journey-step"><div class="journey-circle">١</div><h4 data-i18n-key="j1h">رفع البيانات</h4><p data-i18n-key="j1p">استيراد CSV/Excel وتوصيف تلقائي للجودة</p></div>
+      <div class="journey-step"><div class="journey-circle">٢</div><h4 data-i18n-key="j2h">الاستكشاف</h4><p data-i18n-key="j2p">استعلام بلغة طبيعية أو تصفية فورية</p></div>
+      <div class="journey-step"><div class="journey-circle">٣</div><h4 data-i18n-key="j3h">النمذجة</h4><p data-i18n-key="j3p">بناء علاقات الجداول بمساعدة AI</p></div>
+      <div class="journey-step"><div class="journey-circle">٤</div><h4 data-i18n-key="j4h">لوحة التحكم</h4><p data-i18n-key="j4p">تصميم لوحة تفاعلية بالمؤشرات</p></div>
+      <div class="journey-step"><div class="journey-circle">٥</div><h4 data-i18n-key="j5h">التقرير التنفيذي</h4><p data-i18n-key="j5p">تأليف AI جاهز للتصدير</p></div>
     </div>
   </div>
 </section>
 
 <section id="value">
   <div class="container">
-    <div class="section-tag">لماذا تحتاجها شركتك</div>
-    <h2 class="section-title">عائد استثمار ملموس من اليوم الأول</h2>
+    <div class="section-tag" data-i18n-key="vTag">لماذا تحتاجها شركتك</div>
+    <h2 class="section-title" data-i18n-key="vTitle">عائد استثمار ملموس من اليوم الأول</h2>
     <div class="value-grid">
-      <div class="value-card"><h4>قرارات أسرع</h4><p>تقليص وقت الوصول للإجابة من أيام إلى دقائق عبر الاستعلام بلغة طبيعية بدل انتظار فريق تقني.</p></div>
-      <div class="value-card"><h4>استقلالية الفرق غير التقنية</h4><p>تمكين المبيعات، التسويق، والمالية من استكشاف بياناتهم بأنفسهم دون الاعتماد على المبرمجين.</p></div>
-      <div class="value-card"><h4>تقليل الأخطاء وتحسين الجودة</h4><p>كشف القيم الشاذة والمفقودة تلقائياً قبل اتخاذ أي قرار مبني على بيانات غير دقيقة.</p></div>
-      <div class="value-card"><h4>تقارير تنفيذية جاهزة للعرض</h4><p>توفير ساعات العمل اليدوي في إعداد التقارير عبر توليد سردية تنفيذية مباشرة من البيانات.</p></div>
+      <div class="value-card"><h4 data-i18n-key="v1h">قرارات أسرع</h4><p data-i18n-key="v1p">تقليص وقت الوصول للإجابة من أيام إلى دقائق عبر الاستعلام بلغة طبيعية بدل انتظار فريق تقني.</p></div>
+      <div class="value-card"><h4 data-i18n-key="v2h">استقلالية الفرق غير التقنية</h4><p data-i18n-key="v2p">تمكين المبيعات، التسويق، والمالية من استكشاف بياناتهم بأنفسهم دون الاعتماد على المبرمجين.</p></div>
+      <div class="value-card"><h4 data-i18n-key="v3h">تقليل الأخطاء وتحسين الجودة</h4><p data-i18n-key="v3p">كشف القيم الشاذة والمفقودة تلقائياً قبل اتخاذ أي قرار مبني على بيانات غير دقيقة.</p></div>
+      <div class="value-card"><h4 data-i18n-key="v4h">تقارير تنفيذية جاهزة للعرض</h4><p data-i18n-key="v4p">توفير ساعات العمل اليدوي في إعداد التقارير عبر توليد سردية تنفيذية مباشرة من البيانات.</p></div>
     </div>
   </div>
 </section>
 
 <section id="audience" class="trust-bg">
   <div class="container">
-    <div class="section-tag">الفئات المستهدفة</div>
-    <h2 class="section-title">مصمّمة لكل شركة تتعامل مع بيانات حقيقية</h2>
+    <div class="section-tag" data-i18n-key="aTag">الفئات المستهدفة</div>
+    <h2 class="section-title" data-i18n-key="aTitle">مصمّمة لكل شركة تتعامل مع بيانات حقيقية</h2>
     <div class="audience-grid">
-      <div class="audience-card"><div class="emoji">🚀</div><h4>الشركات الناشئة والمتوسطة</h4><p>ثقافة قرارات مبنية على بيانات دون فريق تحليل كامل من اليوم الأول.</p></div>
-      <div class="audience-card"><div class="emoji">📈</div><h4>فرق المبيعات والتسويق</h4><p>استكشاف أداء الحملات بالأسئلة الطبيعية ولوحات متابعة لحظية.</p></div>
-      <div class="audience-card"><div class="emoji">💼</div><h4>الإدارة المالية والتنفيذية</h4><p>تقارير تنفيذية جاهزة وموثوقة لدعم القرار الاستراتيجي.</p></div>
-      <div class="audience-card"><div class="emoji">🛠️</div><h4>فرق تقنية المعلومات والبيانات</h4><p>تفريغ الفريق التقني من الاستعلامات الروتينية مع أمان كامل.</p></div>
+      <div class="audience-card"><div class="emoji">🚀</div><h4 data-i18n-key="a1h">الشركات الناشئة والمتوسطة</h4><p data-i18n-key="a1p">ثقافة قرارات مبنية على بيانات دون فريق تحليل كامل من اليوم الأول.</p></div>
+      <div class="audience-card"><div class="emoji">📈</div><h4 data-i18n-key="a2h">فرق المبيعات والتسويق</h4><p data-i18n-key="a2p">استكشاف أداء الحملات بالأسئلة الطبيعية ولوحات متابعة لحظية.</p></div>
+      <div class="audience-card"><div class="emoji">💼</div><h4 data-i18n-key="a3h">الإدارة المالية والتنفيذية</h4><p data-i18n-key="a3p">تقارير تنفيذية جاهزة وموثوقة لدعم القرار الاستراتيجي.</p></div>
+      <div class="audience-card"><div class="emoji">🛠️</div><h4 data-i18n-key="a4h">فرق تقنية المعلومات والبيانات</h4><p data-i18n-key="a4p">تفريغ الفريق التقني من الاستعلامات الروتينية مع أمان كامل.</p></div>
     </div>
   </div>
 </section>
 
 <section id="trust">
   <div class="container">
-    <div class="section-tag">الأمان والثقة</div>
-    <h2 class="section-title">بياناتك تبقى تحت سيطرتك الكاملة</h2>
+    <div class="section-tag" data-i18n-key="tTag">الأمان والثقة</div>
+    <h2 class="section-title" data-i18n-key="tTitle">بياناتك تبقى تحت سيطرتك الكاملة</h2>
     <div class="trust-grid">
-      <div class="trust-card"><div class="ic">🔐</div><h4>تشفير bcrypt</h4><p>حماية كاملة لكلمات مرور المستخدمين</p></div>
-      <div class="trust-card"><div class="ic">🧩</div><h4>ساندبوكس 9 طبقات</h4><p>تحقق أمني شامل لكل استعلام SQL</p></div>
-      <div class="trust-card"><div class="ic">📜</div><h4>سجل تدقيق كامل</h4><p>تتبّع كل عملية لضمان الشفافية والامتثال</p></div>
-      <div class="trust-card"><div class="ic">🌍</div><h4>مرونة اختيار AI</h4><p>مزوّد سحابي أو محلي عبر Ollama حسب سياستك</p></div>
+      <div class="trust-card"><div class="ic">🔐</div><h4 data-i18n-key="t1h">تشفير bcrypt</h4><p data-i18n-key="t1p">حماية كاملة لكلمات مرور المستخدمين</p></div>
+      <div class="trust-card"><div class="ic">🧩</div><h4 data-i18n-key="t2h">ساندبوكس 9 طبقات</h4><p data-i18n-key="t2p">تحقق أمني شامل لكل استعلام SQL</p></div>
+      <div class="trust-card"><div class="ic">📜</div><h4 data-i18n-key="t3h">سجل تدقيق كامل</h4><p data-i18n-key="t3p">تتبّع كل عملية لضمان الشفافية والامتثال</p></div>
+      <div class="trust-card"><div class="ic">🌍</div><h4 data-i18n-key="t4h">مرونة اختيار AI</h4><p data-i18n-key="t4p">مزوّد سحابي أو محلي عبر Ollama حسب سياستك</p></div>
     </div>
   </div>
 </section>
 
 <section id="cta" class="cta-section">
   <div class="container">
-    <h2>ابدأ رحلة بياناتك نحو قرارات أذكى اليوم</h2>
-    <p>انضم إلى الشركات التي تحوّلت من جداول بيانات مبعثرة إلى تحليلات ذكية فورية مدعومة بالذكاء الاصطناعي.</p>
-    <a href="#" class="btn-primary">احجز عرضاً تجريبياً مجانياً</a>
+    <h2 data-i18n-key="ctaTitle">ابدأ رحلة بياناتك نحو قرارات أذكى اليوم</h2>
+    <p data-i18n-key="ctaSub">انضم إلى الشركات التي تحوّلت من جداول بيانات مبعثرة إلى تحليلات ذكية فورية مدعومة بالذكاء الاصطناعي.</p>
+    <a href="contact.html" class="btn-primary" data-i18n-key="ctaBook">احجز عرضاً تجريبياً مجانياً</a>
   </div>
 </section>
 
 <footer>
   <div class="container">
-    <p>منصة التحليلات الذكية للبيانات — AI Analytics Platform</p>
+    <p data-i18n-key="footer">منصة التحليلات الذكية للبيانات — AI Analytics Platform</p>
   </div>
 </footer>
+
+<script>
+const translations = {
+  badge: { ar: '✨ الجيل القادم من تحليلات الذكاء الاصطناعي', en: '✨ The next generation of AI-powered analytics' },
+  heroSub: { ar: 'منصة واحدة تجمع استكشاف البيانات، توليد SQL بالذكاء الاصطناعي، نمذجة العلاقات، لوحات التحكم التفاعلية، والتقارير التنفيذية التلقائية — بلا حاجة لفريق تقني في كل خطوة.', en: 'One platform for data exploration, AI-generated SQL, relationship modeling, interactive dashboards, and automatic executive reports — no technical team needed at every step.' },
+  ctaStart: { ar: 'ابدأ تجربة مجانية', en: 'Start Free Trial' },
+  ctaExplore: { ar: 'اكتشف المزايا', en: 'Explore Features' },
+  stat1t: { ar: 'محرك OLAP فوري', en: 'Instant OLAP Engine' },
+  stat1s: { ar: 'تجميع وحساب في الذاكرة', en: 'In-memory aggregation' },
+  stat2t: { ar: 'ساندبوكس 9 طبقات', en: '9-Layer Sandbox' },
+  stat2s: { ar: 'أمان كامل لكل استعلام', en: 'Full query security' },
+  stat3t: { ar: 'عربي / إنجليزي', en: 'Arabic / English' },
+  stat3s: { ar: 'واجهة RTL كاملة', en: 'Full RTL interface' },
+  problemTag: { ar: 'التحدي', en: 'The Challenge' },
+  problemTitle: { ar: 'لماذا تفشل أغلب الشركات في استثمار بياناتها؟', en: 'Why do most companies fail to leverage their data?' },
+  problemSub: { ar: 'الاعتماد الكامل على الفرق التقنية، البيانات المبعثرة، والتقارير اليدوية تُبطئ القرار وتُكلّف الشركات فرصاً ضائعة.', en: 'Full reliance on technical teams, scattered data, and manual reports slow decisions and cost companies missed opportunities.' },
+  p1h: { ar: 'الاعتماد الكامل على فريق تقني', en: 'Full dependence on a technical team' },
+  p1p: { ar: 'كل سؤال تحليلي بسيط يحتاج مهندس بيانات لكتابة استعلام SQL، مما يبطئ القرار ويُثقل فريق تكنولوجيا المعلومات.', en: 'Every simple analytical question requires a data engineer to write an SQL query, slowing decisions and burdening the IT team.' },
+  p2h: { ar: 'بيانات مبعثرة وغير موثوقة', en: 'Scattered, unreliable data' },
+  p2p: { ar: 'ملفات Excel وقواعد بيانات متفرقة بلا توصيف إحصائي أو فحص جودة، فتُتخذ القرارات على أرقام غير مؤكدة.', en: 'Scattered Excel files and databases with no statistical profiling or quality checks lead to decisions based on unverified numbers.' },
+  p3h: { ar: 'تقارير تُعدّ يدوياً وتستغرق أياماً', en: 'Manually built reports take days' },
+  p3p: { ar: 'تحويل الأرقام إلى تقرير تنفيذي مفهوم يستهلك وقتاً طويلاً من المحللين بدل التركيز على القرارات الاستراتيجية.', en: 'Turning numbers into an understandable executive report consumes analysts\' time instead of focusing on strategic decisions.' },
+  featTag: { ar: 'المزايا الأساسية', en: 'Core Features' },
+  featTitle: { ar: 'كل ما تحتاجه رحلة البيانات، في منصة واحدة', en: 'Everything your data journey needs, in one platform' },
+  featSub: { ar: 'من الرفع الخام إلى التقرير التنفيذي الجاهز للعرض — بلا كود وبخطوات تفاعلية بسيطة.', en: 'From raw upload to a presentation-ready executive report — no code, simple interactive steps.' },
+  f1h: { ar: 'محرك OLAP فوري + مستكشف بيانات تفاعلي', en: 'Instant OLAP Engine + Interactive Data Explorer' },
+  f1d: { ar: 'تجميع وحساب في الذاكرة للبيانات الضخمة، بلا انتظار ولا حاجة لكتابة كود معقّد.', en: 'In-memory aggregation for large datasets — no waiting, no complex code.' },
+  f1l1: { ar: 'تجميع وحساب فوري في الذاكرة ومطابقة التوزيعات الإحصائية بأقل من 10 ميلي ثانية', en: 'Instant in-memory aggregation and statistical matching in under 10 milliseconds' },
+  f1l2: { ar: 'فلترة وتجميع تفاعلي للأعمدة دون كتابة أي استعلام', en: 'Interactive column filtering and grouping without writing any query' },
+  f1l3: { ar: 'تصدير فوري لأي نتيجة استكشاف إلى CSV', en: 'Instant export of any exploration result to CSV' },
+  f2h: { ar: 'توليد SQL ذكي داخل ساندبوكس 9 طبقات', en: 'Smart SQL generation inside a 9-layer sandbox' },
+  f2d: { ar: 'تحويل الأسئلة الطبيعية (عربي/إنجليزي) إلى SQL دقيق، مع تحقق أمني كامل قبل أي تنفيذ.', en: 'Converting natural-language questions (Arabic/English) into precise SQL, with full security checks before execution.' },
+  f2l1: { ar: 'تحقق نحوي وأمني من كل استعلام قبل التنفيذ', en: 'Syntax and security validation for every query before execution' },
+  f2l2: { ar: 'تقدير الكلفة الحسابية مسبقاً لتفادي الاستعلامات الثقيلة', en: 'Upfront cost estimation to avoid heavy queries' },
+  f2l3: { ar: 'سجل تدقيق كامل لكل استعلام يُنفَّذ على البيانات', en: 'Full audit log for every query executed on the data' },
+  f3h: { ar: 'AI Copilot — محادثة تحوّل الأرقام إلى قرارات', en: 'AI Copilot — a conversation that turns numbers into decisions' },
+  f3d: { ar: 'مساعد ذكي تفاعلي يستخرج الرؤى ويولّد الرسوم البيانية تلقائياً من بياناتك.', en: 'An interactive AI assistant that extracts insights and generates charts automatically from your data.' },
+  f3l1: { ar: 'محادثة تفاعلية للحصول على رؤى فورية مدعومة بالذكاء الاصطناعي', en: 'Interactive chat for instant AI-powered insights' },
+  f3l2: { ar: 'توليد الرسم البياني الأنسب لبياناتك تلقائياً', en: 'Automatically generating the most suitable chart for your data' },
+  f3l3: { ar: 'تأليف سردي تلقائي يحوّل النتائج إلى قصة تنفيذية مفهومة', en: 'Automatic narrative authoring that turns results into a clear executive story' },
+  g1h: { ar: 'نمذجة علاقات ذكية (AI ERD)', en: 'Smart Relationship Modeling (AI ERD)' },
+  g1p: { ar: 'اقتراح العلاقات بين الجداول تلقائياً وبناء مخطط كيانات-علاقات تفاعلي قابل للتعديل.', en: 'Automatically suggesting table relationships and building an editable interactive ER diagram.' },
+  g2h: { ar: 'توصيف إحصائي وفحص جودة', en: 'Statistical Profiling & Quality Checks' },
+  g2p: { ar: 'كشف القيم الشاذة والمفقودة، حساب المتوسطات والانحراف المعياري، وتحليل التوزيعات.', en: 'Detecting outliers and missing values, computing means and standard deviations, and analyzing distributions.' },
+  g3h: { ar: 'لوحات تحكم تفاعلية', en: 'Interactive Dashboards' },
+  g3p: { ar: 'تصميم لوحات مخصصة بالسحب والإفلات، مع تحديث فوري للمؤشرات الرئيسية.', en: 'Designing custom dashboards by drag-and-drop, with instant KPI updates.' },
+  g4h: { ar: 'تصدير احترافي', en: 'Professional Export' },
+  g4p: { ar: 'تصدير أي لوحة تحكم أو نتيجة مباشرة لمشاركتها مع الإدارة أو العملاء.', en: 'Exporting any dashboard or result directly to share with management or clients.' },
+  g5h: { ar: 'دعم متعدد لمزوّدي الذكاء الاصطناعي', en: 'Multi-Provider AI Support' },
+  g5p: { ar: 'اختر مزوّد الذكاء الاصطناعي الأنسب (سحابي أو محلي عبر Ollama) حسب سياسات خصوصيتك.', en: 'Choose the AI provider that fits you best (cloud or local via Ollama) based on your privacy policies.' },
+  g6h: { ar: 'ثنائية اللغة بالكامل', en: 'Fully Bilingual' },
+  g6p: { ar: 'واجهة عربية RTL كاملة وإنجليزية جنباً إلى جنب لفرق العمل متعددة الجنسيات.', en: 'Full Arabic RTL and English interface side by side for multinational teams.' },
+  f4h: { ar: 'المساعد الذكي — محادثة مباشرة مع بياناتك', en: 'AI Assistant — a direct conversation with your data' },
+  f4d: { ar: 'اكتب سؤالك بلغتك الطبيعية داخل نافذة محادثة تفاعلية، واحصل على رؤى وتوضيحات مبنية على بياناتك الفعلية الموجودة في المنصة.', en: 'Type your question in natural language in an interactive chat window and get insights based on your actual data in the platform.' },
+  f4l1: { ar: 'يفهم السياق الكامل لمجموعة البيانات النشطة قبل الإجابة', en: 'Understands the full context of the active dataset before answering' },
+  f4l2: { ar: 'يقترح رسوماً بيانية ومؤشرات مناسبة للسؤال المطروح', en: 'Suggests suitable charts and metrics for the question asked' },
+  f4l3: { ar: 'يدعم عدة مزوّدي ذكاء اصطناعي (سحابي أو محلي) حسب ما تفعّله من إعدادات حسابك', en: 'Supports multiple AI providers (cloud or local) based on your account settings' },
+  f5h: { ar: 'أتمتة سير العمل — سلاسل عمل بلا كود', en: 'Workflow Automation — no-code chains' },
+  f5d: { ar: 'بناء سلسلة من الخطوات المتصلة (عقد) تُنفَّذ تلقائياً: من تنظيف البيانات وفحص الجودة إلى التحليل وتوليد المخرجات — كل ذلك بالسحب والإفلات.', en: 'Build a chain of connected steps (nodes) that run automatically: from data cleaning and quality checks to analysis and output generation — all via drag-and-drop.' },
+  f5l1: { ar: 'قوالب جاهزة مثل "تنظيف البيانات وفحص الجودة الذاتي" بعدة عقد متصلة', en: 'Ready templates like "Data Cleaning & Self Quality Check" with multiple connected nodes' },
+  f5l2: { ar: 'مكتبة أدوات جاهزة لتركيب أي سلسلة عمل تناسب احتياجك', en: 'A ready tool library to assemble any workflow chain that fits your needs' },
+  f5l3: { ar: 'حفظ السلسلة وتشغيلها عند الطلب، مع لوحة مخرجات واضحة لكل خطوة', en: 'Save the chain and run it on demand, with a clear output panel for every step' },
+  f6h: { ar: 'المناقشات الجماعية — تعاون الفريق حول البيانات', en: 'Team Discussions — collaborating around data' },
+  f6d: { ar: 'إنشاء مجموعات نقاش مخصصة لكل تقرير أو مجموعة بيانات، ودعوة الزملاء للتعليق والتباحث حول النتائج في مكان واحد بدل تشتت المحادثات.', en: 'Create dedicated discussion groups for each report or dataset, and invite colleagues to comment and discuss results in one place instead of scattered conversations.' },
+  f6l1: { ar: 'مجموعات نقاش منظّمة حول موضوع أو تقرير محدد', en: 'Organized discussion groups around a specific topic or report' },
+  f6l2: { ar: 'مساحة تعاون مباشرة بين فرق التحليل والإدارة والتسويق', en: 'A direct collaboration space between analytics, management, and marketing teams' },
+  f6l3: { ar: 'ربط النقاش بسياق البيانات والتقارير ذات الصلة', en: 'Linking the discussion to the relevant data and reports context' },
+  jTag: { ar: 'كيف تعمل المنصة', en: 'How It Works' },
+  jTitle: { ar: 'خمس خطوات بسيطة من البيانات الخام إلى القرار', en: 'Five simple steps from raw data to decision' },
+  j1h: { ar: 'رفع البيانات', en: 'Upload Data' }, j1p: { ar: 'استيراد CSV/Excel وتوصيف تلقائي للجودة', en: 'Import CSV/Excel with automatic quality profiling' },
+  j2h: { ar: 'الاستكشاف', en: 'Explore' }, j2p: { ar: 'استعلام بلغة طبيعية أو تصفية فورية', en: 'Natural-language queries or instant filtering' },
+  j3h: { ar: 'النمذجة', en: 'Model' }, j3p: { ar: 'بناء علاقات الجداول بمساعدة AI', en: 'Build table relationships with AI assistance' },
+  j4h: { ar: 'لوحة التحكم', en: 'Dashboard' }, j4p: { ar: 'تصميم لوحة تفاعلية بالمؤشرات', en: 'Design an interactive KPI dashboard' },
+  j5h: { ar: 'التقرير التنفيذي', en: 'Executive Report' }, j5p: { ar: 'تأليف AI جاهز للتصدير', en: 'AI-authored, export-ready' },
+  vTag: { ar: 'لماذا تحتاجها شركتك', en: 'Why Your Company Needs It' },
+  vTitle: { ar: 'عائد استثمار ملموس من اليوم الأول', en: 'Tangible ROI from day one' },
+  v1h: { ar: 'قرارات أسرع', en: 'Faster decisions' }, v1p: { ar: 'تقليص وقت الوصول للإجابة من أيام إلى دقائق عبر الاستعلام بلغة طبيعية بدل انتظار فريق تقني.', en: 'Cutting the time to an answer from days to minutes via natural-language queries instead of waiting on a technical team.' },
+  v2h: { ar: 'استقلالية الفرق غير التقنية', en: 'Non-technical team independence' }, v2p: { ar: 'تمكين المبيعات، التسويق، والمالية من استكشاف بياناتهم بأنفسهم دون الاعتماد على المبرمجين.', en: 'Empowering sales, marketing, and finance to explore their own data without relying on programmers.' },
+  v3h: { ar: 'تقليل الأخطاء وتحسين الجودة', en: 'Fewer errors, better quality' }, v3p: { ar: 'كشف القيم الشاذة والمفقودة تلقائياً قبل اتخاذ أي قرار مبني على بيانات غير دقيقة.', en: 'Automatically detecting outliers and missing values before making decisions on inaccurate data.' },
+  v4h: { ar: 'تقارير تنفيذية جاهزة للعرض', en: 'Presentation-ready executive reports' }, v4p: { ar: 'توفير ساعات العمل اليدوي في إعداد التقارير عبر توليد سردية تنفيذية مباشرة من البيانات.', en: 'Saving hours of manual report-building by generating an executive narrative directly from the data.' },
+  aTag: { ar: 'الفئات المستهدفة', en: 'Target Audience' },
+  aTitle: { ar: 'مصمّمة لكل شركة تتعامل مع بيانات حقيقية', en: 'Built for every company working with real data' },
+  a1h: { ar: 'الشركات الناشئة والمتوسطة', en: 'Startups & SMEs' }, a1p: { ar: 'ثقافة قرارات مبنية على بيانات دون فريق تحليل كامل من اليوم الأول.', en: 'A data-driven decision culture without a full analytics team from day one.' },
+  a2h: { ar: 'فرق المبيعات والتسويق', en: 'Sales & Marketing teams' }, a2p: { ar: 'استكشاف أداء الحملات بالأسئلة الطبيعية ولوحات متابعة لحظية.', en: 'Exploring campaign performance with natural-language questions and live tracking dashboards.' },
+  a3h: { ar: 'الإدارة المالية والتنفيذية', en: 'Finance & Executive management' }, a3p: { ar: 'تقارير تنفيذية جاهزة وموثوقة لدعم القرار الاستراتيجي.', en: 'Ready, reliable executive reports to support strategic decisions.' },
+  a4h: { ar: 'فرق تقنية المعلومات والبيانات', en: 'IT & Data teams' }, a4p: { ar: 'تفريغ الفريق التقني من الاستعلامات الروتينية مع أمان كامل.', en: 'Freeing the technical team from routine queries with full security.' },
+  tTag: { ar: 'الأمان والثقة', en: 'Security & Trust' },
+  tTitle: { ar: 'بياناتك تبقى تحت سيطرتك الكاملة', en: 'Your data stays fully under your control' },
+  t1h: { ar: 'تشفير bcrypt', en: 'bcrypt encryption' }, t1p: { ar: 'حماية كاملة لكلمات مرور المستخدمين', en: 'Full protection for user passwords' },
+  t2h: { ar: 'ساندبوكس 9 طبقات', en: '9-layer sandbox' }, t2p: { ar: 'تحقق أمني شامل لكل استعلام SQL', en: 'Comprehensive security validation for every SQL query' },
+  t3h: { ar: 'سجل تدقيق كامل', en: 'Full audit log' }, t3p: { ar: 'تتبّع كل عملية لضمان الشفافية والامتثال', en: 'Tracking every operation for transparency and compliance' },
+  t4h: { ar: 'مرونة اختيار AI', en: 'Flexible AI choice' }, t4p: { ar: 'مزوّد سحابي أو محلي عبر Ollama حسب سياستك', en: 'Cloud or local provider via Ollama, based on your policy' },
+  ctaTitle: { ar: 'ابدأ رحلة بياناتك نحو قرارات أذكى اليوم', en: 'Start your data journey toward smarter decisions today' },
+  ctaSub: { ar: 'انضم إلى الشركات التي تحوّلت من جداول بيانات مبعثرة إلى تحليلات ذكية فورية مدعومة بالذكاء الاصطناعي.', en: 'Join companies that moved from scattered spreadsheets to instant, AI-powered analytics.' },
+  ctaBook: { ar: 'احجز عرضاً تجريبياً مجانياً', en: 'Book a Free Demo' },
+  footer: { ar: 'منصة التحليلات الذكية للبيانات — AI Analytics Platform', en: 'AI Analytics Platform — Smart Data Analytics' },
+  'منصة التحليلات الذكية للبيانات': { ar: 'منصة التحليلات الذكية للبيانات', en: 'AI Analytics Platform' },
+  'منصة التحليلات الذكية': { ar: 'منصة التحليلات الذكية', en: 'AI Analytics Platform' },
+  'المزايا': { ar: 'المزايا', en: 'Features' },
+  'كيف تعمل': { ar: 'كيف تعمل', en: 'How It Works' },
+  'لمن هذه المنصة': { ar: 'لمن هذه المنصة', en: 'Who It\'s For' },
+  'الأمان': { ar: 'الأمان', en: 'Security' },
+  'جرّب الآن مجاناً': { ar: 'جرّب الآن مجاناً', en: 'Try Free Now' },
+};
+
+const heroTitleHtml = {
+  ar: 'حوّل بياناتك الضخمة إلى <span>قرارات فورية</span> بلغة طبيعية وذكاء اصطناعي',
+  en: 'Turn your big data into <span>instant decisions</span> with natural language and AI'
+};
+
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n-key]').forEach(el => {
+    const key = el.getAttribute('data-i18n-key');
+    if (translations[key]) el.textContent = translations[key][lang];
+  });
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const text = el.textContent.trim();
+    if (translations[text]) el.textContent = translations[text][lang];
+  });
+  const heroH1 = document.querySelector('[data-i18n-html="heroTitle"]');
+  if (heroH1) heroH1.innerHTML = heroTitleHtml[lang];
+  document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
+  });
+  localStorage.setItem('siteLang', lang);
+}
+
+document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.getAttribute('data-lang-btn')));
+});
+
+applyLang(localStorage.getItem('siteLang') || 'ar');
+</script>
 
 </body>
 </html>

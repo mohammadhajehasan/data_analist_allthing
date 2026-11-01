@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="html-root">
+<head>
+<meta charset="UTF-8">
+<title data-i18n>تواصل معنا — منصة التحليلات الذكية للبيانات</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #0b1220; --bg-alt: #0f1729; --card: #141b2e; --card-border: #1f2a44;
+    --text-main: #f1f5f9; --text-sub: #94a3b8; --blue: #2563eb; --blue-light: #60a5fa;
+    --purple-light: #a78bfa; --green: #34d399;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-main);
+    font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif; line-height: 1.7;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { text-decoration: none; color: inherit; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; width: 100%; }
+  nav {
+    background: rgba(11,18,32,0.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--card-border); padding: 16px 0;
+  }
+  nav .container { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-weight: bold; font-size: 18px; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue-light); box-shadow: 0 0 12px var(--blue-light); }
+  .back-link { font-size: 14px; color: var(--text-sub); }
+  .nav-right { display: flex; align-items: center; gap: 14px; }
+  .lang-switch { display: flex; background: #141b2e; border: 1px solid #1f2a44; border-radius: 20px; padding: 3px; gap: 2px; }
+  .lang-switch button { border: none; background: transparent; color: var(--text-sub); font-size: 12.5px; font-weight: bold; padding: 6px 14px; border-radius: 16px; cursor: pointer; font-family: inherit; }
+  .lang-switch button.active { background: var(--blue); color: #fff; }
+
+  main { flex: 1; padding: 70px 0; }
+  .header { text-align: center; margin-bottom: 50px; }
+  .section-tag {
+    display: inline-block; font-size: 13px; font-weight: bold; color: var(--blue-light);
+    background: #0f2744; padding: 6px 16px; border-radius: 20px; margin-bottom: 18px;
+  }
+  .header h1 { font-size: 32px; color: #fff; margin: 0 0 14px; }
+  .header p { font-size: 15px; color: var(--text-sub); max-width: 560px; margin: 0 auto; }
+
+  .profile-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 18px;
+    padding: 40px; margin-bottom: 30px; text-align: center;
+  }
+  .avatar {
+    width: 86px; height: 86px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--purple-light));
+    display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; color: #fff;
+    margin: 0 auto 20px;
+  }
+  .profile-card h2 { font-size: 22px; color: #fff; margin: 0 0 6px; }
+  .profile-card .role { font-size: 14px; color: var(--blue-light); margin: 0 0 20px; font-weight: bold; }
+  .profile-card p.bio { font-size: 14.5px; color: var(--text-sub); max-width: 560px; margin: 0 auto; }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .contact-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 24px; text-align: center; transition: transform .2s, border-color .2s;
+  }
+  .contact-card:hover { transform: translateY(-4px); border-color: var(--blue); }
+  .contact-card .icon {
+    width: 46px; height: 46px; border-radius: 12px; background: #1e2a44; margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .contact-card h4 { font-size: 14px; color: #fff; margin: 0 0 6px; }
+  .contact-card p { font-size: 12.5px; color: var(--text-sub); margin: 0; word-break: break-word; }
+
+  footer { background: var(--bg-alt); border-top: 1px solid var(--card-border); padding: 30px 0; text-align: center; }
+  footer p { font-size: 13px; color: var(--text-sub); margin: 0; }
+
+  @media (max-width: 640px) { .contact-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo"><span class="dot"></span> <span data-i18n-key="logo">منصة التحليلات الذكية</span></div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button type="button" data-lang-btn="ar" class="active">AR</button>
+        <button type="button" data-lang-btn="en">EN</button>
+      </div>
+      <a href="landing-page.html" class="back-link" data-i18n-key="back">← العودة للصفحة الرئيسية</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+    <div class="header">
+      <div class="section-tag" data-i18n-key="tag">احجز عرضك التجريبي</div>
+      <h1 data-i18n-key="h1">تواصل معنا مباشرة</h1>
+      <p data-i18n-key="sub">هذه المنظومة مُنفَّذة بالكامل من قبل المهندس أحمد الفرحات. تواصل معه مباشرة لحجز عرض تجريبي مجاني أو لأي استفسار.</p>
+    </div>
+
+    <div class="profile-card">
+      <div class="avatar">AF</div>
+      <h2 data-i18n-key="name">المهندس أحمد الفرحات</h2>
+      <p class="role" data-i18n-key="role">مهندس علوم حاسب</p>
+      <p class="bio" data-i18n-key="bio">خبرة في تطوير البرمجيات، وتحليل وعلوم البيانات، وتطوير الأنظمة المعتمدة على الذكاء الاصطناعي — وهو المطوّر الكامل لهذه المنصة من الفكرة إلى التنفيذ.</p>
+    </div>
+
+    <div class="contact-grid">
+      <a class="contact-card" href="https://wa.me/963991758886" target="_blank" rel="noopener">
+        <div class="icon">💬</div>
+        <h4 data-i18n-key="wa">واتساب</h4>
+        <p>+963 991 758 886</p>
+      </a>
+      <a class="contact-card" href="mailto:ahmadalfarahat099175@gmail.com">
+        <div class="icon">✉️</div>
+        <h4 data-i18n-key="mail">البريد الإلكتروني</h4>
+        <p>ahmadalfarahat099175@gmail.com</p>
+      </a>
+      <a class="contact-card" id="linkedin-card" href="https://www.linkedin.com/in/Ahmad-al-farahat-3b6a4226a" target="_blank" rel="noopener">
+        <div class="icon">🔗</div>
+        <h4 data-i18n-key="li">LinkedIn</h4>
+        <p>Ahmad Al Farahat</p>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="container"><p data-i18n-key="foot">منصة التحليلات الذكية للبيانات — AI Analytics Platform</p></div>
+</footer>
+
+<script>
+const dict = {
+  logo:  { ar: 'منصة التحليلات الذكية',          en: 'AI Analytics Platform' },
+  back:  { ar: '← العودة للصفحة الرئيسية',        en: '← Back to Home' },
+  tag:   { ar: 'احجز عرضك التجريبي',               en: 'Book Your Free Demo' },
+  h1:    { ar: 'تواصل معنا مباشرة',                en: 'Get in Touch Directly' },
+  sub:   { ar: 'هذه المنظومة مُنفَّذة بالكامل من قبل المهندس أحمد الفرحات. تواصل معه مباشرة لحجز عرض تجريبي مجاني أو لأي استفسار.',
+           en: 'This platform was built end-to-end by Eng. Ahmad Alfarahat. Reach out directly to book a free demo or ask any question.' },
+  name:  { ar: 'المهندس أحمد الفرحات',             en: 'Eng. Ahmad Alfarahat' },
+  role:  { ar: 'مهندس علوم حاسب',                  en: 'Computer Science Engineer' },
+  bio:   { ar: 'خبرة في تطوير البرمجيات، وتحليل وعلوم البيانات، وتطوير الأنظمة المعتمدة على الذكاء الاصطناعي — وهو المطوّر الكامل لهذه المنصة من الفكرة إلى التنفيذ.',
+           en: 'Experienced in software development, data analysis & data science, and building AI-powered systems — the sole developer of this platform from concept to execution.' },
+  wa:    { ar: 'واتساب',              en: 'WhatsApp' },
+  mail:  { ar: 'البريد الإلكتروني',    en: 'Email' },
+  li:    { ar: 'LinkedIn',            en: 'LinkedIn' },
+  foot:  { ar: 'منصة التحليلات الذكية للبيانات — AI Analytics Platform', en: 'AI Analytics Platform — Smart Data Intelligence' }
+};
+document.title = document.title; // keep original ar title as default
+
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n-key]').forEach(el => {
+    const key = el.getAttribute('data-i18n-key');
+    if (dict[key] && dict[key][lang] !== undefined) el.textContent = dict[key][lang];
+  });
+  document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
+  });
+  localStorage.setItem('siteLang', lang);
+}
+
+document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.getAttribute('data-lang-btn')));
+});
+
+applyLang(localStorage.getItem('siteLang') || 'ar');
+</script>
+
+</body>
+</html>

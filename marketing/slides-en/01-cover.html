@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+<style>
+html, body { margin: 0; padding: 0; }
+body {
+  width: 720pt; height: 405pt;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: #0b1220;
+  font-family: Arial, sans-serif;
+  position: relative;
+}
+.bgimg { position: absolute; top: 0; left: 0; width: 720pt; height: 405pt; opacity: 0.55; }
+.overlay { position: absolute; top: 0; left: 0; width: 720pt; height: 405pt; background: #0b1220; opacity: 0.35; }
+.content {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 0; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0pt 60pt;
+}
+.badge {
+  display: flex;
+  background: #1e2a44; border: 1pt solid #2563eb; border-radius: 20pt;
+  padding: 6pt 16pt; margin: 0 0 18pt 0; width: 310pt;
+}
+.badge p { color: #60a5fa; font-size: 12pt; margin: 0; font-weight: bold; }
+h1 { color: #ffffff; font-size: 38pt; margin: 0 0 14pt 0; line-height: 1.25; }
+h2 { color: #93c5fd; font-size: 17pt; margin: 0 0 10pt 0; font-weight: normal; line-height: 1.5; }
+.footer { position: relative; z-index: 2; padding: 0 60pt 26pt 60pt; }
+.footer p { color: #64748b; font-size: 11pt; margin: 0; }
+</style>
+</head>
+<body>
+<img class="bgimg" src="../assets/hero.png" />
+<div class="overlay"></div>
+<div class="content">
+  <div class="badge"><p>The Next Generation of AI Analytics</p></div>
+  <h1>AI Analytics Platform</h1>
+  <h2>Turn your big data into instant business decisions — natural-language SQL queries, interactive dashboards, and executive AI reports in minutes</h2>
+</div>
+<div class="footer"><p>Corporate introduction presentation</p></div>
+</body>
+</html>

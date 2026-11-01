@@ -22,7 +22,9 @@ async function main() {
     '10-business-value.html',
     '11-audience.html',
     '12-journey.html',
-    '13-cta.html',
+    '14-feature-workflow.html',
+    '15-feature-discussions.html',
+    '16-cta.html',
   ].map(f => path.join(dir, 'slides', f));
 
   const failures = [];
