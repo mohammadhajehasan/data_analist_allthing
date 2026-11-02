@@ -22,6 +22,8 @@ export type ErColumn = {
   /** النوع الخام كما ورد في المخطط (قد يُترك فارغاً) */
   type: string;
   isPrimaryKey: boolean;
+  /** FK معلَم نصياً في التسمية — مكتشف بوسم (fk)/<<FK>>/foreign key/references قبل الاعلاقات الرسومية */
+  isForeignKey?: boolean;
   /** PK فقط يُفرض NOT NULL تلقائياً؛ البقية تُترك NULL لتجنب فرض تقييد لم يطلبه المصمم */
   isNullable: boolean;
   isUnique?: boolean;
@@ -357,7 +359,7 @@ export function looksLikeTableContainer(cell: { style: string; isEdge?: boolean;
 }
 
 /** فكّ تسمية عمود نصية إلى {name,type,markers} — يتعامل مع "id : INT" و"+ name : varchar(255) {PK}" */
-export function parseColumnLabel(rawLabel: string): { name: string; type: string; markerPk: boolean; required: boolean } {
+export function parseColumnLabel(rawLabel: string): { name: string; type: string; markerPk: boolean; markerFk: boolean; required: boolean } {
   // فكّ كيانات XML أولاً حتى تسميات HTML المسرّبة (نمط UML العمودي في draw.io)
   // تُقطّع وتُزال أوسمها كي ينجح فصل الاسم/النوع واكتشاف العلامات
   const decoded = decodeEntities(rawLabel);
@@ -388,6 +390,15 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
     /\bp\.?k\.?\b/i.test(text) ||
     /\bprimary\s+key\b/i.test(text);
 
+  // علامات FK الوسطية بنفس المنهج: (fk)/{fk}/[#fk] ، <<FK>>/«fk» ، توكن وسطي fk/f.k. ،
+  // foreign key ، أو references <table> بنمط DDL — بحدود كلمات لتفادي الإنذارات الكاذبة (fedk, fk2, fkey? لا)
+  const markerFk =
+    /(?:[({[]|[#^])\s*(?:fk|foreign\s*key)\s*(?:[)}\]])?/i.test(text) ||
+    /«[^»]*\bf\.?k\.?\b[^»]*»/i.test(text) ||
+    /\bf\.?k\.?\b/i.test(text) ||
+    /\bforeign\s+key\b/i.test(text) ||
+    /\breferences?\b/i.test(text);
+
   // الإلزام بالحدود المفتاحية: أقواس مليئة بعلامات، أو توكن وسطي، أو نجمة محاذاة
   const required =
     /(?:[({[])\s*(?:nn|not\s*null|required)\s*[)}\]]?/i.test(text) ||
@@ -397,10 +408,11 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
     /\brequired\b/i.test(text);
 
   text = text
-    .replace(/[({[]\s*(?:pk|primary\s*key|nn|not\s*null|required)[^()\]}]*[)\]}]/gi, '') // مجموعات العلامات حتى القوائم (pk, nn)
+    .replace(/[({[]\s*(?:pk|primary\s*key|nn|not\s*null|required|fk|foreign\s*key)[^()\]}]*[)\]}]/gi, '') // مجموعات العلامات حتى القوائم (pk, nn, fk)
     .replace(/\{[^}]*\}/g, '')
-    .replace(/[#^]\s*(pk|primary\s*key)/gi, '') // علامة مفتاحية على شكل #pk أو `pk`
-    .replace(/<<\s*p\.?k\.?\s*>>/gi, '')
+    .replace(/[#^]\s*(pk|primary\s*key|fk|foreign\s*key)/gi, '') // علامات على شكل #pk / #fk
+    .replace(/\breferences?\s+[\w$]+(?:\s*\([^)]*\))?/gi, '') // بيد DDL: references users(id) تُولاها كاملة
+    .replace(/<<\s*(?:p\.?k\.?|f\.?k\.?)\s*>>/gi, '')
     .replace(/«[^»]*»/g, '')
     .replace(/^[*#+-]\s*/, '')
     .replace(/\s+/g, ' ')
@@ -409,7 +421,7 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
   // إزالة التوكنات الوسطية المتبقية (pk / p.k. / primary key / not null / nn).
   // إذا أنتجت الإزالة نصاً يبدأ بفاصل أو فارغاً تماماً، يبقى النص الأصلي كما هو:
   const scraped = text
-    .replace(/\b(?:p\.?k\.?|primary\s+key)\b/gi, ' ')
+    .replace(/\b(?:p\.?k\.?|primary\s+key|f\.?k\.?|foreign\s+key|references?)\b/gi, ' ')
     .replace(/\b(?:nn|not\s+null|required)\b/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -433,7 +445,7 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
       name = text; // عمود بدون نوع
     }
   }
-  return { name: name.trim(), type: type.trim(), markerPk, required };
+  return { name: name.trim(), type: type.trim(), markerPk, markerFk, required };
 }
 
 function styleIndicatesPrimaryKey(style: string, parentRowStyle?: string): boolean {
@@ -468,7 +480,15 @@ function parseDiagramXml(xml: string, model: ErModel, pageIndex: number): void {
   const isTable = new Set<string>();
   for (const cell of cells) {
     if (cell.isEdge) continue;
-    if (looksLikeTableContainer(cell, (childrenOf.get(cell.id) ?? []).length)) isTable.add(cell.id);
+    if (looksLikeTableContainer(cell, (childrenOf.get(cell.id) ?? []).length)) {
+      isTable.add(cell.id);
+      continue;
+    }
+    // احتياط UML العمودي: مستطيل بسيط (بلا shape=table) يحولّي بEngineering ابنين بنمط "الاسم : النوع"
+    const children = (childrenOf.get(cell.id) ?? []).filter(c => !c.isEdge);
+    if (children.length >= 2 && children.filter(c => /:/.test(decodeEntities(c.value))).length >= 2) {
+      isTable.add(cell.id);
+    }
   }
 
   // 2) استخراج أعمدة أبناء الجداول (بعمق ثابت)
@@ -493,16 +513,20 @@ function parseDiagramXml(xml: string, model: ErModel, pageIndex: number): void {
       // لا نخرج الأعمدة من حاويات فرعية داخلية
       if (looksLikeTableContainer(descendant, (childrenOf.get(descendant.id) ?? []).length)) continue;
       const parent = byId.get(descendant.parent);
+      // bold الحاوية (اسم الجدول فقط لا يرقى إلى PK لكل الأعمدة — نمط UML العمودي)
+      const parentRowStyle = parent && isTable.has(parent.id) ? undefined : parent?.style;
       const parsed = parseColumnLabel(descendant.value);
       if (!parsed.name) continue;
       // تجاهل تكرار التسمية العامة للجدول نفسه
       if (parsed.name.toLowerCase() === tableName.toLowerCase()) continue;
 
-      const pkByStyle = styleIndicatesPrimaryKey(descendant.style, parent?.style);
+      const pkByStyle = styleIndicatesPrimaryKey(descendant.style, parentRowStyle);
       const col: ErColumn = {
         name: parsed.name,
         type: parsed.type,
         isPrimaryKey: parsed.markerPk || pkByStyle,
+        // FK علمنا في التسمية فقط (العلاقة الرسومية تستمر تعذرها على مستوى العرض في ErdPreview)
+        ...(parsed.markerFk ? { isForeignKey: true } : {}),
         isNullable: !(parsed.markerPk || pkByStyle || parsed.required),
       };
       if (tableEntry.columns.some(c => c.name.toLowerCase() === col.name.toLowerCase())) continue;

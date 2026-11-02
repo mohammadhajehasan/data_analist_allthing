@@ -114,6 +114,7 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
       name: 'created_at',
       type: 'TIMESTAMP',
       markerPk: false,
+      markerFk: false,
       required: false,
     });
   });
@@ -132,7 +133,7 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
   });
 
   it('يقبل عموداً بلا نوع', () => {
-    expect(parseColumnLabel('note')).toEqual({ name: 'note', type: '', markerPk: false, required: false });
+    expect(parseColumnLabel('note')).toEqual({ name: 'note', type: '', markerPk: false, markerFk: false, required: false });
   });
 
   it('يكتشف pk وسط النص بحدود كلمات ويحفظه من النوع', () => {
@@ -188,12 +189,125 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
     expect(parsed.name).toBe('pk');
     expect(parsed.type).toBe('');
   });
+
+  /* ---- FK وسط التسمية ------------------------------------------------ */
+
+  it('يكتشف علامة #fk ويخرجها من النوع', () => {
+    const parsed = parseColumnLabel('order_id : INT #fk');
+    expect(parsed.name).toBe('order_id');
+    expect(parsed.type).toBe('INT');
+    expect(parsed.markerFk).toBe(true);
+    expect(parsed.markerPk).toBe(false);
+  });
+
+  it('يكتشف (fk) و {fk} و [fk] كأقواس علامات', () => {
+    for (const label of ['user_id : INT (fk)', 'user_id : INT {fk}', 'user_id : INT [fk]']) {
+      const parsed = parseColumnLabel(label);
+      expect(parsed.markerFk).toBe(true);
+      expect(parsed.type).toBe('INT');
+      expect(parsed.name).toBe('user_id');
+    }
+  });
+
+  it('يكتشف <<FK>> و «fk» بالأقواس المزخرفة', () => {
+    expect(parseColumnLabel('product_id : INT <<FK>>').markerFk).toBe(true);
+    expect(parseColumnLabel('product_id : INT <<FK>>').type).toBe('INT');
+    expect(parseColumnLabel('product_id : INT «fk»').markerFk).toBe(true);
+  });
+
+  it('يكتشف foreign key و references <table> بنمط DDL', () => {
+    expect(parseColumnLabel('region_id : INT foreign key').markerFk).toBe(true);
+    expect(parseColumnLabel('region_id : INT references regions').markerFk).toBe(true);
+    expect(parseColumnLabel('region_id : INT references regions(id)').type).toBe('INT');
+  });
+
+  it('يركّب العلامات المزدوجة pk+fk معاً', () => {
+    const parsed = parseColumnLabel('delivery_id : INT (pk, fk)');
+    expect(parsed.markerPk).toBe(true);
+    expect(parsed.markerFk).toBe(true);
+    expect(parsed.name).toBe('delivery_id');
+    expect(parsed.type).toBe('INT');
+  });
+
+  it('لا يخدعه fk وسط كلمات أخرى (fedk/fk2/fkey) بحدود الكلمات', () => {
+    for (const name of ['fedk_id', 'fk2_id', 'fkey_id', 'fkn_id']) {
+      const parsed = parseColumnLabel(`${name} : INT`);
+      expect(parsed.markerFk).toBe(false);
+      expect(parsed.name).toBe(name);
+      expect(parsed.type).toBe('INT');
+    }
+  });
+
+  it('يستخرج FK وسط خلايا schema المفروض حتى بعد ظهوره بتنسيقات مختلفة', () => {
+    expect(parseColumnLabel('+ invoice_id : INT (FK)').markerFk).toBe(true);
+    expect(parseColumnLabel('supplier_id : integer, fk').markerFk).toBe(true);
+  });
 });
 
-/* ------------------------------------------------------------------ */
-/* المولّد                                                             */
-/* ------------------------------------------------------------------ */
-describe('generateDdl — مولّد DDL', () => {
+  it('يستخرج PK بوسم التسطير وFK بوسم (fk) من مخطط UML عمودي بمستطيلات بسيطة', async () => {
+    const umlErd = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram id="library-uml" name="Library UML">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" page="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="students" value="students" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="60" y="60" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="st0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="students">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="st1" value="full_name : VARCHAR(120)" style="text;html=1;align=left;" vertex="1" parent="students">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="books" value="books" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bk0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="books">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bk1" value="isbn : CHAR(13)" style="text;html=1;align=left;" vertex="1" parent="books">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="loans" value="loans" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="190" y="290" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ln0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ln1" value="student_id : INT (fk)" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ln2" value="book_id : INT (fk)" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="96" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="endArrow=ERmany;startArrow=ERone;html=1;" edge="1" parent="1" source="students" target="loans">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="endArrow=ERmany;startArrow=ERone;html=1;" edge="1" parent="1" source="books" target="loans">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+    const model = await parseDrawioFile(umlErd);
+    expect(model.tables.map((t: any) => t.name).sort()).toEqual(['books', 'loans', 'students']);
+    const loans = tablesOf(model, 'loans');
+    expect(loans.columns.find((c: any) => c.name === 'id')).toMatchObject({ isPrimaryKey: true, isNullable: false });
+    expect(loans.columns.find((c: any) => c.name === 'student_id')).toMatchObject({ type: 'INT', isForeignKey: true });
+    expect(loans.columns.find((c: any) => c.name === 'book_id')).toMatchObject({ type: 'INT', isForeignKey: true });
+    // PK عبر التسطير لا يلوّث النوع
+    expect(loans.columns[0].type).toBe('INT');
+    // علاقة 1-N من الطلاب إلى القروض
+    expect(model.relationships.length).toBe(2);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* المولّد                                                             */
+  /* ------------------------------------------------------------------ */
+  describe('generateDdl — مولّد DDL', () => {
   it('MySQL: backticks + AUTO_INCREMENT + FK قيد + جسم InnoDB', async () => {
     const model = await parseDrawioFile(sampleErd);
     const result = generateDdl(model, 'mysql');

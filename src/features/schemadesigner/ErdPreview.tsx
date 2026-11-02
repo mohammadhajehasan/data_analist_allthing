@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { KeyRound, Link2, ZoomIn, ZoomOut, Scaling } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { KeyRound, Link2, ZoomIn, ZoomOut, Scaling, RotateCcw, Move } from 'lucide-react';
 import { ErModel, ErCardinality } from '../../utils/drawioImporter';
 
 /**
@@ -9,6 +9,9 @@ import { ErModel, ErCardinality } from '../../utils/drawioImporter';
  * • موصّلات منحنية بين الجداول مع شارات التعددية (1—N ، M—N ، 1—1)
  * • تمييز أعمدة PK (مفتاح) و FK (وصلة) على الجدول
  * • تكبير/تصغير + hover لإبراز علاقات جدول معيّن
+ * • سحب وإفلات البطاقات (Pointer Events، يدعم اللمس) لتدبير المواضع
+ *   يدوياً — الأوضاع اليدوية تتجاوز الترتيب الطوبولوجي وتُصفّر بزر «ترتيب تلقائي»
+ *   أو عند تغيير النموذج، والموصّلات تُعاد حسابًا من المواضع الجديدة فوراً.
  * حساب الأحجام حتمي من بيانات النموذج (بدون قياس DOM) — مستقر مع تصفير Coalescing.
  */
 
@@ -180,9 +183,59 @@ interface ErdPreviewProps {
 export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
   const [zoom, setZoom] = useState<number>(0.85);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  /** مواضع تدبيرية يدوية تتجاوز التوزيع الحتمي — id → {x,y} بإحداثيات الكانتاس غير المكبّرة */
+  const [manual, setManual] = useState<Map<string, { x: number; y: number }>>(() => new Map());
+  const dragRef = useRef<{ id: string; pointerId: number; startPx: number; startPy: number; origX: number; origY: number; moved: boolean } | null>(null);
 
-  const { boxes, width, height } = useMemo(() => computeLayout(model), [model]);
+  // نموذج جديد → ننتقل إلى الترتيب الطوبولوجي الافتراضي
+  useEffect(() => { setManual(new Map()); }, [model]);
+
+  const base = useMemo(() => computeLayout(model), [model]);
+  const { boxes, width, height } = useMemo(() => {
+    if (manual.size === 0) return base;
+    const merged = new Map<string, Box>(base.boxes);
+    for (const [id, p] of manual) {
+      const h = merged.get(id)?.h ?? 60;
+      merged.set(id, { x: p.x, y: p.y, h });
+    }
+    let w = base.width; let h = base.height;
+    for (const b of merged.values()) {
+      w = Math.max(w, b.x + CARD_W + COL_GAP / 2);
+      h = Math.max(h, b.y + b.h + ROW_GAP);
+    }
+    return { boxes: merged, width: w, height: h };
+  }, [base, manual]);
   const connectors = useMemo(() => computeConnectors(model, boxes), [model, boxes]);
+
+  /** بدء سحب بطاقة: نصل إحداثيات البداية نبضات الشاشة قبل المزاعم */
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, id: string): void => {
+    if (e.button !== 0) return; // الرأيين الأوسط/الأيمن للتفاعل الآخر
+    const box = boxes.get(id); if (!box) return;
+    dragRef.current = { id, pointerId: e.pointerId, startPx: e.clientX, startPy: e.clientY, origX: box.x, origY: box.y, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+  };
+
+  /** أثناء السحب: دلتا الشاشة ÷ zoom = دلتا الكانتاس، مع مقصورتها على حدود القانات */
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>): void => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = (e.clientX - drag.startPx) / zoom;
+    const dy = (e.clientY - drag.startPy) / zoom;
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && !drag.moved) return; // عتبة تجاهل النقر الاعتيادي
+    drag.moved = true;
+    const x = Math.max(0, Math.min(drag.origX + dx, width - CARD_W));
+    const y = Math.max(0, Math.min(drag.origY + dy, Math.max(0, height - 80)));
+    setManual(prev => new Map(prev).set(drag.id, { x, y }));
+  };
+
+  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>): void => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    setIsDragging(false);
+  };
 
   // أعمدة FK لكل جدول — من علاقات	children
   const fkColumnsByTable = useMemo(() => {
@@ -221,6 +274,16 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
           <button type="button" aria-label={isAr ? 'إعادة الضبط' : 'Reset zoom'} onClick={() => setZoom(0.85)} className="p-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]">
             <Scaling className="w-3.5 h-3.5 text-[var(--cds-text-02)]" />
           </button>
+          <button
+            type="button"
+            aria-label={isAr ? 'ترتيب تلقائي — إلغاء المواضع اليدوية' : 'Auto layout — clear manual positions'}
+            title={isAr ? 'ترتيب تلقائي — إلغاء المواضع اليدوية' : 'Auto layout — clear manual positions'}
+            onClick={() => setManual(new Map())}
+            disabled={manual.size === 0}
+            className="p-1.5 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)] disabled:opacity-40 disabled:hover:border-[var(--cds-border-subtle)]"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-[var(--cds-text-02)]" />
+          </button>
         </div>
       </div>
 
@@ -250,6 +313,7 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
               const box = boxes.get(table.id);
               if (!box) return null;
               const isHovered = hovered === table.id;
+              const isDragged = isDragging && dragRef.current?.id === table.id;
               const primaryKey = table.columns.filter(c => c.isPrimaryKey);
               const fkSet = fkColumnsByTable.get(table.id) ?? new Set<string>();
               return (
@@ -257,8 +321,12 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
                   key={table.id}
                   onMouseEnter={() => setHovered(table.id)}
                   onMouseLeave={() => setHovered(null)}
-                  style={{ left: box.x, top: box.y, width: CARD_W, minHeight: box.h }}
-                  className={`absolute bg-[var(--cds-layer-01)] border ${isHovered ? 'border-[var(--cds-interactive-01)] shadow-lg' : 'border-[var(--cds-border-subtle)]'}`}
+                  onPointerDown={e => handlePointerDown(e, table.id)}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerEnd}
+                  onPointerCancel={handlePointerEnd}
+                  style={{ left: box.x, top: box.y, width: CARD_W, minHeight: box.h, zIndex: isDragged ? 30 : 1 }}
+                  className={`absolute bg-[var(--cds-layer-01)] border select-none touch-none cursor-grab ${isDragged ? 'cursor-grabbing border-[var(--cds-interactive-01)] shadow-xl' : isHovered ? 'border-[var(--cds-interactive-01)] shadow-lg' : 'border-[var(--cds-border-subtle)]'}`}
                   dir="ltr"
                 >
                   {/* رأس الجدول */}
@@ -270,7 +338,8 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
                   {/* الأعمدة */}
                   <div className="py-1.5 px-1.5">
                     {table.columns.map(col => {
-                      const isFk = fkSet.has(col.name.toLowerCase());
+                      // FK من العلاقة الرسومية 1-N أو من علامة (FK)/ references في التسمية
+                      const isFk = fkSet.has(col.name.toLowerCase()) || col.isForeignKey === true;
                       return (
                         <div key={col.name} className="flex items-center gap-1.5 px-1" style={{ height: ROW_H }}>
                           {col.isPrimaryKey ? (
@@ -300,7 +369,10 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
         <span className="flex items-center gap-1.5"><span className="w-3 h-[2px] inline-block" style={{ background: CARD_COLOR_11 }} />1–1 {isAr ? 'واحد إلى واحد' : 'one-to-one'}</span>
         <span className="flex items-center gap-1.5"><KeyRound className="w-3 h-3 text-[#f1c21b]" />{isAr ? 'مفتاح أساسي' : 'primary key'}</span>
         <span className="flex items-center gap-1.5"><Link2 className="w-3 h-3 text-[var(--cds-interactive-01)]" />{isAr ? 'مفتاح أجنبي' : 'foreign key'}</span>
-        <span className="ms-auto">{isAr ? 'مرّر فوق جدولاً لإبراز علاقاته' : 'Hover a table to highlight its relations'}</span>
+        <span className="ms-auto flex items-center gap-1.5">
+          <Move className="w-3 h-3" />
+          {isAr ? 'اسحب بطاقة الجدول لتدبير موضعها يدوياً · مرّر فوقها لإبراز علاقاتها' : 'Drag a table card to reposition it · hover to highlight relations'}
+        </span>
       </div>
     </div>
   );

@@ -26,6 +26,64 @@ import {
 import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
 import { ErdPreview } from './ErdPreview';
 
+/** مخطط تجريبي ثالث بنمط UML العمودي — مستطيلات بسيطة، تسطير HTML للمفتاح الأساسي، وأعلام (fk) وسط التسمية */
+const EXAMPLE_UML_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-11-02T00:00:00.000Z" agent="example-uml">
+  <diagram id="library-uml" name="Library UML">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" page="1" pageWidth="900" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="students" value="students" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="60" y="60" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="st0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="students">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="st1" value="full_name : VARCHAR(120)" style="text;html=1;align=left;" vertex="1" parent="students">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="st2" value="email : VARCHAR(255)" style="text;html=1;align=left;" vertex="1" parent="students">
+          <mxGeometry y="96" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="books" value="books" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bk0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="books">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bk1" value="title : VARCHAR(200)" style="text;html=1;align=left;" vertex="1" parent="books">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bk2" value="isbn : CHAR(13)" style="text;html=1;align=left;" vertex="1" parent="books">
+          <mxGeometry y="96" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="loans" value="loans" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="190" y="290" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ln0" value="&lt;u&gt;id&lt;/u&gt; : INT" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="30" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ln1" value="student_id : INT (fk)" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="63" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ln2" value="book_id : INT (fk)" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="96" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ln3" value="loaned_at : DATE" style="text;html=1;align=left;" vertex="1" parent="loans">
+          <mxGeometry y="129" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="endArrow=ERmany;startArrow=ERone;html=1;" edge="1" parent="1" source="students" target="loans">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="endArrow=ERmany;startArrow=ERone;html=1;" edge="1" parent="1" source="books" target="loans">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+
 const DIALECTS: { id: SqlDialect; label: string; labelAr: string }[] = [
   { id: 'mysql', label: 'MySQL', labelAr: 'MySQL' },
   { id: 'postgres', label: 'PostgreSQL', labelAr: 'PostgreSQL' },
@@ -200,6 +258,22 @@ export const SchemaDesignerPage: React.FC = () => {
     return { ...parsedModel, tables, relationships };
   }, [parsedModel, selectedPage]);
 
+  /** أعمدة FK لكل جدول لعرضها على بطاقات الأعمدة: من علاقات 1-N الرسومية أو من علامة FK داخل التسمية */
+  const fkByTable = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const table of pageModel?.tables ?? []) {
+      const declared = table.columns.filter(c => c.isForeignKey).map(c => c.name.toLowerCase());
+      if (declared.length > 0) map.set(table.id, new Set(declared));
+    }
+    for (const rel of pageModel?.relationships ?? []) {
+      if (rel.cardinality !== '1-N' || !rel.targetColumn) continue;
+      const set = map.get(rel.targetTable) ?? new Set<string>();
+      set.add(rel.targetColumn.toLowerCase());
+      map.set(rel.targetTable, set);
+    }
+    return map;
+  }, [pageModel]);
+
   const processTextFile = async (text: string, sourceName: string): Promise<void> => {
     setIsParsing(true);
     try {
@@ -304,14 +378,24 @@ export const SchemaDesignerPage: React.FC = () => {
               : 'Upload a draw.io ER diagram export and turn it into full CREATE TABLE code with keys and relations — MySQL, PostgreSQL, SQLite, SQL Server, Oracle.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { void processTextFile(EXAMPLE_XML, 'example-shop-erd.drawio'); }}
-          className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-          <span>{isAr ? 'مخطط تجريبي' : 'Load example'}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => { void processTextFile(EXAMPLE_XML, 'example-shop-erd.drawio'); }}
+            className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
+            <span>{isAr ? 'مخطط تجريبي ER' : 'ER example'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { void processTextFile(EXAMPLE_UML_XML, 'example-library-uml.drawio'); }}
+            className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
+            <span>{isAr ? 'مخطط تجريبي UML عمودي' : 'Vertical UML example'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ============== Dropzone ============== */}
@@ -419,17 +503,22 @@ export const SchemaDesignerPage: React.FC = () => {
                   <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)]">{table.columns.length} {isAr ? 'أعمدة' : 'cols'}</span>
                 </div>
                 <div className="p-2 space-y-1 max-h-56 overflow-y-auto">
-                  {table.columns.map(col => (
-                    <div key={col.name} className="flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--cds-layer-02)]">
-                      {col.isPrimaryKey ? (
-                        <KeyRound className="w-3 h-3 text-[#f1c21b] shrink-0" />
-                      ) : (
-                        <span className="w-3 h-3 shrink-0" />
-                      )}
-                      <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
-                      <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
-                    </div>
-                  ))}
+                  {table.columns.map(col => {
+                    const isFk = col.isForeignKey || fkByTable.get(table.id)?.has(col.name.toLowerCase()) || false;
+                    return (
+                      <div key={col.name} className="flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--cds-layer-02)]">
+                        {col.isPrimaryKey ? (
+                          <span title={isAr ? 'مفتاح أساسي' : 'primary key'} className="shrink-0"><KeyRound className="w-3 h-3 text-[#f1c21b]" /></span>
+                        ) : isFk ? (
+                          <span title={isAr ? 'مفتاح أجنبي' : 'foreign key'} className="shrink-0"><Link2 className="w-3 h-3 text-[var(--cds-interactive-01)]" /></span>
+                        ) : (
+                          <span className="w-3 h-3 shrink-0" />
+                        )}
+                        <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
+                        <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
+                      </div>
+                    );
+                  })}
                   {table.columns.length === 0 && (
                     <p className="text-[10px] text-[var(--cds-text-03)] font-mono px-1.5 py-2">
                       {isAr ? 'لم يُكتشف أعمدة — تحقق من تسميات الخلايا.' : 'No columns discovered.'}
