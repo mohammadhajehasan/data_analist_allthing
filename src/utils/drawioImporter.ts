@@ -28,6 +28,8 @@ export type ErColumn = {
   isNullable: boolean;
   isUnique?: boolean;
   defaultValue?: string;
+  /** تعبير CHECK خام لعمود — ملتقط من التسمية بمنبه check(...) أو منضبط من المحرّر */
+  check?: string;
 };
 
 export type ErTable = {
@@ -314,7 +316,8 @@ function extractAttributes(tagText: string): Record<string, string> {
 
 function parseCells(xml: string): RawCell[] {
   const cells: RawCell[] = [];
-  const cellRe = /<mxCell\b([^>]*?)(?:\/>|>([\s\S]*?)<\/mxCell\s*>)/g;
+  // الأصفار واعيّة بالاقتباسات: '?' داخل قيمة وسعية (مثل check(>= 0)) لا يُقطع التعابير
+  const cellRe = /<mxCell\b((?:"[^"]*"|'[^']*'|[^"'>])*?)(?:\/>|>([\s\S]*?)<\/mxCell\s*>)/g;
   let match: RegExpExecArray | null;
   while ((match = cellRe.exec(xml))) {
     const attrs = extractAttributes(match[1]);
@@ -335,7 +338,7 @@ function parseCells(xml: string): RawCell[] {
 /** كل وسوم <diagram ...> name="..." مع النص داخلها */
 function splitDiagrams(xml: string): { name: string; content: string }[] {
   const out: { name: string; content: string }[] = [];
-  const diagramRe = /<diagram\b([^>]*?)(?:\/>|>([\s\S]*?)<\/diagram\s*>)/g;
+  const diagramRe = /<diagram\b((?:"[^"]*"|'[^']*'|[^"'>])*?)(?:\/>|>([\s\S]*?)<\/diagram\s*>)/g;
   let match: RegExpExecArray | null;
   while ((match = diagramRe.exec(xml))) {
     const attrs = extractAttributes(match[1]);
@@ -358,8 +361,17 @@ export function looksLikeTableContainer(cell: { style: string; isEdge?: boolean;
   return false;
 }
 
-/** فكّ تسمية عمود نصية إلى {name,type,markers} — يتعامل مع "id : INT" و"+ name : varchar(255) {PK}" */
-export function parseColumnLabel(rawLabel: string): { name: string; type: string; markerPk: boolean; markerFk: boolean; required: boolean } {
+/** فكّ تسمية عمود نصية — يتعامل مع "id : INT" و"+ name : varchar(255) {PK}" وعلامات القيود (fk/unique/nn/check/default) */
+export function parseColumnLabel(rawLabel: string): {
+  name: string;
+  type: string;
+  markerPk: boolean;
+  markerFk: boolean;
+  markerUnique: boolean;
+  required: boolean;
+  check?: string;
+  defaultValue?: string;
+} {
   // فكّ كيانات XML أولاً حتى تسميات HTML المسرّبة (نمط UML العمودي في draw.io)
   // تُقطّع وتُزال أوسمها كي ينجح فصل الاسم/النوع واكتشاف العلامات
   const decoded = decodeEntities(rawLabel);
@@ -399,6 +411,26 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
     /\bforeign\s+key\b/i.test(text) ||
     /\breferences?\b/i.test(text);
 
+  // UNIQUE بالمنهج نفسه: (unique)/(uq)/#unique ، «unique»/«uq» ، توكن وسطي uq/unique بحدود كلمات
+  // (محمي من UNIQUEIDENTIFIER:  بعد 'unique' يتبعه 'i' فلا يفعل)
+  const markerUnique =
+    /(?:[({[]|[#^])\s*(?:uq|unique)\s*(?:[)}\]])?/i.test(text) ||
+    /«[^»]*\b(?:uq|unique)\b[^»]*»/i.test(text) ||
+    /\buq\b/i.test(text) ||
+    /\bunique\b/i.test(text);
+
+  // الاقتناص الكبستاني: check(<تعبير>) بأقواسٍ يرمّز عمقياً (تعبيرات مثل check(price >= 0 AND stock > 5))
+  const checkPick = extractCheckExpression(text);
+  if (checkPick) text = checkPick.remaining;
+
+  // DEFAULT <قيمة> — القيمة توكن واحد أو ش(statearr مقتبس)؛ يُزال من التسمية بعد الالتقاط
+  let defaultValue: string | undefined;
+  const defaultMatch = text.match(/\bdefaults?\s+("[^"]*"|\S+)/i);
+  if (defaultMatch) {
+    defaultValue = defaultMatch[1].trim();
+    text = (text.slice(0, defaultMatch.index!) + ' ' + text.slice(defaultMatch.index! + defaultMatch[0].length)).replace(/\s{2,}/g, ' ').trim();
+  }
+
   // الإلزام بالحدود المفتاحية: أقواس مليئة بعلامات، أو توكن وسطي، أو نجمة محاذاة
   const required =
     /(?:[({[])\s*(?:nn|not\s*null|required)\s*[)}\]]?/i.test(text) ||
@@ -408,9 +440,9 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
     /\brequired\b/i.test(text);
 
   text = text
-    .replace(/[({[]\s*(?:pk|primary\s*key|nn|not\s*null|required|fk|foreign\s*key)[^()\]}]*[)\]}]/gi, '') // مجموعات العلامات حتى القوائم (pk, nn, fk)
+    .replace(/[({[]\s*(?:pk|primary\s*key|nn|not\s*null|required|fk|foreign\s*key|uq|unique|default)[^()\]}]*[)\]}]/gi, '') // مجموعات العلامات حتى القوائم (pk, nn, fk, unique)
     .replace(/\{[^}]*\}/g, '')
-    .replace(/[#^]\s*(pk|primary\s*key|fk|foreign\s*key)/gi, '') // علامات على شكل #pk / #fk
+    .replace(/[#^]\s*(pk|primary\s*key|fk|foreign\s*key|uq|unique)/gi, '') // علامات على شكل #pk / #fk / #uq
     .replace(/\breferences?\s+[\w$]+(?:\s*\([^)]*\))?/gi, '') // بيد DDL: references users(id) تُولاها كاملة
     .replace(/<<\s*(?:p\.?k\.?|f\.?k\.?)\s*>>/gi, '')
     .replace(/«[^»]*»/g, '')
@@ -422,6 +454,7 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
   // إذا أنتجت الإزالة نصاً يبدأ بفاصل أو فارغاً تماماً، يبقى النص الأصلي كما هو:
   const scraped = text
     .replace(/\b(?:p\.?k\.?|primary\s+key|f\.?k\.?|foreign\s+key|references?)\b/gi, ' ')
+    .replace(/\b(?:uq|unique)\b/gi, ' ')
     .replace(/\b(?:nn|not\s+null|required)\b/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -445,7 +478,45 @@ export function parseColumnLabel(rawLabel: string): { name: string; type: string
       name = text; // عمود بدون نوع
     }
   }
-  return { name: name.trim(), type: type.trim(), markerPk, markerFk, required };
+  return {
+    name: name.trim(),
+    type: type.trim(),
+    markerPk,
+    markerFk,
+    markerUnique,
+    required,
+    check: checkPick?.expr,
+    defaultValue,
+  };
+}
+
+/**
+ * فأى التعابير check(<expr>) من التسمية — مرن مع تداخل الأقواس بندعم مستويين،
+ * ويعيد نص التعبير الخام مع النص الملي بصيغة زائدة
+ * (يُستخدم أيضاً مستوياً شهرياً في القاموس كي تضيع صيغة التعابير القياسية)
+ */
+export function extractCheckExpression(text: string): { expr: string; remaining: string } | null {
+  const open = /\bchecks?\s*\(/i.exec(text);
+  if (!open) return null;
+  const openIdx = text.indexOf('(', open.index);
+  let depth = 0;
+  let end = -1;
+  for (let i = openIdx; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(') depth++;
+    else if (ch === ')') {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+  const expr = text.slice(openIdx + 1, end).trim();
+  if (!expr) return null;
+  const remaining = `${text.slice(0, open.index)} ${text.slice(end + 1)}`.replace(/\s{2,}/g, ' ').trim();
+  return { expr, remaining };
 }
 
 function styleIndicatesPrimaryKey(style: string, parentRowStyle?: string): boolean {
@@ -527,6 +598,10 @@ function parseDiagramXml(xml: string, model: ErModel, pageIndex: number): void {
         isPrimaryKey: parsed.markerPk || pkByStyle,
         // FK علمنا في التسمية فقط (العلاقة الرسومية تستمر تعذرها على مستوى العرض في ErdPreview)
         ...(parsed.markerFk ? { isForeignKey: true } : {}),
+        // القيود المكتشفة من التسمية: unique / check(expr) / default <قيمة>
+        ...(parsed.markerUnique ? { isUnique: true } : {}),
+        ...(parsed.check ? { check: parsed.check } : {}),
+        ...(parsed.defaultValue ? { defaultValue: parsed.defaultValue } : {}),
         isNullable: !(parsed.markerPk || pkByStyle || parsed.required),
       };
       if (tableEntry.columns.some(c => c.name.toLowerCase() === col.name.toLowerCase())) continue;

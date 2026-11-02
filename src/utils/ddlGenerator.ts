@@ -382,6 +382,12 @@ interface ColLine {
   type: string;
   notNull: boolean;
   isPk: boolean;
+  /** UNIQUE منعكس (رسمياً من التسمية/المحرّر) — يُهمل على PK (كسر كافي أضراط) */
+  unique: boolean;
+  /** DEFAULT <قيمة> خامة كما وتحت المُستورد */
+  defaultValue?: string;
+  /** CHECK خام لعمود — يُلفّ بـْ CHECK ( expr ) في الإصدار */
+  check?: string;
   /** SQLite خاصية: مفتاح أساسي autoincrement في سطر واحد */
   sqliteInlineAutoIncrement?: boolean;
 }
@@ -418,7 +424,16 @@ function buildColumnLine(col: ErColumn, table: ErTable, dialect: SqlDialect, q: 
       }
     }
   }
-  return { name: col.name, type, notNull: !col.isNullable || col.isPrimaryKey, isPk, sqliteInlineAutoIncrement };
+  return {
+    name: col.name,
+    type,
+    notNull: !col.isNullable || col.isPrimaryKey,
+    isPk,
+    unique: col.isUnique === true && !isPk,
+    defaultValue: col.defaultValue,
+    check: col.check,
+    sqliteInlineAutoIncrement,
+  };
 }
 
 function columnLineText(line: ColLine, dialect: SqlDialect, q: (x: string) => string): string {
@@ -428,6 +443,9 @@ function columnLineText(line: ColLine, dialect: SqlDialect, q: (x: string) => st
   const parts = [`  ${q(line.name)} ${line.type}`];
   if (line.notNull) parts.push('NOT NULL');
   if (line.isPk) parts.push('PRIMARY KEY');
+  if (line.defaultValue && line.defaultValue.trim() !== '') parts.push(`DEFAULT ${line.defaultValue}`);
+  if (line.unique) parts.push('UNIQUE');
+  if (line.check && line.check.trim() !== '') parts.push(`CHECK (${line.check})`);
   return parts.join(' ');
 }
 
@@ -491,6 +509,8 @@ function buildTableDdl(table: ErTable, ctx: TableEmitContext): string {
           : mapType(protoCol, dialect),
       notNull: fk.isCascade,
       isPk: false,
+      // UNIQUE على مستوى الجدول يغطي 1-1 أدناه — لا تكرراه في السطر نفسه
+      unique: false,
     };
     colLines.push(childLine);
 

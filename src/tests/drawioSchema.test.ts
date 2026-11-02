@@ -115,6 +115,7 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
       type: 'TIMESTAMP',
       markerPk: false,
       markerFk: false,
+      markerUnique: false,
       required: false,
     });
   });
@@ -133,7 +134,7 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
   });
 
   it('يقبل عموداً بلا نوع', () => {
-    expect(parseColumnLabel('note')).toEqual({ name: 'note', type: '', markerPk: false, markerFk: false, required: false });
+    expect(parseColumnLabel('note')).toEqual({ name: 'note', type: '', markerPk: false, markerFk: false, markerUnique: false, required: false });
   });
 
   it('يكتشف pk وسط النص بحدود كلمات ويحفظه من النوع', () => {
@@ -242,7 +243,108 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
     expect(parseColumnLabel('+ invoice_id : INT (FK)').markerFk).toBe(true);
     expect(parseColumnLabel('supplier_id : integer, fk').markerFk).toBe(true);
   });
+
+  it('يستخرج علامات UNIQUE بكل الصيغ ويخرجها من النوع', () => {
+    for (const label of ['slug : VARCHAR(200) unique', 'slug : VARCHAR(200) uq', 'slug : VARCHAR(200) (unique)', 'slug : VARCHAR(200) #uq', 'slug : VARCHAR(200) «uq»']) {
+      const parsed = parseColumnLabel(label);
+      expect(parsed.markerUnique).toBe(true);
+      expect(parsed.type).toBe('VARCHAR(200)');
+      expect(parsed.name).toBe('slug');
+    }
+  });
+
+  it('لا يخدعه نوع UNIQUEIDENTIFIER أو أسامي تحتوي حروف قريبة', () => {
+    expect(parseColumnLabel('x : UNIQUEIDENTIFIER').markerUnique).toBe(false);
+    expect(parseColumnLabel('unique_name : INT').markerUnique).toBe(false);
+    expect(parseColumnLabel('uq2 : INT').markerUnique).toBe(false);
+  });
+
+  it('يلتقط قيم DEFAULT منكلك (رقمية ومقتبسة)', () => {
+    expect(parseColumnLabel('in_stock : BOOLEAN default 1')).toEqual(expect.objectContaining({ name: 'in_stock', type: 'BOOLEAN', defaultValue: '1' }));
+    expect(parseColumnLabel('status : VARCHAR(32) default \"new\"')).toEqual(expect.objectContaining({ name: 'status', type: 'VARCHAR(32)', defaultValue: '\"new\"' }));
+  });
+
+  it('يلتقط تعبير CHECK بسيطاً ومتكدساً ويخرج كله من النوع', () => {
+    const simple = parseColumnLabel('price : DECIMAL(10,2) check(price > 0)');
+    expect(simple.check).toBe('price > 0');
+    expect(simple.type).toBe('DECIMAL(10,2)');
+
+    const nested = parseColumnLabel('age : INT check (age >= 0 and (age < 120))');
+    expect(nested.check).toBe('age >= 0 and (age < 120)');
+    expect(nested.type).toBe('INT');
+  });
+
+  it('يرَّبط القيود المشتركة معاً (pk، fk، uq) في قائمة واحدة', () => {
+    const parsed = parseColumnLabel('order_code : VARCHAR(20) (pk, fk, unique, nn)');
+    expect(parsed.markerPk).toBe(true);
+    expect(parsed.markerFk).toBe(true);
+    expect(parsed.markerUnique).toBe(true);
+    expect(parsed.required).toBe(true);
+    expect(parsed.name).toBe('order_code');
+    expect(parsed.type).toBe('VARCHAR(20)');
+  });
 });
+
+  it('يحدث القيود المكتشفة على الأعمدة (unique/check/default) بدءاً من مخطط بسيط', async () => {
+    const erdWithConstraints = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram id="constraints-erd" name="Constraints ERD">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" page="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="accounts" value="accounts" style="shape=table;startSize=30;container=1;childLayout=tableLayout;" vertex="1" parent="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="ac0" value="id : INT #pk" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+        <mxCell id="ac1" value="email : VARCHAR(320) unique nn" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+        <mxCell id="ac2" value="balance : DECIMAL(12,2) check(balance >= 0) default 0" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+        <mxCell id="ac3" value="nickname : VARCHAR(64) uq" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+    const model = await parseDrawioFile(erdWithConstraints);
+    const accounts = tablesOf(model, 'accounts');
+    expect(accounts.columns.find((c: any) => c.name === 'email')).toMatchObject({ isUnique: true, isNullable: false });
+    expect(accounts.columns.find((c: any) => c.name === 'balance')).toMatchObject({
+      type: 'DECIMAL(12,2)',
+      check: 'balance >= 0',
+      defaultValue: '0',
+    });
+    expect(accounts.columns.find((c: any) => c.name === 'nickname')).toMatchObject({ isUnique: true });
+  });
+
+  it('يولّد UNIQUE/DEFAULT/CHECK داخل سطر العمود لكل الديالكات', async () => {
+    const erdWithConstraints = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram id="constraints-erd" name="Constraints ERD">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" page="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="accounts" value="accounts" style="shape=table;startSize=30;container=1;childLayout=tableLayout;" vertex="1" parent="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="ac0" value="id : INT #pk" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+        <mxCell id="ac1" value="email : VARCHAR(320) unique nn" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+        <mxCell id="ac2" value="balance : DECIMAL(12,2) check(balance >= 0) default 0" style="shape=tableRow;" vertex="1" parent="accounts"><mxGeometry as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+    const model = await parseDrawioFile(erdWithConstraints);
+
+    const mysql = generateDdl(model, 'mysql');
+    expect(mysql.code).toMatch(/`email` VARCHAR\(320\)[^\n]*NOT NULL UNIQUE/);
+    expect(mysql.code).toMatch(/`balance` DECIMAL\(12,2\)[^\n]*DEFAULT 0 CHECK \(balance >= 0\)/);
+
+    const sqlite = generateDdl(model, 'sqlite');
+    expect(sqlite.code).toMatch(/\"email\"[^\n]*NOT NULL UNIQUE/);
+
+    const sqlserver = generateDdl(model, 'sqlserver');
+    expect(sqlserver.code).toMatch(/\[email\][^\n]*NOT NULL UNIQUE/);
+  });
 
   it('يستخرج PK بوسم التسطير وFK بوسم (fk) من مخطط UML عمودي بمستطيلات بسيطة', async () => {
     const umlErd = `<?xml version="1.0" encoding="UTF-8"?>

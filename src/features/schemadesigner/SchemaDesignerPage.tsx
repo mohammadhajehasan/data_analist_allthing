@@ -15,14 +15,17 @@ import {
   KeyRound,
   Link2,
   Info,
+  Wand2,
 } from 'lucide-react';
 import {
   parseDrawioFile,
   extractDrawioXmlFromPng,
   extractDrawioXmlFromSvg,
   ErModel,
+  ErColumn,
   ErCardinality,
 } from '../../utils/drawioImporter';
+import { inferColumnConstraints } from '../../utils/constraintInference';
 import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
 import { ErdPreview } from './ErdPreview';
 
@@ -96,6 +99,111 @@ const CARDINALITY_LABEL: Record<ErCardinality, { en: string; ar: string }> = {
   '1-1': { en: 'One-to-One', ar: 'واحد إلى واحد' },
   '1-N': { en: 'One-to-Many', ar: 'واحد إلى متعدد' },
   'N-M': { en: 'Many-to-Many', ar: 'متعدد إلى متعدد' },
+};
+
+/* ------------------------------------------------------------------ */
+/* محرّر قيود العمود — شرائح قابلة للتبديل + مدخلات قيمة                 */
+/* ------------------------------------------------------------------ */
+
+const CHIP_BASE = 'px-1 py-0.5 text-[8px] font-mono uppercase tracking-wide border leading-none transition-colors shrink-0';
+
+interface ColumnConstraintRowProps {
+  tableId: string;
+  col: ErColumn;
+  isAr: boolean;
+  onPatch: (tableId: string, colName: string, patch: Partial<ErColumn>) => void;
+}
+
+/** صفّ شرائح تحكّم في قيود عمود واحد: PK / FK / NORMAL / NOT NULL / UNIQUE / CHECK / DEFAULT */
+const ColumnConstraintRow: React.FC<ColumnConstraintRowProps> = ({ tableId, col, isAr, onPatch }) => {
+  const patch = (p: Partial<ErColumn>): void => onPatch(tableId, col.name, p);
+  const suggestion = inferColumnConstraints(col);
+
+  interface ChipDef { label: string; active: boolean; suggested?: boolean; title: string; onClick: () => void; }
+  const chips: ChipDef[] = [
+    {
+      label: 'PK',
+      active: col.isPrimaryKey,
+      title: isAr ? 'مفتاح أساسي' : 'primary key',
+      onClick: () => patch({ isPrimaryKey: !col.isPrimaryKey }),
+    },
+    {
+      label: 'FK',
+      active: col.isForeignKey === true,
+      title: isAr ? 'مفتاح أجنبي' : 'foreign key',
+      onClick: () => patch({ isForeignKey: !col.isForeignKey }),
+    },
+    {
+      label: isAr ? 'NOT NULL' : 'NN',
+      active: col.isNullable === false,
+      suggested: col.isNullable !== false && suggestion.notNull === true,
+      title: isAr ? 'إلزام قيمة (نفي NULL)' : 'required value (deny NULL)',
+      onClick: () => patch({ isNullable: col.isNullable === false }), // تفدي: NN ⇄ NULL
+    },
+    {
+      label: 'UQ',
+      active: col.isUnique === true,
+      suggested: col.isUnique !== true && suggestion.unique === true,
+      title: isAr ? 'قيمة فريدة' : 'unique value',
+      onClick: () => patch({ isUnique: !col.isUnique }),
+    },
+    {
+      label: 'CHECK',
+      active: col.check !== undefined,
+      suggested: col.check === undefined && suggestion.check !== undefined,
+      title: isAr ? 'تحقق شرطي' : 'check constraint',
+      onClick: () => patch({ check: col.check !== undefined ? undefined : suggestion.check ?? '' }),
+    },
+    {
+      label: 'DEF',
+      active: col.defaultValue !== undefined,
+      title: isAr ? 'قيمة افتراضية' : 'default value',
+      onClick: () => patch({ defaultValue: col.defaultValue !== undefined ? undefined : '' }),
+    },
+  ];
+
+  const inputCls =
+    'text-[9px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none rounded-none py-0.5 min-w-0';
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 py-0.5">
+      {chips.map(ch => (
+        <button
+          key={ch.label}
+          type="button"
+          title={ch.title}
+          onClick={ch.onClick}
+          className={`${CHIP_BASE} ${
+            ch.active
+              ? 'bg-[var(--cds-interactive-01)] border-transparent text-white'
+              : ch.suggested
+                ? 'border-dashed border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)]/10'
+                : 'border-[var(--cds-border-subtle)] text-[var(--cds-text-03)] hover:border-[var(--cds-border-strong)] hover:text-[var(--cds-text-02)]'
+          }`}
+        >
+          {ch.label}
+        </button>
+      ))}
+      {col.check !== undefined && (
+        <input
+          value={col.check}
+          onChange={e => patch({ check: e.target.value })}
+          placeholder={isAr ? 'مثال: > 0' : 'e.g. > 0'}
+          aria-label={isAr ? 'تعبير CHECK للعمود' : 'CHECK expression'}
+          className={`${inputCls} w-24 flex-1`}
+        />
+      )}
+      {col.defaultValue !== undefined && (
+        <input
+          value={col.defaultValue}
+          onChange={e => patch({ defaultValue: e.target.value })}
+          placeholder={isAr ? "مثال: 0 أو 'none'" : "e.g. 0 or 'none'"}
+          aria-label={isAr ? 'القيمة الافتراضية للعمود' : 'DEFAULT value'}
+          className={`${inputCls} w-24 flex-1`}
+        />
+      )}
+    </div>
+  );
 };
 
 /** مخطط تجريبي بنمط ER الرسمي من draw.io — أربع مخزنات مبيعات */
@@ -273,6 +381,67 @@ export const SchemaDesignerPage: React.FC = () => {
     }
     return map;
   }, [pageModel]);
+
+  /** تعديل قيود عمود واحد في النموذج المحلّل — تحديث فوري للبطاقات وإعادة توليد SQL إن كان مولّداً */
+  const applyColumnPatch = (tableId: string, colName: string, columnPatch: Partial<ErColumn>): void => {
+    if (!parsedModel) return;
+    const next: ErModel = {
+      ...parsedModel,
+      tables: parsedModel.tables.map(t =>
+        t.id !== tableId
+          ? t
+          : {
+              ...t,
+              columns: t.columns.map(c =>
+                c.name.toLowerCase() !== colName.toLowerCase() ? c : { ...c, ...columnPatch }
+              ),
+            }
+      ),
+    };
+    setParsedModel(next);
+    if (generated) setGenerated(generateDdl(next, dialect, { dropIfExists, createJunctionTables }));
+  };
+
+  /** عدد الاقتراحات الذكية غير المطبَّقة بعد — لعرضها على الزر */
+  const suggestionsCount = useMemo(() => {
+    if (!pageModel) return 0;
+    let count = 0;
+    for (const table of pageModel.tables) {
+      for (const col of table.columns) {
+        const s = inferColumnConstraints(col);
+        if (s.unique) count++;
+        if (s.notNull) count++;
+        if (s.check) count++;
+      }
+    }
+    return count;
+  }, [pageModel]);
+
+  /** تطبيق كل الاقتراحات الذكية دفعة واحدة (PK يُستثنى دائماً من UNIQUE/CHECK) */
+  const applySmartSuggestions = (): void => {
+    if (!parsedModel) return;
+    let applied = 0;
+    const next: ErModel = {
+      ...parsedModel,
+      tables: parsedModel.tables.map(t => ({
+        ...t,
+        columns: t.columns.map(col => {
+          const s = inferColumnConstraints(col);
+          const columnPatch: Partial<ErColumn> = {};
+          if (s.unique) { columnPatch.isUnique = true; applied++; }
+          if (s.notNull) { columnPatch.isNullable = false; applied++; }
+          if (s.check) { columnPatch.check = s.check; applied++; }
+          return Object.keys(columnPatch).length > 0 ? { ...col, ...columnPatch } : col;
+        }),
+      })),
+    };
+    setParsedModel(next);
+    if (generated) setGenerated(generateDdl(next, dialect, { dropIfExists, createJunctionTables }));
+    toast.success(
+      isAr ? 'اقتراحات القيود' : 'Constraint suggestions',
+      isAr ? `طُبّق ${applied} قيداً ذكياً — راجع الشرائح المفعّلة` : `Applied ${applied} smart constraints — review the activated chips`
+    );
+  };
 
   const processTextFile = async (text: string, sourceName: string): Promise<void> => {
     setIsParsing(true);
@@ -493,6 +662,26 @@ export const SchemaDesignerPage: React.FC = () => {
           {/* المعاينة المرئية للمخطط — بطاقات + موصّلات */}
           {pageModel && pageModel.tables.length > 0 && <ErdPreview model={pageModel} isAr={isAr} />}
 
+          {/* شريط محرّر القيود */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)]">
+              {isAr ? 'محرّر القيود' : 'Constraint editor'}
+            </span>
+            <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+              {isAr ? 'انقر الشرائح لتبديل حالة الحقل — الشرائح المتقطعة اقتراحات ذكية' : 'Click chips to toggle column state — dashed chips are smart suggestions'}
+            </span>
+            {suggestionsCount > 0 && (
+              <button
+                type="button"
+                onClick={applySmartSuggestions}
+                className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)] hover:text-white transition-colors"
+              >
+                <Wand2 className="w-3 h-3" />
+                {isAr ? `تطبيق الاقتراحات الذكي (${suggestionsCount})` : `Apply smart suggestions (${suggestionsCount})`}
+              </button>
+            )}
+          </div>
+
           {/* بطاقات الجداول */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {pageModel?.tables.map(table => (
@@ -506,16 +695,19 @@ export const SchemaDesignerPage: React.FC = () => {
                   {table.columns.map(col => {
                     const isFk = col.isForeignKey || fkByTable.get(table.id)?.has(col.name.toLowerCase()) || false;
                     return (
-                      <div key={col.name} className="flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--cds-layer-02)]">
-                        {col.isPrimaryKey ? (
-                          <span title={isAr ? 'مفتاح أساسي' : 'primary key'} className="shrink-0"><KeyRound className="w-3 h-3 text-[#f1c21b]" /></span>
-                        ) : isFk ? (
-                          <span title={isAr ? 'مفتاح أجنبي' : 'foreign key'} className="shrink-0"><Link2 className="w-3 h-3 text-[var(--cds-interactive-01)]" /></span>
-                        ) : (
-                          <span className="w-3 h-3 shrink-0" />
-                        )}
-                        <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
-                        <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
+                      <div key={col.name} className="hover:bg-[var(--cds-layer-02)]">
+                        <div className="flex items-center gap-2 px-1.5 py-1">
+                          {col.isPrimaryKey ? (
+                            <span title={isAr ? 'مفتاح أساسي' : 'primary key'} className="shrink-0"><KeyRound className="w-3 h-3 text-[#f1c21b]" /></span>
+                          ) : isFk ? (
+                            <span title={isAr ? 'مفتاح أجنبي' : 'foreign key'} className="shrink-0"><Link2 className="w-3 h-3 text-[var(--cds-interactive-01)]" /></span>
+                          ) : (
+                            <span className="w-3 h-3 shrink-0" />
+                          )}
+                          <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
+                          <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
+                        </div>
+                        <ColumnConstraintRow tableId={table.id} col={col} isAr={isAr} onPatch={applyColumnPatch} />
                       </div>
                     );
                   })}
