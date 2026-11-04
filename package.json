@@ -9,6 +9,7 @@
     "start": "infisical run --env=dev -- node dist/server.cjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "gateway:smoke": "tsx scripts/gateway-smoke.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },
@@ -35,6 +36,7 @@
     "nodemailer": "^10.0.13",
     "papaparse": "^5.7.0",
     "plotly.js-dist": "^4.0.0",
+    "posthog-js": "^1.444.4",
     "pptxgenjs": "^4.0.1",
     "prismjs": "^1.30.0",
     "react": "^19.0.1",

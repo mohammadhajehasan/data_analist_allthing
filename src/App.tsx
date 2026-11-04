@@ -29,6 +29,8 @@ const WorkflowStudio = lazy(() => import('./features/workflow/WorkflowStudio').t
 const SchemaDesignerPage = lazy(() => import('./features/schemadesigner/SchemaDesignerPage').then(m => ({ default: m.SchemaDesignerPage })));
 const DiscussionsPage = lazy(() => import('./features/discussions/DiscussionsPage').then(m => ({ default: m.DiscussionsPage })));
 const JoinGroupPage = lazy(() => import('./features/discussions/JoinGroupPage').then(m => ({ default: m.JoinGroupPage })));
+const ContactDeveloperPage = lazy(() => import('./features/developer/ContactDeveloperPage').then(m => ({ default: m.ContactDeveloperPage })));
+const SuggestionsAdminPage = lazy(() => import('./features/developer/SuggestionsAdminPage').then(m => ({ default: m.SuggestionsAdminPage })));
 
 const ViewFallback: React.FC = () => (
   <div className="flex items-center justify-center py-24" dir="rtl">
@@ -40,6 +42,12 @@ const ViewFallback: React.FC = () => (
 );
 import { ToastContainer } from './components/common/ToastContainer';
 import { AppErrorBoundary } from './components/common/ErrorBoundary';
+import {
+  captureAnalyticsEvent,
+  identifyAnalyticsUser,
+  initAnalytics,
+  resetAnalytics,
+} from './services/analyticsService';
 import { BackgroundMonitor } from './components/common/BackgroundMonitor';
 import { CopilotDrawer } from './components/layout/CopilotDrawer';
 import { LiquidCopilotOrb } from './components/ai/LiquidCopilotOrb';
@@ -95,6 +103,12 @@ const MainLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setActiveTab]);
 
+  // Product-analytics journey: every workspace screen the user opens is one
+  // funnel step after sign-in (onboarding → datasets → dashboards → NL2SQL ...).
+  useEffect(() => {
+    captureAnalyticsEvent('feature_viewed', { feature: activeTab });
+  }, [activeTab]);
+
   // Global Zen Mode open event (dispatched from the Header moon button)
   useEffect(() => {
     const openZen = () => setZenOpen(true);
@@ -136,6 +150,10 @@ const MainLayout: React.FC = () => {
         return <WorkflowStudio />;
       case 'schemadesigner':
         return <SchemaDesignerPage />;
+      case 'developer':
+        return <ContactDeveloperPage />;
+      case 'suggestions':
+        return <SuggestionsAdminPage />;
       default:
         return <LandingPage />;
     }
@@ -202,6 +220,22 @@ export default function App() {
   // Secret invite link (/join/:code) — survives the login flow
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
 
+  // Create the PostHog client once; it stays opted out until the user consents.
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  // Keep PostHog linked to the signed-in account (funnels & retention need it).
+  useEffect(() => {
+    if (authState !== 'authed' || !authUser?.id || authUser.id === 'pending-session') return;
+    identifyAnalyticsUser({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.name,
+      role: authUser.role,
+    });
+  }, [authState, authUser]);
+
   useEffect(() => {
     const m = window.location.pathname.match(/^\/join\/([A-Za-z0-9_-]+)$/);
     if (m) setPendingInviteCode(m[1]);
@@ -221,6 +255,8 @@ export default function App() {
       const token = getStoredToken();
       // إبطال الجلسة على الخادم ثم مسح الحالة المحلية — LoginPage يظهر تلقائياً
       if (token) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      captureAnalyticsEvent('sign_out', { reason: 'idle_timeout' });
+      resetAnalytics();
       clearStoredToken();
       setAuthUser(null);
       setAuthState('guest');
@@ -312,6 +348,13 @@ export default function App() {
     return (
       <LoginPage
         onAuthSuccess={(user) => {
+          identifyAnalyticsUser({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          });
+          captureAnalyticsEvent('sign_in_completed', { method: 'password' });
           setAuthUser(user);
           setAuthState('authed');
         }}
@@ -342,6 +385,8 @@ export default function App() {
     <AppProvider authUser={authUser} onLogout={() => {
       const token = getStoredToken();
       if (token) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      captureAnalyticsEvent('sign_out', { reason: 'user_initiated' });
+      resetAnalytics();
       clearStoredToken();
       setAuthUser(null);
       setAuthState('guest');

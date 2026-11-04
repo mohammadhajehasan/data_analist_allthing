@@ -31,6 +31,8 @@ export const DEFAULT_DDL_OPTIONS: DdlOptions = {
 export type DdlResult = {
   dialect: SqlDialect;
   code: string;
+  /** ملاحظات التوليد (بما فيها FKs المُعلَمة بلا جدول أم مطابق) — بوصف زائد حيث أنها تُطبع أيضًا كتذييل `-- Notes:` */
+  warnings: string[];
   stats: { tables: number; columns: number; fks: number; junctionTables: number };
 };
 
@@ -307,23 +309,36 @@ function processRelationships(
     }
 
     // 1-N: parent = المصدر (side one) والابن = الهدف (side many) — وفق أسهم ER في draw.io
-    const parentTable = rel.cardinality === '1-N' ? source : target;
-    const childTable = rel.cardinality === '1-N' ? target : source;
+    // N-1: user-flipped direction — parent = الهدف (side one) والابن = المصدر (side many)
+    const isOneToMany = rel.cardinality === '1-N';
+    const parentTable = isOneToMany ? source : target;
+    const childTable = isOneToMany ? target : source;
     if (!parentTable || !childTable) continue;
+    const isSelfReferential = parentTable.id === childTable.id;
 
-    const parentKeyName = rel.cardinality === '1-N'
+    let parentKeyName = isOneToMany
       ? (rel.sourceColumn || resolveParentKeyName(parentTable, warnings))
       : (rel.targetColumn || resolveParentKeyName(parentTable, warnings));
+    if (isSelfReferential && rel.cardinality === 'N-1' && rel.sourceColumn) {
+      // عمود FK الذاتي يُسمّى من الابن (parent_id) وعمود الأب يُست злيد حين يُضّح
+      parentKeyName = resolveParentKeyName(parentTable, warnings) || parentKeyName;
+    }
 
     // عمود FK صريح متصل بالحافة؟ إن وُجد وموجود في الجدول الابن نستخدمه كما هو.
-    let childColName = rel.cardinality === '1-N'
+    let childColName = isOneToMany
       ? (rel.targetColumn || resolveAutoFkColumn(childTable, parentTable))
       : (rel.sourceColumn || resolveAutoFkColumn(childTable, parentTable));
+    if (isSelfReferential && rel.cardinality === 'N-1') {
+      const resolved = rel.sourceColumn || resolveAutoFkColumn(childTable, parentTable);
+      if (resolved) childColName = resolved;
+    }
     const preexisting =
       Boolean(rel.sourceColumn || rel.targetColumn) ||
       childTable.columns.some(col => col.name.toLowerCase() === childColName.toLowerCase());
-    if (preexisting && rel.targetColumn) childColName = rel.targetColumn;
-    if (preexisting && !rel.targetColumn && !childColName) continue;
+    if (preexisting && (rel.targetColumn || rel.sourceColumn)) {
+      childColName = (isOneToMany ? rel.targetColumn : rel.sourceColumn) || childColName;
+    }
+    if (preexisting && !rel.targetColumn && !rel.sourceColumn && !childColName) continue;
 
     fks.push({
       childTableId: childTable.id,
@@ -337,6 +352,69 @@ function processRelationships(
   }
 
   return { fks, junctions };
+}
+
+/**
+ * مطابقة الجدول الأم لعمود FK مُعلَم (isForeignKey) من اسم العمود نفسه:
+ *   student_id → students | student (إزالة اللاحقة _id + صيغ الجمع/التفريد)؛
+ * وإذا لم يُطابق أي جدول آخر، تُقبل مطابقة الجدول الابن نفسه (مرجع ذاتي مثل parent_id).
+ */
+function matchParentTableForFk(columnName: string, child: ErTable, tables: ErTable[]): ErTable | undefined {
+  let base = columnName.toLowerCase().trim();
+  base = base.replace(/_(id|no|nr|num|number|ref|key|fk|code)$/g, '');
+  if (!base || base.length < 2) return undefined;
+  const candidates = new Set<string>([base, `${base}s`, `${base}es`]);
+  if (base.endsWith('y')) candidates.add(`${base.slice(0, -1)}ies`);
+  const matches = (t: ErTable) => candidates.has((t.name || '').toLowerCase().trim());
+  let selfHit: ErTable | undefined;
+  for (const t of tables) {
+    if (!matches(t)) continue;
+    if (t.id !== child.id) return t; // أولوية لجدول آخر مطابق
+    selfHit = t;
+  }
+  if (selfHit) return selfHit;
+  // احتياط الزراعة الذاتية: صيغ تعيش تسلسل هرمي (parent_id داخل categories) → الجدول الابن نفسه
+  const selfRefTerms = /^(parent|sup|ancestor|root|boss|manager|superior|head|chief|super)$/i;
+  if (selfRefTerms.test(base)) return child;
+  return undefined;
+}
+
+/**
+ * FK من أعمدة مكتشَفة بالعلم isForeignKey بلا علاقة مرسومة تغطيها:
+ *   1) نُطابق الجدول الأم من اسم عمود _id (matchParentTableForFk).
+ *   2) نولّد REFERENCES نحو مفتاحه الأساسي تلقائياً في buildTableDdl.
+ * لا تكرار مع FKs صريحة من العلاقات (حماية (childTable, childColumn))،
+ * وتُسجّل تحذيراً إذا لم يُعثر على الجدول الأم.
+ */
+function processInferredForeignKeys(tables: ErTable[], fks: FkSpec[], warnings: string[]): FkSpec[] {
+  const covered = new Set(fks.map(fk => `${fk.childTableId}:${fk.childColumn.toLowerCase()}`));
+  const inferred: FkSpec[] = [];
+  for (const table of tables) {
+    for (const col of table.columns) {
+      if (!col.isForeignKey || col.isPrimaryKey) continue;
+      const key = `${table.id}:${col.name.toLowerCase()}`;
+      if (covered.has(key)) continue;
+      const parent = matchParentTableForFk(col.name, table, tables);
+      if (!parent) {
+        warnings.push(`Column "${col.name}" in "${table.name}" is flagged FOREIGN KEY but no matching parent table was found — REFERENCES skipped.`);
+        continue;
+      }
+      const parentColumn = resolveParentKeyName(parent, warnings);
+      // مرجع ذاتي لعمود PK نفسه (id → id) بلا معنى — تجاهله
+      if (parent.id === table.id && parentColumn.toLowerCase() === col.name.toLowerCase()) continue;
+      covered.add(key);
+      inferred.push({
+        childTableId: table.id,
+        childColumn: col.name,
+        parentTableId: parent.id,
+        parentColumn,
+        isUnique: false,
+        isCascade: false,
+        columnPreexisting: true,
+      });
+    }
+  }
+  return [...fks, ...inferred];
 }
 
 // ---------------------------------------------------------------------------
@@ -424,13 +502,20 @@ function buildColumnLine(col: ErColumn, table: ErTable, dialect: SqlDialect, q: 
       }
     }
   }
+  // SQLite: قيمة DEFAULT لعمود BOOLEAN على شكل حرفية (Y/yes/true…)
+  // تنهار أمام قيد CHECK (col IN (0,1)) — نُترجم التناظر المنطقي إلى 1/0 كي يبقى الكود منفذاً
+  let defaultValue = col.defaultValue;
+  if (dialect === 'sqlite' && parseRawType(col.type).base === 'boolean' && defaultValue) {
+    const truthy = /^[\'\"]?(?:yes|true|y|on|1|false|no|n|off|0)[\'\"]?$/i.test(defaultValue.trim());
+    if (truthy) defaultValue = /^(?:yes|true|y|on|1)$/i.test(defaultValue.trim()) ? "'1'" : "'0'";
+  }
   return {
     name: col.name,
     type,
     notNull: !col.isNullable || col.isPrimaryKey,
     isPk,
     unique: col.isUnique === true && !isPk,
-    defaultValue: col.defaultValue,
+    defaultValue,
     check: col.check,
     sqliteInlineAutoIncrement,
   };
@@ -484,7 +569,7 @@ function buildTableDdl(table: ErTable, ctx: TableEmitContext): string {
     const colName = fk.childColumn;
     if (fk.columnPreexisting) {
       // العمود مصرّح به في المخطط (مثل order_id في order_items) — القيد يكفي
-      tableConstraints.push(`FOREIGN KEY (${q(colName)}) REFERENCES ${q(parent.name)}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
+      tableConstraints.push(`FOREIGN KEY (${q(colName)}) REFERENCES ${q(sanitizeIdentifier(parent.name))}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
       if (fk.isUnique) tableConstraints.push(`UNIQUE (${q(colName)})`);
       continue;
     }
@@ -514,7 +599,7 @@ function buildTableDdl(table: ErTable, ctx: TableEmitContext): string {
     };
     colLines.push(childLine);
 
-    tableConstraints.push(`FOREIGN KEY (${q(nextName)}) REFERENCES ${q(parent.name)}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
+    tableConstraints.push(`FOREIGN KEY (${q(nextName)}) REFERENCES ${q(sanitizeIdentifier(parent.name))}(${q(fk.parentColumn)})${fk.isCascade ? ' ON DELETE CASCADE' : ''}`);
     if (fk.isUnique) tableConstraints.push(`UNIQUE (${q(nextName)})`);
   }
 
@@ -598,7 +683,9 @@ export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partia
     if (tbl.columns.length === 0) warnings.push(`Table "${tbl.name}" skipped — no columns discovered.`);
   }
 
-  const { fks, junctions } = processRelationships(model, tables, opts, warnings);
+  const { fks: relFks, junctions } = processRelationships(model, tables, opts, warnings);
+  // FKs إضافية من أعمدة مسوَمة isForeignKey بلا علاقة مرسومة
+  const fks = processInferredForeignKeys(tables, relFks, warnings);
   const tablesById = new Map<string, ErTable>(tables.map(tbl => [tbl.id, tbl]));
 
   // جداول الربط المعتمدة على الجداول المصدر
@@ -642,6 +729,7 @@ export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partia
   return {
     dialect,
     code,
+    warnings: [...warnings],
     stats: { tables: emitSequence.length, columns: totalColumns, fks: allFks.length, junctionTables: junctionTables.length },
   };
 }

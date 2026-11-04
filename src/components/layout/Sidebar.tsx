@@ -22,6 +22,8 @@ import {
   MessagesSquare,
   X,
   Shapes,
+  Contact,
+  Inbox,
 } from 'lucide-react';
 import { DiscussionsBadge } from './DiscussionsBadge';
 import { SnapshotBadge } from './SnapshotBadge';
@@ -42,7 +44,7 @@ const SidebarNavList: React.FC<{ isCollapsed?: boolean; isMobile?: boolean; onNa
   isMobile = false,
   onNavigate,
 }) => {
-  const { activeTab, setActiveTab, startTour, language, t } = useApp();
+  const { activeTab, setActiveTab, startTour, language, t, user } = useApp();
 
   const navItems = [
     { id: 'landing', label: t.nav.landing, icon: Compass },
@@ -61,6 +63,10 @@ const SidebarNavList: React.FC<{ isCollapsed?: boolean; isMobile?: boolean; onNa
     { id: 'reports', label: t.nav.reports, icon: FileText },
     { id: 'audit', label: t.nav.audit, icon: ShieldAlert },
     { id: 'admin', label: t.nav.admin, icon: Settings },
+    { id: 'developer', label: t.nav.developer, icon: Contact },
+
+  // صفحة طلبات الاقتراحات — للأدمن فقط
+  ...(user?.role === 'admin' ? [{ id: 'suggestions', label: t.nav.suggestions, icon: Inbox }] : []),
   ];
 
   return (

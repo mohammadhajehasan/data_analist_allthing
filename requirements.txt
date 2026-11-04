@@ -1,0 +1,9 @@
+# Python sidecar of this Node app: the Respan Gateway runs as a local process
+# (server/respanGateway.ts) and answers OpenAI-compatible requests on loopback,
+# routing each model call to the vendor that owns it.
+# Docs: https://github.com/respanai/respan-gateway
+#
+# Install into the project venv (wheel only — the gateway is a native extension):
+#   python -m venv .venv
+#   .venv/Scripts/python.exe -m pip install --only-binary=:all: -r requirements.txt
+respan-gateway==0.3.0

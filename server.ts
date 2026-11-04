@@ -20,6 +20,9 @@ import {
   consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
 } from './server/aiQuota';
 import {
+  ensureGateway, getGatewayStatus, isGatewayEnabled, tryGatewayChat,
+} from './server/respanGateway';
+import {
   listUserDatasets, upsertUserDataset, deleteUserDataset, deleteUserDatasets,
   keepOnlyUserDatasets, getDatasetsStats, getDatasetSizeLimitBytes,
 } from './server/datasetsStore';
@@ -350,6 +353,31 @@ async function callUniversalAI(params: {
     modelName = 'auto';
   }
 
+  // 0. Respan Gateway (opt-in via RESPAN_GATEWAY_ENABLED / RESPAN_GATEWAY_URL).
+  // One loopback endpoint routes the call to the vendor that owns the model and
+  // translates between the OpenAI, Anthropic and Gemini formats. Skipped for
+  // Ollama (local and free) and when the caller brings their own provider key
+  // (that key stays in this process and is never handed to the gateway), and
+  // whenever the gateway is off or fails — the direct paths below stay as they are.
+  const callerKey = params.apiKey && !isPlaceholderApiKey(params.apiKey) ? params.apiKey.trim() : '';
+  if (!callerKey && provider !== 'ollama') {
+    const routed = await tryGatewayChat({
+      model: modelName,
+      prompt: params.prompt,
+      systemInstruction: params.systemInstruction,
+      jsonMode: params.jsonMode,
+      maxTokens: params.maxTokens,
+    });
+    if (routed) {
+      return {
+        text: routed.text,
+        modelUsed: routed.modelUsed,
+        durationMs: Date.now() - startTime,
+        isLocal: false,
+      };
+    }
+  }
+
   // 1. Ollama (100% Local & Privacy-First)
   if (provider === 'ollama') {
     // Resolve a reachable endpoint first (IPv4/IPv6 fallback) — detects the
@@ -623,6 +651,7 @@ app.get('/api/health', (_req, res) => {
     aiKeyWarning: keyIsPlaceholder
       ? 'GEMINI_API_KEY في .env هو مفتاح تجريبي وهمي (placeholder). استبدله بمفتاح حقيقي من https://aistudio.google.com/apikey'
       : (!envKey ? 'GEMINI_API_KEY غير مضبوط في .env' : undefined),
+    respanGateway: getGatewayStatus(),
     timestamp: new Date().toISOString(),
   });
 });
@@ -2907,7 +2936,7 @@ app.post('/api/auth/password-reset/confirm', async (req, res) => {
 
 app.get('/api/auth/me', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const user = getUserByToken(token);
+  const user = await getUserByToken(token);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة أو منتهية' });
   res.json({ user });
 });
@@ -3077,6 +3106,10 @@ import {
   rejectDiscussionInvite, listPendingInvitesFor, listGroupPendingInvites,
   cancelPendingInvite, resendPendingInvite,
 } from './server/notifications';
+import {
+  submitDeveloperFeedback, listPendingFeedback, listMyPendingFeedback,
+  listMyFeedbackReplies, replyToFeedback, ratingStats,
+} from './server/developerFeedback';
 import {
   createEmailInvite, peekEmailInvite, consumeEmailInviteForNewUser,
   listGroupEmailInvites, revokeEmailInvite, startEmailInviteReminderScheduler,
@@ -3744,6 +3777,62 @@ app.post('/api/discussions/:id/pending-invites/:inviteId/resend', async (req, re
   }
 });
 
+// ---------------------------------------------------------------------------
+// تواصل مع المطور — التقييمات وطلبات الاقتراحات + صفحة طلبات الاقتراحات للأدمن
+// ---------------------------------------------------------------------------
+app.post('/api/developer/feedback', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const { rating, comment, suggestion } = req.body || {};
+    const fb = await submitDeveloperFeedback(user, Number(rating), comment, suggestion);
+    res.json({ ok: true, feedback: fb });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ردود الإدارة على اقتراحات هذا المستخدم + معلّقاته (لصفحة تواصل مع المطور)
+app.get('/api/developer/feedback/my', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const [replies, pending] = await Promise.all([
+      listMyFeedbackReplies(user.id),
+      listMyPendingFeedback(user.id),
+    ]);
+    res.json({ replies, pending });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// صفحة طلبات الاقتراحات + إحصاءات الرضا — للأدمن فقط
+app.get('/api/developer/feedback', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'صفحة طلبات الاقتراحات متاحة للمدير فقط' });
+  try {
+    const [pending, stats] = await Promise.all([listPendingFeedback(), ratingStats()]);
+    res.json({ pending, stats });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// رد الأدمن على اقتراح: أرشفة + إشعار للمستخدم + حذف نهائي للاقتراح
+app.post('/api/developer/feedback/:id/reply', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'الرد على الاقتراحات متاح للمدير فقط' });
+  try {
+    const result = await replyToFeedback(req.params.id, String(req.body?.reply || ''), user.name);
+    res.json({ ok: true, repliedTo: result.userId });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Favicon: browsers request /favicon.ico automatically even when the HTML
 // declares an SVG icon — serve the SVG content under both paths.
 const faviconPath = path.join(process.cwd(), 'public', 'favicon.svg');
@@ -3768,6 +3857,14 @@ async function startServer() {
     } catch (err: any) {
       console.warn(`[Respan] tracing disabled — initialization failed: ${err?.message || err}`);
     }
+  }
+
+  // Respan Gateway sidecar (opt-in, server-only): a loopback gateway in front of
+  // the providers already configured in .env, used by callUniversalAI(). Started
+  // off the listen path so a missing Python install never delays or blocks boot;
+  // if it cannot start, AI calls simply keep using the direct provider paths.
+  if (isGatewayEnabled()) {
+    void ensureGateway();
   }
 
   if (process.env.NODE_ENV !== 'production') {

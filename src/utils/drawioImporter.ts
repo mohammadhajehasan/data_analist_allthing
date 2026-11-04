@@ -40,7 +40,8 @@ export type ErTable = {
   pages?: number[];
 };
 
-export type ErCardinality = '1-1' | '1-N' | 'N-M';
+/** أنواع العلاقات: 1-1 · 1-N · N-1 (مقلوبة يدويًا) · N-M */
+export type ErCardinality = '1-1' | '1-N' | 'N-1' | 'N-M';
 
 export type ErRelationship = {
   id: string;

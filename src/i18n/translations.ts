@@ -21,6 +21,8 @@ export const translations = {
       reports: 'التقارير وقصص البيانات',
       audit: 'سجل العمليات والأمان',
       admin: 'لوحة الإدارة والإعدادات',
+      developer: 'تواصل مع المطور',
+      suggestions: 'طلبات الاقتراحات',
     },
     header: {
       brandTitle: 'منصة تحليلات المؤسسة',
@@ -306,6 +308,8 @@ nl2sql: {
       reports: 'Reports & Stories',
       audit: 'Audit & Governance',
       admin: 'Admin Console',
+      developer: 'Contact the Developer',
+      suggestions: 'Suggestions Inbox',
     },
     header: {
       brandTitle: 'Enterprise Analytics Hub',

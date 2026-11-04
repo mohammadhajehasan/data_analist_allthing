@@ -98,17 +98,37 @@ function computeLayout(model: ErModel): { boxes: Map<string, Box>; width: number
   return { boxes, width, height };
 }
 
+/** بديل لون وكتابات النهايتين — الوسوم البصرية موحدة عبر الأربعة أنواع المحفوظة */
+function cardinalityVisuals(c: ErCardinality): { colors: string; letters: [string, string]; label: string } {
+  const colors = cardinalityColors(c);
+  let letters: [string, string];
+  let label: string;
+  if (c === '1-1') {
+    letters = ['1', '1'];
+    label = '1–1';
+  } else if (c === '1-N') {
+    letters = ['1', 'N'];
+    label = '1–N';
+  } else if (c === 'N-1') {
+    letters = ['N', '1'];
+    label = 'N–1';
+  } else {
+    letters = ['M', 'N'];
+    label = 'M–N';
+  }
+  return { colors, letters, label };
+}
+
 function cardinalityColors(c: ErCardinality): string {
   if (c === 'N-M') return CARD_COLOR_NM;
   if (c === '1-1') return CARD_COLOR_11;
+  if (c === 'N-1') return CARD_COLOR_11; // معروض بلون أخضر مثل 1-1 كإشارة ظرفية نبوية الحالة نصف التصلّب
   return CARD_COLOR_1N;
 }
 
-/** حرفا التعددية عند كل طرف: 1-N => (1 النهاية المصدر، N الهدف)؛ N-M => (M، N)؛ 1-1 => (1، 1) */
+/** حرفا التعددية عند كل طرف: 1-N => (1 النهاية المصدر، N الهدف)؛ N-1 والعكس؛ N-M => (M، N)؛ 1-1 => (1، 1) */
 function cardinalityLetters(c: ErCardinality): [string, string] {
-  if (c === 'N-M') return ['M', 'N'];
-  if (c === '1-1') return ['1', '1'];
-  return ['1', 'N'];
+  return cardinalityVisuals(c).letters;
 }
 
 interface Connector {
@@ -241,10 +261,15 @@ export const ErdPreview: React.FC<ErdPreviewProps> = ({ model, isAr }) => {
   const fkColumnsByTable = useMemo(() => {
     const map = new Map<string, Set<string>>();
     for (const rel of model.relationships) {
+      // 1-N: FK على الطرف الهدف؛ N-1 (عكس يدوي): FK على الطرف المصدر
       if (rel.cardinality === '1-N' && rel.targetColumn) {
         const set = map.get(rel.targetTable) ?? new Set<string>();
         set.add(rel.targetColumn.toLowerCase());
         map.set(rel.targetTable, set);
+      } else if (rel.cardinality === 'N-1' && rel.sourceColumn) {
+        const set = map.get(rel.sourceTable) ?? new Set<string>();
+        set.add(rel.sourceColumn.toLowerCase());
+        map.set(rel.sourceTable, set);
       }
     }
     return map;

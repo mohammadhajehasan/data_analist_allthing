@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { captureAnalyticsEvent } from '../../services/analyticsService';
 import { TourStep } from '../../types';
 import {
   Sparkles,
@@ -125,6 +126,15 @@ export const OnboardingTour: React.FC = () => {
 
   const currentStep = tourSteps[currentStepIndex];
 
+  // Analytics: onboarding is the first journey step after sign-in.
+  const tourStartedRef = useRef(false);
+  useEffect(() => {
+    if (isTourOpen && !tourStartedRef.current) {
+      tourStartedRef.current = true;
+      captureAnalyticsEvent('onboarding_tour_started', { totalSteps: tourSteps.length });
+    }
+  }, [isTourOpen]);
+
   // Synchronize active tab with current tour step
   useEffect(() => {
     if (isTourOpen && currentStep?.tabToActivate) {
@@ -154,11 +164,19 @@ export const OnboardingTour: React.FC = () => {
 
   if (!isTourOpen) return null;
 
+  const finishTour = (outcome: 'completed' | 'skipped') => {
+    captureAnalyticsEvent(outcome === 'completed' ? 'onboarding_tour_completed' : 'onboarding_tour_skipped', {
+      step: currentStepIndex + 1,
+      totalSteps: tourSteps.length,
+    });
+    completeTour();
+  };
+
   const handleNext = () => {
     if (currentStepIndex < tourSteps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
     } else {
-      completeTour();
+      finishTour('completed');
     }
   };
 
@@ -190,7 +208,7 @@ export const OnboardingTour: React.FC = () => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none animate-fade-in"
-      onClick={completeTour}
+      onClick={() => finishTour('skipped')}
     >
       <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-interactive-01)] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Top Header */}
@@ -217,7 +235,7 @@ export const OnboardingTour: React.FC = () => {
           </div>
 
           <button
-            onClick={completeTour}
+            onClick={() => finishTour('skipped')}
             className="p-1.5 hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition-colors"
             title={isAr ? 'إغلاق الجولة' : 'Close Tour'}
           >
@@ -299,7 +317,7 @@ export const OnboardingTour: React.FC = () => {
         {/* Modal Footer */}
         <div className="p-4 bg-[var(--cds-layer-01)] border-t border-[var(--cds-border-subtle)] flex items-center justify-between">
           <button
-            onClick={() => completeTour()}
+            onClick={() => finishTour('skipped')}
             className="text-xs font-mono text-[var(--cds-text-03)] hover:text-[var(--cds-text-02)] transition-colors"
           >
             {isAr ? 'تخطي الجولة وإنهاء' : 'Skip & Finish'}

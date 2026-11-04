@@ -13,6 +13,7 @@ An enterprise-grade, bilingual guide for configuring, testing, and proxying cust
 4. [Bypassing CORS via Server-Side Proxy | تجاوز قيود CORS عبر التوجيه العكسي](#4-bypassing-cors-via-server-side-proxy--تجاوز-قيود-cors-عبر-التوجيه-العكسي)
 5. [Integrating Custom OpenAI-Compatible Endpoints | ربط خوادم OpenAI المتوافقة والمخصصة](#5-integrating-custom-openai-compatible-endpoints--ربط-خوادم-openai-المتوافقة-والمخصصة)
 6. [Data Privacy & Schema Masking Guardrails | سياسات الخصوصية وحجب البيانات](#6-data-privacy--schema-masking-guardrails--سياسات-الخصوصية-وحجب-البيانات)
+7. [Respan Gateway (Local Loopback Gateway) | بوابة Respan المحلية](#7-respan-gateway-local-loopback-gateway--بوابة-respan-المحلية)
 
 ---
 
@@ -195,5 +196,60 @@ The platform provides a strict multi-tier privacy selector that governs data egr
 | **Cloud Allowed** | سحابي كامل | Standard | Enterprise Gemini Cloud | High-speed, full reasoning capabilities on high-performance cloud infrastructure. |
 
 ---
+
+## 7. Respan Gateway (Local Loopback Gateway) | بوابة Respan المحلية
+
+[Respan Gateway](https://github.com/respanai/respan-gateway?utm_source=freebuff&utm_medium=paid&utm_campaign=respan-gateway&bfcid=bfc_1.eyJpZCI6IjVlOTUzN2JiLTczYTktNDA1OC04ZWEzLTUyNGZiOTNiMzBjNiIsImMiOiIyMDM2ODZkZS1mMzg0LTQ4NTQtYmViNC1hYzBiYWRmNmM1NTUiLCJrIjoiM2IxMGE4YmUtNzgyOS00MmJhLWFmNmEtYmI0YWUxZTRhY2Y4IiwiaWF0IjoxNzkzNTIyMDkyfQ.rmjjdrxmWK53NCDJre2c8At7fednpfwmxCtGw_uI9po) is an open-source LLM gateway: the app sends one OpenAI-compatible request and the gateway forwards it to the vendor that owns the model, translating between the OpenAI, Anthropic and Gemini formats. It runs on the developer's own provider keys — no Respan account, hosted credits or deployment is needed.
+
+بوابة Respan مفتوحة المصدر تعمل كعملية محلية: التطبيق يرسل طلباً واحداً بصيغة OpenAI والبوابة تمرّره إلى المزوّد الذي يملك النموذج مع ترجمة الصيغ بين OpenAI و Anthropic و Gemini. تعمل بمفاتيح المزودين الموجودة لديك بالفعل ولا تحتاج حساباً أو رصيداً مدفوعاً.
+
+### How it is wired | كيف تم ربطها
+
+* `server/respanGateway.ts` — starts the sidecar (`python -m respan_gateway serve --listen 127.0.0.1:<port> --log off`), waits for it to answer, and sends each call to `<url>/v1/chat/completions`. It is loopback only; the port is free by default.
+* `callUniversalAI()` in `server.ts` — every AI request that uses a **server-side** key goes through the gateway first. Ollama calls and calls carrying the user's own browser-side key stay on their existing direct path, and any gateway failure falls back to that path unchanged, so the feature is additive.
+* `GET /api/health` — reports `respanGateway: { enabled, running, url, pid, startedAt }` so you can confirm the sidecar came up.
+* Credentials are not duplicated: the sidecar inherits the server's environment, i.e. the same ignored `.env` that already holds `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, ... A `gateway.toml` that names secrets must use `env:NAME` references.
+
+### Setup | الإعداد
+
+```bash
+# 1) Python environment + the pinned package (wheel only; it is a native extension)
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install --only-binary=:all: -r requirements.txt   # Windows
+.venv/bin/python -m pip install --only-binary=:all: -r requirements.txt          # macOS / Linux
+
+# 2) Switch the gateway on (or set it in .env, see .env.example section 7)
+RESPAN_GATEWAY_ENABLED=true
+
+# 3) Run the app exactly as before
+npm run dev
+```
+
+Optional, only when you want routes, fallbacks or extra providers: create `./gateway.toml` (start from `respan-gateway init`) and it is picked up automatically, or point `RESPAN_GATEWAY_CONFIG` at another file. To reuse a gateway that is already running, set `RESPAN_GATEWAY_URL=http://127.0.0.1:8080` instead of installing one.
+
+### Focused check | الفحص المركّز
+
+```bash
+npm run gateway:smoke
+```
+
+The script starts a local OpenAI-compatible fixture provider (no provider key, no outbound network), points the gateway at it, and runs the same `tryGatewayChat()` function the AI routes use. Observed result:
+
+```
+fixture provider: http://127.0.0.1:59693/v1
+[Respan Gateway] serving at http://127.0.0.1:59694 (pid 22496, 452ms) — AI calls route through it.
+PASS  gateway started on loopback (http://127.0.0.1:59694)
+PASS  gateway returned a completion through the app code path
+PASS  completion text round-tripped ("fixture-echo: hello through the gateway")
+PASS  model used is reported as routed (respan-gateway:fixture-chat)
+PASS  provider saw exactly one chat completion (saw 1 of 3 requests)
+PASS  model reached the provider (fixture-chat)
+PASS  system instruction and prompt were forwarded in order
+All gateway checks passed.
+```
+
+*Verified:* the gateway starts on loopback, accepts an OpenAI-format request from the app code, forwards it to the provider, and returns the completion (plus the gateway's model list probes). *Not verified here:* a live call to a real provider — that needs your own provider key in `.env` and a normal `npm run dev`. Nothing is mocked in the app path: with the gateway off, requests take the same direct routes as before.
+
+المتحقَّق منه: إقلاع البوابة على loopback، استقبال طلب بصيغة OpenAI من كود التطبيق، تمريره إلى المزوّد، وإرجاع الرد. غير متحقَّق منه هنا: نداء حقيقي لمزوّد سحابي — يحتاج مفتاحك في `.env` وتشغيل `npm run dev`.
 
 *This document is maintained dynamically by the system engineering team. For API inquiries or custom engine integrations, contact `ahmad.farahat@enterprise-analytics.ai`.*

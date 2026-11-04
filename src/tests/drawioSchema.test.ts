@@ -510,6 +510,115 @@ describe('parseColumnLabel — فكّ تسمية الأعمدة', () => {
     expect(result.code).toMatch(/UNIQUE \("passports_id"\)/);
   });
 
+  it('N-1: عكس اتجاه يدوي — FK على الطرف المصدر مع عمود الصلة المتبادل', () => {
+    // المحاكي للمحرّر: عكس 1-N يبدّل الجداول والأعمدة ويحوّل النوع إلى N-1
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 's', name: 'students', columns: [{ name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false }] },
+        { id: 'l', name: 'loans', columns: [{ name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false }, { name: 'student_id', type: 'INT', isPrimaryKey: false, isNullable: false }] },
+      ],
+      relationships: [
+        { id: 'r1', sourceTable: 'l', targetTable: 's', sourceColumn: 'student_id', cardinality: 'N-1' },
+      ],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'mysql');
+    expect(result.code).toMatch(/FOREIGN KEY \(`student_id`\) REFERENCES `students`\(`id`\)/);
+    // صريح: لا UNIQUE على عمود FK في N-1 (متعدد إلى واحد)
+    expect(result.code).not.toMatch(/UNIQUE \(`student_id`\)/);
+  });
+
+  it('isForeignKey مكتشَف بلا علاقة مرسومة: مراجع الجدول الأم تلقائياً بنمط student_id → students', () => {
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 's', name: 'students', columns: [{ name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false }] },
+        { id: 'e', name: 'enrollments', columns: [
+          { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+          { name: 'student_id', type: 'INT', isForeignKey: true, isPrimaryKey: false, isNullable: true },
+        ] },
+      ],
+      relationships: [],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'mysql');
+    expect(result.code).toMatch(/FOREIGN KEY \(`student_id`\) REFERENCES `students`\(`id`\)/);
+    expect(result.warnings.length).toBe(0);
+  });
+
+  it('isForeignKey مكتشَف: لا FK مكرر مع علاقة تصورّبه بالفعل (مرة واحدة فقط)', () => {
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 's', name: 'students', columns: [{ name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false }] },
+        { id: 'l', name: 'loans', columns: [
+          { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+          { name: 'student_id', type: 'INT', isForeignKey: true, isPrimaryKey: false, isNullable: true },
+        ] },
+      ],
+      relationships: [
+        { id: 'r1', sourceTable: 'l', targetTable: 's', sourceColumn: 'student_id', cardinality: 'N-1' },
+      ],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'mysql');
+    const refs = result.code.match(/FOREIGN KEY \(`student_id`\) REFERENCES `students`/g) ?? [];
+    expect(refs.length).toBe(1);
+  });
+
+  it('isForeignKey مكتشَف بلا جدول أم مطابق: تحذير واضح ونحكم على الـ REFERENCES', () => {
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 'o', name: 'orders', columns: [
+          { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+          { name: 'tenant_id', type: 'INT', isForeignKey: true, isPrimaryKey: false, isNullable: false },
+        ] },
+      ],
+      relationships: [],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'mysql');
+    expect(result.warnings).toContain('Column "tenant_id" in "orders" is flagged FOREIGN KEY but no matching parent table was found — REFERENCES skipped.');
+    expect(result.code).not.toMatch(/FOREIGN KEY \(`tenant_id`\)/);
+  });
+
+  it('isForeignKey ذاتية المرجع: parent_id داخل categories يوجّه REFERENCES نحو الجدول نفسه', () => {
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 'c', name: 'categories', columns: [
+          { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+          { name: 'parent_id', type: 'INT', isForeignKey: true, isPrimaryKey: false, isNullable: true },
+        ] },
+      ],
+      relationships: [],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'sqlite');
+    expect(result.code).toMatch(/FOREIGN KEY \("parent_id"\) REFERENCES "categories"\("id"\)/);
+    expect(result.warnings.length).toBe(0);
+  });
+
+  it('N-1 ذاتية المرجع (كما يطلبه مصمدة الهيكال الشجري) — FK داخل الجدول نفسه', () => {
+    const model: ErModel = {
+      diagramNames: ['t'],
+      tables: [
+        { id: 'e', name: 'categories', columns: [
+          { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+          { name: 'parent_id', type: 'INT', isPrimaryKey: false, isNullable: true },
+        ] },
+      ],
+      relationships: [
+        { id: 'r1', sourceTable: 'e', targetTable: 'e', sourceColumn: 'parent_id', cardinality: 'N-1' },
+      ],
+      warnings: [],
+    };
+    const result = generateDdl(model, 'postgres');
+    expect(result.code).toMatch(/FOREIGN KEY \("parent_id"\) REFERENCES "categories"\("id"\)/);
+  });
+
   it('dropIfExists: يصدر DROP معلّقاً على Oracle', async () => {
     const model = await parseDrawioFile(sampleErd);
     const result = generateDdl(model, 'oracle', { dropIfExists: true, createJunctionTables: true });

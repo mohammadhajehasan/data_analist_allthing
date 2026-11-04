@@ -16,14 +16,20 @@ import {
   Link2,
   Info,
   Wand2,
+  ArrowLeftRight,
+  X,
+  Pencil,
+  Plus,
 } from 'lucide-react';
 import {
   parseDrawioFile,
   extractDrawioXmlFromPng,
   extractDrawioXmlFromSvg,
   ErModel,
+  ErTable,
   ErColumn,
   ErCardinality,
+  ErRelationship,
 } from '../../utils/drawioImporter';
 import { inferColumnConstraints } from '../../utils/constraintInference';
 import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
@@ -95,11 +101,136 @@ const DIALECTS: { id: SqlDialect; label: string; labelAr: string }[] = [
   { id: 'oracle', label: 'Oracle', labelAr: 'Oracle' },
 ];
 
+const RELATION_CARDINALITY_CHOICES: { value: ErCardinality; short: string; label: { en: string; ar: string } }[] = [
+  { value: '1-1', short: '1:1', label: { en: 'One-to-One', ar: 'واحد إلى واحد' } },
+  { value: '1-N', short: '1:N', label: { en: 'One-to-Many', ar: 'واحد إلى متعدد' } },
+  { value: 'N-1', short: 'N:1', label: { en: 'Many-to-One', ar: 'متعدد إلى واحد' } },
+  { value: 'N-M', short: 'N:M', label: { en: 'Many-to-Many', ar: 'متعدد إلى متعدد' } },
+];
+
 const CARDINALITY_LABEL: Record<ErCardinality, { en: string; ar: string }> = {
   '1-1': { en: 'One-to-One', ar: 'واحد إلى واحد' },
   '1-N': { en: 'One-to-Many', ar: 'واحد إلى متعدد' },
+  'N-1': { en: 'Many-to-One', ar: 'متعدد إلى واحد' },
   'N-M': { en: 'Many-to-Many', ar: 'متعدد إلى متعدد' },
 };
+
+/** تنظيف معرّف مُدخل يدويًا: فراغات → شرطات سفلية، وإزالة شيفرات HTML/علامات */
+const sanitizeName = (raw: string): string =>
+  raw
+    .replace(/<[^>]*>/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[;,()"'`]/g, '') || '';
+
+/* ------------------------------------------------------------------ */
+/* محرّر اسم مضمّن — نص يتحوّل حقل إدخال بالنقر مع حفظ بالنقر خارجًا/Enter */
+/* ------------------------------------------------------------------ */
+
+interface InlineNameEditorProps {
+  value: string;
+  isAr: boolean;
+  title?: string;
+  inputClassName?: string;
+  onCommit: (next: string) => void;
+  rerenderKeySuffix?: string;
+}
+
+/** اسم قابل للتحرير بالنقر: يعرض قيمة، وبنقرة تتحول لحقل إدخال يُحفظ بblur أو Enter ويُلغى بEscape */
+const InlineNameEditor: React.FC<InlineNameEditorProps> = ({ value, isAr, title, inputClassName, onCommit }) => {
+  const [editing, setEditing] = useState<boolean>(false);
+  const [draft, setDraft] = useState<string>(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (editing) {
+      setDraft(value);
+      requestAnimationFrame(() => inputRef.current?.select());
+    }
+  }, [editing]);
+
+  return editing ? (
+    <input
+      ref={inputRef}
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = draft.trim();
+        if (next && next !== value) onCommit(next);
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Escape') { setEditing(false); }
+      }}
+      spellCheck={false}
+      dir="ltr"
+      className={`px-1 py-0 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] focus:outline-none min-w-0 ${inputClassName ?? ''}`}
+    />
+  ) : (
+    <button
+      type="button"
+      title={title ?? (isAr ? 'انقر للتعديل' : 'Click to edit')}
+      onClick={() => setEditing(true)}
+      className="inline-flex items-center gap-0.5 text-[var(--cds-text-01)] font-bold font-mono truncate min-w-0 hover:text-[var(--cds-interactive-01)] transition-colors"
+    >
+      <span className="truncate">{value}</span>
+      <Pencil className="w-2.5 h-2.5 text-[var(--cds-text-03)] shrink-0" />
+    </button>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* شريحة تحكّم علاقة واحدة — نوع قابل للتبديل + عكس اتجاه + حذف           */
+/* ------------------------------------------------------------------ */
+
+interface RelationControlRowProps {
+  relation: ErRelationship;
+  isAr: boolean;
+  onPatch: (relId: string, patch: Partial<ErRelationship>) => void;
+  onReverse: (relId: string) => void;
+  onRemove: (relId: string) => void;
+}
+
+/** صفّ تحكّم علاقة واحدة: نوع 1:1 / 1:N / N:1 / N:M + عكس الاتجاه + حذف */
+const RelationControlRow: React.FC<RelationControlRowProps> = ({ relation, isAr, onPatch, onReverse, onRemove }) => (
+  <div className="flex flex-wrap items-center gap-1">
+    {RELATION_CARDINALITY_CHOICES.map(choice => {
+      const active = relation.cardinality === choice.value;
+      return (
+        <button
+          key={choice.value}
+          type="button"
+          title={choice.label[isAr ? 'ar' : 'en']}
+          onClick={() => onPatch(relation.id, { cardinality: choice.value })}
+          className={`${CHIP_BASE} ${
+            active
+              ? 'bg-[var(--cds-interactive-01)] text-white border-transparent'
+              : 'bg-[var(--cds-layer-01)] text-[var(--cds-text-02)] border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]'
+          }`}
+        >
+          {choice.short}
+        </button>
+      );
+    })}
+    <button
+      type="button"
+      title={isAr ? 'عكس اتجاه العلاقة' : 'Reverse direction'}
+      onClick={() => onReverse(relation.id)}
+      className="p-0.5 text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] hover:border-[var(--cds-interactive-01)] hover:text-[var(--cds-interactive-01)] transition-colors shrink-0"
+    >
+      <ArrowLeftRight className="w-3 h-3" />
+    </button>
+    <button
+      type="button"
+      title={isAr ? 'حذف العلاقة' : 'Delete relation'}
+      onClick={() => onRemove(relation.id)}
+      className="p-0.5 text-[#da1e28] border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] hover:border-[#da1e28] transition-colors shrink-0"
+    >
+      <X className="w-3 h-3" />
+    </button>
+  </div>
+);
 
 /* ------------------------------------------------------------------ */
 /* محرّر قيود العمود — شرائح قابلة للتبديل + مدخلات قيمة                 */
@@ -345,9 +476,22 @@ export const SchemaDesignerPage: React.FC = () => {
   const [isParsing, setIsParsing] = useState<boolean>(false);
   const [dialect, setDialect] = useState<SqlDialect>('mysql');
   const [dropIfExists, setDropIfExists] = useState<boolean>(DEFAULT_DDL_OPTIONS.dropIfExists);
-  const [createJunctionTables, setCreateJunctionTables] = useState<boolean>(DEFAULT_DDL_OPTIONS.createJunctionTables);
-  const [generated, setGenerated] = useState<DdlResult | null>(null);
+  const [createJunctionTables, setCreateJunctionTables] = useState<boolean>(DEFAULT_DDL_OPTIONS.createJunctionTables);  const [generated, setGenerated] = useState<DdlResult | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  // نموذج إضافة علاقة يدوية — يُفتح من زر «إضافة علاقة» في قسم العلاقات
+  const [isAddingRelation, setIsAddingRelation] = useState<boolean>(false);
+  const [newRelSource, setNewRelSource] = useState<string>('');
+  const [newRelTarget, setNewRelTarget] = useState<string>('');
+  const [newRelFkColumn, setNewRelFkColumn] = useState<string>('');
+  const [newRelCardinality, setNewRelCardinality] = useState<ErCardinality>('1-N');
+  const nextRelationSeq = useRef<number>(1000);
+  /** إعادة تسمية جدول — المعرّفات الأصلية ثابتة فلا تتأثر العلاقات */
+  const tableById = useMemo(() => {
+    const map = new Map<string, ErTable>();
+    for (const t of parsedModel?.tables ?? []) map.set(t.id, t);
+    return map;
+  }, [parsedModel]);
+
 
   const stats = useMemo(() => {
     if (!parsedModel) return null;
@@ -374,10 +518,16 @@ export const SchemaDesignerPage: React.FC = () => {
       if (declared.length > 0) map.set(table.id, new Set(declared));
     }
     for (const rel of pageModel?.relationships ?? []) {
-      if (rel.cardinality !== '1-N' || !rel.targetColumn) continue;
-      const set = map.get(rel.targetTable) ?? new Set<string>();
-      set.add(rel.targetColumn.toLowerCase());
-      map.set(rel.targetTable, set);
+      // 1-N: FK على الطرف الهدف؛ N-1 (عكسه يدويًا): FK على الطرف المصدر
+      if (rel.cardinality === '1-N' && rel.targetColumn) {
+        const set = map.get(rel.targetTable) ?? new Set<string>();
+        set.add(rel.targetColumn.toLowerCase());
+        map.set(rel.targetTable, set);
+      } else if (rel.cardinality === 'N-1' && rel.sourceColumn) {
+        const set = map.get(rel.sourceTable) ?? new Set<string>();
+        set.add(rel.sourceColumn.toLowerCase());
+        map.set(rel.sourceTable, set);
+      }
     }
     return map;
   }, [pageModel]);
@@ -400,6 +550,76 @@ export const SchemaDesignerPage: React.FC = () => {
     };
     setParsedModel(next);
     if (generated) setGenerated(generateDdl(next, dialect, { dropIfExists, createJunctionTables }));
+  };
+
+  /** تعديل نموذج محلّل كامل: يحدّث البطاقات ويفرض توليد SQL القديم */
+  const withParsedModel = (mutate: (m: ErModel) => ErModel): void => {
+    if (!parsedModel) return;
+    const next = mutate(parsedModel);
+    setParsedModel(next);
+    if (generated) setGenerated(generateDdl(next, dialect, { dropIfExists, createJunctionTables }));
+  };
+
+  /** تعديل علاقة واحدة في النموذج المحلّل — تحديث فوري للبطاقات والمعاينة وإعادة توليد SQL إن كان مولّداً */
+  const applyRelationPatch = (relId: string, relPatch: Partial<ErRelationship>): void => {
+    withParsedModel(m => ({
+      ...m,
+      relationships: m.relationships.map(r => (r.id === relId ? { ...r, ...relPatch, id: r.id } : r)),
+    }));
+  };
+
+  /** حذف علاقة كشفها المحلّل أو أضافها المستخدم */
+  const removeRelation = (relId: string): void => {
+    withParsedModel(m => ({ ...m, relationships: m.relationships.filter(r => r.id !== relId) }));
+  };
+
+  /** عكس اتجاه العلاقة: 1-N ⇄ N-1 تبادلات مفاهيمية، والنوعان البقعر يبقيان كما هما */
+  const reverseRelation = (relId: string): void => {
+    withParsedModel(m => ({
+      ...m,
+      relationships: m.relationships.map(r => {
+        if (r.id !== relId) return r;
+        const next: ErRelationship = {
+          ...r,
+          sourceTable: r.targetTable,
+          targetTable: r.sourceTable,
+          sourceColumn: r.targetColumn,
+          targetColumn: r.sourceColumn,
+          id: r.id,
+        };
+        if (r.cardinality === '1-N') next.cardinality = 'N-1';
+        else if (r.cardinality === 'N-1') next.cardinality = '1-N';
+        return next;
+      }),
+    }));
+  };
+
+  const handleAddRelation = (): void => {
+    if (!parsedModel || !newRelSource || !newRelTarget || newRelSource === newRelTarget) return;
+    const fkName = sanitizeName(newRelFkColumn);
+    if ((newRelCardinality === '1-N' || newRelCardinality === 'N-1') && !fkName) return;
+    const newRel: ErRelationship = {
+      id: `manual-${nextRelationSeq.current++}`,
+      sourceTable: newRelSource,
+      targetTable: newRelTarget,
+      targetColumn: fkName === '' ? undefined : fkName,
+      cardinality: newRelCardinality,
+      pages: selectedPage >= 0 ? [selectedPage] : undefined,
+    };
+    withParsedModel(m => ({ ...m, relationships: [...m.relationships, newRel] }));
+    toast.success(
+      isAr ? 'أُضيفت علاقة' : 'Relation added',
+      isAr
+        ? `علاقة ${CARDINALITY_LABEL[newRelCardinality][isAr ? 'ar' : 'en']} — راجعها وولّد SQL`
+        : `${CARDINALITY_LABEL[newRelCardinality][isAr ? 'ar' : 'en']} relation added — review and generate SQL`
+    );
+  };
+
+  /** إعادة تسمية جدول — معرّف الجدول يبقى ثابتًا فلا تتأثر العلاقات */
+  const renameTable = (tableId: string, newName: string): void => {
+    const name = sanitizeName(newName);
+    if (!name) return;
+    withParsedModel(m => ({ ...m, tables: m.tables.map(t => (t.id === tableId ? { ...t, name } : t)) }));
   };
 
   /** عدد الاقتراحات الذكية غير المطبَّقة بعد — لعرضها على الزر */
@@ -687,9 +907,15 @@ export const SchemaDesignerPage: React.FC = () => {
             {pageModel?.tables.map(table => (
               <div key={table.id} className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)]">
                 <div className="px-3 py-2 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center gap-2">
-                  <TableIcon className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-                  <span className="text-xs font-bold font-mono text-[var(--cds-text-01)] truncate">{table.name}</span>
-                  <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)]">{table.columns.length} {isAr ? 'أعمدة' : 'cols'}</span>
+                  <TableIcon className="w-3.5 h-3.5 text-[var(--cds-interactive-01)] shrink-0" />
+                  <InlineNameEditor
+                    value={table.name}
+                    isAr={isAr}
+                    title={isAr ? 'انقر لتعديل اسم الجدول' : 'Click to rename table'}
+                    onCommit={next => renameTable(table.id, next)}
+                    inputClassName="text-xs font-bold"
+                  />
+                  <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] shrink-0">{table.columns.length} {isAr ? 'أعمدة' : 'cols'}</span>
                 </div>
                 <div className="p-2 space-y-1 max-h-56 overflow-y-auto">
                   {table.columns.map(col => {
@@ -721,28 +947,155 @@ export const SchemaDesignerPage: React.FC = () => {
             ))}
           </div>
 
-          {/* العلاقات */}
-          {pageModel && pageModel.relationships.length > 0 && (
+          {/* محرّر العلاقات: تعديل النوع/العمود + إضافة يدوية + حذف */}
+          {pageModel && (
             <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-3">
-              <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)] mb-2">
-                {isAr ? 'العلاقات المكتشفة' : 'Recognized relations'}
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)]">
+                  {isAr ? 'محرّر العلاقات' : 'Relation editor'}
+                </div>
+                <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                  {isAr ? 'بدّل نوع العلاقة (1:1 · 1:N · N:1 · N:M) وأعد تسمية الاتصال عند الحاجة' : 'Switch relation type (1:1 · 1:N · N:1 · N:M) and rename the endpoint when needed'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingRelation(isAdding => !isAdding);
+                  }}
+                  className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)] hover:text-white transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  {isAr ? 'إضافة علاقة' : 'Add relation'}
+                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {pageModel.relationships.map(rel => {
-                  const source = pageModel.tables.find(t => t.id === rel.sourceTable)?.name || '?';
-                  const target = pageModel.tables.find(t => t.id === rel.targetTable)?.name || '?';
+                  const source = tableById.get(rel.sourceTable)?.name;
+                  const target = tableById.get(rel.targetTable)?.name;
+                  const sameTable = rel.sourceTable === rel.targetTable;
                   return (
-                    <div key={rel.id} className="flex items-center gap-2 text-[11px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2 py-1.5">
-                      <span className="text-[var(--cds-text-01)] truncate">{source}</span>
-                      <ArrowRight className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" />
-                      <span className="text-[var(--cds-text-01)] truncate">{target}</span>
-                      <span className="ms-auto text-[9px] px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] shrink-0">
-                        {CARDINALITY_LABEL[rel.cardinality][isAr ? 'ar' : 'en']}
-                      </span>
+                    <div
+                      key={rel.id}
+                      className={`text-[11px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] px-2 py-1.5 space-y-1.5 ${
+                        sameTable ? 'border-l-2 border-l-[#f1c21b]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <InlineNameEditor
+                          value={source ?? '?'}
+                          isAr={isAr}
+                          title={isAr ? 'انقر لتعديل اسم الجدول الأصلي' : 'Click to rename source table'}
+                          onCommit={next => {
+                            const found = pageModel.tables.find(t => t.name === next);
+                            if (found) applyRelationPatch(rel.id, { sourceTable: found.id });
+                          }}
+                          inputClassName="text-[11px] w-24"
+                        />
+                        <ArrowRight className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" />
+                        <InlineNameEditor
+                          value={target ?? '?'}
+                          isAr={isAr}
+                          title={isAr ? 'انقر لتعديل اسم الجدول الهدف' : 'Click to rename target table'}
+                          onCommit={next => {
+                            const found = pageModel.tables.find(t => t.name === next);
+                            if (found) applyRelationPatch(rel.id, { targetTable: found.id });
+                          }}
+                          inputClassName="text-[11px] w-24"
+                        />
+                        <span className="ms-auto text-[9px] px-1.5 py-0.5 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] shrink-0">
+                          {CARDINALITY_LABEL[rel.cardinality][isAr ? 'ar' : 'en']}
+                        </span>
+                      </div>
+                      <RelationControlRow
+                        relation={rel}
+                        isAr={isAr}
+                        onPatch={applyRelationPatch}
+                        onReverse={reverseRelation}
+                        onRemove={removeRelation}
+                      />
                     </div>
                   );
                 })}
+                {pageModel.relationships.length === 0 && (
+                  <p className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                    {isAr ? 'لا علاقات مكتشفة — أضف واحدة يدوياً من الزر أعلاه.' : 'No relations discovered — add one manually above.'}
+                  </p>
+                )}
               </div>
+
+              {isAddingRelation && pageModel.tables.length >= 1 && (
+                <div className="mt-3 pt-3 border-t border-[var(--cds-border-subtle)] space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={newRelSource}
+                      onChange={e => setNewRelSource(e.target.value)}
+                      className="px-2 py-1 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none"
+                      aria-label={isAr ? 'الجدول الأصلي' : 'Source table'}
+                    >
+                      <option value="">{isAr ? 'الجدول الأب…' : 'Parent table…'}</option>
+                      {pageModel.tables.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <ArrowRight className="w-3 h-3 text-[var(--cds-interactive-01)] shrink-0" />
+                    <select
+                      value={newRelTarget}
+                      onChange={e => setNewRelTarget(e.target.value)}
+                      className="px-2 py-1 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none"
+                      aria-label={isAr ? 'الجدول الهدف' : 'Target table'}
+                    >
+                      <option value="">{isAr ? 'الجدول الابن…' : 'Child table…'}</option>
+                      {pageModel.tables.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={newRelFkColumn}
+                      onChange={e => setNewRelFkColumn(e.target.value)}
+                      className="px-2 py-1 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none"
+                      aria-label={isAr ? 'عمود المفتاح الأجنبي' : 'FK column'}
+                      disabled={newRelCardinality === 'N-M'}
+                    >
+                      <option value="">{isAr ? 'عمود FK (اختياري — يُولد)' : 'FK column (optional — generated)'}</option>
+                      {(tableById.get(newRelTarget === newRelSource ? newRelSource : newRelTarget)?.columns ?? []).map(c => (
+                        <option key={c.name} value={c.name}>{c.name} · {c.type}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={newRelCardinality}
+                      onChange={e => setNewRelCardinality(e.target.value as ErCardinality)}
+                      className="px-2 py-1 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none"
+                      aria-label={isAr ? 'نوع العلاقة' : 'Relation type'}
+                    >
+                      {RELATION_CARDINALITY_CHOICES.map(ch => (
+                        <option key={ch.value} value={ch.value}>
+                          {`${ch.short} — ${ch.label[isAr ? 'ar' : 'en']}`}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddRelation}
+                      disabled={!newRelSource || !newRelTarget || newRelSource === newRelTarget || (newRelCardinality !== 'N-M' && !sanitizeName(newRelFkColumn))}
+                      className="ms-auto px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isAr ? 'أضف' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingRelation(false)}
+                      className="px-2 py-1.5 text-[10px] font-mono text-[var(--cds-text-02)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]"
+                    >
+                      {isAr ? 'إلغاء' : 'Cancel'}
+                    </button>
+                  </div>
+                  {newRelSource === newRelTarget && newRelSource !== '' && (
+                    <p className="text-[10px] font-mono text-[#f1c21b]">
+                      {isAr ? 'الجدولان متطابقان — اختر جدولاً مختلفاً للعلاقة.' : 'Source and target are the same table — pick a different one.'}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
