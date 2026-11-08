@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
+import { getStoredToken } from '../../features/auth/LoginPage';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -181,11 +182,13 @@ export const JsonRpcGatewayPanel: React.FC = () => {
     const startTime = performance.now();
 
     try {
-      // Execute via backend proxy /api/ai/jsonrpc to handle CORS and auth headers safely
+      // Execute via backend proxy /api/ai/jsonrpc to handle CORS and auth headers safely.
+      // البروكسي محمي بجلسة الآن — أرسل التوكن وإلا رجع 401.
       const response = await fetch('/api/ai/jsonrpc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}),
         },
         body: JSON.stringify({
           endpointUrl,

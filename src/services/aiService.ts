@@ -60,10 +60,17 @@ export async function aiFetchProxy(input: RequestInfo | URL, init?: RequestInit)
       // Fallback defaults if parsing fails
     }
 
+    // الجلسة إلزامية على بروكسي الخادم — أرسل توكن المستخدم مع الطلب.
+    let authToken: string | null = null;
+    try { authToken = localStorage.getItem('carbon_auth_token'); } catch { /* بيئة بلا localStorage */ }
+
     // Proxy request through backend endpoint to bypass browser CORS constraints
     return fetch('/api/proxy/ollama', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
       body: JSON.stringify({
         endpointUrl,
         path,

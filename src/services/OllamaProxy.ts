@@ -92,10 +92,13 @@ export async function ollamaFetchWrapper(
   }
 
   // Fallback to route through backend proxy endpoint if direct call fails
+  let sessionToken: string | null = null;
+  try { sessionToken = localStorage.getItem('carbon_auth_token'); } catch { /* بيئة بلا localStorage */ }
   return fetch('/api/proxy/ollama', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
       ...(options.headers || {}),
     },
     body: JSON.stringify({

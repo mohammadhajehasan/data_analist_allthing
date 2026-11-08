@@ -66,6 +66,23 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
+// رؤوس أمان أساسية على كل استجابة. لا نضع CSP هنا لأن Vite في وضع التطوير
+// يحتاج inline scripts؛ الباقي رخيص ولا يكسر أي واجهة.
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  if (req.secure || forwardedProto === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
+
+// ---------------------------------------------------------------------------
 // Rate limiting على طبقة HTTP للمسارات المعرّضة للأسيء (حماية brute-force
 // على /api/auth/login، إنشاء الحسابات بالجملة على /api/auth/register،
 // واستنزاف الشبكة عبر بروكسي جلب البيانات). خزّان في الذاكرة يكفي هنا:
@@ -854,7 +871,10 @@ app.post('/api/ai/sandbox/query', aiServerKeyQuotaGuard, async (req, res) => {
 });
 
 // 1c. JSON-RPC 2.0 AI Gateway Endpoint
-app.post('/api/ai/jsonrpc', async (req, res) => {
+app.post('/api/ai/jsonrpc', aiServerKeyQuotaGuard, async (req, res) => {
+  // بروكسي JSON-RPC يُمكّن إرسال طلبات إلى وجهة يختارها المستخدم: كان مفتوحاً
+  // بلا جلسة، ما يجعله قناة SSRF/relay مجانية. الآن: جلسة صالحة + فحص وجهة.
+  if (!(await requireSession(req, res))) return;
   const { endpointUrl, authToken, customHeaders, payload, timeoutMs = 15000 } = req.body;
   const startTime = Date.now();
 
@@ -870,7 +890,15 @@ app.post('/api/ai/jsonrpc', async (req, res) => {
   }
 
   const rpcId = payload.id ?? 1;
-  const targetUrl = endpointUrl || 'http://localhost:8000/rpc';
+  const targetCheck = validateOutboundTarget(endpointUrl || 'http://localhost:8000/rpc');
+  if (!targetCheck.url) {
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      error: { code: -32602, message: targetCheck.error || 'وجهة غير صالحة' },
+      id: rpcId,
+    });
+  }
+  const targetUrl = targetCheck.url;
   const { method, params = {} } = payload;
 
   const rpcProvider = typeof params.provider === 'string' ? params.provider.toLowerCase() : 'gemini';
@@ -1334,9 +1362,26 @@ app.options('/api/proxy/ollama', (_req, res) => {
 });
 
 app.all('/api/proxy/ollama', ollamaProxyRateLimiter, async (req, res) => {
+  // كان open relay: أي مضيف/مسار/طريقة بلا جلسة. الآن جلسة صالحة + قيود.
+  if (!(await requireSession(req, res))) return;
   const targetHost = ((req.body?.endpointUrl || req.query?.endpointUrl || 'http://localhost:11434') as string).replace(/\/+$/, '');
-  const path = (req.body?.path || req.query?.path || '/api/tags') as string;
+  const rawPath = (req.body?.path || req.query?.path || '/api/tags') as string;
   const method = req.method === 'OPTIONS' ? 'GET' : (req.body?.method || req.method || 'GET');
+
+  // مسار نسبي داخل نفس المضيف فقط — لا `..` ولا `//` ولا مسافات (حقن ترويسات/انتقال)
+  const path = typeof rawPath === 'string' ? rawPath.trim() : '';
+  if (!path.startsWith('/') || path.includes('..') || path.includes('\\\\') || path.startsWith('//') || /[\r\n]/.test(path)) {
+    return res.status(400).json({ success: false, error: 'INVALID_PATH', message: 'المسار يجب أن يبدأ بـ / وبدون .. أو حقن أسطر' });
+  }
+  const allowedMethods = new Set(['GET', 'POST', 'DELETE', 'HEAD']);
+  const methodUpper = String(method).toUpperCase();
+  if (!allowedMethods.has(methodUpper)) {
+    return res.status(405).json({ success: false, error: 'METHOD_NOT_ALLOWED' });
+  }
+  const hostCheck = validateOutboundTarget(targetHost);
+  if (!hostCheck.url) {
+    return res.status(400).json({ success: false, error: 'INVALID_ENDPOINT', message: hostCheck.error });
+  }
   const payload = req.body?.payload || req.body?.body;
   const isLocalhost = targetHost.includes('localhost') || targetHost.includes('127.0.0.1');
 
@@ -1349,7 +1394,7 @@ app.all('/api/proxy/ollama', ollamaProxyRateLimiter, async (req, res) => {
 
   try {
     const fetchOptions = (host: string): RequestInit => ({
-      method: method.toUpperCase(),
+      method: methodUpper,
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       signal: AbortSignal.timeout(20000),
       ...(payload ? { body: typeof payload === 'string' ? payload : JSON.stringify(payload) } : {}),
@@ -2105,7 +2150,7 @@ const aiResult = await callUniversalAI({
 
 
 // 2c. AI Data Modeling & Multi-Sheet Relationship Auto-Detection Endpoint
-app.post('/api/data-modeling/auto-detect', async (req, res) => {
+app.post('/api/data-modeling/auto-detect', aiServerKeyQuotaGuard, async (req, res) => {
   const { tables, model = 'gemini-3.8-flash', provider = 'gemini', endpointUrl, apiKey, language = 'ar' } = req.body;
   const isAr = language === 'ar';
   const startTime = Date.now();
@@ -2599,7 +2644,7 @@ app.post('/api/reports/generate', aiServerKeyQuotaGuard, handleStoryGeneration);
 app.post('/api/datastory/generate', aiServerKeyQuotaGuard, handleStoryGeneration);
 
 // 5. Profiling AI Summary Generator (Multi-Provider Aware — works with any provider the user selects)
-app.post('/api/profiling/summarize', async (req, res) => {
+app.post('/api/profiling/summarize', aiServerKeyQuotaGuard, async (req, res) => {
   const { dataset, language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey } = req.body;
 
   try {
@@ -2775,8 +2820,11 @@ app.post('/api/refresh/execute', async (req, res) => {
   });
 });
 
-// 6. Audit logs API
-app.get('/api/audit', (_req, res) => {
+// 6. Audit logs API — سجل تدقيق كامل = بيانات حساسة: مدير فقط.
+app.get('/api/audit', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'سجل التدقيق متاح للمدير فقط' });
   res.json({ logs: serverAuditLogs.slice(0, 100) });
 });
 
@@ -3119,6 +3167,44 @@ import {
 function authUserFromReq(req: express.Request) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   return getUserByToken(token);
+}
+
+/**
+ * يرفض الطلب بلا جلسة صالحة قبل أي عمل على موارد الخادم.
+ * يُستخدم لحراسة البروكسيات (Ollama/JSON-RPC) التي كانت مفتوحة للعالم.
+ */
+async function requireSession(req: express.Request, res: express.Response) {
+  const user = await authUserFromReq(req);
+  if (!user) {
+    res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+    return null;
+  }
+  return user;
+}
+
+// عناوين بيانات السحابة (metadata endpoints) وأي نطاق داخلي: تُحجب دائماً في
+// أي اتصال صادر يتحكم به المستخدم — هذه هي الحماية العملية من SSRF.
+const BLOCKED_OUTBOUND_HOSTS = new Set([
+  '169.254.169.254', 'metadata.google.internal', 'metadata', '100.100.100.200',
+]);
+
+function validateOutboundTarget(raw: unknown): { url: string | null; error?: string } {
+  if (typeof raw !== 'string' || !raw.trim()) return { url: null, error: 'endpointUrl مطلوب' };
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.trim());
+  } catch {
+    return { url: null, error: 'endpointUrl غير صالح' };
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) return { url: null, error: 'يُسمح بـ http/https فقط' };
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (BLOCKED_OUTBOUND_HOSTS.has(host) || host.endsWith('.internal') || host.endsWith('.metadata')) {
+    return { url: null, error: 'عنوان داخلي/بيانات سحابة غير مسموح' };
+  }
+  if (net.isIP(host) && (host.startsWith('169.254.') || host.toLowerCase().startsWith('fe80'))) {
+    return { url: null, error: 'عنوان داخلي/بيانات سحابة غير مسموح' };
+  }
+  return { url: parsed.toString() };
 }
 
 // ---------------------------------------------------------------------------
