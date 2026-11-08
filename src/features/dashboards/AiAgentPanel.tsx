@@ -116,6 +116,7 @@ export const AiAgentPanel: React.FC = () => {
       let guessedType: WidgetType = 'bar';
       if (lower.includes('pie') || lower.includes('دائري')) guessedType = 'pie';
       else if (lower.includes('donut') || lower.includes('حلق')) guessedType = 'donut';
+      else if (lower.includes('pivot') || lower.includes('محوري')) guessedType = 'pivot';
       else if (lower.includes('treemap') || lower.includes('مستطيل') || lower.includes('مساهة')) guessedType = 'treemap';
       else if (lower.includes('funnel') || lower.includes('قمع')) guessedType = 'funnel';
       else if (lower.includes('histogram') || lower.includes('تواتر') || lower.includes('توزي')) guessedType = 'histogram';
@@ -137,6 +138,14 @@ export const AiAgentPanel: React.FC = () => {
       const titleEn = `${agg.toUpperCase()} of ${numCol.name} by ${catCol.name}`;
       const titleAr = `${agg === 'avg' ? 'متوسط' : 'إجمالي'} (${numCol.name}) حسب (${catCol.name})`;
 
+      // للنوع المحوري: عمود أعمدة ثانٍ (فئة مختلفة عن الصفوف) — ممسوك تلقائياً
+      const pivotColCol = guessedType === 'pivot'
+        ? (cols.find(c => (c.type === 'string' || c.type === 'category' || c.type === 'date')
+              && c.name !== catCol.name && lower.includes(c.name.toLowerCase()))
+          || cols.find(c => (c.type === 'string' || c.type === 'category' || c.type === 'date') && c.name !== catCol.name)
+          || catCol)
+        : undefined;
+
       const mockWidget: WidgetConfig = {
         id: `gen-widget-${Date.now()}`,
         title: isAr ? titleAr : titleEn,
@@ -146,6 +155,7 @@ export const AiAgentPanel: React.FC = () => {
         xAxis: catCol.name,
         yAxis: numCol.name,
         categoryField: catCol.name,
+        pivotColumnField: pivotColCol?.name,
         aggregation: agg,
         w: guessedType === 'kpi' ? 3 : 6,
         h: guessedType === 'kpi' ? 1 : 2,

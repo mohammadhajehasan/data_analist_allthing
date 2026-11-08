@@ -30,7 +30,7 @@ export const KNOWN_TABS = ['datasets', 'datamodeling', 'profiling', 'dashboards'
 /** Widget types supported by the dashboard renderer (permissive superset). */
 export const KNOWN_WIDGET_TYPES = [
   'bar', 'line', 'area', 'pie', 'radar', 'scatter', 'geo', 'table', 'metric',
-  'kpi', 'heatmap', 'timeseries', 'histogram', 'donut', 'treemap', 'funnel',
+  'kpi', 'heatmap', 'timeseries', 'histogram', 'donut', 'treemap', 'funnel', 'pivot',
 ];
 
 /**

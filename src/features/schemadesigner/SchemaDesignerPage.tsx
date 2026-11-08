@@ -20,6 +20,7 @@ import {
   X,
   Pencil,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   parseDrawioFile,
@@ -31,6 +32,7 @@ import {
   ErCardinality,
   ErRelationship,
 } from '../../utils/drawioImporter';
+import { exportDrawioXml } from '../../utils/drawioExporter';
 import { inferColumnConstraints } from '../../utils/constraintInference';
 import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
 import { ErdPreview } from './ErdPreview';
@@ -176,6 +178,56 @@ const InlineNameEditor: React.FC<InlineNameEditorProps> = ({ value, isAr, title,
     >
       <span className="truncate">{value}</span>
       <Pencil className="w-2.5 h-2.5 text-[var(--cds-text-03)] shrink-0" />
+    </button>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* زر حذف بتأكيد نقرتين — النقرة الأولى تسلّح الزر لحظياً، والثانية تنفّذ */
+/* ------------------------------------------------------------------ */
+
+interface ConfirmActionButtonProps {
+  isAr: boolean;
+  onConfirm: () => void;
+  children?: React.ReactNode;
+  className?: string;
+  /** تلميح النقرة الأولى (السلامة) */
+  promptText?: string;
+  /** تلميح النقرة الثانية (التنفيذ) */
+  confirmText?: string;
+}
+
+/** زر آمن: نقرتان متتاليتان خلال 3 ثوانٍ لتنفيذ الحذف — يحمي من الخطأ العرضي بلا نوافذ مزعجة */
+const ConfirmActionButton: React.FC<ConfirmActionButtonProps> = ({
+  isAr,
+  onConfirm,
+  children,
+  className,
+  promptText,
+  confirmText,
+}) => {
+  const [armed, setArmed] = useState<boolean>(false);
+  const armorRef = useRef<number | null>(null);
+
+  const handleClick = (): void => {
+    if (armed) {
+      if (armorRef.current !== null) window.clearTimeout(armorRef.current);
+      setArmed(false);
+      onConfirm();
+      return;
+    }
+    setArmed(true);
+    armorRef.current = window.setTimeout(() => setArmed(false), 3000);
+  };
+
+  return (
+    <button
+      type="button"
+      title={armed ? (confirmText ?? (isAr ? 'انقر مرة أخرى للتنفيذ الفعلي' : 'Click again to delete')) : (promptText ?? (isAr ? 'انقر لتسليح الحذف' : 'Click to arm delete'))}
+      onClick={handleClick}
+      className={className}
+    >
+      {children}
     </button>
   );
 };
@@ -622,6 +674,137 @@ export const SchemaDesignerPage: React.FC = () => {
     withParsedModel(m => ({ ...m, tables: m.tables.map(t => (t.id === tableId ? { ...t, name } : t)) }));
   };
 
+  /* ---------------------------------------------------------------- */
+  /* محرّر البنية: إضافة/حذف جداول وأعمدة — كل التغييرات تتوالى للعلاقات */
+  /* ---------------------------------------------------------------- */
+
+  const nextTableSeq = useRef<number>(1);
+  // نموذج «إضافة جدول» المضمّن في رأس شبكة البطاقات
+  const [isAddingTable, setIsAddingTable] = useState<boolean>(false);
+  const [newTableName, setNewTableName] = useState<string>('');
+  const [newTableFirstCol, setNewTableFirstCol] = useState<string>('id');
+  // نموذج «إضافة حقل» المضمّن في أسفل بطاقة جدول واحد
+  const [addingColFor, setAddingColFor] = useState<string | null>(null);
+  const [newColName, setNewColName] = useState<string>('');
+  const [newColType, setNewColType] = useState<string>('VARCHAR(120)');
+
+  /** إضافة جدول جديد بعمود أول اختياري (افتراضيًا id PK) — يظهر تلقائياً في البطاقات والمعاينة المرئية */
+  const addTable = (): void => {
+    const name = sanitizeName(newTableName);
+    if (!name || !parsedModel) return;
+    // فرادة الاسم على مستوى المخطط كله (مطابقة غير حساسة للحالة) — الجدولان المتطابيان يسببان REFERENCE قاسط من الشاكية
+    const duplicate = parsedModel.tables.some(t => t.name.toLowerCase() === name.toLowerCase());
+    if (duplicate) {
+      toast.error(isAr ? 'اسم مكرر' : 'Duplicate name', isAr ? `جدول اسمه «${name}» موجود بالفعل — استخدم اسماً مميزاً.` : `A table named "${name}" already exists — pick a unique name.`);
+      return;
+    }
+    const firstColRaw = sanitizeName(newTableFirstCol);
+    const firstCol: ErColumn | null = firstColRaw
+      ? { name: firstColRaw, type: 'INT', isPrimaryKey: true, isNullable: false, isUnique: true }
+      : null;
+    const newTable: ErTable = {
+      id: `manual-t${nextTableSeq.current++}`,
+      name,
+      columns: firstCol ? [firstCol] : [],
+      pages: selectedPage >= 0 ? [selectedPage] : undefined,
+    };
+    withParsedModel(m => ({ ...m, tables: [...m.tables, newTable] }));
+    setNewTableName('');
+    setNewTableFirstCol('id');
+    setIsAddingTable(false);
+    toast.success(
+      isAr ? 'أُضيف جدول' : 'Table added',
+      isAr ? `الجدول «${name}» جاهز — أضف أعمدته ثم بدّل قيوده وولّد SQL` : `Table "${name}" is ready — add columns, tune constraints and generate SQL`
+    );
+  };
+
+  /** حذف جدول مع تتابع كامل: كل علاقة تمسّ الجدول تُزال لتجنب FK ذاكِرضم من الشاكية */
+  const deleteTable = (tableId: string): void => {
+    const tbl = parsedModel?.tables.find(t => t.id === tableId);
+    if (!tbl) return;
+    let removedRelations = 0;
+    withParsedModel(m => ({
+      ...m,
+      tables: m.tables.filter(t => t.id !== tableId),
+      relationships: m.relationships.filter(r => {
+        const hit = r.sourceTable === tableId || r.targetTable === tableId;
+        if (hit) removedRelations += 1;
+        return !hit;
+      }),
+    }));
+    toast.success(
+      isAr ? 'حُذف جدول' : 'Table deleted',
+      isAr
+        ? `حُذف «${tbl.name}» بالإضافة إلى ${removedRelations} علاقة مستندة إليه`
+        : `Removed "${tbl.name}" together with ${removedRelations} dependent relation(s)`
+    );
+  };
+
+  /** إضافة عمود جديد لجدول — فرادة الاسم داخل الجدول (غير حساسة للحالة) */
+  const addColumn = (tableId: string, rawName: string, rawType: string): boolean => {
+    const name = sanitizeName(rawName);
+    if (!name || !parsedModel) {
+      toast.error(isAr ? 'اسم العمود مطلوب' : 'Column name required', '');
+      return false;
+    }
+    const tbl = parsedModel.tables.find(t => t.id === tableId);
+    if (!tbl) return false;
+    if (tbl.columns.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      toast.error(isAr ? 'عمود مكرر' : 'Duplicate column', isAr ? `«${name}» موجود بالفعل في هذا الجدول.` : `"${name}" already exists in this table.`);
+      return false;
+    }
+    withParsedModel(m => ({
+      ...m,
+      tables: m.tables.map(t =>
+        t.id !== tableId
+          ? t
+          : { ...t, columns: [...t.columns, { name, type: rawType.trim(), isPrimaryKey: false, isNullable: true }] }
+      ),
+    }));
+    return true;
+  };
+
+  /** إعادة تسمية عمود مع تحديث جميع العلاقات التي تشير إليه (sourceColumn/targetColumn) */
+  const renameColumn = (tableId: string, oldName: string, rawNext: string): void => {
+    const name = sanitizeName(rawNext);
+    if (!name || name.toLowerCase() === oldName.toLowerCase()) return;
+    withParsedModel(m => ({
+      ...m,
+      tables: m.tables.map(t =>
+        t.id !== tableId
+          ? t
+          : { ...t, columns: t.columns.map(c => (c.name.toLowerCase() === oldName.toLowerCase() ? { ...c, name } : c)) }
+      ),
+      relationships: m.relationships.map(r => ({
+        ...r,
+        sourceColumn: r.sourceTable === tableId && r.sourceColumn?.toLowerCase() === oldName.toLowerCase() ? name : r.sourceColumn,
+        targetColumn: r.targetTable === tableId && r.targetColumn?.toLowerCase() === oldName.toLowerCase() ? name : r.targetColumn,
+      })),
+    }));
+  };
+
+  /** تعديل نوع عمود مباشرة من بطاقة الجدول */
+  const setColumnType = (tableId: string, colName: string, rawType: string): void => {
+    applyColumnPatch(tableId, colName, { type: rawType.trim() });
+  };
+
+  /** حذف عمود مع إزالة أي علاقة تعتمد عليه في هذا الجدول تحديدًا */
+  const deleteColumn = (tableId: string, colName: string): void => {
+    withParsedModel(m => ({
+      ...m,
+      tables: m.tables.map(t =>
+        t.id !== tableId
+          ? t
+          : { ...t, columns: t.columns.filter(c => c.name.toLowerCase() !== colName.toLowerCase()) }
+      ),
+      relationships: m.relationships.filter(r => {
+        const srcHit = r.sourceTable === tableId && r.sourceColumn?.toLowerCase() === colName.toLowerCase();
+        const tgtHit = r.targetTable === tableId && r.targetColumn?.toLowerCase() === colName.toLowerCase();
+        return !srcHit && !tgtHit;
+      }),
+    }));
+  };
+
   /** عدد الاقتراحات الذكية غير المطبَّقة بعد — لعرضها على الزر */
   const suggestionsCount = useMemo(() => {
     if (!pageModel) return 0;
@@ -745,6 +928,35 @@ export const SchemaDesignerPage: React.FC = () => {
     a.download = `schema_${dialect}_${new Date().toISOString().slice(0, 10)}.sql`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  /** تصدير المخطط المحدّث (بعد كل التحريرات اليدوية على الجداول/الأعمدة/القيود/العلاقات) كملف .drawio
+   *  صيغة "Uncompressed XML" — يُفتح مباشرة في draw.io، ويحفظ كل القيود (PK/UQ/NN/FK/CHECK/DEFAULT)
+   *  والعلاقات بأسهم ER الرسمية، وكل الصفحات إن كان المستورد متعدد الصفحات (بوجود محرّرية الشرط). */
+  const handleExportDrawio = (): void => {
+    if (!parsedModel) return;
+    try {
+      const xml = exportDrawioXml(parsedModel);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const base = (fileName?.replace(/\.[^.]+$/, '')?.trim() || 'schema').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80);
+      a.download = `${base}_edited_${new Date().toISOString().slice(0, 10)}.drawio`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        isAr ? 'تم تصدير المخطط المحدّث' : 'Updated diagram exported',
+        isAr
+          ? 'ملف .drawio بصيغة XML غير مضغوط — يُفتح مباشرة في draw.io ويستحفظ كل تعديلاتك.'
+          : 'Uncompressed-XML .drawio — opens directly in draw.io and keeps every edit you made.'
+      );
+    } catch (err) {
+      toast.error(
+        isAr ? 'فشل تصدير المخطط' : 'Diagram export failed',
+        isAr ? (err as Error)?.message : `Diagram XML generation failed: ${(err as Error)?.message}`
+      );
+    }
   };
 
   return (
@@ -902,6 +1114,69 @@ export const SchemaDesignerPage: React.FC = () => {
             )}
           </div>
 
+          {/* إضافة جدول جديد — نموذج مضمّن أعلى شبكة البطاقات */}
+          <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-03)]">
+                {isAr ? 'محرّر البنية' : 'Schema editor'}
+              </span>
+              <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                {isAr ? 'أضف جدولاً جديداً أو حرّر محتوى الجداول من بطاقاتها أدناه' : 'Add a new table or edit existing tables from their cards below'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAddingTable(flag => !flag)}
+                className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--cds-interactive-01)] text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)] hover:text-white transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                {isAr ? 'إضافة جدول' : 'Add table'}
+              </button>
+            </div>
+            {isAddingTable && (
+              <div className="mt-2 flex flex-wrap items-end gap-2 bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] p-2">
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-[var(--cds-text-02)] mb-1">{isAr ? 'اسم الجدول' : 'Table name'}</label>
+                  <input
+                    value={newTableName}
+                    onChange={e => setNewTableName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addTable(); }}
+                    placeholder={isAr ? 'مثال: suppliers' : 'e.g. suppliers'}
+                    dir="ltr"
+                    className="px-2 py-1 text-xs font-mono bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none w-44"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-[var(--cds-text-02)] mb-1">
+                    {isAr ? 'العمود الأول (اختياري — افتراضي PK)' : 'First column (optional — default PK)'}
+                  </label>
+                  <input
+                    value={newTableFirstCol}
+                    onChange={e => setNewTableFirstCol(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addTable(); }}
+                    placeholder="id"
+                    dir="ltr"
+                    className="px-2 py-1 text-xs font-mono bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] focus:border-[var(--cds-interactive-01)] focus:outline-none w-44"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addTable}
+                  disabled={!sanitizeName(newTableName)}
+                  className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isAr ? 'إنشاء الجدول' : 'Create table'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingTable(false)}
+                  className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] transition-colors"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* بطاقات الجداول */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {pageModel?.tables.map(table => (
@@ -916,12 +1191,21 @@ export const SchemaDesignerPage: React.FC = () => {
                     inputClassName="text-xs font-bold"
                   />
                   <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] shrink-0">{table.columns.length} {isAr ? 'أعمدة' : 'cols'}</span>
+                  <ConfirmActionButton
+                    isAr={isAr}
+                    onConfirm={() => deleteTable(table.id)}
+                    promptText={isAr ? 'حذف الجدول — انقر مرة أخرى للتأكيد' : 'Delete table — click again to confirm'}
+                    confirmText={isAr ? 'تأكيد الحذف النهائي (مع علاقاته)' : 'Confirm final deletion (with its relations)'}
+                    className="shrink-0 p-1 text-[var(--cds-text-03)] border border-[var(--cds-border-subtle)] hover:text-[#da1e28] hover:border-[#da1e28] transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </ConfirmActionButton>
                 </div>
                 <div className="p-2 space-y-1 max-h-56 overflow-y-auto">
                   {table.columns.map(col => {
                     const isFk = col.isForeignKey || fkByTable.get(table.id)?.has(col.name.toLowerCase()) || false;
                     return (
-                      <div key={col.name} className="hover:bg-[var(--cds-layer-02)]">
+                      <div key={col.name} className="group hover:bg-[var(--cds-layer-02)]">
                         <div className="flex items-center gap-2 px-1.5 py-1">
                           {col.isPrimaryKey ? (
                             <span title={isAr ? 'مفتاح أساسي' : 'primary key'} className="shrink-0"><KeyRound className="w-3 h-3 text-[#f1c21b]" /></span>
@@ -930,8 +1214,29 @@ export const SchemaDesignerPage: React.FC = () => {
                           ) : (
                             <span className="w-3 h-3 shrink-0" />
                           )}
-                          <span className="text-[11px] font-mono text-[var(--cds-text-01)] truncate">{col.name}</span>
-                          <span className="ms-auto text-[10px] font-mono text-[var(--cds-text-03)] truncate">{col.type || (isAr ? 'نوع؟' : 'type?')}</span>
+                          <InlineNameEditor
+                            value={col.name}
+                            isAr={isAr}
+                            title={isAr ? 'انقر لإعادة تسمية العمود (تتحدّث العلاقات المرتبطة تلقائياً)' : 'Rename column (related relations update automatically)'}
+                            onCommit={next => renameColumn(table.id, col.name, next)}
+                            inputClassName="text-[11px]"
+                          />
+                          <InlineNameEditor
+                            value={col.type || '—'}
+                            isAr={isAr}
+                            title={isAr ? 'انقر لتعديل نوع العمود' : 'Edit column type'}
+                            onCommit={next => setColumnType(table.id, col.name, next === '—' ? '' : next)}
+                            inputClassName="text-[10px] text-right"
+                          />
+                          <ConfirmActionButton
+                            isAr={isAr}
+                            onConfirm={() => deleteColumn(table.id, col.name)}
+                            promptText={isAr ? 'حذف العمود — انقر مرة أخرى للتأكيد' : 'Delete column — click again to confirm'}
+                            confirmText={isAr ? 'تأكيد حذف العمود (مع أي علاقة تعتمد عليه)' : 'Confirm column deletion (with dependent relations)'}
+                            className="shrink-0 p-0.5 text-[var(--cds-text-03)] hover:text-[#da1e28] transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          >
+                            <X className="w-3 h-3" />
+                          </ConfirmActionButton>
                         </div>
                         <ColumnConstraintRow tableId={table.id} col={col} isAr={isAr} onPatch={applyColumnPatch} />
                       </div>
@@ -939,8 +1244,85 @@ export const SchemaDesignerPage: React.FC = () => {
                   })}
                   {table.columns.length === 0 && (
                     <p className="text-[10px] text-[var(--cds-text-03)] font-mono px-1.5 py-2">
-                      {isAr ? 'لم يُكتشف أعمدة — تحقق من تسميات الخلايا.' : 'No columns discovered.'}
+                      {isAr ? 'لم يُكتشف أعمدة — أضف حقلك الأول من النموذج أدناه.' : 'No columns discovered — add your first column below.'}
                     </p>
+                  )}
+
+                  {/* إضافة حقل جديد داخل البطاقة */}
+                  {addingColFor === table.id ? (
+                    <div className="flex flex-wrap items-center gap-1.5 px-1 pt-2 pb-1 border-t border-[var(--cds-border-subtle)]">
+                      <input
+                        autoFocus
+                        value={newColName}
+                        onChange={e => setNewColName(e.target.value)}
+                        placeholder={isAr ? 'اسم الحقل' : 'column name'}
+                        dir="ltr"
+                        className="px-1.5 py-0.5 text-[11px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-interactive-01)] text-[var(--cds-text-01)] focus:outline-none w-32"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            if (addColumn(table.id, newColName, newColType)) {
+                              setNewColName('');
+                              setNewColType('VARCHAR(120)');
+                            }
+                          }
+                          if (e.key === 'Escape') setAddingColFor(null);
+                        }}
+                      />
+                      <input
+                        value={newColType}
+                        onChange={e => setNewColType(e.target.value)}
+                        placeholder="VARCHAR(120)"
+                        dir="ltr"
+                        className="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] focus:border-[var(--cds-interactive-01)] focus:outline-none w-28"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            if (addColumn(table.id, newColName, newColType)) {
+                              setNewColName('');
+                              setNewColType('VARCHAR(120)');
+                            }
+                          }
+                          if (e.key === 'Escape') setAddingColFor(null);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (addColumn(table.id, newColName, newColType)) {
+                            setNewColName('');
+                            setNewColType('VARCHAR(120)');
+                            // بقاء النموذج مفتوحاً لإسالة عدة حقول متتالية — إغلاقه بEscape
+                          }
+                        }}
+                        disabled={!sanitizeName(newColName)}
+                        className="p-1 text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={isAr ? 'إضافة الحقل (Enter للإسراع)' : 'Add column (Enter to speed up)'}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddingColFor(null)}
+                        className="p-1 text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] transition-colors"
+                        title={isAr ? 'إغلاق (Esc)' : 'Close (Esc)'}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-[var(--cds-border-subtle)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddingColFor(table.id);
+                          setNewColName('');
+                          setNewColType('VARCHAR(120)');
+                        }}
+                        className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--cds-interactive-01)] border border-dashed border-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)]/10 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        {isAr ? 'إضافة حقل' : 'Add column'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1143,8 +1525,17 @@ export const SchemaDesignerPage: React.FC = () => {
               </label>
               <button
                 type="button"
+                onClick={handleExportDrawio}
+                title={isAr ? 'يصدّر النموذج المحدّث كملف .drawio (كافة التحريرات: جداول/أعمدة/قيود/علاقات) — يفتح مباشرة في draw.io' : 'Exports the edited model as .drawio (all manual edits: tables/columns/constraints/relations) — opens directly in draw.io'}
+                className="ms-auto inline-flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-bold tracking-wider bg-[var(--cds-layer-01)] border border-[var(--cds-border-strong)] text-[var(--cds-text-01)] hover:border-[var(--cds-interactive-01)]"
+              >
+                <Shapes className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+                {isAr ? 'تصدير draw.io المحدّث' : 'Export updated draw.io'}
+              </button>
+              <button
+                type="button"
                 onClick={handleGenerate}
-                className="ms-auto inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-[var(--cds-interactive-01)] text-white hover:opacity-90"
               >
                 <FileCode className="w-4 h-4" />
                 {isAr ? 'ولّد كود SQL' : 'Generate SQL'}

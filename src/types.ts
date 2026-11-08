@@ -166,7 +166,7 @@ export type AggregationFunction =
   | 'cv'
   | 'sum_squares';
 
-export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries' | 'geo' | 'donut' | 'treemap' | 'funnel';
+export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries' | 'geo' | 'donut' | 'treemap' | 'funnel' | 'pivot';
 
 /** Geo/map display mode: choropleth regions (folium-style) or lat/lng markers */
 export type GeoMapMode = 'choropleth' | 'markers';
@@ -191,6 +191,8 @@ export interface WidgetConfig {
   xAxis?: string;
   yAxis?: string;
   categoryField?: string;
+  /** pivot widgets only: second dimension whose distinct values form the matrix columns (like DataFrame pivot columns=) */
+  pivotColumnField?: string;
   aggregation?: AggregationFunction;
   colorScheme?: string;
   w: number; // grid columns width

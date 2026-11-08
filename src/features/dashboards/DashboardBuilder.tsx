@@ -77,6 +77,7 @@ import {
   Vibrate,
   Boxes,
   CircleDot,
+  Grid3X3,
 } from 'lucide-react';
 
 /** Full world country list for the drill-down (single-country) map scope — bilingual labels */
@@ -152,6 +153,8 @@ export const DashboardBuilder: React.FC = () => {
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>('');
   const [widgetXAxis, setWidgetXAxis] = useState('');
   const [widgetYAxis, setWidgetYAxis] = useState('');
+  // Pivot widget: عمود الأعمدة الثاني (columns= في pivot_table) — الصفوف من widgetXAxis والقيم من widgetYAxis
+  const [widgetPivotColumn, setWidgetPivotColumn] = useState('');
   const [widgetAggregation, setWidgetAggregation] = useState<AggregationFunction>('sum');
   // Geo/map widget state (folium-style: choropleth regions or lat/lng markers)
   const [geoMode, setGeoMode] = useState<'choropleth' | 'markers'>('choropleth');
@@ -196,6 +199,19 @@ export const DashboardBuilder: React.FC = () => {
       setGeoLocationColumn(prev => (prev && prev !== '' ? prev : (guess || '')));
     }
   }, [widgetType, currentTargetDataset]);
+
+  // Preselect the second categorical column (different from X) when opening the pivot widget or switching dataset
+  useEffect(() => {
+    if (widgetType === 'pivot' && currentTargetDataset?.columns?.length) {
+      setWidgetPivotColumn(prev => {
+        if (prev && currentTargetDataset.columns.some(c => c.name === prev)) return prev;
+        const guess = currentTargetDataset.columns.find(
+          c => (c.type === 'string' || c.type === 'date') && c.name !== widgetXAxis
+        ) || currentTargetDataset.columns[0];
+        return guess?.name || '';
+      });
+    }
+  }, [widgetType, currentTargetDataset, widgetXAxis]);
 
   // Initial column selection when dataset changes
   useEffect(() => {
@@ -246,6 +262,7 @@ export const DashboardBuilder: React.FC = () => {
     setSelectedDatasetId(activeDataset?.id || datasets[0]?.id || '');
     setWidgetAggregation('sum');
     setIsCalculatingAgg(false);
+    setWidgetPivotColumn('');
     // Reset geo form state so stale values from a previous edit don't leak into the new widget
     setGeoMode('choropleth');
     setMapScope('world');
@@ -291,6 +308,7 @@ export const DashboardBuilder: React.FC = () => {
     setGeoJsonPropertyOptions(parsedGj?.candidateProperties || []);
     setWidgetYAxis(w.yAxis || '');
     setWidgetAggregation(w.aggregation || 'sum');
+    setWidgetPivotColumn(w.pivotColumnField || '');
     setIsCalculatingAgg(false);
 
     if (w.type === 'kpi' && w.kpiMetric) {
@@ -344,6 +362,7 @@ export const DashboardBuilder: React.FC = () => {
       xAxis: widgetXAxis,
       yAxis: widgetYAxis,
       categoryField: widgetXAxis,
+      pivotColumnField: widgetType === 'pivot' ? (widgetPivotColumn || undefined) : undefined,
       aggregation: widgetAggregation,
       w: widgetType === 'kpi' ? 3 : 6,
       h: widgetType === 'kpi' ? 1 : 2,
@@ -1496,6 +1515,7 @@ export const DashboardBuilder: React.FC = () => {
                     { type: 'histogram' as WidgetType, labelAr: 'توزيع تواتري', labelEn: 'Histogram', icon: Layers },
                     { type: 'donut' as WidgetType, labelAr: 'حلقة توزيع', labelEn: 'Donut Ring', icon: CircleDot },
                     { type: 'treemap' as WidgetType, labelAr: 'خريطة مستطيلة', labelEn: 'Treemap', icon: Boxes },
+                    { type: 'pivot' as WidgetType, labelAr: 'جدول محوري', labelEn: 'Pivot Table', icon: Grid3X3 },
                     { type: 'funnel' as WidgetType, labelAr: 'مخطط قمعي', labelEn: 'Funnel', icon: Filter },
                   ].map(item => {
                     const Icon = item.icon;
@@ -1933,6 +1953,36 @@ export const DashboardBuilder: React.FC = () => {
                         {isAr ? 'يحدد العمود الرقمي المراد حسابه وتجميعه' : 'Numeric value column to aggregate'}
                       </p>
                     </div>
+
+                    {/* Pivot widget فقط: عمود الأعمدة (columns=(rowField, colField)) */}
+                    {widgetType === 'pivot' && (
+                      <div className="sm:col-span-2">
+                        <label className="block text-[var(--cds-text-01)] font-bold mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Grid3X3 className="w-3.5 h-3.5 text-[#33b1ff]" />
+                            {isAr ? 'عمود الأعمدة المحورية (Pivot Columns)' : 'Pivot Columns Dimension'}
+                          </span>
+                          <span className="text-[10px] text-[#33b1ff] font-normal font-mono">columns=</span>
+                        </label>
+                        <select
+                          value={widgetPivotColumn}
+                          onChange={e => setWidgetPivotColumn(e.target.value)}
+                          className="carbon-input w-full text-xs font-mono"
+                        >
+                          <option value="">{isAr ? '— اختر عمود الأعمدة —' : '— pick columns field —'}</option>
+                          {currentTargetDataset?.columns?.map(c => (
+                            <option key={c.name} value={c.name}>
+                              [{c.type}] {c.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-[var(--cds-text-03)] mt-1">
+                          {isAr
+                            ? 'كل قيمة مميزة في هذا العمود تصبح عموداً في الجدول المحوري (مثل: الفئة الفرعية، المدينة، المنتج) — الصفوف من X-Axis والقيم من Y-Axis والدالة من السيلكتور الإحصائي'
+                            : 'Each distinct value in this column becomes a column in the pivot matrix (like subcategory, city, product) — rows come from X-Axis, values from Y-Axis and aggregation from the statistical selector'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Mathematical / Statistical Function Selection Section */}

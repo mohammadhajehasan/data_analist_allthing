@@ -26,9 +26,11 @@ import {
   Treemap,
   FunnelChart,
   Funnel,
+  LabelList,
 } from 'recharts';
 // GIS upload/analysis icons for the GeoJSON source panel
 import { WidgetConfig, Dataset, AggregationFunction } from '../../types';
+import { buildPivotMatrix } from '../../utils/pivotTable';
 import { parseGeoJsonSource, computeGeoJsonAutoFit } from '../../utils/geoJson';
 import { ISO3_TO_ISO2_FULL } from '../../data/allCountries';
 import { fetchCountryBbox } from './CountryFocusLoader';
@@ -67,103 +69,10 @@ export const CARBON_PALETTE = [
   '#002d9c', // Blue 80
 ];
 
-// Helper for computing percentiles with linear interpolation
-function computePercentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  if (sorted.length === 1) return sorted[0];
-  const index = (p / 100) * (sorted.length - 1);
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-  const weight = index - lower;
-  if (lower === upper) return sorted[lower];
-  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-}
-
-/**
- * Universal mathematical, statistical, percentile and probabilistic aggregation engine
- */
-export function computeMathematicalAggregation(
-  values: number[],
-  aggregation: AggregationFunction = 'sum'
-): number {
-  if (!values || values.length === 0) return 0;
-  if (aggregation === 'count') return values.length;
-
-  const valid = values.filter(v => typeof v === 'number' && !isNaN(v));
-  if (valid.length === 0) return 0;
-
-  switch (aggregation) {
-    case 'sum':
-      return Number(valid.reduce((acc, v) => acc + v, 0).toFixed(2));
-    case 'avg': {
-      const sum = valid.reduce((acc, v) => acc + v, 0);
-      return Number((sum / valid.length).toFixed(2));
-    }
-    case 'max':
-      return Number(Math.max(...valid).toFixed(2));
-    case 'min':
-      return Number(Math.min(...valid).toFixed(2));
-    case 'range': {
-      const max = Math.max(...valid);
-      const min = Math.min(...valid);
-      return Number((max - min).toFixed(2));
-    }
-    case 'median': {
-      const sorted = [...valid].sort((a, b) => a - b);
-      return Number(computePercentile(sorted, 50).toFixed(2));
-    }
-    case 'mode': {
-      const freq: Record<number, number> = {};
-      let maxCount = 0;
-      let modeVal = valid[0];
-      for (const num of valid) {
-        const rounded = Number(num.toFixed(2));
-        freq[rounded] = (freq[rounded] || 0) + 1;
-        if (freq[rounded] > maxCount) {
-          maxCount = freq[rounded];
-          modeVal = rounded;
-        }
-      }
-      return Number(modeVal.toFixed(2));
-    }
-    case 'stddev': {
-      const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
-      const variance = valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / valid.length;
-      return Number(Math.sqrt(variance).toFixed(2));
-    }
-    case 'variance': {
-      const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
-      const variance = valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / valid.length;
-      return Number(variance.toFixed(2));
-    }
-    case 'q1': {
-      const sorted = [...valid].sort((a, b) => a - b);
-      return Number(computePercentile(sorted, 25).toFixed(2));
-    }
-    case 'q3': {
-      const sorted = [...valid].sort((a, b) => a - b);
-      return Number(computePercentile(sorted, 75).toFixed(2));
-    }
-    case 'iqr': {
-      const sorted = [...valid].sort((a, b) => a - b);
-      const q1 = computePercentile(sorted, 25);
-      const q3 = computePercentile(sorted, 75);
-      return Number((q3 - q1).toFixed(2));
-    }
-    case 'cv': {
-      const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
-      const variance = valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / valid.length;
-      const stddev = Math.sqrt(variance);
-      if (Math.abs(mean) < 0.000001) return 0;
-      return Number(((stddev / Math.abs(mean)) * 100).toFixed(2));
-    }
-    case 'sum_squares': {
-      return Number(valid.reduce((acc, v) => acc + v * v, 0).toFixed(2));
-    }
-    default:
-      return Number(valid.reduce((acc, v) => acc + v, 0).toFixed(2));
-  }
-}
+// المحرّك الرياضي نُقل إلى أداة مستقلة (src/utils/aggregationMath.ts) ليعمل في
+// الأدوات النقية والاختبارات بلا مكوّنات React — تُعاد تصديره هنا للحفاظ على كل الاستيرادات.
+export { computeMathematicalAggregation, computePercentile } from '../../utils/aggregationMath';
+import { computeMathematicalAggregation } from '../../utils/aggregationMath';
 
 export interface AggregationOptionItem {
   value: AggregationFunction;
@@ -245,6 +154,18 @@ export interface HistogramBin {
   name: string;
   value: number;
   count: number;
+}
+
+/**
+ * تنسيق مختصر للعناوين المرسومة فوق عناصر الرسم (12.3k بدل 12,300) — يمنع تداخل العناوين
+ * ويُصال مضاعف مشكلة «القيمة لا تظهر على الرسم»: الآن كل عانة/نقطة تحمل قيمتها مباشرة.
+ */
+export function compactValueLabel(v: unknown): string {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  if (!isFinite(n)) return '';
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(Number(n.toFixed(2)));
 }
 
 /**
@@ -537,6 +458,23 @@ export const ChartFactory: React.FC<{
   const isLight = theme === 'g10' || theme === 'white';
   const gridStroke = isLight ? '#e0e0e0' : theme === 'midnight' ? '#1e335e' : '#393939';
   const axisStroke = isLight ? '#4b5563' : '#c6c6c6';
+  /** لون عناوين القيم المرسومة — متباين مع النمطين الفاتح والداكن */
+  const valueLabelFill = isLight ? '#393939' : '#f4f4f4';
+  /** نطاق محور Y مع رأس محمي (headroom): أكبر قيمة لا تلمس حافة المنطقة بعد الآن، فتختفي «الفجوة» التي تجعل العمود الأكبر يبدو مقطوعًا */
+  const yHeadroomDomain: [any, any] = [0, (dataMax: number) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)];
+  /** عناوين القيم فوق الأعمدة/النقاط — تُرسم فقط متى توفرت مساحة كفية حتى لا تتراكم */
+  const valueLabels = (dataKey: string, show: boolean) =>
+    show ? (
+      <LabelList
+        dataKey={dataKey}
+        position="top"
+        offset={6}
+        fontSize={9}
+        fontFamily="IBM Plex Mono, monospace"
+        fill={valueLabelFill}
+        formatter={compactValueLabel as any}
+      />
+    ) : null;
 
   // Resolved palette based on active theme or widget color scheme
   const themeKey = activeTheme || widget.colorScheme || 'professional';
@@ -726,7 +664,7 @@ export const ChartFactory: React.FC<{
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -5, bottom: 25 }}>
+            <BarChart data={chartData} margin={{ top: 24, right: 10, left: -5, bottom: 48 }}>
               <CartesianGrid strokeDasharray="2 2" stroke={gridStroke} vertical={false} />
               <XAxis
                 dataKey="name"
@@ -736,6 +674,8 @@ export const ChartFactory: React.FC<{
                 tickLine={false}
                 angle={-20}
                 textAnchor="end"
+                height={48}
+                interval={0}
               />
               <YAxis
                 stroke={axisStroke}
@@ -743,12 +683,14 @@ export const ChartFactory: React.FC<{
                 fontFamily="IBM Plex Mono, monospace"
                 tickLine={false}
                 axisLine={false}
+                domain={yHeadroomDomain}
               />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey={yField} fill={primaryColor} radius={0}>
                 {chartData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={activePalette[index % activePalette.length]} />
                 ))}
+                {valueLabels(yField, chartData.length <= 12 || expanded)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -757,10 +699,10 @@ export const ChartFactory: React.FC<{
       case 'line':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -5, bottom: 25 }}>
+            <LineChart data={chartData} margin={{ top: 24, right: 10, left: -5, bottom: 25 }}>
               <CartesianGrid strokeDasharray="2 2" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} />
-              <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} />
+              <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} domain={yHeadroomDomain} />
               <Tooltip content={<CustomTooltip />} />
               <Line
                 type="monotone"
@@ -769,7 +711,9 @@ export const ChartFactory: React.FC<{
                 strokeWidth={2.5}
                 dot={{ r: 3.5, fill: primaryColor, strokeWidth: 1, stroke: '#ffffff' }}
                 activeDot={{ r: 6, fill: '#ffffff', stroke: primaryColor, strokeWidth: 2 }}
-              />
+              >
+                {valueLabels(yField, chartData.length <= 12)}
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         );
@@ -788,7 +732,15 @@ export const ChartFactory: React.FC<{
               <XAxis dataKey="name" stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} />
               <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey={yField} stroke={primaryColor} fillOpacity={1} fill="url(#timeColor)" />
+              <Area
+                type="monotone"
+                dataKey={yField}
+                stroke={primaryColor}
+                fillOpacity={1}
+                fill="url(#timeColor)"
+              >
+                {valueLabels(yField, chartData.length <= 12)}
+              </Area>
               <Line type="monotone" dataKey={yField} stroke={primaryColor} strokeWidth={2} dot={{ r: 2 }} strokeDasharray="5 5" />
             </AreaChart>
           </ResponsiveContainer>
@@ -906,15 +858,16 @@ export const ChartFactory: React.FC<{
         // توزيع تواتري بأعمدة متلاصقة (freedman-style bins محسوبة محلياً)
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={histogramBins} margin={{ top: 10, right: 10, left: -5, bottom: 25 }} barCategoryGap="6%">
+            <BarChart data={histogramBins} margin={{ top: 24, right: 10, left: -5, bottom: 48 }} barCategoryGap="6%">
               <CartesianGrid strokeDasharray="2 2" stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="name" stroke={axisStroke} fontSize={9} fontFamily="IBM Plex Mono, monospace" tickLine={false} angle={-20} textAnchor="end" interval={0} />
-              <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} allowDecimals={false} />
+              <XAxis dataKey="name" stroke={axisStroke} fontSize={9} fontFamily="IBM Plex Mono, monospace" tickLine={false} angle={-20} textAnchor="end" interval={0} height={48} />
+              <YAxis stroke={axisStroke} fontSize={10} fontFamily="IBM Plex Mono, monospace" tickLine={false} axisLine={false} allowDecimals={false} domain={yHeadroomDomain} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" fill={primaryColor} radius={[2, 2, 0, 0]}>
                 {histogramBins.map((_, index) => (
                   <Cell key={`hcell-${index}`} fill={activePalette[index % activePalette.length]} />
                 ))}
+                {valueLabels('value', histogramBins.length <= 9 || expanded)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -967,12 +920,32 @@ export const ChartFactory: React.FC<{
               <g>
                 <rect x={x} y={y} width={width} height={height} fill={leaf ? color : 'transparent'} stroke={stroke} strokeWidth={1} />
                 {leaf && width > 48 && height > 22 && (
-                  <text x={x + 6} y={y + 15} fill={textFill} fontSize={10} fontWeight='bold' fontFamily='IBM Plex Mono, monospace'>
+                  /* direction:ltr ضروري — في صفحة RTL يقلب المتصفح تثبيت النص فتُرسم
+                    من الاسم/القيمة إلى اليسار خارج حدود الخلية وتُقص أرقامها (فجوة القيم) */
+                  <text
+                    x={x + 6}
+                    y={y + 15}
+                    fill={textFill}
+                    fontSize={10}
+                    fontWeight='bold'
+                    fontFamily='IBM Plex Mono, monospace'
+                    textAnchor="start"
+                    style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
+                  >
                     {String(name || '').slice(0, Math.max(1, Math.floor((width - 12) / 6)))}
                   </text>
                 )}
-                {leaf && width > 72 && height > 38 && (
-                  <text x={x + 6} y={y + 30} fill={textFill} opacity={0.85} fontSize={9} fontFamily='IBM Plex Mono, monospace'>
+                {leaf && width > 56 && height > 34 && value != null && (
+                  <text
+                    x={x + 6}
+                    y={y + 30}
+                    fill={textFill}
+                    opacity={0.85}
+                    fontSize={9}
+                    fontFamily='IBM Plex Mono, monospace'
+                    textAnchor="start"
+                    style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
+                  >
                     {Number(value).toLocaleString()}
                   </text>
                 )}
@@ -1209,6 +1182,90 @@ export const ChartFactory: React.FC<{
               },
             ]}
           />
+        );
+      }
+
+      case 'pivot': {
+        /** جدول محوري: index (xKey) × columns (pivotColumnField) × aggfunc (yKey) — خلايا ملوّنة بالشدّة */
+        const sourceRows = customData && customData.length > 0 ? customData : (dataset?.data || []);
+        const pivot = buildPivotMatrix(sourceRows, xKey, widget.pivotColumnField || '', yKey, aggFunc);
+        const allCellVals = pivot.values.flat().filter((v): v is number => v !== null);
+        const cellMax = Math.max(1, ...allCellVals.map(v => Math.abs(v)));
+        const cellMin = Math.min(0, ...allCellVals.map(v => Math.min(v, 0)));
+        return (
+          <div className="w-full h-full flex flex-col">
+            <div className="overflow-auto flex-1 rounded-sm border border-[var(--cds-border-subtle)]">
+              <table className="min-w-full border-collapse text-[10px] font-mono">
+                <thead>
+                  <tr>
+                    <th className="sticky top-0 left-0 z-10 bg-[var(--cds-layer-02)] text-[var(--cds-text-02)] font-bold px-2 py-1.5 border border-[var(--cds-border-subtle)] text-start whitespace-nowrap">
+                      {xKey} \ {widget.pivotColumnField}
+                    </th>
+                    {pivot.colKeys.map(ck => (
+                      <th key={ck} className="sticky top-0 z-10 bg-[var(--cds-layer-02)] text-[var(--cds-interactive-01)] font-bold px-2 py-1.5 border border-[var(--cds-border-subtle)] whitespace-nowrap max-w-32 truncate">
+                        {ck}
+                      </th>
+                    ))}
+                    <th className="sticky top-0 z-10 bg-[var(--cds-interactive-01)] text-white font-bold px-2 py-1.5 border border-[var(--cds-border-subtle)] whitespace-nowrap">
+                      Σ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pivot.rowKeys.map((rk, ri) => (
+                    <tr key={rk}>
+                      <th className="sticky left-0 z-10 bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] font-bold px-2 py-1 border border-[var(--cds-border-subtle)] text-start whitespace-nowrap max-w-36 truncate">
+                        {rk}
+                      </th>
+                      {pivot.colKeys.map((_, ci) => {
+                        const v = pivot.values[ri][ci];
+                        const intensity = v === null ? 0 : ((v - cellMin) / (cellMax - cellMin)) * 0.85 + 0.15;
+                        return (
+                          <td
+                            key={ci}
+                            title={v === null ? '— لا بيانات —' : `${rk} × ${pivot.colKeys[ci]}: ${v.toLocaleString()}`}
+                            className="px-2 py-1 border border-[var(--cds-border-subtle)] text-center font-bold whitespace-nowrap"
+                            style={{
+                              backgroundColor: v === null ? 'transparent' : `color-mix(in srgb, ${primaryColor} ${Math.round(intensity * 100)}%, transparent)`,
+                              color: v !== null && intensity > 0.55 ? '#ffffff' : 'var(--cds-text-01)',
+                            }}
+                          >
+                            {v === null ? <span className="text-[var(--cds-text-03)]">·</span> : v.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1 border border-[var(--cds-border-subtle)] text-center font-mono font-bold text-[var(--cds-interactive-01)] bg-[var(--cds-layer-02)] whitespace-nowrap">
+                        {pivot.rowTotals[ri].toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th className="sticky left-0 z-10 bg-[var(--cds-interactive-01)] text-white font-bold px-2 py-1 border border-[var(--cds-border-subtle)] text-start whitespace-nowrap">
+                      Σ إجمالي
+                    </th>
+                    {pivot.colTotals.map((ct, ci) => (
+                      <td key={`ct-${ci}`} className="px-2 py-1 border border-[var(--cds-border-subtle)] text-center font-mono font-bold text-white bg-[var(--cds-interactive-01)]/80 whitespace-nowrap">
+                        {ct.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </td>
+                    ))}
+                    <td className="px-2 py-1 border border-[var(--cds-border-subtle)] text-center font-mono font-bold bg-[var(--cds-interactive-01)] text-white whitespace-nowrap">
+                      {pivot.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div className="flex items-center justify-between pt-1.5 text-[9px] font-mono text-[var(--cds-text-03)]">
+              <span>
+                {pivot.rowKeys.length} × {pivot.colKeys.length} · {aggFunc.toUpperCase()}
+              </span>
+              <span>
+                {pivot.emptyCells > 0 ? (language === 'ar' ? `خلايا فارغة: ${pivot.emptyCells}` : `empty cells: ${pivot.emptyCells}`) : (language === 'ar' ? 'مكتمل' : 'complete')}
+              </span>
+            </div>
+          </div>
         );
       }
 

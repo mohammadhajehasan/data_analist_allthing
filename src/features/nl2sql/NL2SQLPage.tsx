@@ -37,6 +37,7 @@ import {
   Check,
   Clock,
   BarChart3,
+  Grid3x3,
   TestTube2,
   Cpu,
   Database,
@@ -73,6 +74,8 @@ export const NL2SQLPage: React.FC = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [showChart, setShowChart] = useState(false);
+  /** نوع الرسم الجاهز لنتيجة الاستعلام: شريطي (افتراضي) أو جدول محوري الدور */
+  const [resultChartType, setResultChartType] = useState<'bar' | 'pivot'>('bar');
   const [showPlanVisualizer, setShowPlanVisualizer] = useState(true);
   const [generatedExplanation, setGeneratedExplanation] = useState<string>('');
   const [engineModel, setEngineModel] = useState<string>('');
@@ -872,12 +875,50 @@ addAuditLog({
                 <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
               </button>
 
+              {/* اختيار نمط الرسم الجاهز: شريطي أو جدول محوري (مجمّع: صفوف × أعمدة × قيمة) */}
+              {showChart && queryResult.columns.length >= 3 && (
+                <div className="flex items-center gap-1 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-0.5">
+                  <button
+                    onClick={() => setResultChartType('bar')}
+                    className={`px-2.5 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
+                      resultChartType === 'bar'
+                        ? 'bg-[var(--cds-interactive-01)] text-white'
+                        : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
+                    }`}
+                    title={isAr ? 'شريط للفئة الأولى مقابل مقياس الثاني' : 'Bar of first column vs second-metric column'}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'شريطي' : 'Bar'}</span>
+                  </button>
+                  <button
+                    onClick={() => setResultChartType('pivot')}
+                    className={`px-2.5 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
+                      resultChartType === 'pivot'
+                        ? 'bg-[var(--cds-interactive-01)] text-white'
+                        : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-02)]'
+                    }`}
+                    title={
+                      isAr
+                        ? `جدول محوري: صفوف «${queryResult.columns[0]}» × أعمدة «${queryResult.columns[2]}» مع تجميع «${queryResult.columns[1]}»`
+                        : `Pivot: rows «${queryResult.columns[0]}» × columns «${queryResult.columns[2]}» aggregating «${queryResult.columns[1]}»`
+                    }
+                  >
+                    <Grid3x3 className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'جدول محوري' : 'Pivot Table'}</span>
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setShowChart(!showChart)}
-                className="px-3 py-1 bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] text-xs font-mono flex items-center gap-1.5 transition-colors"
+                className={`px-3 py-1 text-xs font-mono flex items-center gap-1.5 transition-colors ${
+                  showChart
+                    ? 'bg-[var(--cds-border-strong)] text-[var(--cds-text-01)] hover:bg-[var(--cds-layer-03)]'
+                    : 'bg-[var(--cds-layer-03)] hover:bg-[var(--cds-border-strong)] text-[var(--cds-text-01)]'
+                }`}
               >
                 <BarChart3 className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
-                <span>{showChart ? 'Show Table' : 'Visualize Chart'}</span>
+                <span>{showChart ? (isAr ? 'إظهار الجدول' : 'Show Table') : (isAr ? 'تصوّر الرسم' : 'Visualize Chart')}</span>
               </button>
             </div>
           </div>
@@ -889,11 +930,16 @@ addAuditLog({
                 customData={queryResult.rows}
                 widget={{
                   id: 'res-chart',
-                  title: 'Query Result Visualization',
-                  type: 'bar',
+                  title:
+                    resultChartType === 'pivot'
+                      ? isAr ? 'الجدول المحوري لنتيجة الاستعلام' : 'Query Result Pivot Table'
+                      : 'Query Result Visualization',
+                  type: resultChartType,
                   datasetId: activeDataset.id,
                   xAxis: queryResult.columns[0],
                   yAxis: queryResult.columns[1],
+                  aggregation: 'sum',
+                  pivotColumnField: resultChartType === 'pivot' ? queryResult.columns[2] : undefined,
                   w: 12,
                   h: 2,
                 }}
