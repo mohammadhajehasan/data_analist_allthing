@@ -24,6 +24,7 @@ import {
   Shapes,
   Contact,
   Inbox,
+  Server,
 } from 'lucide-react';
 import { DiscussionsBadge } from './DiscussionsBadge';
 import { SnapshotBadge } from './SnapshotBadge';
@@ -55,6 +56,7 @@ const SidebarNavList: React.FC<{ isCollapsed?: boolean; isMobile?: boolean; onNa
     { id: 'dashboards', label: t.nav.dashboards, icon: LayoutDashboard },
     { id: 'nl2sql', label: t.nav.nl2sql, icon: Terminal, badge: '9-Layer' },
     { id: 'schemadesigner', label: t.nav.schemadesigner, icon: Shapes, badge: 'draw.io' },
+    { id: 'backend', label: t.nav.backend, icon: Server, badge: 'SQL→API' },
     { id: 'models', label: t.nav.models, icon: Cpu, badge: 'Ollama' },
     { id: 'guide', label: t.nav.guide, icon: HelpCircle, badge: 'New' },
     { id: 'assistant', label: t.nav.assistant, icon: Bot, badge: 'AI' },

@@ -51,6 +51,18 @@ const SOURCE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 
 const roundtrip = async (model: ErModel): Promise<ErModel> => parseDrawioFile(exportDrawioXml(model));
 
+/** حقن خلية كائنات السكيما يدوياً في ملف مصدر (لاختبار المتانة والحزم التالفة) */
+const withPayload = (xml: string, payload: string): string => {
+  const escaped = payload
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+  const cell = `<mxCell id="sd-schema-objects" value="SCHEMA_OBJECTS_V1:${escaped}" style="text;html=1;" vertex="1" parent="1"><mxGeometry x="-4000" y="-4000" width="1" height="1" as="geometry" /></mxCell>`;
+  return xml.replace('</root>', `${cell}\n      </root>`);
+};
+
 describe('exportDrawioXml — تصدير المخطط المحدّث (round-trip عبر parseDrawioFile)', () => {
   it('يُصدّر XML بصيغة draw.io الرسمية (mxfile + diagram + mxGraphModel + shape=table)', async () => {
     const model = await parseDrawioFile(SOURCE_XML);
@@ -153,6 +165,98 @@ describe('exportDrawioXml — تصدير المخطط المحدّث (round-trip
     // عمود FK على جدول الابن في كلا التمثيلين
     const childTable = rel.sourceTable === 'orders' ? rel.sourceColumn : rel.targetColumn;
     expect(childTable?.toLowerCase()).toBe('user_id');
+  });
+
+  it('كائنات السكيما: الفهارس والعروض والـTriggers تبقى بعد التصدير وإعادة الاستيراد', async () => {
+    const model = await parseDrawioFile(SOURCE_XML);
+    model.tables[0].indexes = [
+      { name: 'idx_users_email', columns: ['email'], unique: true },
+      { name: 'idx_users_email_balance', columns: ['email', 'balance'], unique: false },
+    ];
+    model.views = [
+      { name: 'active_users', columns: ['id', 'email'], query: 'SELECT id, email FROM users WHERE active = 1' },
+    ];
+    model.triggers = [
+      {
+        name: 'trg_users_touch',
+        table: 'users',
+        timing: 'BEFORE',
+        event: 'UPDATE',
+        rawSql: 'CREATE TRIGGER trg_users_touch BEFORE UPDATE ON users FOR EACH ROW SET NEW.updated_at = CURRENT_TIMESTAMP',
+      },
+    ];
+
+    const xml = exportDrawioXml(model);
+    expect(xml).toContain('SCHEMA_OBJECTS_V1:');
+    // الخلية المخفية ليست جدولاً: عدد الجداول المرئية كما هو
+    expect((xml.match(/shape=table;/g) || []).length).toBe(2);
+
+    const back = await parseDrawioFile(xml);
+    expect(back.tables).toHaveLength(2);
+    const users = back.tables.find(t => t.name === 'users')!;
+    expect(users.indexes).toEqual([
+      { name: 'idx_users_email', columns: ['email'], unique: true },
+      { name: 'idx_users_email_balance', columns: ['email', 'balance'], unique: false },
+    ]);
+    expect(back.views).toEqual([
+      { name: 'active_users', columns: ['id', 'email'], query: 'SELECT id, email FROM users WHERE active = 1' },
+    ]);
+    expect(back.triggers).toEqual([
+      expect.objectContaining({
+        name: 'trg_users_touch',
+        table: 'users',
+        timing: 'BEFORE',
+        event: 'UPDATE',
+        rawSql: 'CREATE TRIGGER trg_users_touch BEFORE UPDATE ON users FOR EACH ROW SET NEW.updated_at = CURRENT_TIMESTAMP',
+      }),
+    ]);
+
+    // دورة ثانية لا تكرر الكائنات (الاستيراد يدمج بلا تكرار)
+    const again = await parseDrawioFile(exportDrawioXml(back));
+    expect(again.tables.find(t => t.name === 'users')!.indexes).toHaveLength(2);
+    expect(again.views).toHaveLength(1);
+    expect(again.triggers).toHaveLength(1);
+  });
+
+  it('يضع كائنات السكيما في أول صفحة تحمل جداول (لا صفحة فارغة متخطاة)', async () => {
+    const model = await parseDrawioFile(SOURCE_XML);
+    model.diagramNames = ['Empty', 'Data'];
+    model.tables.forEach(table => { table.pages = [1]; });
+    model.relationships.forEach(rel => { rel.pages = [1]; });
+    model.views = [{ name: 'order_totals', query: 'SELECT user_id, SUM(total) FROM orders GROUP BY user_id' }];
+    const xml = exportDrawioXml(model);
+    expect((xml.match(/<diagram /g) || []).length).toBe(1);
+    const back = await parseDrawioFile(xml);
+    expect(back.views).toEqual([
+      { name: 'order_totals', query: 'SELECT user_id, SUM(total) FROM orders GROUP BY user_id' },
+    ]);
+    expect(back.tables).toHaveLength(2);
+  });
+
+  it('لا يكتب خلية البيانات المخفية إن لم توجد كائنات سكيما', async () => {
+    const model = await parseDrawioFile(SOURCE_XML);
+    expect(exportDrawioXml(model)).not.toContain('SCHEMA_OBJECTS_V1:');
+  });
+
+  it('يتجاهل فهرساً لجدول غير موجود ويُبقي البقية مع تحذير', async () => {
+    const payload = JSON.stringify({
+      version: 1,
+      indexes: {
+        ghost_table: [{ name: 'idx_ghost', columns: ['id'], unique: false }],
+        users: [{ name: 'idx_users_email', columns: ['email'], unique: true }],
+      },
+    });
+    const back = await parseDrawioFile(withPayload(SOURCE_XML, payload));
+    expect(back.tables.find(t => t.name === 'users')!.indexes).toEqual([
+      { name: 'idx_users_email', columns: ['email'], unique: true },
+    ]);
+    expect(back.warnings.some(w => w.includes('ghost_table'))).toBe(true);
+  });
+
+  it('حزمة JSON تالفة تُتجاهل بتحذير بدل إفشال الاستيراد', async () => {
+    const back = await parseDrawioFile(withPayload(SOURCE_XML, '{ليس JSON'));
+    expect(back.tables).toHaveLength(2);
+    expect(back.warnings.some(w => w.toLowerCase().includes('not valid json'))).toBe(true);
   });
 
   it('تهريب XML: رموز & < > في القيم لا تفسد بنية الملف', async () => {

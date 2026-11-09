@@ -114,12 +114,123 @@ was found — REFERENCES skipped.
 
 Per-column state chips: **PK · FK · NOT NULL · UQ · CHECK · DEF** — solid = applied, dashed = pending smart suggestion. Any manual override flows straight into the generated SQL (including custom CHECK expressions and default values).
 
-### ٩) التوليد النهائي للسكيمّا
-### 9) Final DDL generation
+### ٩) محرّر كائنات السكيما واقتراحاتها الذكية
+### 9) Schema-object editor & smart suggestions
+
+محرّر مدمج للفهارس (على الجدول) والعروض والـTriggers مع **معاينة SQL مباشرة** تتبع اللهجة المختارة، وتشمل المسودة غير المحفوظة. إلى جانبه مقترح حتمي (`schemaObjectSuggestions.ts`) يشتق من النموذج نفسه: فهرس لكل مفتاح أجنبي لا يغطيه فهرس/PK/UNIQUE، وفهرس UNIQUE للمفاتيح الطبيعية (`email`, `username`, `slug`, `sku`, `isbn`…)، وعرض `v_<table>_active` للجداول ذات `status`/`is_active`، وTrigger لتحديث `updated_at` بصياغة MySQL/SQLite/PostgreSQL. تُعرض مع السبب ونسبة الثقة، وتُطبَّق واحداً واحداً أو كلياً أو تُتجاهل — ولا يُطبَّق أي اقتراح تلقائياً.
+
+A built-in editor for indexes (per table), views and triggers with a **live SQL preview** that follows the selected dialect and includes the unsaved draft. A deterministic suggester (`schemaObjectSuggestions.ts`) derives from the model itself: an index for every foreign key not covered by an index/PK/UNIQUE, unique indexes for natural keys (`email`, `username`, `slug`, `sku`, `isbn`…), a `v_<table>_active` view for tables with `status`/`is_active`, and an `updated_at` touch trigger in MySQL/SQLite/PostgreSQL syntax. Each carries a reason and confidence, and can be applied individually, in bulk, or dismissed — nothing is applied automatically.
+
+**تدقيق الفهارس القائمة**: يكشف المحرك الفهارس المكررة تماماً (ويُبقي الفريد أو الأول)، والفهرس غير الفريد الذي هو بادئة يسارية لفهرس أطول، والفهرس الزائد على عمود PK/UNIQUE، والفهرس المرتبط بأعمدة حُذفت من الجدول، والفهرس الذي لا تلمسه أي علاقة أو عرض معلن (بثقة منخفضة لأنه قد يخدم استعلامات التطبيق). اقتراحات التنظيف تُعرض بشارة حمراء وزر **حذف** يحذف الفهرس من النموذج ومن مُعرَّف SQL مباشرة، وتختفي تلقائياً بعد التطبيق.
+
+**Existing-index audit**: the engine detects exact duplicates (keeping the unique one, else the first), a non-unique index that is a leftmost prefix of a longer index, single-column indexes duplicating a PK/UNIQUE constraint, indexes referencing columns removed from the table, and indexes untouched by any declared relation or view (low confidence, since they may serve application queries). Cleanup suggestions use a red badge and a **Drop** action that removes the index from the model and the generated DDL, then disappears on its own.
+
+**معاينة الفرق والتراجع**: لكل اقتراح زر «معاينة فرق SQL» يعرض `−/+` مبنياً على نفس دوال التوليد: إضافة كائن = سطر `+` واحد، وحذف فهرس = `−` لتعريفه الحالي مع `+` لـ`DROP INDEX` بصياغة اللهجة. بعد أي تطبيق — فردي أو جماعي — يظهر شريط **تراجع** يعكس العملية جراحياً: يزيل ما أُضيف ويعيد الفهرس المحذوف إلى موضعه، دون استرجاع لقطة كاملة قد تلغي تعديلات أخرى.
+
+**Diff preview & undo**: every suggestion has a «Preview SQL diff» toggle showing `−/+` built from the same generator functions: an addition is one `+` line, while dropping an index shows `−` for its current definition plus `+` for a dialect-correct `DROP INDEX`. After any apply — single or bulk — an **Undo** bar reverses it surgically: added objects are removed and a dropped index returns to its position, without restoring a whole snapshot that could discard unrelated edits.
+
+**الرحلة عبر draw.io**: هذه الكائنات لا مقابل رسومي لها، لذلك يكتبها التصدير في خلية بيانات مخفية (`SCHEMA_OBJECTS_V1:`) خارج اللوحة، تبقى سليمة عند الحفظ في draw.io، ويستعيدها الاستيراد تلقائياً مع الفهارس المركّبة والعروض والـTriggers — ويدمج بلا تكرار ويتجاهل بحذر أي حزمة تالفة أو فهرس لجدول غير موجود.
+
+**draw.io round-trip**: these objects have no graphical equivalent, so the exporter embeds them in a hidden data cell (`SCHEMA_OBJECTS_V1:`) outside the canvas. draw.io preserves it on save, and the importer restores indexes (including composite ones), views and triggers — merging without duplicates and warning (rather than failing) on a corrupt block or an index for an unknown table.
+
+### ١٠) التوليد النهائي للسكيمّا
+### 10) Final DDL generation
 
 خمسة لهجات (MySQL، PostgreSQL، SQLite، SQL Server، Oracle) مع خريطة أنواع دقيقة، وتذييد المُعرّفات بأسلوب كل نظام، وترتيب طوبولوجي (الجداول الأب قبل الأبناء) لضمان صلاحية ترتيب `CREATE` دائماً، وجداول ربط لـ N-M، وخيار `DROP TABLE IF EXISTS` (يعلَّق كتعليق في Oracle ويصبح فحص وجود الكائن في SQL Server).
 
 Five dialects (MySQL, PostgreSQL, SQLite, SQL Server, Oracle) with precise type mapping, per-dialect identifier quoting, topological ordering (parents before children) so `CREATE` order is always valid, junction tables for N:M, and optional `DROP TABLE IF EXISTS` (commented out on Oracle, object-existence check on SQL Server).
+
+---
+
+## مصنع الـBackend — من السكيمّا إلى مشروع كامل
+## Backend Factory — from schema to a runnable project
+
+بعد رفع المخطط أو تحريره في مصمّم السكيمّا، تظهر لوحة **BACKEND FACTORY** أسفل خيارات SQL. تختار سريعاً:
+
+Inside the Schema Designer, below the SQL options, the **BACKEND FACTORY** panel asks four quick questions:
+
+| السؤال Question | الخيارات Options |
+|---|---|
+| اسم المشروع Project name | يُستخدم في README وأسماء الملفات |
+| قاعدة البيانات Database | MySQL · PostgreSQL · SQLite |
+| التقنية Stack | تلقائي · FastAPI · Django (PostgreSQL) · Laravel · PHP PDO |
+| النطاق Scope | REST API كامل · Models + Migrations فقط |
+| التوثيق Auth | تسجيل/دخول + Bearer tokens (عند اختيار REST API) |
+
+**القاعدة التلقائية Automatic rule:**
+
+| قاعدة البيانات Database | التقنية الافتراضية Default stack |
+|---|---|
+| 🟠 MySQL | PHP + Laravel + Eloquent |
+| 🔵 PostgreSQL | Python + FastAPI + SQLAlchemy |
+| 🟡 SQLite | Python + FastAPI + SQLAlchemy |
+
+اختيار التقنية يدوياً يتغلّب على القاعدة دائماً، وتبقى القاعدة ظاهرة بجانب الزر (Auto → FastAPI/Laravel).
+خيار **Django + DRF** يظهر عند اختيار PostgreSQL ويولّد Django ORM + Serializers + ModelViewSet + TokenAuth، مع `managed = False` لأن ملف SQL هو مصدر الحقيقة للسكيما.
+A manual stack choice always overrides the automatic rule, and the effective decision is shown next to the buttons. **Django + DRF** is offered for PostgreSQL and generates Django ORM models, serializers, ModelViewSets and TokenAuth; models are `managed = False` because the SQL file owns the schema.
+
+كل مشروع مولَّد يحتوي على:
+
+Every generated project contains:
+
+- **Models/Entities** لكل جدول، مع العلاقات (`hasMany`/`belongsTo` أو Eloquent relations) والمفاتيح المركّبة.
+- **Migrations**: ملف SQL مطابق للـ DDL الذي يراه المستخدم، إضافة إلى migrations بأسلوب الإطار (Laravel migrations).
+- **CRUD REST API** لكل جدول: list/create/get/update/delete، مع دعم المفاتيح المركّبة.
+- **Validation** مشتقة من قيود السكيمّا: required، `max_length`، unique (409)، FK موجود (400/422)، و`CHECK`.
+- **اتصال قاعدة البيانات** و`.env.example` جاهز.
+- **README** بهيكل المشروع وخطوات التشغيل والمسارات.
+- **ZIP** جاهز للتنزيل، مع معاينة كل ملف داخل اللوحة قبل التنزيل.
+- **فتح في VS Code**: زر يحفظ المشروع في `data/generated/` محلياً ثم يفتحه بمخطط `vscode://file`؛ تُضمَّن `.vscode/tasks.json` و`launch.json` والإضافات المقترحة وملف `.code-workspace`، فإن تعذّر الفتح (خادم بعيد مثلاً) يُنزّل ZIP تلقائياً.
+- **Django + DRF** (PostgreSQL): Models بـ`managed=False`، Serializers، ModelViewSet CRUD، TokenAuth اختياري، و`migrations/001_init.sql` كمصدر DDL؛ يدعم المفاتيح المركّبة عبر `CompositePrimaryKey` (Django 5.2+) مع مسارات تفصيل صريحة.
+
+- **Models/Entities** for every table, including relations (`hasMany`/`belongsTo` or Eloquent relations) and composite keys.
+- **Migrations**: an exact SQL migration matching the DDL plus framework-style migrations (Laravel).
+- **CRUD REST API** per table: list/create/get/update/delete, with composite-key support.
+- **Validation** derived from schema constraints: required, `max_length`, unique (409), existing FK (400/422), and `CHECK`.
+- **Database connection** plus a ready `.env.example`.
+- **README** with the project layout, run steps, and endpoint table.
+- **ZIP download**, with an in-panel preview of every generated file.
+- **Open in VS Code**: a button saves the project into local `data/generated/` and opens it through `vscode://file`; the bundle includes `.vscode/tasks.json`, `launch.json`, recommended extensions and a `.code-workspace` file. If opening fails (for example on a remote server) it falls back to the ZIP download automatically.
+- **Django + DRF** (PostgreSQL): `managed=False` models, serializers, ModelViewSet CRUD, optional TokenAuth, and `migrations/001_init.sql` as the DDL source of truth; composite keys use `CompositePrimaryKey` (Django 5.2+) with explicit detail routes.
+
+مولّد FastAPI يفعّل `PRAGMA foreign_keys=ON` على SQLite ويستخدم `passive_deletes=True`، لذا حذف أب مرتبط بأبناء يُعيد **409** بدل خطأ 500، بينما الحذف النظيف يبقى **204**.
+The FastAPI generator enables SQLite `PRAGMA foreign_keys=ON` and uses `passive_deletes=True`, so deleting a parent that still has children returns **409** instead of a 500, while a clean delete still returns **204**.
+
+### من SQL مباشرةً — صفحة مستقلة
+### Paste SQL → Backend — standalone page
+
+من الشريط الجانبي: **Backend** (`SQL→API`). الصق `CREATE TABLE`/`ALTER TABLE`/`CREATE INDEX` أو ارفع ملف `.sql` (حتى 2MB و100 جدول)، فيُحلَّل النص **نصياً بلا تنفيذ**، وتظهر الجداول والأعمدة والعلاقات والقيود والفهارس قبل التوليد.
+From the sidebar: **Backend** (`SQL→API`). Paste `CREATE TABLE`/`ALTER TABLE`/`CREATE INDEX` or upload a `.sql` file (up to 2MB / 100 tables). The text is parsed **statically, never executed**, and the detected tables, columns, relations, constraints and indexes are previewed before generation.
+
+- **اكتشاف اللهجة**: MySQL / PostgreSQL / SQLite مع درجة ثقة وأسباب. عند إشارات متعارضة (مثل `JSONB` مع `ENGINE=`) يظهر تحذير ولا يُفشَل التوليد؛ وعند غموض حقيقي يُطلب تأكيد صريح قبل المتابعة.
+- **قاعدة التوجيه**: MySQL → Laravel، وPostgreSQL/SQLite → FastAPI، وأي اختيار يدوي يتغلّب دائماً. السبب يُسجَّل في `README` و`MANIFEST.json`.
+- **الفهارس وViews وTriggers**: تُستخرج `CREATE INDEX` و`CREATE VIEW` و`CREATE TRIGGER` من كود SQL، وتُعرض أعدادها في المعاينة، ثم تُنقل إلى ترحيلات Laravel وFastAPI وPDO؛ ومنها Migration مستقل `create_views_and_triggers` في Laravel. يدعم المحلّل أجسام Triggers ذات `BEGIN…END` وتعليمات `DELIMITER` المخصّصة.
+- **الحالات الحدية**: جدول بلا مفتاح أساسي يُولَّد مع تحذير ونقاط وصول list/create فقط، الأنواع غير المدعومة تُحوَّل إلى `TEXT` مع تعليق وتحذير، والمفاتيح الأجنبية الدائرية تُضاف في **مرحلة ترحيل ثانية** (`ALTER TABLE ... ADD CONSTRAINT` أو ترحيل Laravel مؤجَّل) بدل كسر ترتيب الإنشاء.
+
+- **Dialect detection** with confidence and reasons. Conflicting signals (e.g. `JSONB` with `ENGINE=`) warn without failing; genuinely ambiguous schemas require an explicit confirmation before generation.
+- **Routing rule**: MySQL → Laravel, PostgreSQL/SQLite → FastAPI, and any manual choice always wins. The reason is recorded in `README` and `MANIFEST.json`.
+- **Indexes, views and triggers**: `CREATE INDEX`, `CREATE VIEW` and `CREATE TRIGGER` are parsed, counted in the preview, and carried into Laravel, FastAPI and PDO migrations — Laravel gets a dedicated `create_views_and_triggers` migration. The parser handles `BEGIN…END` trigger bodies and custom `DELIMITER` directives.
+- **Edge cases**: a table without a primary key is generated with a warning and list/create endpoints only; unsupported types map to `TEXT` with a comment and warning; circular foreign keys are added in a **second migration phase** (`ALTER TABLE ... ADD CONSTRAINT` or a deferred Laravel migration) instead of breaking creation order.
+
+### واجهة الدمج API Contract
+### API Contract
+
+كل النقاط تتطلب الجلسة (Bearer/cookie) وتعيد JSON، وتعمل داخل الخادم على نفس المحلّل والمولّد المستخدمين في الواجهة.
+All endpoints require the platform session (Bearer/cookie), return JSON, and run on the same parser and generator as the UI.
+
+| المسار Route | الطريقة Method | الغرض Purpose |
+|---|---|---|
+| `/api/v1/generations` | POST | إنشاء عملية (202) مع دعم `Idempotency-Key` و`framework` اختياري (`fastapi` · `django` · `laravel` · `pdo`) |
+| `/api/v1/generations/:id` | GET | الحالة والتقدّم وقرار التوجيه |
+| `/api/v1/generations/:id/preview` | GET | الجداول والعلاقات والملاحظات قبل التحميل |
+| `/api/v1/generations/:id/files` | GET | جرد الملفات أو محتوى ملف واحد (`?path=`) |
+| `/api/v1/generations/:id/download` | GET | حزمة ZIP جاهزة |
+| `/api/v1/sql/validate` | POST | تحقق فوري واكتشاف لهجة أثناء الكتابة |
+| `/api/backend/materialize` | POST | حفظ المشروع المولَّد محلياً وإرجاع رابط فتحه في VS Code (loopback + جلسة فقط) |
+
+- رموز الخطأ ثابتة: `INVALID_SQL` (400)، `UNSUPPORTED_DIALECT` (422)، `NEEDS_DIALECT_CONFIRMATION` (422)، `SCHEMA_TOO_LARGE` (413)، `RATE_LIMITED` (429)، و`AI_UNAVAILABLE` لا يفشل العملية بل يكملها قالبياً.
+- **الإثراء الذكي اختياري**: يُرسل التمثيل الوسيط فقط (لا SQL خام) إلى `/api/backend/enrich`، ويُصفّى كل صف مقابل الأعمدة المسموحة، وتُستبعد مفاتيح auto-increment؛ وأي فشل أو انتهاء مهلة يعيد حزمة قالبية كاملة مع إشعار.
+- **Optional AI enrichment**: only the intermediate representation (never raw SQL) goes to `/api/backend/enrich`; every row is filtered against allowed columns and auto-increment keys are dropped. Any failure or timeout still returns a complete template-only package with a notice.
 
 ---
 
@@ -131,4 +242,13 @@ Five dialects (MySQL, PostgreSQL, SQLite, SQL Server, Oracle) with precise type 
 | الاقتراحات الذكية Smart suggestions | `src/utils/constraintInference.ts` |
 | التوليد للخمس لهجات FK/schema generation | `src/utils/ddlGenerator.ts` |
 | محرّر القيود والشرائح Constraint editor UI | `src/features/schemadesigner/SchemaDesignerPage.tsx` |
+| محرّر الفهارس والعروض والـTriggers Index/view/trigger editor UI | `src/features/schemadesigner/SchemaObjectsPanel.tsx` |
+| اقتراحات الكائنات الذكية Smart schema-object suggestions | `src/utils/schemaObjectSuggestions.ts` |
 | معاينة ERD المرئية Visual ERD preview | `src/features/schemadesigner/ErdPreview.tsx` |
+| صفحة SQL→Backend المستقلة Standalone SQL→Backend page | `src/features/schemadesigner/BackendFactoryPage.tsx` |
+| محلّل SQL DDL واكتشاف اللهجة Static SQL DDL parser & dialect detection | `src/utils/sqlSchemaParser.ts` |
+| نقاط الدمج API contract | `server.ts` (`/api/v1/generations`, `/api/v1/sql/validate`, `/api/backend/materialize`) |
+| لوحة مصنع الـBackend Backend Factory UI | `src/features/schemadesigner/BackendFactoryPanel.tsx` |
+| تحليل السكيمّا واختيار التقنية Schema analysis & stack selection | `src/utils/backendCodegen/model.ts` |
+| مولّدات FastAPI / Django / Laravel / PDO Generators | `src/utils/backendCodegen/pythonFastapi.ts` · `django.ts` · `phpLaravel.ts` · `phpPdo.ts` |
+| كاتب ZIP بلا اعتماديات Dependency-free ZIP writer | `src/utils/zipStore.ts` |

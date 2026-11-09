@@ -8,9 +8,14 @@
  *
  * القيود تُكتب علاماتٍ نصية داخل تسمية الصف — لغة يستوعبها المستورد كما يكتبها
  * البشر في draw.io:  #pk · #unique · nn · #fk · check(<expr>) · default <value>
+ *
+ * الفهارس والعروض والـTriggers لا مقابل رسومي لها في draw.io، فتُخزَّن في خلية
+ * بيانات مخفية خارج اللوحة ببادئة SCHEMA_OBJECTS_V1: — يحفظها draw.io كما هي
+ * عند إعادة الحفظ، ويستعيدها المستورد تلقائياً.
  */
 
-import type { ErModel, ErTable, ErRelationship, ErCardinality } from './drawioImporter';
+import type { ErModel, ErTable, ErRelationship, ErCardinality, ErIndex, ErView, ErTrigger } from './drawioImporter';
+import { SCHEMA_OBJECTS_PREFIX } from './drawioImporter';
 
 /** تهريب نص لسمة XML في draw.io (& < > " ') */
 function escapeXml(text: string): string {
@@ -66,8 +71,30 @@ function tableGeometry(index: number): { x: number; y: number; w: number } {
   };
 }
 
+/**
+ * خلية البيانات المخفية: فهارس كل جدول باسمه + العروض + Triggers بصيغة JSON.
+ * لا تُكتب إن لم تكن هناك كائنات، كي يبقى الملف متوافقاً مع الملفات القديمة.
+ */
+function schemaObjectsCell(model: ErModel): string {
+  const indexes: Record<string, ErIndex[]> = {};
+  for (const table of model.tables) {
+    if (table.indexes && table.indexes.length > 0) indexes[table.name] = table.indexes;
+  }
+  const views: ErView[] = model.views ?? [];
+  const triggers: ErTrigger[] = model.triggers ?? [];
+  if (Object.keys(indexes).length === 0 && views.length === 0 && triggers.length === 0) return '';
+
+  const payload = JSON.stringify({ version: 1, indexes, views, triggers });
+  return (
+    `        <mxCell id="sd-schema-objects" value="${escapeXml(`${SCHEMA_OBJECTS_PREFIX}${payload}`)}" ` +
+    `style="text;html=1;whiteSpace=wrap;opacity=0;strokeColor=none;fillColor=none;" vertex="1" parent="1">\n` +
+    `          <mxGeometry x="-4000" y="-4000" width="1" height="1" as="geometry" />\n` +
+    `        </mxCell>`
+  );
+}
+
 /** صفحة draw.io واحدة (diagram) تحتوي جداول وعلاقات هذها الصفحة */
-function diagramXml(tables: ErTable[], relationships: ErRelationship[]): string {
+function diagramXml(tables: ErTable[], relationships: ErRelationship[], objectsCell = ''): string {
   const cells: string[] = [];
 
   tables.forEach((table, i) => {
@@ -111,6 +138,8 @@ function diagramXml(tables: ErTable[], relationships: ErRelationship[]): string 
     );
   });
 
+  if (objectsCell) cells.push(objectsCell);
+
   return (
     `    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="${Math.max(850, 40 + Math.ceil(Math.max(1, tables.length) / 3) * 380)}" math="0" shadow="0">\n` +
     `      <root>\n` +
@@ -134,6 +163,8 @@ export function exportDrawioXml(model: ErModel): string {
   const shows = (pages: number[] | undefined, page: number): boolean =>
     pages === undefined || pages.length === 0 || pages.includes(page);
 
+  const objectsCell = schemaObjectsCell(model);
+  let objectsAttached = false;
   const diagrams: string[] = [];
   for (let p = 0; p < pageCount; p++) {
     const tables = model.tables.filter(t => shows(t.pages, p));
@@ -143,14 +174,17 @@ export function exportDrawioXml(model: ErModel): string {
       r => tableIds.has(r.sourceTable) && tableIds.has(r.targetTable) && shows(r.pages, p)
     );
     const nm = model.diagramNames[p] || (pageCount === 1 ? 'Edited Schema' : `Page ${p + 1}`);
+    // تُحقن خلية الكائنات في أول صفحة تحمل جداول (لا في صفحة فارغة قد تُتخطى)
+    const pageObjects = objectsAttached ? '' : objectsCell;
+    if (pageObjects) objectsAttached = true;
     diagrams.push(
-      `  <diagram id="sd-page-${p}" name="${escapeXml(nm)}">\n${diagramXml(tables, rels)}\n  </diagram>`
+      `  <diagram id="sd-page-${p}" name="${escapeXml(nm)}">\n${diagramXml(tables, rels, pageObjects)}\n  </diagram>`
     );
   }
   if (diagrams.length === 0) {
     // نموذج فارغ فعلياً — صفحة واحدة بلا جداول (مخرج رسمي حتى لا يفشل فتح الملف في draw.io)
     diagrams.push(
-      `  <diagram id="sd-empty" name="Edited Schema">\n${diagramXml([], [])}\n  </diagram>`
+      `  <diagram id="sd-empty" name="Edited Schema">\n${diagramXml([], [], objectsCell)}\n  </diagram>`
     );
   }
 

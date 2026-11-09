@@ -32,16 +32,49 @@ export type ErColumn = {
   check?: string;
 };
 
+export type ErIndex = {
+  name: string;
+  columns: string[];
+  unique: boolean;
+};
+
 export type ErTable = {
   id: string;
   name: string;
   columns: ErColumn[];
   /** فهارس صفحات الظهور (multiple diagrams) — تُملأ حتى للملفات أحادية الصفحة */
   pages?: number[];
+  /** فهارس/قيود UNIQUE على مستوى الجدول (بما فيها المركّبة) — من SQL أو المحرر */
+  indexes?: ErIndex[];
+  /** تعبيرات CHECK على مستوى الجدول — من SQL DDL */
+  tableChecks?: string[];
 };
 
 /** أنواع العلاقات: 1-1 · 1-N · N-1 (مقلوبة يدويًا) · N-M */
 export type ErCardinality = '1-1' | '1-N' | 'N-1' | 'N-M';
+
+export type ErView = {
+  /** اسم العرض بعد فك الاقتباس */
+  name: string;
+  /** أعمدة العرض الاختيارية بعد الاسم */
+  columns?: string[];
+  /** استعلام SELECT كما ورد في المصدر */
+  query: string;
+  /** العبارة الأصلية كاملة — تُستخدم عند إعادة التوليد */
+  rawSql?: string;
+  line?: number;
+};
+
+export type ErTrigger = {
+  name: string;
+  table?: string;
+  timing?: string;
+  event?: string;
+  body?: string;
+  /** تعريف Trigger كاملاً كما ورد — يُنقل حرفياً إلى الترحيلات */
+  rawSql: string;
+  line?: number;
+};
 
 export type ErRelationship = {
   id: string;
@@ -50,6 +83,8 @@ export type ErRelationship = {
   sourceColumn?: string;
   targetColumn?: string;
   cardinality: ErCardinality;
+  /** سلوك الحذف المعلن في SQL — يُستخدم في مولّد الـBackend عندما يكون معروفاً */
+  onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   /** فهرس الصفحة التي وُجدت فيها الحافة — للملفات أحادية الصفحةه = [0] */
   pages?: number[];
 };
@@ -59,7 +94,14 @@ export type ErModel = {
   tables: ErTable[];
   relationships: ErRelationship[];
   warnings: string[];
+  /** عروض SQL المستخرجة من CREATE VIEW */
+  views?: ErView[];
+  /** Triggers المستخرجة من CREATE TRIGGER */
+  triggers?: ErTrigger[];
 };
+
+/** بادئة خلية البيانات المخفية التي يكتبها المصمّم لالفهارس والعروض والـTriggers */
+export const SCHEMA_OBJECTS_PREFIX = 'SCHEMA_OBJECTS_V1:';
 
 /** خطأ صيغة ملف لا يمكن الاستمرار بدونه (مختلف عن تحذير تجاهُل خلية) */
 export class DrawioParseError extends Error {}
@@ -528,12 +570,111 @@ function styleIndicatesPrimaryKey(style: string, parentRowStyle?: string): boole
 }
 
 // ---------------------------------------------------------------------------
+// كائنات السكيما المضمَّنة (فهارس / عروض / Triggers)
+// ---------------------------------------------------------------------------
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.trim() !== '').map(item => item.trim()) : [];
+}
+
+/** يمزج كائنات السكيما المرافقة للملف في النموذج — حذر: لا يطغى على ما استُورد الرسومياً */
+function applySchemaObjectsPayload(model: ErModel, raw: string): void {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    model.warnings.push('Schema objects block is not valid JSON — indexes/views/triggers were skipped.');
+    return;
+  }
+  if (!isRecord(parsed) || parsed.version !== 1) {
+    model.warnings.push('Schema objects block has an unsupported version — skipped.');
+    return;
+  }
+
+  // 1) الفهارس — مخزّنة على جدولها الأصلي، بمطابقة اسم غير حساس لحالة الأحرف
+  if (isRecord(parsed.indexes)) {
+    for (const [tableName, rawIndexes] of Object.entries(parsed.indexes)) {
+      if (!Array.isArray(rawIndexes)) continue;
+      const table = model.tables.find(item => item.name.toLowerCase() === tableName.toLowerCase());
+      if (!table) {
+        model.warnings.push(`Schema objects: indexes for unknown table "${tableName}" were ignored.`);
+        continue;
+      }
+      const indexes = table.indexes ?? [];
+      const seen = new Set(indexes.map(index => index.name.toLowerCase()));
+      for (const rawIndex of rawIndexes) {
+        if (!isRecord(rawIndex)) continue;
+        const name = nonEmptyString(rawIndex.name);
+        const columns = stringList(rawIndex.columns);
+        if (!name || columns.length === 0 || seen.has(name.toLowerCase())) continue;
+        indexes.push({ name, columns, unique: Boolean(rawIndex.unique) });
+        seen.add(name.toLowerCase());
+      }
+      if (indexes.length > 0) table.indexes = indexes;
+    }
+  }
+
+  // 2) العروض — تبقى على النموذج، ويُعاد توليد SQLها من الاستعلام المحفوظ
+  if (Array.isArray(parsed.views)) {
+    const seen = new Set((model.views ?? []).map(view => view.name.toLowerCase()));
+    for (const rawView of parsed.views) {
+      if (!isRecord(rawView)) continue;
+      const name = nonEmptyString(rawView.name);
+      const query = nonEmptyString(rawView.query);
+      if (!name || !query || seen.has(name.toLowerCase())) continue;
+      const columns = stringList(rawView.columns);
+      model.views = [...(model.views ?? []), { name, ...(columns.length > 0 ? { columns } : {}), query }];
+      seen.add(name.toLowerCase());
+    }
+  }
+
+  // 3) الـTriggers — تُنقل كما هي (rawSql) لأن تعريفاتها تعتمد على لهجة المحرّك
+  if (Array.isArray(parsed.triggers)) {
+    const seen = new Set((model.triggers ?? []).map(trigger => trigger.name.toLowerCase()));
+    for (const rawTrigger of parsed.triggers) {
+      if (!isRecord(rawTrigger)) continue;
+      const name = nonEmptyString(rawTrigger.name);
+      const rawSql = nonEmptyString(rawTrigger.rawSql);
+      if (!name || !rawSql || seen.has(name.toLowerCase())) continue;
+      const table = nonEmptyString(rawTrigger.table);
+      const timing = nonEmptyString(rawTrigger.timing);
+      const event = nonEmptyString(rawTrigger.event);
+      model.triggers = [
+        ...(model.triggers ?? []),
+        {
+          name,
+          ...(table ? { table } : {}),
+          ...(timing ? { timing } : {}),
+          ...(event ? { event } : {}),
+          rawSql,
+        },
+      ];
+      seen.add(name.toLowerCase());
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // المحرّك الرئيسي
 // ---------------------------------------------------------------------------
 
-function parseDiagramXml(xml: string, model: ErModel, pageIndex: number): void {
+function parseDiagramXml(xml: string, model: ErModel, pageIndex: number, objectsPayloads: string[]): void {
   const cells = parseCells(xml);
   if (cells.length === 0) return;
+
+  // خلية بيانات كائنات السكيما (تُكتب مخفية خارج اللوحة) — تُجمَع وتُطبَّق بعد كل الصفحات
+  for (const cell of cells) {
+    const decoded = decodeEntities(cell.value);
+    if (decoded.startsWith(SCHEMA_OBJECTS_PREFIX)) objectsPayloads.push(decoded.slice(SCHEMA_OBJECTS_PREFIX.length));
+  }
 
   const cellMap = new Map<string, RawCell>();
   for (const cell of cells) if (cell.id) cellMap.set(cell.id, cell);
@@ -749,6 +890,7 @@ export async function parseDrawioFile(fileText: string): Promise<ErModel> {
 
   const diagrams = splitDiagrams(outerXml);
   const pages = diagrams.length > 0 ? diagrams : [{ name: '', content: outerXml }];
+  const objectsPayloads: string[] = [];
 
   for (let i = 0; i < pages.length; i++) {
     const { name, content } = pages[i];
@@ -760,8 +902,10 @@ export async function parseDrawioFile(fileText: string): Promise<ErModel> {
       model.warnings.push(`Page "${name || i + 1}": skipped — ${(err as Error).message}`);
       continue;
     }
-    parseDiagramXml(innerXml, model, i);
+    parseDiagramXml(innerXml, model, i, objectsPayloads);
   }
+
+  for (const payload of objectsPayloads) applySchemaObjectsPayload(model, payload);
 
   if (model.tables.length === 0) {
     throw new DrawioParseError(

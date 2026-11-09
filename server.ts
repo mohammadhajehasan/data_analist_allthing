@@ -124,6 +124,7 @@ const loginRateLimiter = createRateLimiter('login', 10, 5 * 60 * 1000);       //
 const registerRateLimiter = createRateLimiter('register', 5, 60 * 60 * 1000); // 5 حسابات جديدة / ساعة لكل IP
 const fetchDataRateLimiter = createRateLimiter('fetch-data', 30, 5 * 60 * 1000); // بروكسي البيانات: 30 طلب / 5 دقائق لكل IP
 const ollamaProxyRateLimiter = createRateLimiter('ollama-proxy', 120, 5 * 60 * 1000); // بروكسي Ollama: 120 طلب / 5 دقائق
+const backendGenerationRateLimiter = createRateLimiter('backend-generation', 30, 5 * 60 * 1000); // توليد المشاريع: 30 / 5 دقائق
 
 // Patterns that indicate a placeholder / demo API key mistakenly left in configuration
 const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemini|placeholder|xxxx/i;
@@ -1096,6 +1097,517 @@ app.get('/api/ai/quota', async (req, res) => {
   const callerId = caller ? `user:${caller.id}` : `ip:${req.ip || 'unknown'}`;
   const status = await getAiQuotaStatus({ callerId, limit });
   res.json({ ...status, unlimited: limit <= 0, authenticated: Boolean(caller) });
+});
+
+// ---------------------------------------------------------------------------
+// Backend Factory — AI seed enrichment + PRD §7 generation contract
+// ---------------------------------------------------------------------------
+
+type SeedColumnInfo = {
+  name: string;
+  type: string;
+  primaryKey?: boolean;
+  autoIncrement?: boolean;
+  nullable?: boolean;
+  foreignKey?: boolean;
+};
+type SeedTableInfo = { name: string; columns: SeedColumnInfo[] };
+
+type BackendGenerationStatus =
+  | 'queued' | 'parsing' | 'routing' | 'generating' | 'enriching'
+  | 'packaging' | 'ready' | 'failed';
+
+type BackendGenerationJob = {
+  id: string;
+  ownerId: string;
+  status: BackendGenerationStatus;
+  progress: number;
+  createdAt: number;
+  expiresAt: number;
+  sqlText: string;
+  projectName: string;
+  language: 'python' | 'php' | null;
+  aiEnrichment: boolean;
+  parsed: ReturnType<typeof parseSqlSchema>;
+  project?: BackendProject;
+  routingReason?: 'manual' | 'auto';
+  error?: { code: string; message: string; details?: unknown };
+};
+
+const backendGenerationJobs = new Map<string, BackendGenerationJob>();
+const backendGenerationIdempotency = new Map<string, { ownerId: string; jobId: string; createdAt: number }>();
+const BACKEND_MAX_SQL_BYTES = 2 * 1024 * 1024;
+const BACKEND_MAX_TABLES = 100;
+const BACKEND_JOB_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
+function cleanupBackendJobs(): void {
+  const now = Date.now();
+  for (const [id, job] of backendGenerationJobs) {
+    if (job.expiresAt <= now) backendGenerationJobs.delete(id);
+  }
+  for (const [key, entry] of backendGenerationIdempotency) {
+    if (now - entry.createdAt > BACKEND_JOB_TTL_MS) backendGenerationIdempotency.delete(key);
+  }
+}
+
+function generationError(
+  res: express.Response,
+  status: number,
+  code: string,
+  message: string,
+  details?: unknown
+): express.Response {
+  return res.status(status).json({ error: { code, message, ...(details === undefined ? {} : { details }) } });
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+async function enrichSeedRowsWithAi(input: {
+  tables: SeedTableInfo[];
+  provider?: string;
+  model?: string;
+  apiKey?: string;
+  language?: 'ar' | 'en';
+}): Promise<{ seedRows: AiSeedRows; notes: string[]; modelUsed: string }> {
+  const safeTables = input.tables.slice(0, BACKEND_MAX_TABLES).map(table => ({
+    name: String(table.name).slice(0, 64),
+    columns: table.columns.slice(0, 64).map(column => ({
+      name: String(column.name).slice(0, 64),
+      type: String(column.type || 'TEXT').slice(0, 48),
+      primaryKey: Boolean(column.primaryKey),
+      autoIncrement: Boolean(column.autoIncrement),
+      nullable: Boolean(column.nullable),
+      foreignKey: Boolean(column.foreignKey),
+    })),
+  })).filter(table => table.name && table.columns.length > 0);
+  if (safeTables.length === 0) return { seedRows: {}, notes: [], modelUsed: '' };
+
+  const schemaLines = safeTables.map(table => {
+    const columns = table.columns
+      .map(column => `${column.name} ${column.type}${column.primaryKey ? ' PK' : ''}${column.autoIncrement ? ' AUTO' : ''}${column.foreignKey ? ' FK' : ''}${column.nullable ? ' NULL' : ''}`)
+      .join(', ');
+    return `${table.name}(${columns})`;
+  });
+
+  const systemInstruction = [
+    'You generate realistic demo seed data for a SQL schema.',
+    'Return JSON only, no markdown and no SQL.',
+    'Shape: {"tables":{"<table>":[{ "<column>": <scalar> }]}, "notes":["short note"]}.',
+    'Use 3 rows per table. Only use the tables and columns listed.',
+    'Never include auto-increment primary-key columns. Values must be strings, numbers, booleans or null.',
+    'Use ISO dates (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS) and realistic, varied business data.',
+    'In "notes", add 2-3 short documentation or business-rule suggestions inferred from the relations — no code and no invented columns.',
+  ].join(' ');
+  const prompt = `Schema:\n${schemaLines.join('\n')}\n\nReturn the JSON object now.`;
+
+  const result = await withTimeout(
+    callUniversalAI({
+      provider: input.provider || 'gemini',
+      model: input.model || 'gemini-2.5-flash',
+      apiKey: input.apiKey,
+      prompt,
+      systemInstruction,
+      jsonMode: true,
+      maxTokens: 3000,
+    }),
+    25_000,
+    'AI seed enrichment timed out after 25s'
+  );
+
+  const parsed = parseJsonObject(result.text);
+  if (!parsed) return { seedRows: {}, notes: ['AI returned unreadable JSON — deterministic templates only.'], modelUsed: result.modelUsed };
+
+  const rawTables = parsed.tables && typeof parsed.tables === 'object' && !Array.isArray(parsed.tables)
+    ? parsed.tables as Record<string, unknown>
+    : parsed;
+  const seedRows: AiSeedRows = {};
+  for (const table of safeTables) {
+    const rows = rawTables[table.name];
+    if (!Array.isArray(rows)) continue;
+    const allowed = new Map(table.columns.map(column => [column.name, column]));
+    const cleanedRows: Record<string, string | number | boolean | null>[] = [];
+    for (const row of rows.slice(0, 5)) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      const cleaned: Record<string, string | number | boolean | null> = {};
+      for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
+        const column = allowed.get(key);
+        if (!column || column.autoIncrement) continue;
+        if (value === null) {
+          cleaned[key] = null;
+        } else if (typeof value === 'string') {
+          cleaned[key] = value;
+        } else if (typeof value === 'boolean') {
+          cleaned[key] = value;
+        } else if (typeof value === 'number' && Number.isFinite(value)) {
+          cleaned[key] = value;
+        }
+      }
+      if (Object.keys(cleaned).length > 0) cleanedRows.push(cleaned);
+    }
+    if (cleanedRows.length > 0) seedRows[table.name] = cleanedRows;
+  }
+
+  const notes = Array.isArray(parsed.notes)
+    ? parsed.notes.filter(note => typeof note === 'string').slice(0, 6).map(note => String(note).slice(0, 240))
+    : [];
+  notes.push(`AI seed generation used ${result.modelUsed}; rows are data-only and schema-filtered.`);
+  return { seedRows, notes, modelUsed: result.modelUsed };
+}
+
+function irToSeedTables(sql: string): SeedTableInfo[] {
+  const parsed = parseSqlSchema(sql, { maxTables: BACKEND_MAX_TABLES });
+  const model = analyzeBackendModel(parsed.model);
+  return model.tables.map(table => ({
+    name: table.name,
+    columns: table.columns.map(column => ({
+      name: column.name,
+      type: column.rawType || 'TEXT',
+      primaryKey: column.primaryKey,
+      autoIncrement: column.autoIncrement,
+      nullable: column.nullable,
+      foreignKey: Boolean(column.fk),
+    })),
+  }));
+}
+
+// AI enrichment is optional: failure must never block template generation.
+app.post('/api/backend/enrich', aiServerKeyQuotaGuard, async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const tables = Array.isArray(req.body?.tables) ? req.body.tables as SeedTableInfo[] : [];
+    if (tables.length === 0) return res.status(400).json({ error: 'tables is required' });
+    const enriched = await enrichSeedRowsWithAi({
+      tables,
+      provider: req.body?.provider,
+      model: req.body?.model,
+      apiKey: req.body?.apiKey,
+      language: req.body?.language,
+    });
+    return res.json({
+      available: Object.keys(enriched.seedRows).length > 0,
+      seedRows: enriched.seedRows,
+      notes: enriched.notes,
+      modelUsed: enriched.modelUsed,
+    });
+  } catch (error: any) {
+    return res.json({
+      available: false,
+      seedRows: {},
+      notes: [`AI enrichment unavailable: ${error?.message || 'unknown error'}`],
+      modelUsed: '',
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// فتح المشروع المولَّد في VS Code (محلي فقط)
+// ---------------------------------------------------------------------------
+// المتصفح لا يستطيع الكتابة على القرص، لذا يحفظ الخادم ملفات المشروع في
+// data/generated/<project>-<timestamp>/ ثم يعيد رابط vscode://file الذي يفتح
+// المجلد مباشرةً. مقيَّد بطلبات loopback وجلسة صالحة وحجم محدود — ولا ينفّذ
+// أي أمر shell أو ملف من محتوى الطلب.
+const LOCAL_PROJECTS_DIR = path.join(process.cwd(), 'data', 'generated');
+const LOCAL_PROJECT_MAX_FILES = 1200;
+const LOCAL_PROJECT_MAX_FILE_BYTES = 2 * 1024 * 1024;
+const LOCAL_PROJECT_MAX_TOTAL_BYTES = 16 * 1024 * 1024;
+
+function isLoopbackRequest(req: express.Request): boolean {
+  const raw = req.ip || req.socket.remoteAddress || '';
+  const address = raw.replace(/^::ffff:/, '');
+  return address === '127.0.0.1' || address === '::1';
+}
+
+function safeProjectSlug(value: unknown): string {
+  const base = typeof value === 'string' && value.trim() ? value : 'schema-api';
+  return base.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'schema-api';
+}
+
+function safeProjectFilePath(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const normalized = value.replace(/\\/g, '/');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized)) return null;
+  if (!/^[A-Za-z0-9._@+/-]+$/.test(normalized)) return null;
+  if (normalized.split('/').some(part => part === '..' || part === '')) return null;
+  return normalized;
+}
+
+app.post('/api/backend/materialize', backendGenerationRateLimiter, async (req, res) => {
+  if (!isLoopbackRequest(req)) {
+    return res.status(403).json({ error: 'LOCAL_ONLY', message: 'فتح VS Code متاح فقط عندما يعمل الخادم على جهازك. نزّل حزمة .zip بدلاً من ذلك.' });
+  }
+  const caller = await authUserFromReq(req);
+  if (!caller) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+
+  const incoming = Array.isArray(req.body?.files) ? req.body.files : [];
+  if (incoming.length === 0) return res.status(400).json({ error: 'FILES_REQUIRED', message: 'لا توجد ملفات لحفظها.' });
+  if (incoming.length > LOCAL_PROJECT_MAX_FILES) return res.status(413).json({ error: 'TOO_MANY_FILES', message: `الحد ${LOCAL_PROJECT_MAX_FILES} ملفاً.` });
+
+  const prepared: { relativePath: string; content: string }[] = [];
+  let totalBytes = 0;
+  for (const item of incoming) {
+    const relativePath = safeProjectFilePath(item?.path);
+    if (!relativePath) return res.status(400).json({ error: 'INVALID_PATH', message: 'مسار ملف غير مسموح.' });
+    if (typeof item?.content !== 'string') return res.status(400).json({ error: 'INVALID_CONTENT', message: `محتوى غير صالح: ${relativePath}` });
+    const bytes = Buffer.byteLength(item.content, 'utf8');
+    if (bytes > LOCAL_PROJECT_MAX_FILE_BYTES) return res.status(413).json({ error: 'FILE_TOO_LARGE', message: `الملف ${relativePath} يتجاوز 2 ميغابايت.` });
+    totalBytes += bytes;
+    if (totalBytes > LOCAL_PROJECT_MAX_TOTAL_BYTES) return res.status(413).json({ error: 'PROJECT_TOO_LARGE', message: `حجم المشروع يتجاوز ${LOCAL_PROJECT_MAX_TOTAL_BYTES / (1024 * 1024)} ميغابايت.` });
+    prepared.push({ relativePath, content: item.content });
+  }
+
+  const folderName = `${safeProjectSlug(req.body?.projectName)}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+  const projectDir = path.join(LOCAL_PROJECTS_DIR, folderName);
+  try {
+    await fs.promises.mkdir(projectDir, { recursive: true });
+    for (const file of prepared) {
+      const target = path.join(projectDir, ...file.relativePath.split('/'));
+      await fs.promises.mkdir(path.dirname(target), { recursive: true });
+      await fs.promises.writeFile(target, file.content, 'utf8');
+    }
+  } catch (error) {
+    await fs.promises.rm(projectDir, { recursive: true, force: true }).catch(() => undefined);
+    console.error('materialize project failed', error);
+    return res.status(500).json({ error: 'WRITE_FAILED', message: 'تعذّر حفظ ملفات المشروع على القرص.' });
+  }
+
+  const absolute = path.resolve(projectDir);
+  const normalized = absolute.replace(/\\/g, '/');
+  const uriPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  const vscodeUri = `vscode://file${encodeURI(uriPath)}${uriPath.endsWith('/') ? '' : '/'}`;
+  return res.json({ path: absolute, uri: vscodeUri, files: prepared.length });
+});
+
+// PRD §7 — POST /api/v1/generations
+app.post('/api/v1/generations', backendGenerationRateLimiter, (req, res, next) => {
+  // الحصة تُستهلك فقط عند الإثراء الفعلي، لا لكل توليد قوالب.
+  if (req.body?.ai_enrichment === true) return aiServerKeyQuotaGuard(req, res, next);
+  return next();
+}, async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة — سجّل الدخول أولاً');
+  cleanupBackendJobs();
+
+  const sqlText = typeof req.body?.sql_text === 'string' ? req.body.sql_text : '';
+  if (!sqlText.trim()) return generationError(res, 400, 'INVALID_SQL', 'أدخل كود SQL يحتوي على CREATE TABLE واحد على الأقل.');
+  if (Buffer.byteLength(sqlText, 'utf8') > BACKEND_MAX_SQL_BYTES) {
+    return generationError(res, 413, 'SCHEMA_TOO_LARGE', 'حجم SQL يتجاوز 2 ميغابايت — قسّم السكيما إلى أجزاء.');
+  }
+
+  const idempotencyKey = String(req.headers['idempotency-key'] || '').slice(0, 160);
+  if (idempotencyKey) {
+    const existing = backendGenerationIdempotency.get(`${caller.id}:${idempotencyKey}`);
+    if (existing && backendGenerationJobs.has(existing.jobId)) {
+      return res.status(202).json({ id: existing.jobId, status: backendGenerationJobs.get(existing.jobId)!.status, idempotent: true });
+    }
+  }
+
+  const language = req.body?.language === 'python' || req.body?.language === 'php' ? req.body.language : null;
+  const parsed = parseSqlSchema(sqlText, { maxTables: BACKEND_MAX_TABLES });
+  if (parsed.dialect.unsupported) {
+    return generationError(res, 422, 'UNSUPPORTED_DIALECT', `اللهجة ${parsed.dialect.unsupported} غير مدعومة. المدعوم: MySQL وPostgreSQL وSQLite.`);
+  }
+  if (parsed.stats.tables > BACKEND_MAX_TABLES) {
+    return generationError(res, 413, 'SCHEMA_TOO_LARGE', `عدد الجداول ${parsed.stats.tables} يتجاوز ${BACKEND_MAX_TABLES}.`, { tables: parsed.stats.tables });
+  }
+  if (!parsed.ok) {
+    return generationError(res, 400, 'INVALID_SQL', parsed.errors.join(' ') || 'تعذّر تحليل SQL.', { issues: parsed.issues.slice(0, 20) });
+  }
+  if (!language && parsed.dialect.needsConfirmation && req.body?.dialect !== parsed.dialect.dialect) {
+    return generationError(res, 422, 'NEEDS_DIALECT_CONFIRMATION', 'درجة ثقة اكتشاف اللهجة منخفضة — أكّد نوع قاعدة البيانات صراحةً.', {
+      detected: parsed.dialect.dialect,
+      confidence: parsed.dialect.confidence,
+      candidates: parsed.dialect.candidates,
+    });
+  }
+
+  const db = (['mysql', 'postgres', 'sqlite'] as const).includes(req.body?.dialect)
+    ? req.body.dialect as 'mysql' | 'postgres' | 'sqlite'
+    : parsed.dialect.dialect;
+  const aiEnrichment = req.body?.ai_enrichment === true;
+  const projectName = String(req.body?.project_name || 'schema-api').slice(0, 64);
+  const now = Date.now();
+  const jobId = `gen_${now.toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const job: BackendGenerationJob = {
+    id: jobId,
+    ownerId: caller.id,
+    status: 'parsing',
+    progress: 15,
+    createdAt: now,
+    expiresAt: now + BACKEND_JOB_TTL_MS,
+    sqlText,
+    projectName,
+    language,
+    aiEnrichment,
+    parsed,
+  };
+  backendGenerationJobs.set(jobId, job);
+  // Bound the in-memory store: drop the oldest finished jobs beyond 100.
+  if (backendGenerationJobs.size > 100) {
+    const finished = [...backendGenerationJobs.values()]
+      .filter(entry => entry.status === 'ready' || entry.status === 'failed')
+      .sort((a, b) => a.createdAt - b.createdAt);
+    while (backendGenerationJobs.size > 100 && finished.length > 0) {
+      backendGenerationJobs.delete(finished.shift()!.id);
+    }
+  }
+  if (idempotencyKey) backendGenerationIdempotency.set(`${caller.id}:${idempotencyKey}`, { ownerId: caller.id, jobId, createdAt: now });
+
+  try {
+    job.status = 'routing';
+    job.progress = 30;
+    const requestedFramework = (['fastapi', 'django', 'laravel', 'pdo'] as const).includes(req.body?.framework)
+      ? req.body.framework as BackendFramework
+      : null;
+    const framework = requestedFramework ?? (language === 'python' ? 'fastapi' : language === 'php' ? 'laravel' : 'auto');
+    job.routingReason = requestedFramework || language ? 'manual' : 'auto';
+
+    let aiSeedRows: AiSeedRows | undefined;
+    let aiNotes: string[] = [];
+    if (aiEnrichment) {
+      job.status = 'enriching';
+      job.progress = 55;
+      try {
+        const enriched = await enrichSeedRowsWithAi({
+          tables: irToSeedTables(sqlText),
+          provider: req.body?.provider,
+          model: req.body?.model,
+          apiKey: req.body?.apiKey,
+        });
+        aiSeedRows = enriched.seedRows;
+        aiNotes = enriched.notes;
+      } catch (error: any) {
+        aiNotes = [`AI enrichment unavailable: ${error?.message || 'unknown error'}`];
+      }
+    }
+
+    job.status = 'generating';
+    job.progress = 75;
+    job.project = generateBackendProject({
+      model: parsed.model,
+      projectName,
+      options: { db, framework, mode: 'full', auth: false, aiSeedRows, aiNotes },
+    });
+    job.status = 'packaging';
+    job.progress = 95;
+    job.status = 'ready';
+    job.progress = 100;
+    return res.status(202).json({ id: jobId, status: job.status, progress: job.progress });
+  } catch (error: any) {
+    job.status = 'failed';
+    job.progress = 100;
+    job.error = { code: 'GENERATION_FAILED', message: error?.message || 'تعذّر توليد المشروع' };
+    return generationError(res, 500, 'GENERATION_FAILED', job.error.message);
+  }
+});
+
+function findGenerationJob(req: express.Request, res: express.Response): BackendGenerationJob | null {
+  cleanupBackendJobs();
+  const job = backendGenerationJobs.get(String(req.params.id));
+  if (!job) {
+    generationError(res, 404, 'NOT_FOUND', 'لا توجد عملية توليد بهذا المعرّف (قد تكون انتهت مدة احتفاظها).');
+    return null;
+  }
+  return job;
+}
+
+app.get('/api/v1/generations/:id', async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة');
+  const job = findGenerationJob(req, res);
+  if (!job) return;
+  if (job.ownerId !== caller.id && caller.role !== 'admin') return generationError(res, 403, 'FORBIDDEN', 'هذه العملية لا تنتمي لحسابك.');
+  return res.json({
+    id: job.id,
+    status: job.status,
+    progress: job.progress,
+    createdAt: new Date(job.createdAt).toISOString(),
+    routing: {
+      reason: job.routingReason,
+      language: job.project?.language ?? job.language,
+      framework: job.project?.framework ?? null,
+      database: job.project?.db ?? job.parsed.dialect.dialect,
+    },
+    stats: job.project?.stats ?? job.parsed.stats,
+    warnings: job.project?.warnings ?? job.parsed.issues.map(issue => issue.message),
+    files: job.project?.files.map(file => ({ path: file.path, language: file.language, source: file.source ?? 'template' })) ?? [],
+    error: job.error,
+  });
+});
+
+app.get('/api/v1/generations/:id/preview', async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة');
+  const job = findGenerationJob(req, res);
+  if (!job) return;
+  if (job.ownerId !== caller.id && caller.role !== 'admin') return generationError(res, 403, 'FORBIDDEN', 'هذه العملية لا تنتمي لحسابك.');
+  return res.json({ ...summarizeParsedSchema(job.parsed), issues: job.parsed.issues.slice(0, 40) });
+});
+
+app.get('/api/v1/generations/:id/files', async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة');
+  const job = findGenerationJob(req, res);
+  if (!job) return;
+  if (job.ownerId !== caller.id && caller.role !== 'admin') return generationError(res, 403, 'FORBIDDEN', 'هذه العملية لا تنتمي لحسابك.');
+  const requested = String(req.query.path || '');
+  if (!requested) return res.json({ files: job.project?.files.map(file => ({ path: file.path, language: file.language, source: file.source ?? 'template' })) ?? [] });
+  const file = job.project?.files.find(entry => entry.path === requested);
+  if (!file) return generationError(res, 404, 'NOT_FOUND', 'الملف غير موجود.');
+  return res.json(file);
+});
+
+app.get('/api/v1/generations/:id/download', async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة');
+  const job = findGenerationJob(req, res);
+  if (!job) return;
+  if (job.ownerId !== caller.id && caller.role !== 'admin') return generationError(res, 403, 'FORBIDDEN', 'هذه العملية لا تنتمي لحسابك.');
+  if (!job.project) return generationError(res, 409, 'NOT_READY', 'العملية ليست جاهزة للتحميل بعد.');
+  const archive = createZip(job.project.files.map(file => ({ path: file.path, content: file.content })));
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${job.project.projectName}-${job.project.framework}-backend.zip"`);
+  return res.send(Buffer.from(archive));
+});
+
+app.post('/api/v1/sql/validate', backendGenerationRateLimiter, async (req, res) => {
+  const caller = await authUserFromReq(req);
+  if (!caller) return generationError(res, 401, 'UNAUTHENTICATED', 'جلسة غير صالحة — سجّل الدخول أولاً');
+  const sqlText = typeof req.body?.sql_text === 'string' ? req.body.sql_text : '';
+  if (!sqlText.trim()) return generationError(res, 400, 'INVALID_SQL', 'أدخل كود SQL أولاً.');
+  if (Buffer.byteLength(sqlText, 'utf8') > BACKEND_MAX_SQL_BYTES) {
+    return generationError(res, 413, 'SCHEMA_TOO_LARGE', 'حجم SQL يتجاوز 2 ميغابايت.');
+  }
+  const parsed = parseSqlSchema(sqlText, { maxTables: BACKEND_MAX_TABLES });
+  return res.json({
+    ok: parsed.ok,
+    dialect: parsed.dialect,
+    stats: parsed.stats,
+    issues: parsed.issues.slice(0, 60),
+    errors: parsed.errors,
+    preview: summarizeParsedSchema(parsed),
+  });
 });
 
 app.get('/api/ai/ollama/tags', async (req, res) => {
@@ -3163,6 +3675,15 @@ import {
   listGroupEmailInvites, revokeEmailInvite, startEmailInviteReminderScheduler,
   emailProviderDiagnostics,
 } from './server/emailInvites';
+import { parseSqlSchema, summarizeParsedSchema } from './src/utils/sqlSchemaParser';
+import {
+  analyzeBackendModel,
+  generateBackendProject,
+  type AiSeedRows,
+  type BackendFramework,
+  type BackendProject,
+} from './src/utils/backendCodegen';
+import { createZip } from './src/utils/zipStore';
 
 function authUserFromReq(req: express.Request) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');

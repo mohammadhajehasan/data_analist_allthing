@@ -27,6 +27,7 @@ const AdvancedModelingPage = lazy(() => import('./features/datamodeling/Advanced
 const UserGuidePage = lazy(() => import('./features/help/UserGuidePage').then(m => ({ default: m.UserGuidePage })));
 const WorkflowStudio = lazy(() => import('./features/workflow/WorkflowStudio').then(m => ({ default: m.WorkflowStudio })));
 const SchemaDesignerPage = lazy(() => import('./features/schemadesigner/SchemaDesignerPage').then(m => ({ default: m.SchemaDesignerPage })));
+const BackendFactoryPage = lazy(() => import('./features/schemadesigner/BackendFactoryPage'));
 const DiscussionsPage = lazy(() => import('./features/discussions/DiscussionsPage').then(m => ({ default: m.DiscussionsPage })));
 const JoinGroupPage = lazy(() => import('./features/discussions/JoinGroupPage').then(m => ({ default: m.JoinGroupPage })));
 const ContactDeveloperPage = lazy(() => import('./features/developer/ContactDeveloperPage').then(m => ({ default: m.ContactDeveloperPage })));
@@ -43,7 +44,9 @@ const ViewFallback: React.FC = () => (
 import { ToastContainer } from './components/common/ToastContainer';
 import { AppErrorBoundary } from './components/common/ErrorBoundary';
 import {
+  ANALYTICS_EVENTS,
   captureAnalyticsEvent,
+  captureFeatureViewed,
   identifyAnalyticsUser,
   initAnalytics,
   resetAnalytics,
@@ -106,7 +109,7 @@ const MainLayout: React.FC = () => {
   // Product-analytics journey: every workspace screen the user opens is one
   // funnel step after sign-in (onboarding → datasets → dashboards → NL2SQL ...).
   useEffect(() => {
-    captureAnalyticsEvent('feature_viewed', { feature: activeTab });
+    captureFeatureViewed(activeTab);
   }, [activeTab]);
 
   // Global Zen Mode open event (dispatched from the Header moon button)
@@ -150,6 +153,8 @@ const MainLayout: React.FC = () => {
         return <WorkflowStudio />;
       case 'schemadesigner':
         return <SchemaDesignerPage />;
+      case 'backend':
+        return <BackendFactoryPage />;
       case 'developer':
         return <ContactDeveloperPage />;
       case 'suggestions':
@@ -255,7 +260,7 @@ export default function App() {
       const token = getStoredToken();
       // إبطال الجلسة على الخادم ثم مسح الحالة المحلية — LoginPage يظهر تلقائياً
       if (token) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-      captureAnalyticsEvent('sign_out', { reason: 'idle_timeout' });
+      captureAnalyticsEvent(ANALYTICS_EVENTS.signOut, { reason: 'idle_timeout' });
       resetAnalytics();
       clearStoredToken();
       setAuthUser(null);
@@ -354,7 +359,7 @@ export default function App() {
             name: user.name,
             role: user.role,
           });
-          captureAnalyticsEvent('sign_in_completed', { method: 'password' });
+          captureAnalyticsEvent(ANALYTICS_EVENTS.signInCompleted, { method: 'password' });
           setAuthUser(user);
           setAuthState('authed');
         }}
@@ -385,7 +390,7 @@ export default function App() {
     <AppProvider authUser={authUser} onLogout={() => {
       const token = getStoredToken();
       if (token) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-      captureAnalyticsEvent('sign_out', { reason: 'user_initiated' });
+      captureAnalyticsEvent(ANALYTICS_EVENTS.signOut, { reason: 'user_initiated' });
       resetAnalytics();
       clearStoredToken();
       setAuthUser(null);

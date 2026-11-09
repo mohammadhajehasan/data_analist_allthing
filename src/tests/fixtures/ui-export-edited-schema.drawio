@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="freebuff-schema-designer-export">
+  <diagram id="sd-page-0" name="Shop ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="users" value="users" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="users-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="users-r1" value="full_name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="users-r2" value="email : VARCHAR(255)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="users-r3" value="created_at : TIMESTAMP" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="users">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="products" value="products" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="40" width="220" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="products-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="products-r1" value="title : VARCHAR(200)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="products-r2" value="price : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="products-r3" value="in_stock : BOOLEAN" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="products">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="orders" value="orders" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="560" y="40" width="220" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="orders-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="orders-r1" value="total_amount : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="orders-r2" value="status : VARCHAR(32)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="orders">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="order_items" value="order_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="220" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="order_items-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="order_items-r1" value="order_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="order_items-r2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="order_items-r3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="order_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="manual-t1" value="suppliers" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="420" width="220" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="manual-t1-r0" value="id : INT #pk #unique" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="manual-t1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="manual-t1-r1" value="supplier_name : VARCHAR(120)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="manual-t1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="manual-t1-r2" value="contact_email : VARCHAR(255) #unique" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="manual-t1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="sd-e0" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="users" target="orders">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-e1" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="orders" target="order_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-e2" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="products" target="order_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sd-page-1" name="Billing ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="invoices" value="invoices" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="invoices-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoices-r1" value="order_id : INT #fk" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoices-r2" value="amount : DECIMAL(10,2)" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoices-r3" value="paid : BOOLEAN" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoices">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items" value="invoice_items" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="40" width="220" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items-r0" value="id : INT #pk" style="shape=tableRow;horizontal=0;startSize=0;fontStyle=1;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items-r1" value="invoice_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items-r2" value="product_id : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="invoice_items-r3" value="quantity : INT" style="shape=tableRow;horizontal=0;startSize=0;" vertex="1" parent="invoice_items">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="sd-e0" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;startArrow=ERone;endArrow=ERmany;" edge="1" parent="1" source="invoices" target="invoice_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

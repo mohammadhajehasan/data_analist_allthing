@@ -36,6 +36,8 @@ import { exportDrawioXml } from '../../utils/drawioExporter';
 import { inferColumnConstraints } from '../../utils/constraintInference';
 import { generateDdl, DEFAULT_DDL_OPTIONS, DdlResult, SqlDialect } from '../../utils/ddlGenerator';
 import { ErdPreview } from './ErdPreview';
+import BackendFactoryPanel from './BackendFactoryPanel';
+import SchemaObjectsPanel from './SchemaObjectsPanel';
 
 /** مخطط تجريبي ثالث بنمط UML العمودي — مستطيلات بسيطة، تسطير HTML للمفتاح الأساسي، وأعلام (fk) وسط التسمية */
 const EXAMPLE_UML_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1481,6 +1483,11 @@ export const SchemaDesignerPage: React.FC = () => {
             </div>
           )}
 
+          {/* محرّر كائنات السكيما: فهارس · عروض · Triggers مع معاينة SQL مباشرة */}
+          {pageModel && (
+            <SchemaObjectsPanel model={pageModel} dialect={dialect} isAr={isAr} onChange={withParsedModel} />
+          )}
+
           {/* تحذيرات التحليل */}
           {parsedModel.warnings.length > 0 && (
             <div className="bg-[#f1c21b]/10 border border-[#f1c21b]/30 p-3 flex items-start gap-2">
@@ -1546,6 +1553,11 @@ export const SchemaDesignerPage: React.FC = () => {
       )}
 
       {/* ============== Generated code ============== */}
+      {/* ============== Backend Factory: السكيمّا → مشروع كامل ============== */}
+      {pageModel && (
+        <BackendFactoryPanel model={pageModel} dialect={dialect} fileName={fileName} />
+      )}
+
       {generated && (
         <div className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)]">
           <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)]">
