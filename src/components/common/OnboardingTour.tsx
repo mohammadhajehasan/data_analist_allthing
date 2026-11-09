@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { captureAnalyticsEvent } from '../../services/analyticsService';
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from '../../services/analyticsService';
 import { TourStep } from '../../types';
 import {
   Sparkles,
@@ -131,7 +131,7 @@ export const OnboardingTour: React.FC = () => {
   useEffect(() => {
     if (isTourOpen && !tourStartedRef.current) {
       tourStartedRef.current = true;
-      captureAnalyticsEvent('onboarding_tour_started', { totalSteps: tourSteps.length });
+      captureAnalyticsEvent(ANALYTICS_EVENTS.onboardingStarted, { totalSteps: tourSteps.length });
     }
   }, [isTourOpen]);
 
@@ -165,7 +165,7 @@ export const OnboardingTour: React.FC = () => {
   if (!isTourOpen) return null;
 
   const finishTour = (outcome: 'completed' | 'skipped') => {
-    captureAnalyticsEvent(outcome === 'completed' ? 'onboarding_tour_completed' : 'onboarding_tour_skipped', {
+    captureAnalyticsEvent(outcome === 'completed' ? ANALYTICS_EVENTS.onboardingCompleted : ANALYTICS_EVENTS.onboardingSkipped, {
       step: currentStepIndex + 1,
       totalSteps: tourSteps.length,
     });

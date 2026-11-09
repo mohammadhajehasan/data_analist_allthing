@@ -11,6 +11,9 @@
  *    handles user datasets, so only the explicit events below leave the browser.
  *  - Analytics must never break the product — every SDK call is guarded.
  */
+// The SDK is bundled eagerly, but every call in this module sits behind the
+// project-key and consent checks below, so an unconfigured build never talks
+// to PostHog.
 import posthog from 'posthog-js';
 
 const CONSENT_STORAGE_KEY = 'carbon_analytics_consent';
@@ -25,10 +28,32 @@ export interface AnalyticsUser {
   role?: string;
 }
 
+/**
+ * The product journey PostHog funnels and retention insights are built on:
+ * sign-in → onboarding → feature adoption → sign-out.
+ *
+ * Names are part of the analytics contract: renaming one silently breaks every
+ * funnel/retention insight already configured in PostHog, so add new steps
+ * here instead of renaming existing ones.
+ */
+export const ANALYTICS_EVENTS = {
+  signInCompleted: 'sign_in_completed',
+  signOut: 'sign_out',
+  featureViewed: 'feature_viewed',
+  onboardingStarted: 'onboarding_tour_started',
+  onboardingCompleted: 'onboarding_tour_completed',
+  onboardingSkipped: 'onboarding_tour_skipped',
+  consentGranted: 'analytics_consent_granted',
+} as const;
+
+export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
+
 const projectKey = (import.meta.env.VITE_POSTHOG_KEY || '').trim();
 const apiHost = (import.meta.env.VITE_POSTHOG_HOST || '').trim() || DEFAULT_API_HOST;
 
 let initialized = false;
+/** Last signed-in user, kept so consent given mid-session can still link events. */
+let pendingUser: AnalyticsUser | null = null;
 
 /** True when a PostHog project key was baked in at build time. */
 export function isAnalyticsConfigured(): boolean {
@@ -71,7 +96,11 @@ export function initAnalytics(): void {
   }
 }
 
-/** Record the analytics choice and apply it to the running client. */
+/**
+ * Record the analytics choice and apply it to the running client. Granting
+ * consent mid-session links the events captured from then on to the account
+ * the user already signed in with, so funnels do not lose its first steps.
+ */
 export function setAnalyticsConsent(decision: AnalyticsConsent): void {
   try {
     localStorage.setItem(CONSENT_STORAGE_KEY, decision);
@@ -87,7 +116,8 @@ export function setAnalyticsConsent(decision: AnalyticsConsent): void {
         /* ignore */
       }
     }
-    captureAnalyticsEvent('analytics_consent_granted');
+    if (pendingUser) identifyAnalyticsUser(pendingUser);
+    captureAnalyticsEvent(ANALYTICS_EVENTS.consentGranted);
     return;
   }
   if (initialized) {
@@ -104,7 +134,9 @@ export function setAnalyticsConsent(decision: AnalyticsConsent): void {
  * this call (the anonymous session) into the person, so funnels start at sign-in.
  */
 export function identifyAnalyticsUser(user: AnalyticsUser): void {
-  if (!isAnalyticsConfigured() || !user.id || getAnalyticsConsent() !== 'granted') return;
+  if (!user.id) return;
+  pendingUser = user;
+  if (!isAnalyticsConfigured() || getAnalyticsConsent() !== 'granted') return;
   initAnalytics();
   const personProperties: Record<string, string> = {};
   if (user.email) personProperties.email = user.email;
@@ -113,6 +145,9 @@ export function identifyAnalyticsUser(user: AnalyticsUser): void {
   try {
     posthog.identify(user.id, {
       $set: personProperties,
+      // Retain the first role ever seen: retention and cohort insights stay
+      // stable when an account is later promoted to admin.
+      $set_once: user.role ? { initial_role: user.role } : {},
       role: user.role,
     });
   } catch {
@@ -122,20 +157,31 @@ export function identifyAnalyticsUser(user: AnalyticsUser): void {
 
 /** Capture one product event. No-ops when analytics is not configured/consented. */
 export function captureAnalyticsEvent(
-  event: string,
+  event: AnalyticsEvent,
   properties: Record<string, unknown> = {},
 ): void {
   if (!isAnalyticsConfigured() || getAnalyticsConsent() !== 'granted') return;
   initAnalytics();
   try {
+    // `properties` only ever carries screen ids, outcomes and step numbers —
+    // never the contents of a user's dataset.
     posthog.capture(event, properties);
   } catch {
     /* ignore */
   }
 }
 
+/**
+ * One adoption-funnel step: the workspace screen the user opened. The screen id
+ * is the funnel breakdown key, so every navigation is one comparable event.
+ */
+export function captureFeatureViewed(feature: string): void {
+  captureAnalyticsEvent(ANALYTICS_EVENTS.featureViewed, { feature });
+}
+
 /** Clear the PostHog identity on sign-out / session expiry. */
 export function resetAnalytics(): void {
+  pendingUser = null;
   if (!initialized) return;
   try {
     posthog.reset();

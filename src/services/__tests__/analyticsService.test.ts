@@ -83,6 +83,20 @@ describe('analyticsService — PostHog consent gate', () => {
     expect(ph.identify).not.toHaveBeenCalled();
   });
 
+  it('links a user known before consent as soon as consent is granted', async () => {
+    const svc = await loadService();
+    svc.identifyAnalyticsUser({ id: 'user-2', role: 'admin' });
+    expect(ph.identify).not.toHaveBeenCalled();
+
+    svc.setAnalyticsConsent('granted');
+
+    expect(ph.identify).toHaveBeenCalledWith(
+      'user-2',
+      expect.objectContaining({ role: 'admin' }),
+    );
+    expect(ph.capture).toHaveBeenCalledWith('analytics_consent_granted', {});
+  });
+
   it('clears the PostHog identity on sign-out', async () => {
     const svc = await loadService();
     svc.initAnalytics();
