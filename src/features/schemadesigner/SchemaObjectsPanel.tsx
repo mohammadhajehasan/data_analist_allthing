@@ -767,6 +767,29 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
                     <p className="text-[10px] text-[var(--cds-text-02)] leading-snug mt-0.5">
                       {isAr ? suggestion.detailAr : suggestion.detailEn}
                     </p>
+                    {suggestion.auditPairs && suggestion.auditPairs.length > 0 && (
+                      <div className="mt-1 border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] px-2 py-1">
+                        <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
+                          {isAr ? 'أزواج قبل/بعد المخططة' : 'Mapped before/after pairs'}
+                        </div>
+                        <ul className="mt-0.5 space-y-0.5">
+                          {suggestion.auditPairs.map(pair => (
+                            <li key={pair.sourceColumn} className="text-[10px] font-mono text-[var(--cds-text-02)]" dir="ltr">
+                              <span className="text-[var(--cds-text-03)]">{pair.sourceColumn}</span>
+                              <span className="text-[var(--cds-text-03)]"> · </span>
+                              <span className="text-[#fa4d56]">{pair.oldColumn ?? '—'}</span>
+                              <span className="text-[var(--cds-text-03)]"> → </span>
+                              <span className="text-[#42be65]">{pair.newColumn ?? '—'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-0.5 text-[9px] font-mono text-[var(--cds-text-03)]">
+                          {isAr
+                            ? 'العمود المصدر ثم قيمته السابقة واللاحقة — يُكتب NULL للجانب الذي لا يوفّره الحدث.'
+                            : 'Source column, then its previous and next value — NULL is written for the side an event cannot provide.'}
+                        </p>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => setPreviewSuggestionId(current => (current === suggestion.id ? null : suggestion.id))}

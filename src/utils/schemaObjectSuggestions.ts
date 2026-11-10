@@ -33,6 +33,13 @@ export type ObjectSuggestionKind = 'index' | 'view' | 'trigger' | 'index-cleanup
 /** سبب اقتراح حذف فهرس قائم */
 export type IndexCleanupReason = 'duplicate' | 'redundant' | 'unused';
 
+/** زوج قبل/بعد مخطّط في جدول السجل — يُعرض للمستخدم قبل التطبيق */
+export interface AuditPairPreview {
+  sourceColumn: string;
+  oldColumn?: string;
+  newColumn?: string;
+}
+
 export interface ObjectSuggestion {
   id: string;
   kind: ObjectSuggestionKind;
@@ -49,6 +56,8 @@ export interface ObjectSuggestion {
   /** فهرس قائم مقترَح حذفه (تكرار/تغطية/عدم استخدام) */
   dropIndex?: { tableId: string; name: string; columns: string[]; unique: boolean; position?: number };
   cleanupReason?: IndexCleanupReason;
+  /** أزواج قبل/بعد التي سيكتبها Trigger التدقيق — للمراجعة قبل التطبيق */
+  auditPairs?: AuditPairPreview[];
 }
 
 const NATURAL_KEY_TOKENS = ['email', 'username', 'slug', 'sku', 'isbn', 'iban', 'uuid', 'handle', 'national_id'];
@@ -370,8 +379,10 @@ interface AuditColumnMap {
 interface AuditPlan {
   audit: ErTable;
   snapshots: AuditColumnMap[];
-  /** عدد الأزواج old_/new_ المخططة (للتوضيح في الواجهة) */
+  /** عدد أعمدة الأزواج المخططة (للتوضيح في الواجهة) */
   pairs: number;
+  /** مجموعة الأزواج مجمّعة حسب عمود المصدر — تُعرض في بطاقة الاقتراح */
+  pairGroups: AuditPairPreview[];
   actionColumn?: ErColumn;
   timeColumn?: ErColumn;
   actorColumn?: ErColumn;
@@ -480,9 +491,29 @@ function buildAuditPlan(model: ErModel, source: ErTable, dialect: SqlDialect): A
 
   const order = new Map(audit.columns.map((column, index) => [column.name.toLowerCase(), index]));
   snapshots.sort((a, b) => (order.get(a.auditColumn.toLowerCase()) ?? 0) - (order.get(b.auditColumn.toLowerCase()) ?? 0));
-  const pairs = snapshots.filter(snapshot => snapshot.role === 'old' || snapshot.role === 'new').length;
+  const pairSnapshots = snapshots.filter(snapshot => snapshot.role === 'old' || snapshot.role === 'new');
+  const grouped = new Map<string, AuditPairPreview>();
+  for (const snapshot of pairSnapshots) {
+    const key = snapshot.sourceColumn.toLowerCase();
+    const entry = grouped.get(key) ?? { sourceColumn: snapshot.sourceColumn };
+    if (snapshot.role === 'old') entry.oldColumn = snapshot.auditColumn;
+    else entry.newColumn = snapshot.auditColumn;
+    grouped.set(key, entry);
+  }
+  const sourceOrder = new Map(source.columns.map((column, index) => [column.name.toLowerCase(), index]));
+  const pairGroups = Array.from(grouped.values()).sort(
+    (a, b) => (sourceOrder.get(a.sourceColumn.toLowerCase()) ?? 0) - (sourceOrder.get(b.sourceColumn.toLowerCase()) ?? 0)
+  );
 
-  return { audit, snapshots, pairs, ...(actionColumn ? { actionColumn } : {}), ...(timeColumn ? { timeColumn } : {}), ...(actorColumn ? { actorColumn } : {}) };
+  return {
+    audit,
+    snapshots,
+    pairs: pairSnapshots.length,
+    pairGroups,
+    ...(actionColumn ? { actionColumn } : {}),
+    ...(timeColumn ? { timeColumn } : {}),
+    ...(actorColumn ? { actorColumn } : {}),
+  };
 }
 
 /** اسم أساس لا يتعارض مع أي من أسماء MySQL/SQLite الفرعية (`_ins/_upd/_del`) */
@@ -952,6 +983,7 @@ export function suggestSchemaObjects(model: ErModel, dialect: SqlDialect): Objec
         detailAr: `جدول السجل ${plan.audit.name} يطابق ${table.name}: يُسجّل ${partsAr} تلقائياً عند الإدراج والتعديل والحذف.`,
         detailEn: `History table ${plan.audit.name} matches ${table.name}: records ${partsEn} automatically on insert, update and delete.`,
         confidence: 0.55,
+        ...(plan.pairGroups.length > 0 ? { auditPairs: plan.pairGroups } : {}),
         trigger: {
           name: triggerName,
           table: table.name,

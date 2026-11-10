@@ -277,6 +277,7 @@ describe('schema object suggestions', () => {
     const audit = suggestSchemaObjects(base, 'mysql').find(item => item.id === 'trigger:orders:audit');
     expect(audit?.trigger?.name).toBe('trg_orders_audit');
     expect(audit?.trigger?.event).toBe('INSERT, UPDATE, DELETE');
+    expect(audit?.auditPairs).toBeUndefined();
     const sql = audit?.trigger?.rawSql ?? '';
     expect(sql).toContain('CREATE TRIGGER trg_orders_audit_ins AFTER INSERT ON orders');
     expect(sql).toContain('CREATE TRIGGER trg_orders_audit_upd AFTER UPDATE ON orders');
@@ -304,7 +305,9 @@ describe('schema object suggestions', () => {
 
   it('stores old_/new_ column pairs per event instead of a single snapshot', () => {
     const base = auditPairsModel();
-    const sql = suggestSchemaObjects(base, 'mysql').find(item => item.id === 'trigger:orders:audit')?.trigger?.rawSql ?? '';
+    const suggestion = suggestSchemaObjects(base, 'mysql').find(item => item.id === 'trigger:orders:audit');
+    expect(suggestion?.auditPairs).toEqual([{ sourceColumn: 'status', oldColumn: 'old_status', newColumn: 'new_status' }]);
+    const sql = suggestion?.trigger?.rawSql ?? '';
 
     // العمود status المكرر خارج القائمة لأن old_status/new_status يغطيانه
     expect(sql).toContain('INSERT INTO orders_history (order_id, old_status, new_status, action, changed_at)');
@@ -320,8 +323,10 @@ describe('schema object suggestions', () => {
   });
 
   it('recognises before_/after_ and previous_/current_ history pair prefixes', () => {
-    const beforeAfter = suggestSchemaObjects(auditPrefixedModel('before_status', 'after_status'), 'mysql')
-      .find(item => item.id === 'trigger:orders:audit')?.trigger?.rawSql ?? '';
+    const beforeAfterSuggestion = suggestSchemaObjects(auditPrefixedModel('before_status', 'after_status'), 'mysql')
+      .find(item => item.id === 'trigger:orders:audit');
+    expect(beforeAfterSuggestion?.auditPairs).toEqual([{ sourceColumn: 'status', oldColumn: 'before_status', newColumn: 'after_status' }]);
+    const beforeAfter = beforeAfterSuggestion?.trigger?.rawSql ?? '';
     expect(beforeAfter).toContain('orders_history (order_id, before_status, after_status, action, changed_at)');
     expect(beforeAfter).toContain("VALUES (NEW.id, NULL, NEW.status, 'INSERT', CURRENT_TIMESTAMP)");
     expect(beforeAfter).toContain("VALUES (NEW.id, OLD.status, NEW.status, 'UPDATE', CURRENT_TIMESTAMP)");
