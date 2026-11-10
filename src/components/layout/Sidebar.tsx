@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import {
   Compass,
@@ -246,9 +245,6 @@ export const Sidebar: React.FC = () => {
     return () => { document.body.style.overflow = prev; };
   }, [mobileOpen]);
 
-  // اتجاه الانزلاق: القائمة في جهة البداية (start) — يمين في RTL وشمال في LTR
-  const slideX = isAr ? '110%' : '-110%';
-
   return (
     <>
       {/* ============ العمود الثابت — الشاشات >= md فقط ============ */}
@@ -301,35 +297,25 @@ export const Sidebar: React.FC = () => {
       </aside>
 
       {/* ============ الموبايل — Drawer منزلق (< md) ============ */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="mobile-sidebar-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              onClick={() => setMobileOpen(false)}
-              aria-hidden="true"
-              data-testid="mobile-sidebar-backdrop"
-              className="fixed inset-0 z-[55] bg-black/50 md:hidden"
-            />
+      {/* الحالة المرئية لا تعتمد على اكتمال حركة JS: تعطّل rAF (تبويب في الخلفية/طاقة منخفضة)
+          كان يُبقي اللوحة عند translateX(110%) خارج الشاشة ويترك Backdrop شفافاً يعترض كل نقرة. */}
+      {mobileOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+            data-testid="mobile-sidebar-backdrop"
+            className="fixed inset-0 z-[55] bg-black/60 md:hidden"
+          />
 
-            {/* Drawer Panel */}
-            <motion.aside
-              key="mobile-sidebar-panel"
-              role="dialog"
-              aria-modal="true"
-              aria-label={language === 'ar' ? 'قائمة التنقل' : 'Navigation menu'}
-              initial={{ x: slideX }}
-              animate={{ x: 0 }}
-              exit={{ x: slideX }}
-              transition={{ type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.25 }}
-              data-testid="mobile-sidebar-drawer"
-              className="fixed inset-y-0 start-0 w-[280px] max-w-[85vw] z-[60] md:hidden flex flex-col bg-[var(--cds-sidebar-bg)] border-e border-[var(--cds-border-subtle)] shadow-2xl select-none"
-            >
+          {/* Drawer Panel */}
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label={language === 'ar' ? 'قائمة التنقل' : 'Navigation menu'}
+            data-testid="mobile-sidebar-drawer"
+            className="fixed inset-y-0 start-0 w-[280px] max-w-[85vw] z-[60] md:hidden flex flex-col bg-[var(--cds-sidebar-bg)] border-e border-[var(--cds-border-subtle)] shadow-2xl select-none animate-[mobile-drawer-in_0.25s_ease-out] motion-reduce:animate-none">
               {/* Drawer Header */}
               <div className="px-3 py-3 border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -368,10 +354,9 @@ export const Sidebar: React.FC = () => {
                   <span>{language === 'ar' ? 'الإعدادات والإدارة' : 'Settings & Admin'}</span>
                 </button>
               </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+          </aside>
+        </>
+      )}
     </>
   );
 };
