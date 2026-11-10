@@ -238,6 +238,10 @@ describe('FFT — المولّد على أصناف SQL الخمسة: كود بل
         columns: EXPECTED_DDL_COLUMNS,
         fks: EXPECTED_DDL_FKS,
         junctionTables: N_M_PAIRS,
+        // السكيما المولّدة في هذا الاختبار بلا فهارس/عروض/Triggers مخصصة
+        indexes: 0,
+        views: 0,
+        triggers: 0,
       });
 
       // 1) CREATE TABLE بالعدد الصحيح وبأسماء فريدة (حساسية الأسماء المحروّرة/المسبوقة بأرقام)

@@ -5,10 +5,16 @@
  *   • فهرس على كل عمود مفتاح أجنبي لا يغطيه فهرس/PK/UNIQUE — أهم مكسب أداء للـJOIN.
  *   • فهرس UNIQUE لأعمدة المفاتيح الطبيعية (email / username / slug / SKU …) غير المفروضة.
  *   • عرض «السجلات النشطة» للجداول التي فيها status أو is_active.
- *   • Trigger لتحديث updated_at تلقائياً — بصياغة كل محرك مدعوم.
+ *   • Trigger لتحديث updated_at عند التعديل، وTrigger لتعبئة created_at عند الإدراج
+ *     إن لم يكن له DEFAULT — بصياغة MySQL/SQLite/PostgreSQL.
+ *   • Trigger تدقيق تلقائي عندما يوجد جدول سجل/تاريخ مطابق للجدول المصدر (`orders_audit`,
+ *     `audit_orders`, `orders_history`, `orders_log`…) — بشرط إمكان تخطيط أعمدة الهوية
+ *     والحدث والوقت، وبلا أعمدة NOT NULL غير مغطاة قد تُفشل الإدراج. تُدعم أزواج
+ *     `old_`/`new_` (و`before_`/`after_` و`previous_`/`current_`) فتُسجّل القيمة السابقة واللاحقة لكل حقل.
  *   • تنظيف الفهارس: كشف التكرار التام، والبادئات البيسارية المغطاة بفهرس أطول،
  *     والفهرس الزائد على PK/UNIQUE، والفهرس المرتبط بأعمدة محذوفة أو غير المخدوم
- *     بأي علاقة/عرض معلن في النموذج — ويُقترح حذفه لا إضافته.
+ *     بأي علاقة أو بشرط WHERE/JOIN في عرض معلن (بتحليل الأسماء المستعارة لا مطابقة النص)
+ *     — ويُقترح حذفه لا إضافته.
  *
  * الاقتراح لا يُطبَّق تلقائياً: تعرضه الواجهة مع السبب ونسبة الثقة، ويقبله المستخدم
  * واحداً واحداً أو كلياً، ويستطيع تجاهله.
@@ -48,8 +54,22 @@ export interface ObjectSuggestion {
 const NATURAL_KEY_TOKENS = ['email', 'username', 'slug', 'sku', 'isbn', 'iban', 'uuid', 'handle', 'national_id'];
 const NON_INDEXABLE_TYPES = new Set(['text', 'clob', 'json', 'jsonb', 'blob', 'bytea', 'xml']);
 const UPDATED_COLUMN_TOKENS = ['updated_at', 'updatedat', 'modified_at', 'modifiedat', 'last_modified', 'lastmodified'];
+const CREATED_COLUMN_TOKENS = ['created_at', 'createdat', 'created_on', 'creation_date', 'creationdate', 'inserted_at', 'insertedat'];
+const TIMESTAMP_TYPE_BASES = ['timestamp', 'timestamptz', 'datetime', 'date'];
 const STATUS_COLUMN_TOKENS = ['status', 'state'];
 const BOOLEAN_ACTIVE_COLUMNS = ['is_active', 'active', 'is_enabled', 'enabled'];
+const AUDIT_SOURCE_NAME_RE = /(^|_)(audit|history|hist|log|journal|revision|version)(_|$)/i;
+const AUDIT_ACTION_COLUMNS = ['action', 'operation', 'op', 'event', 'event_type', 'change_type', 'audit_action'];
+const AUDIT_TIME_COLUMNS = [
+  'changed_at', 'occurred_at', 'event_time', 'logged_at', 'audit_time',
+  'created_at', 'modified_at', 'updated_at', 'timestamp',
+];
+const AUDIT_ACTOR_COLUMNS = ['changed_by', 'modified_by', 'updated_by', 'performed_by', 'actor', 'audit_user', 'db_user', 'changed_by_user'];
+/** بادئات أزواج القيمة السابقة/اللاحقة — كل مجموعة تُقابل جانباً واحداً من الحدث */
+const AUDIT_PAIR_PREFIXES: Record<string, 'old' | 'new'> = {
+  old: 'old', before: 'old', previous: 'old', prev: 'old', prior: 'old',
+  new: 'new', after: 'new', current: 'new',
+};
 
 function typeBase(type: string): string {
   return (type || '').trim().split(/[(\s]/)[0].toLowerCase();
@@ -122,25 +142,211 @@ function relationUsesColumns(model: ErModel, table: ErTable, columns: Set<string
   });
 }
 
-/** هل يذكر استعلام عرض معلن أعمدة هذا الفهرس؟ (SELECT * يعتبر تغطية لتفادي ادعاء عدم الاستخدام) */
+/* ---------------------------------------------------------------------------
+ * تحليل WHERE / JOIN في العروض المعلنة
+ *
+ * المطابقة النصية تسبّب إنذاراً كاذباً: كلمة في قائمة SELECT، أو اسم عمود في
+ * جدول آخر، أو نص بين علامتي اقتباس، كانت تُحسب «استخداماً» للفهرس. هنا نستخرج
+ * شروط WHERE وON/USING فقط، ثم نحلّ كل مرجع عبر اسم الجدول أو اسمه المستعار،
+ * ولا نقبل المرجع غير المؤهّل إلا إذا كان ينتمي إلى جدول واحد بلا لبس.
+ * ------------------------------------------------------------------------- */
+
+const SQL_IDENT = String.raw`[A-Za-z_\u0600-\u06FF][A-Za-z0-9_$\u0600-\u06FF]*`;
+const SQL_QUALIFIED_RE = new RegExp(`(${SQL_IDENT})\\s*\\.\\s*(${SQL_IDENT})`, 'g');
+const SQL_IDENT_RE = new RegExp(SQL_IDENT, 'g');
+const SQL_TABLE_REF_RE = new RegExp(
+  `\\b(?:from|join)\\s+(${SQL_IDENT})(?:\\s*\\.\\s*(${SQL_IDENT}))?\\s*(?:(?:as\\s+)?(${SQL_IDENT}))?`,
+  'gi'
+);
+
+/** كلمات قد تظهر بعد اسم جدول/عمود ولا تصلح كاسم مستعار أو عمود */
+const SQL_KEYWORDS = new Set([
+  'on', 'where', 'group', 'order', 'having', 'limit', 'union', 'join', 'left', 'right',
+  'full', 'inner', 'cross', 'natural', 'outer', 'using', 'as', 'and', 'or', 'not', 'null',
+  'is', 'in', 'between', 'like', 'ilike', 'true', 'false', 'case', 'when', 'then', 'else',
+  'end', 'distinct', 'exists', 'any', 'all', 'cast', 'asc', 'desc', 'offset', 'window',
+  'fetch', 'returning', 'with', 'lateral', 'select', 'from', 'set', 'values',
+]);
+
+/** أسماء دوال شائعة لا تُعدّ أعمدة إذا جاء بعدها قوس */
+const SQL_FUNCTIONS = new Set([
+  'date', 'timestamp', 'lower', 'upper', 'coalesce', 'concat', 'now', 'current_date',
+  'current_timestamp', 'length', 'trim', 'substring', 'count', 'sum', 'avg', 'min', 'max',
+  'extract', 'interval', 'round', 'abs', 'greatest', 'least', 'if', 'ifnull', 'nullif',
+]);
+
+function stripSqlNoise(sql: string): string {
+  return sql
+    // النصوص بين علامات اقتباس أحادية ليست أسماء أعمدة (والاقتباس المضاعف هروب)
+    .replace(/'(?:[^']|'')*'/g, "''")
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--[^\n]*/g, ' ')
+    // الاقتباس المزدوج: معرّف إن كان كلمة واحدة، وإلا فهو نص في لهجات مثل MySQL
+    .replace(/"([^"]*)"/g, (whole, inner: string) => (/^[A-Za-z_\u0600-\u06FF][\w$\u0600-\u06FF]*$/.test(inner) ? inner : ' '))
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\[([A-Za-z_\u0600-\u06FF][\w$\u0600-\u06FF]*)\]/g, '$1');
+}
+
+/** تقسيم نص على فاصل في المستوى الأعلى فقط (يتجاهل الفواصل داخل الأقواس) */
+function splitTopLevel(text: string, separator: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const character = text[i];
+    if (character === '(') depth++;
+    else if (character === ')') depth = Math.max(0, depth - 1);
+    else if (character === separator && depth === 0) {
+      parts.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(text.slice(start));
+  return parts;
+}
+
+interface ViewRelation {
+  /** اسم الجدول الأخير بعد أي schema */
+  table: string;
+  alias?: string;
+}
+
+/** جداول العرض وأسماؤها المستعارة — من FROM وJOIN وجداول FROM المفصولة بفواصل */
+function parseViewRelations(sql: string): ViewRelation[] {
+  const relations: ViewRelation[] = [];
+  const seen = new Set<string>();
+  const add = (rawTable: string | undefined, rawAlias: string | undefined): void => {
+    if (!rawTable) return;
+    const table = rawTable.toLowerCase();
+    if (SQL_KEYWORDS.has(table)) return;
+    const alias = rawAlias && !SQL_KEYWORDS.has(rawAlias.toLowerCase()) ? rawAlias.toLowerCase() : undefined;
+    const key = `${table}|${alias ?? ''}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    relations.push({ table, ...(alias ? { alias } : {}) });
+  };
+
+  // exec يدوي: إن التقطت الكلمة التالية كـ«alias» وهي JOIN/WHERE، نعيد المؤشر
+  // إلى بدايتها كي تبقى قابلة للمطابقة (وإلا ضاعت جداول JOIN بلا LEFT/RIGHT).
+  const tableRefRe = new RegExp(SQL_TABLE_REF_RE.source, 'gi');
+  let match: RegExpExecArray | null;
+  while ((match = tableRefRe.exec(sql)) !== null) {
+    const rawAlias = match[3];
+    add(match[2] ?? match[1], rawAlias);
+    if (rawAlias && SQL_KEYWORDS.has(rawAlias.toLowerCase())) {
+      tableRefRe.lastIndex = match.index + match[0].length - rawAlias.length;
+    }
+  }
+
+  const fromClauseRe = /\bfrom\b([\s\S]*?)(?=\bwhere\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|\blimit\b|\bunion\b|;|$)/gi;
+  for (const match of sql.matchAll(fromClauseRe)) {
+    for (const part of splitTopLevel(match[1], ',').slice(1)) {
+      const ref = part.match(new RegExp(`^\\s*(${SQL_IDENT})(?:\\s*\\.\\s*(${SQL_IDENT}))?\\s*(?:(?:as\\s+)?(${SQL_IDENT}))?`));
+      add(ref?.[2] ?? ref?.[1], ref?.[3]);
+    }
+  }
+
+  return relations;
+}
+
+/** شروط WHERE وON وUSING فقط — لا قوائم SELECT ولا ORDER BY */
+function viewPredicateClauses(sql: string): string[] {
+  const clauses: string[] = [];
+  const whereRe = /\bwhere\b([\s\S]*?)(?=\bgroup\s+by\b|\border\s+by\b|\bhaving\b|\blimit\b|\bunion\b|\bwindow\b|\bfetch\b|\breturning\b|;|$)/gi;
+  for (const match of sql.matchAll(whereRe)) clauses.push(match[1]);
+
+  const onRe = /\bon\b([\s\S]*?)(?=\bjoin\b|\bwhere\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|\blimit\b|\bunion\b|;|$)/gi;
+  for (const match of sql.matchAll(onRe)) clauses.push(match[1]);
+
+  const usingRe = /\busing\s*\(([^)]*)\)/gi;
+  for (const match of sql.matchAll(usingRe)) clauses.push(match[1]);
+
+  return clauses;
+}
+
+interface ViewColumnReference {
+  qualifier?: string;
+  column: string;
+}
+
+/** مراجع الأعمدة داخل الشروط: مؤهّلة باسم جدول/alias، أو مجرّدة */
+function viewColumnReferences(sql: string): ViewColumnReference[] {
+  const references: ViewColumnReference[] = [];
+  for (const clause of viewPredicateClauses(sql)) {
+    const withoutQualified = clause.replace(SQL_QUALIFIED_RE, (_whole, qualifier: string, column: string) => {
+      references.push({ qualifier: qualifier.toLowerCase(), column: column.toLowerCase() });
+      return ' ';
+    });
+    for (const match of withoutQualified.matchAll(SQL_IDENT_RE)) {
+      const token = match[0];
+      const lower = token.toLowerCase();
+      const after = withoutQualified.slice((match.index ?? 0) + token.length);
+      if (/^\s*\(/.test(after)) continue;
+      if (SQL_KEYWORDS.has(lower) || SQL_FUNCTIONS.has(lower)) continue;
+      references.push({ column: lower });
+    }
+  }
+  return references;
+}
+
+/**
+ * هل يذكر عرض معلن أعمدة هذا الفهرس في WHERE أو JOIN؟
+ *  • مرجع مؤهّل يُحلّ باسم الجدول أو alias، ولا يُقبل إن كان الاسم مشتركاً/ملتبساً.
+ *  • مرجع مجرّد يُقبل فقط إذا كان ينتمي إلى جدول واحد في العرض (أو الوحيد الذي يملك العمود).
+ *  • استعلام فارغ يُعتبر تغطية (لا ندّعي عدم الاستخدام بلا دليل).
+ */
 function viewUsesColumns(model: ErModel, table: ErTable, columns: string[]): boolean {
   const tableName = table.name.toLowerCase();
-  const wanted = new Set(columns);
+  const wanted = new Set(columns.map(column => column.toLowerCase()));
   return (model.views ?? []).some(view => {
-    const query = (view.query ?? '').toLowerCase();
-    if (!query.trim()) return true;
-    if (!query.includes(tableName)) return false;
-    if (/\bselect\s+\*/.test(query)) return true;
-    const tokens = query.split(/[^a-z0-9_\u0600-\u06FF]+/).filter(Boolean);
-    return tokens.some(token => wanted.has(token));
+    const query = (view.query ?? '').trim();
+    if (!query) return true;
+    const sql = stripSqlNoise(query);
+    if (!sql.toLowerCase().includes(tableName)) return false;
+
+    const relations = parseViewRelations(sql);
+    if (relations.length === 0) return false;
+    const relationTables = Array.from(new Set(relations.map(relation => relation.table)));
+    const tablesByName = new Map(model.tables.map(item => [item.name.toLowerCase(), item]));
+
+    const unqualifiedBelongsToTable = (column: string): boolean => {
+      if (!wanted.has(column)) return false;
+      if (relationTables.length === 1) return relationTables[0] === tableName;
+      // أثناء الالتباس: لا نعدّ العمود مستخدماً إلا إذا كان جدول واحد فقط يملكه
+      const owners = relationTables.filter(name => {
+        if (name === tableName) return true;
+        return Boolean(tablesByName.get(name)?.columns.some(item => item.name.toLowerCase() === column));
+      });
+      return owners.length === 1 && owners[0] === tableName;
+    };
+
+    return viewColumnReferences(sql).some(reference => {
+      if (!wanted.has(reference.column)) return false;
+      if (!reference.qualifier) return unqualifiedBelongsToTable(reference.column);
+      const matches = relations.filter(
+        relation => relation.alias === reference.qualifier || relation.table === reference.qualifier
+      );
+      // المؤهّل قد يكون schema وليس alias — نتجاهله بصمت بدل ادعاء استخدام كاذب
+      return matches.length > 0 && matches.every(relation => relation.table === tableName);
+    });
   });
 }
 
-function updatedColumn(table: ErTable): ErColumn | null {
-  const column = table.columns.find(item => UPDATED_COLUMN_TOKENS.includes(item.name.toLowerCase()));
+function timestampColumn(table: ErTable, tokens: string[]): ErColumn | null {
+  const column = table.columns.find(item => tokens.includes(item.name.toLowerCase()));
   if (!column) return null;
-  const base = typeBase(column.type);
-  if (!['timestamp', 'timestamptz', 'datetime', 'date'].includes(base)) return null;
+  return TIMESTAMP_TYPE_BASES.includes(typeBase(column.type)) ? column : null;
+}
+
+function updatedColumn(table: ErTable): ErColumn | null {
+  return timestampColumn(table, UPDATED_COLUMN_TOKENS);
+}
+
+/** عمود إنشاء بلا DEFAULT — الإدراج الذي لا يمرّره يتركه NULL */
+function createdColumn(table: ErTable): ErColumn | null {
+  const column = timestampColumn(table, CREATED_COLUMN_TOKENS);
+  if (!column || column.isPrimaryKey) return null;
+  if ((column.defaultValue ?? '').trim()) return null;
   return column;
 }
 
@@ -154,16 +360,223 @@ function statusColumn(table: ErTable): { column: ErColumn; literal: string } | n
   return status ? { column: status, literal: 'ACTIVE' } : null;
 }
 
-function triggerSql(table: ErTable, column: ErColumn, dialect: SqlDialect, triggerName: string, pk?: ErColumn): string | null {
-  const tableName = table.name;
+interface AuditColumnMap {
+  auditColumn: string;
+  sourceColumn: string;
+  /** snapshot = حالة الصف بعد التغيير، old/new = زوج قيم قبل/بعد التعديل */
+  role?: 'snapshot' | 'old' | 'new';
+}
+
+interface AuditPlan {
+  audit: ErTable;
+  snapshots: AuditColumnMap[];
+  /** عدد الأزواج old_/new_ المخططة (للتوضيح في الواجهة) */
+  pairs: number;
+  actionColumn?: ErColumn;
+  timeColumn?: ErColumn;
+  actorColumn?: ErColumn;
+}
+
+/** جدول التدقيق المطابق بالاسم، بترتيب أولوية ثابت — أول مرشّح موجود فقط */
+function findAuditTable(model: ErModel, source: ErTable): ErTable | null {
+  const byName = new Map(model.tables.map(table => [table.name.toLowerCase(), table]));
+  const base = source.name.toLowerCase();
+  const singularBase = singular(source.name).toLowerCase();
+  const candidates = [
+    `${base}_audit`, `audit_${base}`,
+    `${base}_history`, `history_${base}`,
+    `${base}_hist`, `${base}_log`,
+    `audit_${singularBase}`, `${singularBase}_audit`,
+  ];
+  for (const name of candidates) {
+    const table = byName.get(name);
+    if (table && table.id !== source.id) return table;
+  }
+  return null;
+}
+
+/**
+ * تخطيط أعمدة التدقيق — لا نكتب Trigger يخمّن: كل عمود NOT NULL في جدول السجل
+ * يجب أن يكون له مصدر (لقطة/حدث/وقت) أو DEFAULT أو أن يكون مفتاحه الخاص، وإلا نرفض الاقتراح.
+ */
+function buildAuditPlan(model: ErModel, source: ErTable, dialect: SqlDialect): AuditPlan | null {
+  if (AUDIT_SOURCE_NAME_RE.test(source.name)) return null;
+  const audit = findAuditTable(model, source);
+  if (!audit) return null;
+
+  const auditPks = new Set(audit.columns.filter(column => column.isPrimaryKey).map(column => column.name.toLowerCase()));
+  const used = new Set<string>();
+  const sourcePks = source.columns.filter(column => column.isPrimaryKey);
+  if (sourcePks.length === 0) return null;
+
+  const snapshots: AuditColumnMap[] = [];
+
+  // هوية الصف المصدر: `orders_id` ثم `order_id`، وأخيراً نفس اسم المفتاح لغير `id`
+  for (const pk of sourcePks) {
+    const candidates = [
+      `${source.name}_${pk.name}`,
+      `${singular(source.name)}_${pk.name}`,
+      ...(pk.name.toLowerCase() === 'id' ? [] : [pk.name]),
+    ].map(name => name.toLowerCase());
+    const match = audit.columns.find(column =>
+      candidates.includes(column.name.toLowerCase()) && !used.has(column.name.toLowerCase())
+    );
+    if (!match || auditPks.has(match.name.toLowerCase())) return null;
+    used.add(match.name.toLowerCase());
+    snapshots.push({ auditColumn: match.name, sourceColumn: pk.name });
+  }
+
+  const pick = (tokens: string[]): ErColumn | undefined => {
+    const column = audit.columns.find(item =>
+      tokens.includes(item.name.toLowerCase()) &&
+      !used.has(item.name.toLowerCase()) &&
+      !auditPks.has(item.name.toLowerCase())
+    );
+    if (column) used.add(column.name.toLowerCase());
+    return column;
+  };
+
+  const actionColumn = pick(AUDIT_ACTION_COLUMNS);
+  const timeColumn = pick(AUDIT_TIME_COLUMNS);
+  // SQLite لا يوفّر CURRENT_USER في تعبيرات الـTrigger — لا نحجزه هناك
+  const actorColumn = dialect === 'sqlite' ? undefined : pick(AUDIT_ACTOR_COLUMNS);
+
+  // أزواج old_<column> / new_<column>: تُخزّن القيمة السابقة واللاحقة معاً — أدقّ من لقطة واحدة
+  const pairedSourceColumns = new Set<string>();
+  for (const auditColumn of audit.columns) {
+    const lower = auditColumn.name.toLowerCase();
+    if (used.has(lower) || auditPks.has(lower)) continue;
+    const match = /^([a-z]+)_(.+)$/.exec(lower);
+    if (!match) continue;
+    const side = AUDIT_PAIR_PREFIXES[match[1]];
+    if (!side) continue;
+    // أحد الجانبين يُكتب NULL في الحدث المقابل — عمود NOT NULL لا يصلح لهذا التخطيط
+    if (!auditColumn.isNullable) continue;
+    const base = match[2];
+    const sourceColumn = source.columns.find(column => column.name.toLowerCase() === base);
+    if (!sourceColumn) continue;
+    used.add(lower);
+    pairedSourceColumns.add(sourceColumn.name.toLowerCase());
+    snapshots.push({ auditColumn: auditColumn.name, sourceColumn: sourceColumn.name, role: side });
+  }
+
+  // لقطة أعمدة بنفس الاسم (status, total …) — يُستبعد ما غطّته أزواج old_/new_
+  for (const auditColumn of audit.columns) {
+    const lower = auditColumn.name.toLowerCase();
+    if (used.has(lower) || auditPks.has(lower)) continue;
+    const sourceColumn = source.columns.find(column => column.name.toLowerCase() === lower);
+    if (!sourceColumn || pairedSourceColumns.has(sourceColumn.name.toLowerCase())) continue;
+    used.add(lower);
+    snapshots.push({ auditColumn: auditColumn.name, sourceColumn: sourceColumn.name, role: 'snapshot' });
+  }
+
+  const missingRequired = audit.columns.some(column => {
+    const lower = column.name.toLowerCase();
+    if (auditPks.has(lower) || used.has(lower) || column.isNullable) return false;
+    return !((column.defaultValue ?? '').trim());
+  });
+  if (missingRequired) return null;
+  if (snapshots.length === 0 || (!actionColumn && !timeColumn)) return null;
+
+  const order = new Map(audit.columns.map((column, index) => [column.name.toLowerCase(), index]));
+  snapshots.sort((a, b) => (order.get(a.auditColumn.toLowerCase()) ?? 0) - (order.get(b.auditColumn.toLowerCase()) ?? 0));
+  const pairs = snapshots.filter(snapshot => snapshot.role === 'old' || snapshot.role === 'new').length;
+
+  return { audit, snapshots, pairs, ...(actionColumn ? { actionColumn } : {}), ...(timeColumn ? { timeColumn } : {}), ...(actorColumn ? { actorColumn } : {}) };
+}
+
+/** اسم أساس لا يتعارض مع أي من أسماء MySQL/SQLite الفرعية (`_ins/_upd/_del`) */
+function uniqueAuditTriggerName(used: Set<string>, base: string): string {
+  const variants = (name: string): string[] => [name, `${name}_ins`, `${name}_upd`, `${name}_del`].map(value => value.toLowerCase());
+  let name = base;
+  let suffix = 2;
+  while (variants(name).some(value => used.has(value))) name = `${base}_${suffix++}`;
+  for (const value of variants(name)) used.add(value);
+  return name;
+}
+
+/**
+ * Trigger تدقيق بصياغة المحرك: MySQL/SQLite تحتاج Trigger لكل حدث (بلا BEGIN في MySQL
+ * كي لا تُغلّف بـDELIMITER)، وPostgreSQL تكفيها دالة واحدة مع `INSERT OR UPDATE OR DELETE`.
+ */
+function auditTriggerSql(source: ErTable, plan: AuditPlan, dialect: SqlDialect, triggerName: string): string | null {
+  if (dialect !== 'mysql' && dialect !== 'sqlite' && dialect !== 'postgres') return null;
+
+  const columns = plan.snapshots.map(snapshot => snapshot.auditColumn);
+  if (plan.actionColumn) columns.push(plan.actionColumn.name);
+  if (plan.timeColumn) columns.push(plan.timeColumn.name);
+  if (plan.actorColumn) columns.push(plan.actorColumn.name);
+  const columnList = columns.join(', ');
+
+  const snapshotValue = (snapshot: AuditColumnMap, event: 'INSERT' | 'UPDATE' | 'DELETE'): string => {
+    const { sourceColumn, role } = snapshot;
+    if (dialect === 'postgres') {
+      if (role === 'old') return `CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE OLD.${sourceColumn} END`;
+      if (role === 'new') return `CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE NEW.${sourceColumn} END`;
+      return `CASE WHEN TG_OP = 'DELETE' THEN OLD.${sourceColumn} ELSE NEW.${sourceColumn} END`;
+    }
+    // الجانب غير الموجود في الحدث يُكتب NULL (إدراج لا OLD له، وحذف لا NEW له)
+    if (role === 'old') return event === 'INSERT' ? 'NULL' : `OLD.${sourceColumn}`;
+    if (role === 'new') return event === 'DELETE' ? 'NULL' : `NEW.${sourceColumn}`;
+    return `${event === 'DELETE' ? 'OLD' : 'NEW'}.${sourceColumn}`;
+  };
+
+  const valuesFor = (event: 'INSERT' | 'UPDATE' | 'DELETE'): string => {
+    const values = plan.snapshots.map(snapshot => snapshotValue(snapshot, event));
+    if (plan.actionColumn) values.push(dialect === 'postgres' ? 'TG_OP' : `'${event}'`);
+    if (plan.timeColumn) values.push(dialect === 'postgres' ? 'NOW()' : 'CURRENT_TIMESTAMP');
+    if (plan.actorColumn) values.push('CURRENT_USER');
+    return values.join(', ');
+  };
+
   if (dialect === 'mysql') {
-    return `CREATE TRIGGER ${triggerName} BEFORE UPDATE ON ${tableName}\nFOR EACH ROW\nSET NEW.${column.name} = CURRENT_TIMESTAMP`;
+    const statement = (event: 'INSERT' | 'UPDATE' | 'DELETE', suffix: string): string =>
+      `CREATE TRIGGER ${triggerName}_${suffix} AFTER ${event} ON ${source.name}\nFOR EACH ROW\nINSERT INTO ${plan.audit.name} (${columnList}) VALUES (${valuesFor(event)})`;
+    return [statement('INSERT', 'ins'), statement('UPDATE', 'upd'), statement('DELETE', 'del')].join(';\n\n');
+  }
+
+  if (dialect === 'sqlite') {
+    const statement = (event: 'INSERT' | 'UPDATE' | 'DELETE', suffix: string): string =>
+      `CREATE TRIGGER ${triggerName}_${suffix} AFTER ${event} ON ${source.name}\nFOR EACH ROW\nBEGIN\n  INSERT INTO ${plan.audit.name} (${columnList}) VALUES (${valuesFor(event)});\nEND`;
+    return [statement('INSERT', 'ins'), statement('UPDATE', 'upd'), statement('DELETE', 'del')].join(';\n\n');
+  }
+
+  const functionName = `audit_${source.name}`;
+  return `CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$\nBEGIN\n  INSERT INTO ${plan.audit.name} (${columnList})\n  VALUES (${valuesFor('UPDATE')});\n  IF TG_OP = 'DELETE' THEN\n    RETURN OLD;\n  END IF;\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER ${triggerName} AFTER INSERT OR UPDATE OR DELETE ON ${source.name}\nFOR EACH ROW EXECUTE FUNCTION ${functionName}()`;
+}
+
+/**
+ * Trigger طابع زمني بصياغة المحرك: `touch` يحدّث updated_at عند التعديل،
+ * و`fill` يملأ created_at عند الإدراج إن جاء NULL. SQL Server/Oracle خارج النطاق
+ * لأن ملف الترحيل يحتاج GO / محرف PL-SQL مستقل لكل Trigger.
+ */
+function timestampTriggerSql(
+  table: ErTable,
+  column: ErColumn,
+  dialect: SqlDialect,
+  triggerName: string,
+  mode: 'touch' | 'fill',
+  pk?: ErColumn
+): string | null {
+  const tableName = table.name;
+  const fill = mode === 'fill';
+  if (dialect === 'mysql') {
+    return fill
+      ? `CREATE TRIGGER ${triggerName} BEFORE INSERT ON ${tableName}\nFOR EACH ROW\nSET NEW.${column.name} = IFNULL(NEW.${column.name}, CURRENT_TIMESTAMP)`
+      : `CREATE TRIGGER ${triggerName} BEFORE UPDATE ON ${tableName}\nFOR EACH ROW\nSET NEW.${column.name} = CURRENT_TIMESTAMP`;
   }
   if (dialect === 'sqlite') {
     if (!pk) return null;
+    if (fill) {
+      return `CREATE TRIGGER ${triggerName} AFTER INSERT ON ${tableName}\nFOR EACH ROW\nWHEN NEW.${column.name} IS NULL\nBEGIN\n  UPDATE ${tableName} SET ${column.name} = CURRENT_TIMESTAMP WHERE ${pk.name} = NEW.${pk.name};\nEND`;
+    }
     return `CREATE TRIGGER ${triggerName} AFTER UPDATE ON ${tableName}\nFOR EACH ROW\nWHEN NEW.${column.name} = OLD.${column.name}\nBEGIN\n  UPDATE ${tableName} SET ${column.name} = CURRENT_TIMESTAMP WHERE ${pk.name} = NEW.${pk.name};\nEND`;
   }
   if (dialect === 'postgres') {
+    if (fill) {
+      const functionName = `fill_${tableName}`;
+      return `CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$\nBEGIN\n  NEW.${column.name} := COALESCE(NEW.${column.name}, NOW());\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER ${triggerName} BEFORE INSERT ON ${tableName}\nFOR EACH ROW EXECUTE FUNCTION ${functionName}()`;
+    }
     const functionName = `touch_${tableName}`;
     return `CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$\nBEGIN\n  NEW.${column.name} := NOW();\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER ${triggerName} BEFORE UPDATE ON ${tableName}\nFOR EACH ROW EXECUTE FUNCTION ${functionName}()`;
   }
@@ -441,28 +854,109 @@ export function suggestSchemaObjects(model: ErModel, dialect: SqlDialect): Objec
   const triggerSqlSupported = dialect === 'mysql' || dialect === 'sqlite' || dialect === 'postgres';
   if (triggerSqlSupported) {
     for (const table of model.tables) {
-      const column = updatedColumn(table);
-      if (!column) continue;
+      // trigger قائم على الجدول يعني أن صيانة الطوابع الزمنية غالباً مقصودة ومكتوبة بحكمة المالك
       if ((model.triggers ?? []).some(trigger => (trigger.table ?? '').toLowerCase() === table.name.toLowerCase())) continue;
       const primaryKeys = table.columns.filter(item => item.isPrimaryKey);
       const pk = primaryKeys.length === 1 ? primaryKeys[0] : undefined;
-      const triggerName = uniqueName(usedTriggerNames, `trg_${table.name}_touch`);
-      const rawSql = triggerSql(table, column, dialect, triggerName, pk);
+      const updated = updatedColumn(table);
+      const created = createdColumn(table);
+
+      if (updated) {
+        const triggerName = uniqueName(usedTriggerNames, `trg_${table.name}_touch`);
+        const rawSql = timestampTriggerSql(table, updated, dialect, triggerName, 'touch', pk);
+        if (rawSql) {
+          suggestions.push({
+            id: `trigger:${table.id}:${updated.name.toLowerCase()}`,
+            kind: 'trigger',
+            name: triggerName,
+            titleAr: `Trigger تحديث ${updated.name}`,
+            titleEn: `Trigger for ${updated.name}`,
+            detailAr: `الجدول فيه ${updated.name} لكن لا شيء يحدّثه تلقائياً — القيمة ستبقى وقت الإنشاء فقط.`,
+            detailEn: `The table has ${updated.name} but nothing updates it — it will keep the insert-time value forever.`,
+            confidence: 0.7,
+            trigger: {
+              name: triggerName,
+              table: table.name,
+              timing: 'BEFORE',
+              event: 'UPDATE',
+              rawSql,
+            },
+          });
+        }
+      }
+
+      // SQLite لا يسمح بتعديل NEW داخل الـTrigger، فالـAFTER INSERT لا ينقذ عموداً NOT NULL — لا نقترحه هناك.
+      const canFillCreated = created
+        && (!updated || created.name.toLowerCase() !== updated.name.toLowerCase())
+        && !(dialect === 'sqlite' && created.isNullable === false);
+      if (created && canFillCreated) {
+        const triggerName = uniqueName(usedTriggerNames, `trg_${table.name}_created`);
+        const rawSql = timestampTriggerSql(table, created, dialect, triggerName, 'fill', pk);
+        if (rawSql) {
+          suggestions.push({
+            id: `trigger:${table.id}:insert:${created.name.toLowerCase()}`,
+            kind: 'trigger',
+            name: triggerName,
+            titleAr: `Trigger تعبئة ${created.name}`,
+            titleEn: `Trigger to fill ${created.name}`,
+            detailAr: `الجدول فيه ${created.name} بلا DEFAULT — أي إدراج لا يمرّره سيتركه NULL/فاشلاً؛ هذا الـTrigger يملؤه عند الإدراج.`,
+            detailEn: `${created.name} has no DEFAULT — an insert that omits it leaves NULL (or fails); this trigger fills it on insert.`,
+            confidence: 0.6,
+            trigger: {
+              name: triggerName,
+              table: table.name,
+              timing: 'BEFORE',
+              event: 'INSERT',
+              rawSql,
+            },
+          });
+        }
+      }
+    }
+  }
+
+  /* ------------------------ Triggers: تدقيق تلقائي ------------------------ */
+
+  if (triggerSqlSupported) {
+    for (const table of model.tables) {
+      const plan = buildAuditPlan(model, table, dialect);
+      if (!plan) continue;
+      // trigger قائم يكتب في نفس جدول السجل → لا نكرّر التسجيل مرتين
+      const auditName = plan.audit.name.toLowerCase();
+      if ((model.triggers ?? []).some(trigger => (trigger.rawSql ?? '').toLowerCase().includes(auditName))) continue;
+      const triggerName = uniqueAuditTriggerName(usedTriggerNames, `trg_${table.name}_audit`);
+      const rawSql = auditTriggerSql(table, plan, dialect, triggerName);
       if (!rawSql) continue;
+      const partsAr = [
+        plan.snapshots.length > 0
+          ? `${plan.snapshots.length} عموداً${plan.pairs > 0 ? ` (منها ${plan.pairs} قبل/بعد)` : ''}`
+          : '',
+        plan.actionColumn ? 'الحدث' : '',
+        plan.timeColumn ? 'الوقت' : '',
+        plan.actorColumn ? 'المستخدم' : '',
+      ].filter(Boolean).join(' + ');
+      const partsEn = [
+        plan.snapshots.length > 0
+          ? `${plan.snapshots.length} column(s)${plan.pairs > 0 ? ` (${plan.pairs} old/new)` : ''}`
+          : '',
+        plan.actionColumn ? 'the event' : '',
+        plan.timeColumn ? 'the timestamp' : '',
+        plan.actorColumn ? 'the actor' : '',
+      ].filter(Boolean).join(' + ');
       suggestions.push({
-        id: `trigger:${table.id}:${column.name.toLowerCase()}`,
+        id: `trigger:${table.id}:audit`,
         kind: 'trigger',
         name: triggerName,
-        titleAr: `Trigger تحديث ${column.name}`,
-        titleEn: `Trigger for ${column.name}`,
-        detailAr: `الجدول فيه ${column.name} لكن لا شيء يحدّثه تلقائياً — القيمة ستبقى وقت الإنشاء فقط.`,
-        detailEn: `The table has ${column.name} but nothing updates it — it will keep the insert-time value forever.`,
-        confidence: 0.7,
+        titleAr: `Trigger تدقيق ${table.name} في ${plan.audit.name}`,
+        titleEn: `Audit trigger for ${table.name} → ${plan.audit.name}`,
+        detailAr: `جدول السجل ${plan.audit.name} يطابق ${table.name}: يُسجّل ${partsAr} تلقائياً عند الإدراج والتعديل والحذف.`,
+        detailEn: `History table ${plan.audit.name} matches ${table.name}: records ${partsEn} automatically on insert, update and delete.`,
+        confidence: 0.55,
         trigger: {
           name: triggerName,
           table: table.name,
-          timing: 'BEFORE',
-          event: 'UPDATE',
+          timing: 'AFTER',
+          event: 'INSERT, UPDATE, DELETE',
           rawSql,
         },
       });
@@ -542,6 +1036,72 @@ export function suggestionSqlDiff(model: ErModel, suggestion: ObjectSuggestion, 
   }
 
   return { removed: [], added: [], note: NO_SQL_NOTE };
+}
+
+/** فرق مجمّع لدفعة اقتراحات — ملف SQL واحد بترتيب التطبيق الفعلي */
+export interface BulkSuggestionSqlDiff {
+  /** تعريفات ستزول من المخطط (تُعرض بعلامة −) */
+  removed: string[];
+  /** كل العبارات التي ستُنفَّذ، بترتيب التطبيق */
+  added: string[];
+  /** إحصاء الدفعة: كائنات تُضاف، فهارس تُحذف، واقتراحات بلا SQL */
+  counts: { add: number; drop: number; skipped: number };
+  /** ملف SQL جاهز للنسخ: ترويسة + العبارات مفصولة بأسطر فارغة */
+  sql: string;
+  /** ملاحظة عن الاقتراحات التي لم تُنتج SQL قابلاً للتنفيذ */
+  note?: { ar: string; en: string };
+}
+
+/**
+ * يبني فرقاً واحداً لكل الدفعة — يحاكي `apply-all` بالضبط لا مجرد جمع الفروق:
+ * كل اقتراح يُقاس على النموذج بعد تطبيق سابقيه، فلا يتكرر اسم ولا يختفي هدف حذف.
+ * الناتج ملف SQL واحد جاهز للنسخ/التنفيذ، مع تعريفات الحذف منفصلة للمراجعة.
+ */
+export function bulkSuggestionsSqlDiff(
+  model: ErModel,
+  suggestions: ObjectSuggestion[],
+  dialect: SqlDialect
+): BulkSuggestionSqlDiff {
+  const removed: string[] = [];
+  const added: string[] = [];
+  const skipped: string[] = [];
+  let add = 0;
+  let drop = 0;
+  let current = model;
+
+  for (const suggestion of suggestions) {
+    const diff = suggestionSqlDiff(current, suggestion, dialect);
+    removed.push(...diff.removed);
+    added.push(...diff.added);
+    if (diff.added.length > 0) {
+      if (suggestion.dropIndex) drop++;
+      else add++;
+    } else {
+      skipped.push(suggestion.name);
+    }
+    current = applyObjectSuggestion(current, suggestion);
+  }
+
+  const summary = [
+    `-- Schema object changes (${dialect})`,
+    `-- ${added.length} statement(s): ${add} added, ${drop} dropped${skipped.length > 0 ? `, ${skipped.length} skipped` : ''}`,
+  ];
+  const sql = [...summary, ...(added.length > 0 ? added : ['-- No executable SQL changes.'])].join('\n\n');
+
+  return {
+    removed,
+    added,
+    counts: { add, drop, skipped: skipped.length },
+    sql,
+    ...(skipped.length > 0
+      ? {
+          note: {
+            ar: `${skipped.length} اقتراحاً بلا تغيير قابل للتنفيذ: ${skipped.join(', ')} — سيُطبَّق على النموذج لكنه لن يولّد SQL.`,
+            en: `${skipped.length} suggestion(s) have no executable change: ${skipped.join(', ')} — they will still apply to the model but generate no SQL.`,
+          },
+        }
+      : {}),
+  };
 }
 
 /** يطبّق اقتراحاً واحداً على النموذج — دالة نقية تُستخدم في الواجهة والاختبارات */

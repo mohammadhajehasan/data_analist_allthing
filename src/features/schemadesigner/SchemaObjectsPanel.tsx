@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Code2,
+  Download,
   Eye,
   KeyRound,
   Pencil,
@@ -22,6 +23,7 @@ import {
 } from '../../utils/ddlGenerator';
 import {
   applyObjectSuggestion,
+  bulkSuggestionsSqlDiff,
   revertObjectSuggestion,
   suggestSchemaObjects,
   suggestionSqlDiff,
@@ -156,6 +158,8 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(() => new Set());
   // معاينة فرق SQL — اقتراح واحد مفتوح في وقت واحد كي لا تتكدّس الفروقات
   const [previewSuggestionId, setPreviewSuggestionId] = useState<string | null>(null);
+  // مراجعة الدفعة كاملة قبل «تطبيق الكل» — لا يُطبَّق شيء حتى التأكيد
+  const [showBulkPreview, setShowBulkPreview] = useState<boolean>(false);
   // كومة تراجع: كل عنصر دفعة اقتراحات طُبّقت معاً (فردي أو «تطبيق الكل»)
   const [undoStack, setUndoStack] = useState<ObjectSuggestion[][]>([]);
 
@@ -168,6 +172,12 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
   const suggestions = useMemo(
     () => suggestSchemaObjects(model, dialect).filter(suggestion => !dismissedSuggestions.has(suggestion.id)),
     [model, dialect, dismissedSuggestions]
+  );
+
+  // الدفعة تُقاس على النموذج بعد كل اقتراح، تماماً كما يفعل التطبيق الفعلي
+  const bulkDiff = useMemo(
+    () => (showBulkPreview && suggestions.length > 0 ? bulkSuggestionsSqlDiff(model, suggestions, dialect) : null),
+    [showBulkPreview, model, suggestions, dialect]
   );
 
   const tableNameById = useMemo(() => {
@@ -232,11 +242,50 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
     if (suggestions.length === 0) return;
     pushUndoBatch(suggestions);
     setPreviewSuggestionId(null);
+    setShowBulkPreview(false);
     onChange(current => suggestions.reduce((next, suggestion) => applyObjectSuggestion(next, suggestion), current));
     toast.success(
       isAr ? 'طُبّقت كل الاقتراحات' : 'All suggestions applied',
       isAr ? `${suggestions.length} اقتراحاً طُبّق على السكيما — يمكنك التراجع من الشريط أعلاه` : `${suggestions.length} suggestion(s) applied to the schema — undo from the bar above`
     );
+  };
+
+  const copyBulkSql = (): void => {
+    if (!bulkDiff) return;
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      toast.error(isAr ? 'تعذّر النسخ' : 'Copy failed', isAr ? 'انسخ من المعاينة يدوياً.' : 'Select and copy from the preview.');
+      return;
+    }
+    clipboard.writeText(bulkDiff.sql).then(
+      () => toast.success(
+        isAr ? 'نُسخ ملف SQL' : 'SQL file copied',
+        isAr ? `${bulkDiff.added.length} عبارة بترتيب التطبيق` : `${bulkDiff.added.length} statement(s) in apply order`
+      ),
+      () => toast.error(isAr ? 'تعذّر النسخ' : 'Copy failed', isAr ? 'انسخ من المعاينة يدوياً.' : 'Select and copy from the preview.')
+    );
+  };
+
+  const downloadBulkSql = (): void => {
+    if (!bulkDiff) return;
+    try {
+      const blob = new Blob([`${bulkDiff.sql}\n`], { type: 'application/sql;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `schema-object-changes-${dialect}.sql`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        isAr ? 'نُزّل ملف SQL' : 'SQL file downloaded',
+        isAr ? `${bulkDiff.added.length} عبارة بترتيب التطبيق` : `${bulkDiff.added.length} statement(s) in apply order`
+      );
+    } catch (error) {
+      toast.error(
+        isAr ? 'تعذّر تنزيل الملف' : 'Could not download the file',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   };
 
   const undoLastApply = (): void => {
@@ -520,7 +569,10 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
         </span>
         <button
           type="button"
-          onClick={() => setShowSuggestions(open => !open)}
+          onClick={() => {
+            if (showSuggestions) setShowBulkPreview(false);
+            setShowSuggestions(!showSuggestions);
+          }}
           aria-expanded={showSuggestions}
           className={`${smallButton} ms-auto border ${
             showSuggestions
@@ -571,22 +623,115 @@ const SchemaObjectsPanel: React.FC<SchemaObjectsPanelProps> = ({ model, dialect,
             </span>
             <button
               type="button"
-              onClick={applyAllSuggestions}
+              onClick={() => setShowBulkPreview(true)}
               disabled={suggestions.length === 0}
+              aria-expanded={showBulkPreview}
               className={`${smallButton} ms-auto bg-[var(--cds-interactive-01)] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed`}
             >
-              <Plus className="w-3 h-3" />
-              {isAr ? `تطبيق الكل (${suggestions.length})` : `Apply all (${suggestions.length})`}
+              <Code2 className="w-3 h-3" />
+              {isAr ? `مراجعة وتطبيق الكل (${suggestions.length})` : `Review & apply all (${suggestions.length})`}
             </button>
             <button
               type="button"
-              onClick={() => setShowSuggestions(false)}
+              onClick={() => {
+                setShowSuggestions(false);
+                setShowBulkPreview(false);
+              }}
               className="p-1 text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]"
               aria-label={isAr ? 'إغلاق الاقتراحات' : 'Close suggestions'}
             >
               <X className="w-3 h-3" />
             </button>
           </div>
+
+          {bulkDiff && (
+            <div className="border-b border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] px-2 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Code2 className="w-3 h-3 text-[var(--cds-interactive-01)]" />
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--cds-text-02)]">
+                  {isAr ? 'فرق مجمّع قبل التطبيق' : 'Combined diff before apply'}
+                </span>
+                <span className="text-[9px] font-mono text-[var(--cds-text-03)]">
+                  {isAr
+                    ? `${dialect} · ${bulkDiff.counts.add} إضافة · ${bulkDiff.counts.drop} حذف · ${bulkDiff.added.length} عبارة`
+                    : `${dialect} · ${bulkDiff.counts.add} added · ${bulkDiff.counts.drop} dropped · ${bulkDiff.added.length} statement(s)`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkPreview(false)}
+                  className="ms-auto p-1 text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)]"
+                  aria-label={isAr ? 'إغلاق الفرق المجمّع' : 'Close combined diff'}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+
+              <p className="mt-1 text-[9px] font-mono text-[var(--cds-text-03)]">
+                {isAr
+                  ? 'هذا كل ما سيُنفَّذ في ملف واحد، بترتيب التطبيق — لن يتغيّر النموذج قبل التأكيد.'
+                  : 'Everything that will run, in one file and in apply order — the model stays untouched until you confirm.'}
+              </p>
+
+              {bulkDiff.removed.length > 0 && (
+                <div className="mt-1 max-h-24 overflow-auto">
+                  {bulkDiff.removed.map((line, index) => (
+                    <pre
+                      key={`bulk-removed-${index}`}
+                      dir="ltr"
+                      className="text-[10px] font-mono whitespace-pre-wrap break-words text-[#fa4d56]"
+                    >{`− ${line}`}</pre>
+                  ))}
+                </div>
+              )}
+
+              {bulkDiff.added.length > 0 ? (
+                <pre
+                  dir="ltr"
+                  className="mt-1 max-h-64 overflow-auto border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-2 text-[10px] font-mono whitespace-pre-wrap break-words text-[#42be65]"
+                >{bulkDiff.added.map(line => `+ ${line}`).join('\n\n')}</pre>
+              ) : (
+                <p className="mt-1 text-[10px] font-mono text-[var(--cds-text-03)]">
+                  {isAr ? 'لا SQL قابل للتنفيذ في هذه الدفعة — التغيير على النموذج فقط.' : 'No executable SQL in this batch — the change is model-only.'}
+                </p>
+              )}
+
+              {bulkDiff.note && (
+                <p className="mt-1 text-[9px] font-mono text-[var(--cds-text-03)]">
+                  {isAr ? bulkDiff.note.ar : bulkDiff.note.en}
+                </p>
+              )}
+
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={applyAllSuggestions}
+                  className={`${smallButton} border border-[var(--cds-interactive-01)] bg-[var(--cds-interactive-01)] text-white hover:opacity-90`}
+                >
+                  <Plus className="w-3 h-3" />
+                  {isAr ? `تأكيد تطبيق الكل (${suggestions.length})` : `Confirm apply all (${suggestions.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={copyBulkSql}
+                  className={`${smallButton} border border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:border-[var(--cds-interactive-01)] hover:text-[var(--cds-interactive-01)]`}
+                >
+                  <Code2 className="w-3 h-3" />
+                  {isAr ? 'نسخ ملف SQL' : 'Copy SQL file'}
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadBulkSql}
+                  className={`${smallButton} border border-[var(--cds-border-strong)] text-[var(--cds-text-02)] hover:border-[var(--cds-interactive-01)] hover:text-[var(--cds-interactive-01)]`}
+                >
+                  <Download className="w-3 h-3" />
+                  {isAr ? 'تنزيل .sql' : 'Download .sql'}
+                </button>
+                <span className="text-[9px] font-mono text-[var(--cds-text-03)]">
+                  {isAr ? 'يمكن التراجع بعد التطبيق' : 'Undo stays available after applying'}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="max-h-72 overflow-auto divide-y divide-[var(--cds-border-subtle)]">
             {suggestions.map(suggestion => {

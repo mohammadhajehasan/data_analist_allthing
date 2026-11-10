@@ -39,7 +39,16 @@ export type DdlResult = {
   code: string;
   /** ملاحظات التوليد (بما فيها FKs المُعلَمة بلا جدول أم مطابق) — بوصف زائد حيث أنها تُطبع أيضًا كتذييل `-- Notes:` */
   warnings: string[];
-  stats: { tables: number; columns: number; fks: number; junctionTables: number };
+  stats: {
+    tables: number;
+    columns: number;
+    fks: number;
+    junctionTables: number;
+    /** فهارس أُصدرت فعلاً (بعد إسقاط المفقود والمكرر المضمّن في العمود) */
+    indexes: number;
+    views: number;
+    triggers: number;
+  };
 };
 
 export function todayStamp(): string {
@@ -830,15 +839,6 @@ export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partia
 
   const q = (x: string) => quoteIdent(x, dialect);
 
-  const header = [
-    '-- ================================================================',
-    '--  SQL DDL generated from a draw.io ER diagram',
-    `--  Dialect: ${dialect}   ·   Tables: ${tables.length}   ·   FKs: ${fks.length}   ·   Junction tables: ${junctionTables.length}`,
-    `--  Generated: ${todayStamp()} by Schema Studio (draw.io → SQL)`,
-    '-- ================================================================',
-    '',
-  ];
-
   const dropStatements: string[] = [];
   const createStatements: string[] = [];
 
@@ -897,6 +897,23 @@ export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partia
 
   const notes = warnings.length ? ['', '-- Notes:', ...warnings.map(w => `-- • ${w}`)] : [];
 
+  // trigger واحد قد يحمل عدة عبارات CREATE TRIGGER (تدقيق على الأحداث الثلاثة)
+  const triggerCount = triggerStatements.reduce(
+    (sum, statement) => sum + (statement.match(/CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER/gi)?.length ?? 0),
+    0
+  );
+
+  // ترويسة الترحيل تُبنى بعد جمع العبارات حتى تعدّ ما أُصدر فعلاً لا ما طُلب فقط
+  const header = [
+    '-- ================================================================',
+    '--  SQL migration generated from a draw.io ER diagram',
+    `--  Dialect: ${dialect}   ·   Tables: ${emitSequence.length}   ·   FKs: ${allFks.length}   ·   Junction tables: ${junctionTables.length}`,
+    `--  Indexes: ${indexStatements.length}   ·   Views: ${viewStatements.length}   ·   Triggers: ${triggerCount}`,
+    `--  Generated: ${todayStamp()} by Schema Studio (draw.io → SQL)`,
+    '-- ================================================================',
+    '',
+  ];
+
   const code = [...header, ...(opts.dropIfExists ? dropStatements : []), ...(opts.dropIfExists ? [''] : []), ...createStatements, ...notes].join('\n');
 
   const totalColumns = emitSequence.reduce((sum, tbl) => sum + tbl.columns.length, 0);
@@ -904,7 +921,15 @@ export function generateDdl(model: ErModel, dialect: SqlDialect, options: Partia
     dialect,
     code,
     warnings: [...warnings],
-    stats: { tables: emitSequence.length, columns: totalColumns, fks: allFks.length, junctionTables: junctionTables.length },
+    stats: {
+      tables: emitSequence.length,
+      columns: totalColumns,
+      fks: allFks.length,
+      junctionTables: junctionTables.length,
+      indexes: indexStatements.length,
+      views: viewStatements.length,
+      triggers: triggerCount,
+    },
   };
 }
 

@@ -84,6 +84,15 @@ describe('schema objects in generated DDL', () => {
     expect(ddl.code).toContain('DELIMITER ;');
   });
 
+  it('reports every emitted object so the migration export is verifiably complete', () => {
+    const ddl = generateDdl(model(), 'mysql', { dropIfExists: false, createJunctionTables: true });
+    // الفهرس الفريد المضمّن في العمود لا يُصدر، فيبقى فهرس واحد
+    expect(ddl.stats.indexes).toBe(1);
+    expect(ddl.stats.views).toBe(1);
+    expect(ddl.stats.triggers).toBe(1);
+    expect(ddl.code).toMatch(/Indexes: 1\s+·\s+Views: 1\s+·\s+Triggers: 1/);
+  });
+
   it('supports SQLite index and view syntax', () => {
     const ddl = generateDdl(model(), 'sqlite', { dropIfExists: false, createJunctionTables: true });
     expect(ddl.code).toContain('CREATE INDEX "ix_users_name" ON "users" ("name");');

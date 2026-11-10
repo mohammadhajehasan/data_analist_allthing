@@ -921,15 +921,26 @@ export const SchemaDesignerPage: React.FC = () => {
     }
   };
 
-  const handleDownload = (): void => {
-    if (!generated) return;
-    const blob = new Blob([generated.code], { type: 'application/sql' });
+  /** تنزيل ملف ترحيل واحد للسكيما الناتجة: جداول + مفاتيح + فهارس + عروض + Triggers.
+   *  يُعاد التوليد لحظة النقر من النموذج الحالي (بكل تحريراته) فلا يمكن أن يكون الملف قديماً. */
+  const handleDownloadMigration = (): void => {
+    if (!parsedModel) return;
+    const result = generateDdl(parsedModel, dialect, { dropIfExists, createJunctionTables });
+    setGenerated(result);
+    const blob = new Blob([`${result.code}\n`], { type: 'application/sql;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `schema_${dialect}_${new Date().toISOString().slice(0, 10)}.sql`;
+    a.download = `migration_${dialect}_${new Date().toISOString().slice(0, 10)}.sql`;
     a.click();
     URL.revokeObjectURL(url);
+    const objects = result.stats.indexes + result.stats.views + result.stats.triggers;
+    toast.success(
+      isAr ? 'نُزّل ملف الترحيل' : 'Migration file downloaded',
+      isAr
+        ? `${result.stats.tables} جدولاً و${result.stats.fks} مفتاحاً أجنبياً و${objects} كائناً (فهارس/عروض/Triggers)`
+        : `${result.stats.tables} tables, ${result.stats.fks} FKs and ${objects} schema object(s) (indexes/views/triggers)`
+    );
   };
 
   /** تصدير المخطط المحدّث (بعد كل التحريرات اليدوية على الجداول/الأعمدة/القيود/العلاقات) كملف .drawio
@@ -1563,15 +1574,21 @@ export const SchemaDesignerPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)]">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--cds-interactive-01)]">
               {generated.dialect.toUpperCase()} · {isAr ? 'جداول' : 'tables'}: {generated.stats.tables} · {isAr ? 'أعمدة' : 'cols'}: {generated.stats.columns} · FK: {generated.stats.fks}
+              {' · '}IX: {generated.stats.indexes}{' · '}VIEW: {generated.stats.views}{' · '}TRG: {generated.stats.triggers}
             </span>
             <div className="ms-auto flex items-center gap-2">
               <button type="button" onClick={() => { void handleCopy(); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono font-bold bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] hover:border-[var(--cds-interactive-01)]">
                 {copied ? <Check className="w-3 h-3 text-[#42be65]" /> : <Copy className="w-3 h-3" />}
                 {copied ? (isAr ? 'تم النسخ' : 'Copied') : isAr ? 'نسخ' : 'Copy'}
               </button>
-              <button type="button" onClick={handleDownload} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono font-bold bg-[var(--cds-interactive-01)] text-white hover:opacity-90">
+              <button
+                type="button"
+                onClick={handleDownloadMigration}
+                title={isAr ? 'ملف ترحيل .sql واحد: الجداول والقيود والفهارس والعروض والـTriggers — يُولَّد من النموذج الحالي لحظة النقر' : 'One .sql migration: tables, constraints, indexes, views and triggers — regenerated from the current model on click'}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono font-bold bg-[var(--cds-interactive-01)] text-white hover:opacity-90"
+              >
                 <Download className="w-3 h-3" />
-                .sql
+                {isAr ? 'ملف الترحيل .sql' : 'Migration .sql'}
               </button>
             </div>
           </div>
