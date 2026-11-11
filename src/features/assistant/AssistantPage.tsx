@@ -5,6 +5,7 @@ import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHead
 import { ChatMessage, DataStory } from '../../types';
 import { ExecutionDebugger } from '../../components/assistant/ExecutionDebugger';
 import { AIModelSelector } from '../../components/ai/AIModelSelector';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import {
   Bot,
   User,
@@ -256,6 +257,8 @@ export const AssistantPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Active provider/model — نفس الإعداد الذي يصل للخادم في هذا الطلب */}
+          <ActiveAiBadge className="hidden sm:inline-flex" />
           {/* Active Model Selector in Assistant Page */}
           <AIModelSelector compact />
 

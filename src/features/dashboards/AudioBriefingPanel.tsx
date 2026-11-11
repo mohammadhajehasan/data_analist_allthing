@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { computeMathematicalAggregation, getAggregationLabel } from '../../components/charts/ChartFactory';
 import { WidgetConfig, AggregationFunction } from '../../types';
 import { Play, Pause, Volume2, SkipBack, Music, RefreshCw, Layers, CheckCircle2, Languages, Sparkles } from 'lucide-react';
@@ -345,7 +346,8 @@ export const AudioBriefingPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+          <ActiveAiBadge className="hidden md:inline-flex" />
           {/* صياغة أعمق بنموذج الذكاء النشط — بديل القالب الجاهز */}
           <button
             onClick={generateAiBriefing}

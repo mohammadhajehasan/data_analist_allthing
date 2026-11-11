@@ -19,6 +19,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { 
   Workflow, 
   Play, 
@@ -1069,6 +1070,7 @@ const WorkflowStudioContent: React.FC = () => {
 
         {/* Workflow Switcher & Action Controls */}
         <div className="flex items-center gap-2 flex-wrap">
+          <ActiveAiBadge className="hidden lg:inline-flex" />
           {/* User Guide Interactive Manual Button */}
           <button
             onClick={() => setIsGuideModalOpen(true)}

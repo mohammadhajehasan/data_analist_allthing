@@ -34,6 +34,7 @@ import {
 import { createZip } from '../../utils/zipStore';
 import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 
 interface BackendFactoryPanelProps {
   model: ErModel;
@@ -488,10 +489,10 @@ const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialec
             />
             <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             {isAr ? 'إثراء ذكي (بيانات بذر)' : 'AI enrichment (seed data)'}
-            <span className="text-[9px] text-[var(--cds-text-03)] font-mono" title={isAr ? 'المزوّد والنموذج النشطان في صفحة النماذج' : 'Active provider and model from Model Config'}>
-              {activeAiLabel}
-            </span>
           </label>
+
+          {/* نفس الشارة الموحّدة: المزوّد والنموذج اللذان سيُنفّذان الإثراء فعلاً */}
+          {aiEnrichment && <ActiveAiBadge className="hidden md:inline-flex" />}
 
           <div className="ms-auto flex flex-wrap items-center gap-2">
             {project && isStale && (

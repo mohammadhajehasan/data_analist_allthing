@@ -36,6 +36,7 @@ import {
   Sparkle
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { AIProviderId, AIPrivacyMode, AIModelDefinition } from '../../types';
 import { checkOllamaEngineHealth, OllamaHealthResult } from '../../services/aiService';
 import { JsonRpcGatewayPanel } from '../../components/ai/JsonRpcGatewayPanel';
@@ -533,13 +534,10 @@ export const ModelConfigPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Active Engine Indicator */}
+        {/* Global Active Engine Indicator — نفس الشارة المستخدمة في كل شاشات AI */}
         <div className="flex items-center gap-3 bg-[var(--cds-layer-02)] px-3.5 py-2 border border-[var(--cds-border-subtle)] text-xs rounded-xs shrink-0">
           <span className="text-[var(--cds-text-03)] font-medium">{isAr ? 'المحرك النشط:' : 'Active Engine:'}</span>
-          <div className="font-semibold text-[var(--cds-text-01)] flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${activeAIModelDef.isLocal ? 'bg-[#42be65]' : 'bg-[var(--cds-interactive-01)]'}`} />
-            <span>{activeAIModelDef.name}</span>
-          </div>
+          <ActiveAiBadge />
         </div>
       </div>
 

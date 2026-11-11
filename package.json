@@ -9,6 +9,9 @@
     "start": "infisical run --env=dev -- node dist/server.cjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:laravel-e2e": "node scripts/laravel-e2e.mjs",
+    "test:fastapi-e2e": "node scripts/python-backend-e2e.mjs fastapi",
+    "test:django-e2e": "node scripts/python-backend-e2e.mjs django",
     "gateway:smoke": "tsx scripts/gateway-smoke.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from './ActiveAiBadge';
 import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders } from '../../utils/aiAccessGuard';
 import { getStoredToken } from '../../features/auth/LoginPage';
 
@@ -292,7 +293,8 @@ export const JsonRpcGatewayPanel: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <ActiveAiBadge />
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)]">
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
             <span>Gateway Ready</span>

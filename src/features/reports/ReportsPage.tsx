@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { DataStory, DataStoryChapter } from '../../types';
 import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { applyBestVoice } from '../../services/bestVoice';
@@ -484,6 +485,8 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* الشارة تعكس اختيار هذه الصفحة (selects) لا الإعداد العام فقط */}
+          <ActiveAiBadge className="hidden md:inline-flex" provider={selectedProvider} model={selectedModel} />
           {/* Navigation Tabs */}
           <div className="flex items-center bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] p-0.5">
             <button

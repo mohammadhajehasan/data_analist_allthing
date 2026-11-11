@@ -508,7 +508,7 @@ describe('Laravel runnable scaffold', () => {
     expect(broken.warnings.some(warning => warning.includes('no password column'))).toBe(true);
   });
 
-  it('leaves engine-specific triggers out with a warning instead of breaking migrate', () => {
+  it('rewrites triggers written for another engine into an equivalent definition', () => {
     const model = schema();
     model.triggers = [
       {
@@ -527,6 +527,14 @@ describe('Laravel runnable scaffold', () => {
         rawSql:
           'CREATE TRIGGER trg_customers_touch BEFORE UPDATE ON customers FOR EACH ROW UPDATE customers SET created_at = CURRENT_TIMESTAMP WHERE id = NEW.id',
       },
+      {
+        name: 'trg_modern_audit',
+        table: 'customers',
+        timing: 'AFTER',
+        event: 'INSERT',
+        rawSql:
+          'CREATE TRIGGER trg_modern_audit AFTER INSERT ON customers FOR EACH ROW EXECUTE FUNCTION audit_row()',
+      },
     ];
     const sqlite = generateBackendProject({
       model,
@@ -535,11 +543,48 @@ describe('Laravel runnable scaffold', () => {
     });
     const migrationPath = paths(sqlite).find(path => path.includes('create_views_and_triggers'))!;
     const migration = file(sqlite, migrationPath);
-    expect(migration).toContain('Trigger trg_users_audit skipped');
-    // يبقى التعريف كتعليق للتوثيق، لكنه لا يُنفَّذ
-    expect(migration).not.toContain("DB::unprepared('CREATE TRIGGER `trg_users_audit`");
+
+    // MySQL SET NEW → SQLite AFTER trigger UPDATE بدل الاستبعاد
+    expect(migration).toContain('CREATE TRIGGER "trg_users_audit" AFTER INSERT ON "customers"');
+    expect(migration).toContain(
+      'UPDATE "customers" SET "full_name" = TRIM(NEW."full_name") WHERE "id" = NEW."id";'
+    );
+    expect(sqlite.warnings.some(warning => warning.includes('trg_users_audit') && warning.includes('adapted for sqlite'))).toBe(true);
+
+    // التعريف المكتوب أصلاً لـSQLite يبقى كما هو
     expect(migration).toContain('CREATE TRIGGER trg_customers_touch');
-    expect(sqlite.warnings.some(warning => warning.includes('trg_users_audit'))).toBe(true);
+
+    // ما لا يمكن ترجمته بأمان (دالة PostgreSQL خارجية) يبقى موثّقاً بلا تنفيذ
+    expect(migration).toContain('Trigger trg_modern_audit skipped');
+    expect(sqlite.warnings.some(warning => warning.includes('trg_modern_audit') && warning.includes('left out'))).toBe(true);
+  });
+
+  it('generates an equivalent PostgreSQL function when the source trigger was MySQL', () => {
+    const model = schema();
+    model.triggers = [
+      {
+        name: 'trg_customers_trim',
+        table: 'customers',
+        timing: 'BEFORE',
+        event: 'INSERT',
+        rawSql:
+          'CREATE TRIGGER `trg_customers_trim` BEFORE INSERT ON `customers` FOR EACH ROW BEGIN SET NEW.full_name = TRIM(NEW.full_name); END',
+      },
+    ];
+    const postgres = generateBackendProject({
+      model,
+      options: options({ db: 'postgres', framework: 'laravel' }),
+      projectName: 'triggers-pg',
+    });
+    const migrationPath = paths(postgres).find(path => path.includes('create_views_and_triggers'))!;
+    const migration = file(postgres, migrationPath);
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION "fn_trg_customers_trim"() RETURNS trigger AS $$');
+    expect(migration).toContain('NEW."full_name" := TRIM(NEW."full_name");');
+    expect(migration).toContain('FOR EACH ROW EXECUTE FUNCTION "fn_trg_customers_trim"();');
+    // down() يحذف الدالة المولّدة أيضاً
+    expect(migration).toContain('DROP FUNCTION IF EXISTS "fn_trg_customers_trim"();');
+    expect(postgres.warnings.some(warning => warning.includes('adapted for postgres'))).toBe(true);
   });
 
   it('documents CHECK constraints on SQLite and enforces them on MySQL migrations', () => {

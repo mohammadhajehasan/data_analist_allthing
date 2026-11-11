@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import {
   Presentation, ChevronLeft, ChevronRight, FileDown, Edit3, Plus, Trash2,
   CheckCircle2, RefreshCw, Sparkles, ArrowUp, ArrowDown, X, Image as ImageIcon, FileText, FileSpreadsheet,
@@ -235,7 +236,7 @@ export function buildAiSlidesFromStory(
 }
 
 export const SlidesExportPanel: React.FC = () => {
-  const { activeDashboard, datasets, activeDataset, language, toast } = useApp();
+  const { activeDashboard, datasets, activeDataset, language, toast, aiSettings } = useApp();
   const isAr = language === 'ar';
 
   const [slides, setSlides] = useState<Slide[]>(() => generateSlidesFromDashboard(
@@ -648,6 +649,11 @@ export const SlidesExportPanel: React.FC = () => {
           language: 'ar',
           focusAngle: 'comprehensive',
           tone: 'executive',
+          // نفس المزوّد والنموذج المعروضين في الشارة — بدل افتراضي الخادم (gemini)
+          provider: aiSettings.activeProvider,
+          model: aiSettings.activeModel,
+          endpointUrl: aiSettings.providers[aiSettings.activeProvider]?.endpointUrl,
+          apiKey: aiSettings.providers[aiSettings.activeProvider]?.apiKey,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -911,6 +917,7 @@ export const SlidesExportPanel: React.FC = () => {
 
         {/* Primary Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          <ActiveAiBadge className="hidden lg:inline-flex" />
           <button
             onClick={startPresenting}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#24a148] hover:bg-[#1e8a3d] text-white text-xs font-mono font-bold uppercase transition-colors"

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { parseAssistantAction } from '../../utils/assistantActions';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../ai/ActiveAiBadge';
 import { checkAiAccess, aiAccessBlockMessage, fetchServerAiProviders, aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { ChatMessage, DataStory } from '../../types';
 import { Bot, User, X, Sparkles, Send, Terminal, ChevronRight, LayoutDashboard, BrainCircuit } from 'lucide-react';
@@ -260,11 +261,8 @@ export const CopilotDrawer: React.FC = () => {
                 <h2 className="text-sm font-bold tracking-tight">
                   {isAr ? 'الوكيل الذكي (إدراك السياق)' : 'AI Agent Copilot'}
                 </h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
-                    {aiSettings.activeModel}
-                  </span>
+                <div className="mt-1">
+                  <ActiveAiBadge />
                 </div>
               </div>
             </div>

@@ -16,6 +16,7 @@ import { SqlOptimizerModal } from '../../components/nl2sql/SqlOptimizerModal';
 import { optimizeSqlQuery } from '../../services/aiService';
 import { MultiModelComparisonArena } from '../../components/ai/MultiModelComparisonArena';
 import { AIModelSelector } from '../../components/ai/AIModelSelector';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { ConfidenceScoreGauge, ConfidenceScoreBreakdown } from '../../components/ai/ConfidenceScoreGauge';
 import { ModelConfigPage } from '../models/ModelConfigPage';
 import Editor from 'react-simple-code-editor';
@@ -422,6 +423,7 @@ addAuditLog({
         </div>
 
         <div className="flex items-center gap-2">
+          <ActiveAiBadge className="hidden sm:inline-flex" />
           <AIModelSelector compact />
           <span className="carbon-tag-blue uppercase text-[11px]">
             Target: {activeDataset.name}

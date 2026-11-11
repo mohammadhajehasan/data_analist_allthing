@@ -477,46 +477,6 @@ export function buildLaravelScaffold(
   return files;
 }
 
-export type TriggerDialect = BackendOptions['db'];
-
-function detectTriggerDialect(sql: string): TriggerDialect | null {
-  if (/\b(LANGUAGE\s+(plpgsql|sql)|RETURNS\s+TRIGGER|EXECUTE\s+(FUNCTION|PROCEDURE)|\$\$)/i.test(sql)) {
-    return 'postgres';
-  }
-  if (/\bDEFINER\s*=|`|\bDELIMITER\b|\bSET\s+NEW\./i.test(sql)) return 'mysql';
-  return null;
-}
-
-/**
- * يُحوّل تعريف Trigger إلى صياغة الهدف عندما يكون آمناً.
- * إذا كان التعريف مكتوباً لمحرّك آخر بصياغة غير قابلة للنقل (مثل
- * `SET NEW.col` في MySQL أو `LANGUAGE plpgsql`) نُبلّغ المولّد ليتجاوزه
- * بدل أن يفشل `php artisan migrate` بأكمله.
- */
-export function triggerStatementForDialect(
-  rawSql: string,
-  db: TriggerDialect
-): { sql?: string; skipped?: string } {
-  const trimmed = rawSql.trim().replace(/;\s*$/, '');
-  if (!trimmed) return { skipped: 'empty trigger definition' };
-  const source = detectTriggerDialect(trimmed);
-  if (source && source !== db) {
-    return { skipped: `written for ${source} but this project targets ${db}` };
-  }
-
-  let sql = trimmed;
-  if (db !== 'mysql') {
-    // DEFINER=... غير مدعوم خارج MySQL
-    sql = sql.replace(
-      /\bDEFINER\s*=\s*(?:`[^`]*`|'(?:[^'\\]|\\.)*'|"[^"\\]*"|\S+)(?:\s*@\s*(?:`[^`]*`|'(?:[^'\\]|\\.)*'|"[^"\\]*"|\S+))?\s+/i,
-      ''
-    );
-    // MySQL backticks → standard double quotes
-    sql = sql.replace(/`([^`]+)`/g, '"$1"');
-  }
-  return { sql: `${sql};` };
-}
-
 /** يجرد قيود CHECK غير القابلة للتنفيذ بعد إنشاء الجدول على SQLite */
 export function sqliteCheckWarnings(model: BackendModel): string[] {
   const warnings: string[] = [];

@@ -14,9 +14,9 @@ import {
   sqliteCheckWarnings,
   syntheticUserModel,
   syntheticUsersMigration,
-  triggerStatementForDialect,
   type LaravelAuthPlan,
 } from './laravelScaffold';
+import { translateTrigger } from './triggerTranslation';
 
 function camel(text: string): string {
   const parts = text.split(/[^A-Za-z0-9]+/).filter(Boolean);
@@ -1028,10 +1028,11 @@ function deferredForeignKeysMigration(model: BackendModel, deferred: Set<string>
 }
 
 function databaseObjectsMigration(
-  source: BackendModel['source'],
+  model: BackendModel,
   db: BackendOptions['db'],
   warnings: string[]
 ): string | null {
+  const source = model.source;
   const views = source.views ?? [];
   const triggers = source.triggers ?? [];
   if (views.length === 0 && triggers.length === 0) return null;
@@ -1042,7 +1043,8 @@ function databaseObjectsMigration(
     'use Illuminate\\Database\\Migrations\\Migration;',
     'use Illuminate\\Support\\Facades\\DB;',
     '',
-    '// Views and triggers are emitted verbatim from the source SQL schema.',
+    '// Views are rebuilt from the source SQL; triggers written for another engine are',
+    '// translated to an equivalent definition for this database (see notes below).',
     'return new class extends Migration',
     '{',
     '    public function up(): void',
@@ -1051,15 +1053,31 @@ function databaseObjectsMigration(
   for (const view of views) {
     lines.push(`        DB::unprepared(${phpString(schemaViewStatement(view, db))});`);
   }
-  // لا نُنفّذ تعريفاً مكتوباً لمحرّك آخر: كان ذلك يُفشل الترحيل بأكمله على SQLite
-  const appliedTriggers: typeof triggers = [];
+  // Trigger مكتوب لمحرّك آخر: نولّد نسخة مكافئة إن أمكن، ونستبعده فقط
+  // عندما يتغيّر المعنى (عبارات أخرى، WHEN، دوال بلا مكافئ، أو بلا مفتاح).
+  const appliedTriggers: { trigger: (typeof triggers)[number]; downExtra?: string }[] = [];
   for (const trigger of triggers) {
-    const statement = triggerStatementForDialect(trigger.rawSql, db);
+    const table = model.tables.find(
+      candidate =>
+        candidate.name.toLowerCase() === (trigger.table ?? '').toLowerCase() ||
+        candidate.rawName.toLowerCase() === (trigger.table ?? '').toLowerCase()
+    );
+    const statement = translateTrigger(
+      trigger.rawSql,
+      db,
+      table ? { name: table.name, primaryKey: table.primaryKey.map(column => column.name) } : undefined
+    );
     if (statement.sql) {
       lines.push(`        DB::unprepared(${phpString(statement.sql)});`);
-      appliedTriggers.push(trigger);
+      appliedTriggers.push({ trigger, downExtra: statement.downExtra });
+      if (statement.note) {
+        warnings.push(
+          `Trigger ${trigger.name} was adapted for ${db} (${statement.translatedFrom}): ${statement.note}`
+        );
+        lines.push(`        // ${trigger.name} adapted — ${statement.note}`);
+      }
     } else {
-      warnings.push(`Trigger ${trigger.name} was left out of the migration: it is ${statement.skipped}.`);
+      warnings.push(`Trigger ${trigger.name} was left out of the migration: ${statement.skipped}.`);
       lines.push(
         `        // Trigger ${trigger.name} skipped — ${statement.skipped}.`,
         `        // ${trigger.rawSql.replace(/\s+/g, ' ')}`
@@ -1067,8 +1085,9 @@ function databaseObjectsMigration(
     }
   }
   lines.push('    }', '', '    public function down(): void', '    {');
-  for (const trigger of [...appliedTriggers].reverse()) {
-    lines.push(`        DB::unprepared(${phpString(schemaDropTriggerStatement(trigger, db))});`);
+  for (const applied of [...appliedTriggers].reverse()) {
+    lines.push(`        DB::unprepared(${phpString(schemaDropTriggerStatement(applied.trigger, db))});`);
+    if (applied.downExtra) lines.push(`        DB::unprepared(${phpString(applied.downExtra)});`);
   }
   for (const view of [...views].reverse()) {
     lines.push(`        DB::unprepared(${phpString(schemaDropViewStatement(view, db))});`);
@@ -1122,7 +1141,7 @@ export function generateLaravel(model: BackendModel, options: BackendOptions, pr
     });
     nextStamp += 1;
   }
-  const objectsMigration = databaseObjectsMigration(model.source, options.db, warnings);
+  const objectsMigration = databaseObjectsMigration(model, options.db, warnings);
   if (objectsMigration) {
     files.push({
       path: `database/migrations/${formatStamp(nextStamp)}_create_views_and_triggers.php`,

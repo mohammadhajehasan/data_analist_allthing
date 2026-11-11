@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import ActiveAiBadge from '../../components/ai/ActiveAiBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
   BarChart2,
@@ -92,14 +93,17 @@ export const ProfilingPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleRefreshAiSummary}
-          disabled={isSummarizing}
-          className="carbon-btn-secondary gap-2 text-xs font-mono font-bold uppercase tracking-wider"
-        >
-          <Sparkles className={`w-3.5 h-3.5 text-[var(--cds-interactive-01)] ${isSummarizing ? 'animate-spin' : ''}`} />
-          <span>{isSummarizing ? t.common.loading : language === 'ar' ? 'تحديث التلخيص الذكي' : 'Refresh AI Insights'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ActiveAiBadge />
+          <button
+            onClick={handleRefreshAiSummary}
+            disabled={isSummarizing}
+            className="carbon-btn-secondary gap-2 text-xs font-mono font-bold uppercase tracking-wider"
+          >
+            <Sparkles className={`w-3.5 h-3.5 text-[var(--cds-interactive-01)] ${isSummarizing ? 'animate-spin' : ''}`} />
+            <span>{isSummarizing ? t.common.loading : language === 'ar' ? 'تحديث التلخيص الذكي' : 'Refresh AI Insights'}</span>
+          </button>
+        </div>
       </div>
 
       {/* AI Profiling Summary Banner - Carbon Callout Style */}

@@ -115,3 +115,77 @@ jobs:
       - name: Oracle secrets not set — skipping SSH deploy
         if: steps.oracle.outputs.present != 'true'
         run: echo "لا توجد secrets أوراكل — تم البناء والاختبار فقط. النشر يُدار من Render."
+
+  # اختبار انحدار حقيقي لمشروع Laravel الذي يولّده مصمّم السكيمّا:
+  # يكتب المشروع على القرص، ينزّل حزمه بـcomposer، يرحّل SQLite، يقلع
+  # الخادم ويستدعي مسارات API عبر HTTP. يفشل إذا كسر تغييرٌ في المولّد
+  # المشروع الناتج — وليس فقط نص ملفاته.
+  generated-laravel-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup PHP 8.4 + Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, sqlite3, tokenizer, xml, ctype, fileinfo, curl, dom, openssl
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-laravel-e2e-${{ runner.os }}-v1
+
+      - name: Run the generated Laravel project end-to-end
+        run: npm run test:laravel-e2e
+
+  # نفس الفكرة لمشاريع Python المولّدة: تثبيت requirements في venv،
+  # تطبيق السكيما، إقلاع الخادم، ثم استدعاء مسارات API الحقيقية.
+  # مصفوفة لأن FastAPI وDjango يحملان اعتماديات ومسارات مختلفة.
+  generated-python-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [fastapi, django]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ matrix.framework }}-v1
+
+      - name: Run the generated ${{ matrix.framework }} project end-to-end
+        run: npm run test:${{ matrix.framework }}-e2e
