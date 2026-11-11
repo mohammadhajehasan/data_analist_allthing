@@ -5,9 +5,18 @@ import {
   generateDdl,
   schemaDropTriggerStatement,
   schemaDropViewStatement,
-  schemaTriggerStatement,
   schemaViewStatement,
 } from '../ddlGenerator';
+import {
+  buildLaravelScaffold,
+  personalAccessTokensMigration,
+  resolveLaravelAuthPlan,
+  sqliteCheckWarnings,
+  syntheticUserModel,
+  syntheticUsersMigration,
+  triggerStatementForDialect,
+  type LaravelAuthPlan,
+} from './laravelScaffold';
 
 function camel(text: string): string {
   const parts = text.split(/[^A-Za-z0-9]+/).filter(Boolean);
@@ -50,18 +59,24 @@ function keyType(table: BackendTable): string {
   return pk.kind === 'int' || pk.kind === 'bigint' || pk.kind === 'smallint' ? 'int' : 'string';
 }
 
-function modelFile(table: BackendTable): string {
+function modelFile(table: BackendTable, auth: boolean): string {
+  // جدول users يحمل HasApiTokens ويورث Authenticatable حتى يعمل auth:sanctum
+  const userModel = auth && table.name.toLowerCase() === 'users';
   const lines: string[] = [
     '<?php',
     '',
     'namespace App\\Models;',
     '',
-    'use Illuminate\\Database\\Eloquent\\Model;',
+    userModel
+      ? 'use Illuminate\\Foundation\\Auth\\User as Authenticatable;'
+      : 'use Illuminate\\Database\\Eloquent\\Model;',
+    ...(userModel ? ['use Laravel\\Sanctum\\HasApiTokens;'] : []),
     'use Illuminate\\Database\\Eloquent\\Relations\\BelongsTo;',
     'use Illuminate\\Database\\Eloquent\\Relations\\HasMany;',
     '',
-    `class ${table.className} extends Model`,
+    `class ${table.className} extends ${userModel ? 'Authenticatable' : 'Model'}`,
     '{',
+    ...(userModel ? ['    use HasApiTokens;', ''] : []),
     `    protected $table = ${phpString(table.name)};`,
     '',
   ];
@@ -240,8 +255,10 @@ function quoteSqlIdentifier(name: string, db: BackendOptions['db']): string {
 
 function migrationFile(table: BackendTable, stamp: string, db: BackendOptions['db'], deferredFks: Set<string> = new Set()): string {
   const needsDb =
-    table.columns.some(col => defaultExpression(col).includes('DB::raw') || Boolean(col.check)) ||
-    (table.tableChecks?.length ?? 0) > 0;
+    table.columns.some(
+      col => defaultExpression(col).includes('DB::raw') || (col.check ?? '').trim() !== ''
+    ) ||
+    (table.tableChecks ?? []).some(check => check.trim() !== '');
   const lines: string[] = [
     '<?php',
     '',
@@ -307,27 +324,37 @@ function migrationFile(table: BackendTable, stamp: string, db: BackendOptions['d
   }
 
   lines.push('        });');
-  if (db !== 'sqlite') {
-    (table.tableChecks ?? []).forEach((check, index) => {
+  const tableChecks = (table.tableChecks ?? []).filter(check => check.trim() !== '');
+  const columnChecks = table.columns.filter(col => (col.check ?? '').trim() !== '');
+  if (db === 'sqlite') {
+    // SQLite لا يدعم ALTER TABLE ... ADD CONSTRAINT: نوثّق القيود بدل تجاهلها بصمت
+    for (const check of tableChecks) {
+      lines.push(`        // CHECK not enforceable on SQLite: ${check.trim()}`);
+    }
+    for (const col of columnChecks) {
+      lines.push(`        // CHECK ${col.name} not enforceable on SQLite: ${col.check!.trim()}`);
+    }
+  } else {
+    tableChecks.forEach((check, index) => {
       lines.push(
         '        if (DB::getDriverName() !== \'sqlite\') {',
         `            DB::statement(${phpString(
           `ALTER TABLE ${quoteSqlIdentifier(table.name, db)} ADD CONSTRAINT ${quoteSqlIdentifier(
             `ck_${table.name}_table_${index + 1}`,
             db
-          )} CHECK (${check})`
+          )} CHECK (${check.trim()})`
         )});`,
         '        }'
       );
     });
-    table.columns.filter(col => col.check).forEach(col => {
+    columnChecks.forEach(col => {
       lines.push(
         '        if (DB::getDriverName() !== \'sqlite\') {',
         `            DB::statement(${phpString(
           `ALTER TABLE ${quoteSqlIdentifier(table.name, db)} ADD CONSTRAINT ${quoteSqlIdentifier(
             `ck_${table.name}_${col.name}`,
             db
-          )} CHECK (${col.check})`
+          )} CHECK (${col.check!.trim()})`
         )});`,
         '        }'
       );
@@ -517,6 +544,9 @@ function controllerFile(table: BackendTable, options: BackendOptions): string {
       '            throw $exception;',
       '        }',
       '',
+      ...(!isComposite && hasPk
+        ? ['        $item->refresh(); // يجلب القيم التي تولّدها القاعدة (created_at، effects الـtriggers)']
+        : []),
       '        return response()->json($item, 201);',
       '    }',
       ''
@@ -640,7 +670,12 @@ function routesFile(model: BackendModel, options: BackendOptions): string {
   return lines.join('\n');
 }
 
-function authControllerFile(): string {
+function authControllerFile(plan: LaravelAuthPlan): string {
+  const email = plan.email.name;
+  const password = plan.password.name;
+  const display = plan.display?.name;
+  const credentialKeys = [display, email, password].filter(Boolean).join(', ');
+
   return [
     '<?php',
     '',
@@ -652,21 +687,27 @@ function authControllerFile(): string {
     'use Illuminate\\Support\\Facades\\Hash;',
     'use Illuminate\\Validation\\ValidationException;',
     '',
+    '/**',
+    ` * Auth endpoints generated from the users table columns: ${credentialKeys}.`,
+    ' */',
     'class AuthController extends Controller',
     '{',
     '    public function register(Request $request): JsonResponse',
     '    {',
     '        $data = $request->validate([',
-    "            'name' => ['required', 'string', 'max:120'],",
-    "            'email' => ['required', 'email', 'max:255', 'unique:users,email'],",
-    "            'password' => ['required', 'string', 'min:8', 'max:128'],",
+    ...(display ? [`            ${phpString(display)} => ['required', 'string', 'max:120'],`] : []),
+    `            ${phpString(email)} => ['required', 'email', 'max:255', 'unique:users,${email}'],`,
+    `            ${phpString(password)} => ['required', 'string', 'min:8', 'max:128'],`,
     '        ]);',
     '',
     '        $user = User::query()->create([',
-    "            'name' => $data['name'],",
-    "            'email' => $data['email'],",
-    "            'password' => Hash::make($data['password']),",
+    ...(display ? [`            ${phpString(display)} => $data[${phpString(display)}],`] : []),
+    `            ${phpString(email)} => $data[${phpString(email)}],`,
+    `            ${phpString(password)} => Hash::make($data[${phpString(password)}]),`,
     '        ]);',
+    '',
+    '        // الحقول المولّدة في القاعدة (created_at أو effects الـtriggers) لا تظهر قبل refresh',
+    '        $user->refresh();',
     '',
     "        $token = $user->createToken('api')->plainTextToken;",
     '',
@@ -676,15 +717,15 @@ function authControllerFile(): string {
     '    public function login(Request $request): JsonResponse',
     '    {',
     '        $data = $request->validate([',
-    "            'email' => ['required', 'email'],",
-    "            'password' => ['required', 'string'],",
+    `            ${phpString(email)} => ['required', 'email'],`,
+    `            ${phpString(password)} => ['required', 'string'],`,
     '        ]);',
     '',
-    "        $user = User::query()->where('email', $data['email'])->first();",
+    `        $user = User::query()->where(${phpString(email)}, $data[${phpString(email)}])->first();`,
     '',
-    '        if (! $user || ! Hash::check($data[\'password\'], $user->password)) {',
+    `        if (! $user || ! Hash::check($data[${phpString(password)}], $user->getAttribute(${phpString(password)}))) {`,
     '            throw ValidationException::withMessages([',
-    "                'email' => ['The provided credentials are incorrect.'],",
+    `                ${phpString(email)} => ['The provided credentials are incorrect.'],`,
     '            ]);',
     '        }',
     '',
@@ -709,41 +750,6 @@ function authControllerFile(): string {
   ].join('\n');
 }
 
-function envFile(options: BackendOptions): string {
-  if (options.db === 'sqlite') {
-    return [
-      'APP_NAME="Schema API"',
-      'APP_ENV=local',
-      'APP_KEY=',
-      'APP_DEBUG=true',
-      'APP_URL=http://localhost:8000',
-      '',
-      'DB_CONNECTION=sqlite',
-      'DB_DATABASE=/absolute/path/to/database.sqlite',
-      '',
-      'CORS_ALLOWED_ORIGINS=http://localhost:5173',
-      '',
-    ].join('\n');
-  }
-  return [
-    'APP_NAME="Schema API"',
-    'APP_ENV=local',
-    'APP_KEY=',
-    'APP_DEBUG=true',
-    'APP_URL=http://localhost:8000',
-    '',
-    `DB_CONNECTION=${options.db === 'postgres' ? 'pgsql' : 'mysql'}`,
-    'DB_HOST=127.0.0.1',
-    `DB_PORT=${options.db === 'postgres' ? '5432' : '3306'}`,
-    'DB_DATABASE=appdb',
-    `DB_USERNAME=${options.db === 'postgres' ? 'postgres' : 'root'}`,
-    'DB_PASSWORD=',
-    '',
-    'CORS_ALLOWED_ORIGINS=http://localhost:5173',
-    '',
-  ].join('\n');
-}
-
 function readme(model: BackendModel, options: BackendOptions, projectName: string): string {
   const full = options.mode === 'full';
   const tableRows = model.tables
@@ -761,77 +767,77 @@ ${options.aiSeedRows && Object.keys(options.aiSeedRows).length > 0 ? `- **AI enr
 
 ## العربية — نظرة سريعة
 
-حزمة Laravel جاهزة تحتوي نموذج Eloquent لكل جدول، وترحيلاً بكل القيود
-والمفاتيح والفهارس، ومتحكّمات CRUD مع أصناف FormRequest للتحقق، ومسارات
-routes/api.php، وملف اتصال .env.example. العروض وTriggers تُنقل في ترحيل
-مستقل باسم create_views_and_triggers. قرار التوجيه موثّق أعلاه.
+هذه حزمة Laravel **قابلة للتشغيل مباشرة**: تتضمّن artisan وbootstrap/app.php
+(مسجَّل فيه routes/api.php) وcomposer.json و.env، إضافة إلى نموذج Eloquent
+لكل جدول، وترحيلات بالقيود والمفاتيح والفهارس، ومتحكّمات CRUD مع FormRequest،
+وترحيل مستقل للعروض وTriggers. قرار التوجيه موثّق أعلاه.
 
-خطوات التشغيل: أنشئ مشروع Laravel جديد، انسخ المجلدات كما هو موضّح في قسم
-التثبيت، اضبط .env، ثم نفّذ php artisan key:generate وphp artisan migrate.
+خطوات التشغيل من جذر المشروع الناتج:
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan serve
 بيانات البذر الاختيارية تُشغّل بـ php artisan db:seed بعد الترحيل.
 ${options.aiSeedRows && Object.keys(options.aiSeedRows).length > 0 ? '\n> بيانات البذر التجريبية (database/seeders) مُثراة بالذكاء الاصطناعي: شغّل php artisan db:seed بعد الترحيل.' : ''}
 
 ## What is included
 
+- A runnable Laravel skeleton: \`composer.json\`, \`artisan\`, \`bootstrap/app.php\` with
+  \`routes/api.php\` registered, \`public/index.php\`, and \`.env\` / \`.env.example\`.
 - Eloquent models for **${model.tables.length}** tables (relations, casts, fillable, hidden).
 - One migration per table with columns, primary keys, indexes and foreign keys.
-- Views and triggers from the source DDL are recreated verbatim in a dedicated migration (\`create_views_and_triggers\`).
+- Views and triggers from the source DDL are recreated in a dedicated migration
+  (\`create_views_and_triggers\`). A trigger written for a different engine is left
+  out with a warning instead of failing the whole migration.
 - ${full ? 'REST controllers + `routes/api.php` + `FormRequest` validation classes for every table.' : 'Models and migrations only (no controllers/routes).'}
-- ${options.auth ? 'Sanctum login/register/logout endpoints and protected API routes.' : 'No authentication layer (add Sanctum later if needed).'}
+- ${options.auth ? 'Sanctum login/register/logout endpoints, a `personal_access_tokens` migration and protected API routes.' : 'No authentication layer (add Sanctum later if needed).'}
+- Column values generated by the database (for example \`created_at\` written by a
+  trigger) are returned after \`POST\` because the controller refreshes the model.
 ${options.aiSeedRows && Object.keys(options.aiSeedRows).length > 0 ? '- Optional AI seeders in `database/seeders` (plain data only).\n' : ''}- The original SQL DDL in \`migrations/001_init.sql\` for reference.
 - \`MANIFEST.json\` lists every file and whether it came from a template or AI enrichment.
 
-## Install into a Laravel app
+## Run this project
 
-These files are meant to be copied into a fresh Laravel project:
+This bundle is a complete Laravel project, not just a pile of files to copy:
 
 \`\`\`bash
-composer create-project laravel/laravel backend
-cd backend
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan serve
 \`\`\`
 
-Copy from this package:
+Open \`http://127.0.0.1:8000/api/<table>\`. \`routes/api.php\` is already registered
+in \`bootstrap/app.php\`, so no extra wiring is required.
+
+The migrations target **${options.db}**. If you switch \`DB_CONNECTION\` to another
+engine later, engine-specific triggers and CHECK constraints will not transfer by
+themselves.
+
+## Merging into an existing Laravel app
+
+If you already have a Laravel 11/12 skeleton, copy the application files into it
+(\`app/Http/Requests\` does not exist in a fresh skeleton, hence the \`mkdir\`):
 
 \`\`\`bash
+mkdir -p backend/app/Http/Requests
 cp -R app/Models/* backend/app/Models/
 cp -R app/Http/Controllers/* backend/app/Http/Controllers/
 cp -R app/Http/Requests/* backend/app/Http/Requests/
+cp -R app/Providers/* backend/app/Providers/
 cp -R database/migrations/* backend/database/migrations/
 cp -R database/seeders/* backend/database/seeders/
-cp -R docs/* backend/docs/
 cp routes/api.php backend/routes/api.php
 \`\`\`
 
-${options.auth ? `Install Sanctum and expose the API routes:
-
-\`\`\`bash
-composer require laravel/sanctum
-php artisan install:api
-\`\`\`
-
-Add the token trait to \`app/Models/User.php\`:
-
-\`\`\`php
-use Laravel\\Sanctum\\HasApiTokens;
-
-class User extends Authenticatable
-{
-    use HasApiTokens;
-    // ...
-}
-\`\`\`
-` : ''}
-Configure \`.env\` (see \`.env.example\`), create the database, then:
-
-\`\`\`bash
-php artisan key:generate
-php artisan migrate
-${options.aiSeedRows && Object.keys(options.aiSeedRows).length > 0 ? 'php artisan db:seed\n' : ''}php artisan serve
-\`\`\`
-
-> If your Laravel skeleton already has a migration that creates a table with one of
-> these names (for example \`users\`), remove the duplicate before running
-> \`php artisan migrate\`.
+${options.auth ? `Sanctum is already required in \`composer.json\`, the \`HasApiTokens\`\\ntrait is on \`app/Models/User.php\`, and the \`personal_access_tokens\` migration is\\nincluded — do not run \`php artisan install:api\` on top, it would duplicate files.\\n` : ''}
+Register the API routes once in \`bootstrap/app.php\`:\\n\n\`\`\`php\\n->withRouting(\\n    api: __DIR__.'/../routes/api.php',\\n    // ...\\n)\\n\`\`\`\\n\\n> **Duplicate \`users\` migration:** Laravel ships
+> \`0001_01_01_000000_create_users_table.php\`. When your schema also defines
+> \`users\`, delete that default migration before running \`php artisan migrate\`,
+> otherwise the run fails on a duplicate table.\\n>\\n> **Requests path:** copy into \`app/Http/Requests/\` (create it first). The
+> generated controllers import \`App\\\\Http\\\\Requests\\\\Store*Request\`, so a wrong
+> folder means "class not found" at request time.\\n>\\n> **Migrations:** if you also copied the scaffold\'s \`database/database.sqlite\`
+> or \`.env\`, keep only the one matching your real database.
 
 ## Tables
 
@@ -1021,7 +1027,11 @@ function deferredForeignKeysMigration(model: BackendModel, deferred: Set<string>
   return lines.join('\n');
 }
 
-function databaseObjectsMigration(source: BackendModel['source'], db: BackendOptions['db']): string | null {
+function databaseObjectsMigration(
+  source: BackendModel['source'],
+  db: BackendOptions['db'],
+  warnings: string[]
+): string | null {
   const views = source.views ?? [];
   const triggers = source.triggers ?? [];
   if (views.length === 0 && triggers.length === 0) return null;
@@ -1041,11 +1051,23 @@ function databaseObjectsMigration(source: BackendModel['source'], db: BackendOpt
   for (const view of views) {
     lines.push(`        DB::unprepared(${phpString(schemaViewStatement(view, db))});`);
   }
+  // لا نُنفّذ تعريفاً مكتوباً لمحرّك آخر: كان ذلك يُفشل الترحيل بأكمله على SQLite
+  const appliedTriggers: typeof triggers = [];
   for (const trigger of triggers) {
-    lines.push(`        DB::unprepared(${phpString(schemaTriggerStatement(trigger))});`);
+    const statement = triggerStatementForDialect(trigger.rawSql, db);
+    if (statement.sql) {
+      lines.push(`        DB::unprepared(${phpString(statement.sql)});`);
+      appliedTriggers.push(trigger);
+    } else {
+      warnings.push(`Trigger ${trigger.name} was left out of the migration: it is ${statement.skipped}.`);
+      lines.push(
+        `        // Trigger ${trigger.name} skipped — ${statement.skipped}.`,
+        `        // ${trigger.rawSql.replace(/\s+/g, ' ')}`
+      );
+    }
   }
   lines.push('    }', '', '    public function down(): void', '    {');
-  for (const trigger of [...triggers].reverse()) {
+  for (const trigger of [...appliedTriggers].reverse()) {
     lines.push(`        DB::unprepared(${phpString(schemaDropTriggerStatement(trigger, db))});`);
   }
   for (const view of [...views].reverse()) {
@@ -1063,10 +1085,23 @@ function formatStamp(index: number): string {
 
 export function generateLaravel(model: BackendModel, options: BackendOptions, projectName: string): GeneratedFile[] {
   const files: GeneratedFile[] = [];
+  const warnings: string[] = [];
+
+  // المصادقة تُولَّد فقط إذا أمكن تنفيذها فعلاً على جدول users
+  const authResolution = options.auth ? resolveLaravelAuthPlan(model) : null;
+  const authPlan = authResolution?.plan ?? null;
+  if (authResolution) warnings.push(...authResolution.warnings);
+  if (options.auth && !authPlan) {
+    warnings.push('Authentication endpoints were skipped because the users table cannot support them.');
+  }
+  const effectiveOptions: BackendOptions = { ...options, auth: authPlan !== null };
 
   for (const table of model.order) {
     const path = `app/Models/${table.className}.php`;
-    files.push({ path, language: 'php', content: modelFile(table) });
+    files.push({ path, language: 'php', content: modelFile(table, authPlan !== null) });
+  }
+  if (authPlan?.synthetic) {
+    files.push(syntheticUsersMigration(), syntheticUserModel());
   }
 
   const deferredFks = deferredForeignKeys(model, options.db);
@@ -1087,7 +1122,7 @@ export function generateLaravel(model: BackendModel, options: BackendOptions, pr
     });
     nextStamp += 1;
   }
-  const objectsMigration = databaseObjectsMigration(model.source, options.db);
+  const objectsMigration = databaseObjectsMigration(model.source, options.db, warnings);
   if (objectsMigration) {
     files.push({
       path: `database/migrations/${formatStamp(nextStamp)}_create_views_and_triggers.php`,
@@ -1101,16 +1136,17 @@ export function generateLaravel(model: BackendModel, options: BackendOptions, pr
       files.push({
         path: `app/Http/Controllers/${table.className}Controller.php`,
         language: 'php',
-        content: controllerFile(table, options),
+        content: controllerFile(table, effectiveOptions),
       });
     }
-    files.push({ path: 'routes/api.php', language: 'php', content: routesFile(model, options) });
-    if (options.auth) {
+    files.push({ path: 'routes/api.php', language: 'php', content: routesFile(model, effectiveOptions) });
+    if (authPlan) {
       files.push({
         path: 'app/Http/Controllers/AuthController.php',
         language: 'php',
-        content: authControllerFile(),
+        content: authControllerFile(authPlan),
       });
+      files.push(personalAccessTokensMigration());
     }
   }
 
@@ -1120,12 +1156,12 @@ export function generateLaravel(model: BackendModel, options: BackendOptions, pr
       files.push({
         path: `app/Http/Requests/Store${table.className}Request.php`,
         language: 'php',
-        content: formRequestFile(table, 'store', options),
+        content: formRequestFile(table, 'store', effectiveOptions),
       });
       files.push({
         path: `app/Http/Requests/Update${table.className}Request.php`,
         language: 'php',
-        content: formRequestFile(table, 'update', options),
+        content: formRequestFile(table, 'update', effectiveOptions),
       });
     }
   }
@@ -1137,9 +1173,14 @@ export function generateLaravel(model: BackendModel, options: BackendOptions, pr
     content: `-- Reference DDL generated from the ER model on ${new Date().toISOString().slice(0, 10)}\n\n${ddl.code}\n`,
   });
 
+  // قيود CHECK غير قابلة للإضافة بعد إنشاء الجدول على SQLite — نشير إليها صراحةً
+  if (options.db === 'sqlite') warnings.push(...sqliteCheckWarnings(model));
+
   files.push(...aiSeederFiles(model, options));
-  files.push({ path: '.env.example', language: 'env', content: envFile(options) });
-  files.push({ path: 'README.md', language: 'markdown', content: readme(model, options, projectName) });
+  // مشروع Laravel كامل قابل للتشغيل: composer install ثم migrate بلا نسخ يدوي
+  files.push(...buildLaravelScaffold(projectName, effectiveOptions, authPlan !== null));
+  files.push({ path: 'README.md', language: 'markdown', content: readme(model, effectiveOptions, projectName) });
+  options.extraWarnings = [...new Set([...(options.extraWarnings ?? []), ...warnings])];
   return files;
 }
 

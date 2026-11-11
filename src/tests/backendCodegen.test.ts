@@ -390,6 +390,175 @@ describe('Laravel generator', () => {
   });
 });
 
+describe('Laravel runnable scaffold', () => {
+  const project = generateBackendProject({
+    model: schema(),
+    options: options({ db: 'sqlite', framework: 'laravel', auth: true }),
+    projectName: 'shop-demo',
+  });
+
+  it('ships a bootable Laravel skeleton', () => {
+    expect(paths(project)).toEqual(
+      expect.arrayContaining([
+        'composer.json',
+        'artisan',
+        'bootstrap/app.php',
+        'bootstrap/providers.php',
+        'public/index.php',
+        'app/Http/Controllers/Controller.php',
+        'app/Providers/AppServiceProvider.php',
+        'routes/api.php',
+        '.env',
+        '.env.example',
+        'database/database.sqlite',
+        'bootstrap/cache/.gitignore',
+        'storage/framework/views/.gitignore',
+      ])
+    );
+    expect(file(project, 'bootstrap/app.php')).toContain("api: __DIR__.'/../routes/api.php'");
+    expect(file(project, 'public/index.php')).toContain("__DIR__.'/../vendor/autoload.php'");
+    const composer = JSON.parse(file(project, 'composer.json')) as { require: Record<string, string> };
+    expect(composer.require['laravel/framework']).toBeTruthy();
+    expect(composer.require['laravel/sanctum']).toBeTruthy();
+    expect(file(project, '.env')).toContain('DB_CONNECTION=sqlite');
+    // متغيّر فارغ يمنع Laravel من استخدام database/database.sqlite
+    expect(file(project, '.env')).not.toMatch(/^DB_DATABASE=$/m);
+    // ملف قاعدة البيانات الفارغ يجب ألا يحمل رأس التوليد
+    expect(file(project, 'database/database.sqlite')).toBe('');
+  });
+
+  it('keeps FormRequests under app/Http/Requests and refreshes created rows', () => {
+    expect(file(project, 'app/Http/Requests/StoreOrderRequest.php')).toContain(
+      'namespace App\\Http\\Requests;'
+    );
+    const controller = file(project, 'app/Http/Controllers/OrderController.php');
+    expect(controller).toContain('StoreOrderRequest $request');
+    expect(controller).toContain('$item->refresh();');
+    expect(controller).toContain('return response()->json($item, 201);');
+  });
+
+  it('generates a standard users table and Sanctum pieces when the schema has none', () => {
+    expect(paths(project)).toEqual(
+      expect.arrayContaining([
+        'database/migrations/0001_01_01_000000_create_users_table.php',
+        'database/migrations/0001_01_01_000001_create_personal_access_tokens_table.php',
+        'app/Models/User.php',
+      ])
+    );
+    expect(file(project, 'app/Models/User.php')).toContain('HasApiTokens');
+    expect(project.warnings.some(warning => warning.includes('no `users` table'))).toBe(true);
+    expect(file(project, 'routes/api.php')).toContain("auth:sanctum");
+  });
+
+  it('uses the schema users columns for auth instead of assuming name/email/password', () => {
+    const withUsers: ErModel = {
+      diagramNames: ['Auth'],
+      warnings: [],
+      tables: [
+        {
+          id: 'users',
+          name: 'users',
+          columns: [
+            { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+            { name: 'full_name', type: 'VARCHAR(120)', isPrimaryKey: false, isNullable: false },
+            { name: 'email', type: 'VARCHAR(255)', isPrimaryKey: false, isNullable: false, isUnique: true },
+            { name: 'password', type: 'VARCHAR(255)', isPrimaryKey: false, isNullable: false },
+          ],
+        },
+      ],
+      relationships: [],
+    };
+    const authProject = generateBackendProject({
+      model: withUsers,
+      options: options({ db: 'sqlite', framework: 'laravel', auth: true }),
+      projectName: 'auth-demo',
+    });
+    expect(file(authProject, 'app/Models/User.php')).toContain('extends Authenticatable');
+    expect(file(authProject, 'app/Models/User.php')).toContain('use HasApiTokens;');
+    const controller = file(authProject, 'app/Http/Controllers/AuthController.php');
+    expect(controller).toContain("'full_name' => ['required', 'string', 'max:120'],");
+    expect(controller).toContain("'email' => ['required', 'email'");
+    expect(controller).not.toContain("'name' =>");
+    expect(controller).toContain('$user->refresh();');
+  });
+
+  it('skips auth endpoints when the users table cannot support them', () => {
+    const noPassword: ErModel = {
+      diagramNames: ['Auth'],
+      warnings: [],
+      tables: [
+        {
+          id: 'users',
+          name: 'users',
+          columns: [
+            { name: 'id', type: 'INT', isPrimaryKey: true, isNullable: false },
+            { name: 'email', type: 'VARCHAR(255)', isPrimaryKey: false, isNullable: false },
+          ],
+        },
+      ],
+      relationships: [],
+    };
+    const broken = generateBackendProject({
+      model: noPassword,
+      options: options({ db: 'sqlite', framework: 'laravel', auth: true }),
+      projectName: 'broken-auth',
+    });
+    expect(paths(broken)).not.toContain('app/Http/Controllers/AuthController.php');
+    expect(file(broken, 'routes/api.php')).not.toContain('auth:sanctum');
+    expect(broken.warnings.some(warning => warning.includes('no password column'))).toBe(true);
+  });
+
+  it('leaves engine-specific triggers out with a warning instead of breaking migrate', () => {
+    const model = schema();
+    model.triggers = [
+      {
+        name: 'trg_users_audit',
+        table: 'customers',
+        timing: 'AFTER',
+        event: 'INSERT',
+        rawSql:
+          'CREATE TRIGGER `trg_users_audit` AFTER INSERT ON `customers` FOR EACH ROW BEGIN SET NEW.full_name = TRIM(NEW.full_name); END',
+      },
+      {
+        name: 'trg_customers_touch',
+        table: 'customers',
+        timing: 'BEFORE',
+        event: 'UPDATE',
+        rawSql:
+          'CREATE TRIGGER trg_customers_touch BEFORE UPDATE ON customers FOR EACH ROW UPDATE customers SET created_at = CURRENT_TIMESTAMP WHERE id = NEW.id',
+      },
+    ];
+    const sqlite = generateBackendProject({
+      model,
+      options: options({ db: 'sqlite', framework: 'laravel' }),
+      projectName: 'triggers',
+    });
+    const migrationPath = paths(sqlite).find(path => path.includes('create_views_and_triggers'))!;
+    const migration = file(sqlite, migrationPath);
+    expect(migration).toContain('Trigger trg_users_audit skipped');
+    // يبقى التعريف كتعليق للتوثيق، لكنه لا يُنفَّذ
+    expect(migration).not.toContain("DB::unprepared('CREATE TRIGGER `trg_users_audit`");
+    expect(migration).toContain('CREATE TRIGGER trg_customers_touch');
+    expect(sqlite.warnings.some(warning => warning.includes('trg_users_audit'))).toBe(true);
+  });
+
+  it('documents CHECK constraints on SQLite and enforces them on MySQL migrations', () => {
+    const sqlitePath = paths(project).find(path => path.includes('create_order_items_table'))!;
+    expect(file(project, sqlitePath)).toContain('// CHECK quantity not enforceable on SQLite: quantity > 0');
+    expect(project.warnings.some(warning => warning.includes('SQLite cannot add CHECK constraints'))).toBe(true);
+
+    const mysql = generateBackendProject({
+      model: schema(),
+      options: options({ db: 'mysql', framework: 'laravel' }),
+      projectName: 'shop-demo',
+    });
+    const mysqlPath = paths(mysql).find(path => path.includes('create_order_items_table'))!;
+    const migration = file(mysql, mysqlPath);
+    expect(migration).toContain('ADD CONSTRAINT');
+    expect(migration).toContain('CHECK (quantity > 0)');
+  });
+});
+
 describe('plain PHP PDO generator', () => {
   const project = generateBackendProject({
     model: schema(),

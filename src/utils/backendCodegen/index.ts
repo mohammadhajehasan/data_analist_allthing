@@ -152,6 +152,8 @@ function generationHeader(language: GeneratedFile['language'], line: string): st
 
 function stampFile(file: GeneratedFile, line: string): GeneratedFile {
   if (file.path === 'MANIFEST.json') return file;
+  // ملفات فارغة (مثل database/database.sqlite) يجب أن تبقى فارغة تماماً
+  if (file.content === '') return file;
   const header = generationHeader(file.language, line);
   if (!header) return file;
   if (file.language === 'php' && file.content.startsWith('<?php')) {

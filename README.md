@@ -178,6 +178,7 @@ Every generated project contains:
 - **CRUD REST API** لكل جدول: list/create/get/update/delete، مع دعم المفاتيح المركّبة.
 - **Validation** مشتقة من قيود السكيمّا: required، `max_length`، unique (409)، FK موجود (400/422)، و`CHECK`.
 - **اتصال قاعدة البيانات** و`.env.example` جاهز.
+- **مشروع Laravel قابل للتشغيل** بمشغّل واحد: `composer.json` و`artisan` و`bootstrap/app.php` (مسجَّل فيه `routes/api.php`) و`public/index.php` و`.env` و`database/database.sqlite` لـSQLite — يكفي `composer install` ثم `php artisan key:generate` ثم `php artisan migrate` ثم `php artisan serve`. عند طلب التوثيق: `HasApiTokens` على نموذج المستخدم، ترحيل `personal_access_tokens`، وإن لم تحتوِ السكيما `users` يُولَّد الجدول القياسي؛ وإن كان بلا `email`/`password` تُعطَّل نقاط المصادقة مع تحذير بدل كود لا يعمل.
 - **README** بهيكل المشروع وخطوات التشغيل والمسارات.
 - **ZIP** جاهز للتنزيل، مع معاينة كل ملف داخل اللوحة قبل التنزيل.
 - **فتح في VS Code**: زر يحفظ المشروع في `data/generated/` محلياً ثم يفتحه بمخطط `vscode://file`؛ تُضمَّن `.vscode/tasks.json` و`launch.json` والإضافات المقترحة وملف `.code-workspace`، فإن تعذّر الفتح (خادم بعيد مثلاً) يُنزّل ZIP تلقائياً.
@@ -188,6 +189,7 @@ Every generated project contains:
 - **CRUD REST API** per table: list/create/get/update/delete, with composite-key support.
 - **Validation** derived from schema constraints: required, `max_length`, unique (409), existing FK (400/422), and `CHECK`.
 - **Database connection** plus a ready `.env.example`.
+- **A runnable Laravel project**: `composer.json`, `artisan`, `bootstrap/app.php` with `routes/api.php` registered, `public/index.php`, `.env` and (for SQLite) `database/database.sqlite` — `composer install`, `php artisan key:generate`, `php artisan migrate`, `php artisan serve`. Auth includes `HasApiTokens`, a `personal_access_tokens` migration and a standard `users` table when the schema has none; if `users` lacks `email`/`password` the auth endpoints are skipped with a warning instead of emitting code that cannot run. Column values written by the database (e.g. a trigger) are refreshed on create.
 - **README** with the project layout, run steps, and endpoint table.
 - **ZIP download**, with an in-panel preview of every generated file.
 - **Open in VS Code**: a button saves the project into local `data/generated/` and opens it through `vscode://file`; the bundle includes `.vscode/tasks.json`, `launch.json`, recommended extensions and a `.code-workspace` file. If opening fails (for example on a remote server) it falls back to the ZIP download automatically.
@@ -204,12 +206,12 @@ From the sidebar: **Backend** (`SQL→API`). Paste `CREATE TABLE`/`ALTER TABLE`/
 
 - **اكتشاف اللهجة**: MySQL / PostgreSQL / SQLite مع درجة ثقة وأسباب. عند إشارات متعارضة (مثل `JSONB` مع `ENGINE=`) يظهر تحذير ولا يُفشَل التوليد؛ وعند غموض حقيقي يُطلب تأكيد صريح قبل المتابعة.
 - **قاعدة التوجيه**: MySQL → Laravel، وPostgreSQL/SQLite → FastAPI، وأي اختيار يدوي يتغلّب دائماً. السبب يُسجَّل في `README` و`MANIFEST.json`.
-- **الفهارس وViews وTriggers**: تُستخرج `CREATE INDEX` و`CREATE VIEW` و`CREATE TRIGGER` من كود SQL، وتُعرض أعدادها في المعاينة، ثم تُنقل إلى ترحيلات Laravel وFastAPI وPDO؛ ومنها Migration مستقل `create_views_and_triggers` في Laravel. يدعم المحلّل أجسام Triggers ذات `BEGIN…END` وتعليمات `DELIMITER` المخصّصة.
+- **الفهارس وViews وTriggers**: تُستخرج `CREATE INDEX` و`CREATE VIEW` و`CREATE TRIGGER` من كود SQL، وتُعرض أعدادها في المعاينة، ثم تُنقل إلى ترحيلات Laravel وFastAPI وPDO؛ ومنها Migration مستقل `create_views_and_triggers` في Laravel. يدعم المحلّل أجسام Triggers ذات `BEGIN…END` وتعليمات `DELIMITER` المخصّصة. الـTrigger المكتوب لمحرّك آخر (مثل `SET NEW.col` في MySQL مع هدف SQLite) يُستبعد من الترحيل مع تحذير بدل إفشال `php artisan migrate`. قيود CHECK على SQLite تُوثَّق في الترحيل وتُحذر لأن إضافتها بعد إنشاء الجدول غير مدعومة.
 - **الحالات الحدية**: جدول بلا مفتاح أساسي يُولَّد مع تحذير ونقاط وصول list/create فقط، الأنواع غير المدعومة تُحوَّل إلى `TEXT` مع تعليق وتحذير، والمفاتيح الأجنبية الدائرية تُضاف في **مرحلة ترحيل ثانية** (`ALTER TABLE ... ADD CONSTRAINT` أو ترحيل Laravel مؤجَّل) بدل كسر ترتيب الإنشاء.
 
 - **Dialect detection** with confidence and reasons. Conflicting signals (e.g. `JSONB` with `ENGINE=`) warn without failing; genuinely ambiguous schemas require an explicit confirmation before generation.
 - **Routing rule**: MySQL → Laravel, PostgreSQL/SQLite → FastAPI, and any manual choice always wins. The reason is recorded in `README` and `MANIFEST.json`.
-- **Indexes, views and triggers**: `CREATE INDEX`, `CREATE VIEW` and `CREATE TRIGGER` are parsed, counted in the preview, and carried into Laravel, FastAPI and PDO migrations — Laravel gets a dedicated `create_views_and_triggers` migration. The parser handles `BEGIN…END` trigger bodies and custom `DELIMITER` directives.
+- **Indexes, views and triggers**: `CREATE INDEX`, `CREATE VIEW` and `CREATE TRIGGER` are parsed, counted in the preview, and carried into Laravel, FastAPI and PDO migrations — Laravel gets a dedicated `create_views_and_triggers` migration. The parser handles `BEGIN…END` trigger bodies and custom `DELIMITER` directives. A trigger written for another engine (e.g. MySQL `SET NEW.col` targeting SQLite) is left out of the migration with a warning instead of failing `php artisan migrate`; CHECK constraints that SQLite cannot add after table creation are documented and flagged.
 - **Edge cases**: a table without a primary key is generated with a warning and list/create endpoints only; unsupported types map to `TEXT` with a comment and warning; circular foreign keys are added in a **second migration phase** (`ALTER TABLE ... ADD CONSTRAINT` or a deferred Laravel migration) instead of breaking creation order.
 
 ### واجهة الدمج API Contract
@@ -251,4 +253,5 @@ All endpoints require the platform session (Bearer/cookie), return JSON, and run
 | لوحة مصنع الـBackend Backend Factory UI | `src/features/schemadesigner/BackendFactoryPanel.tsx` |
 | تحليل السكيمّا واختيار التقنية Schema analysis & stack selection | `src/utils/backendCodegen/model.ts` |
 | مولّدات FastAPI / Django / Laravel / PDO Generators | `src/utils/backendCodegen/pythonFastapi.ts` · `django.ts` · `phpLaravel.ts` · `phpPdo.ts` |
+| هيكل Laravel القابل للتشغيل + مساعدات المصادقة/الـTriggers Runnable Laravel scaffold & auth/trigger helpers | `src/utils/backendCodegen/laravelScaffold.ts` |
 | كاتب ZIP بلا اعتماديات Dependency-free ZIP writer | `src/utils/zipStore.ts` |
