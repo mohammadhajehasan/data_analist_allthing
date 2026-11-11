@@ -1188,6 +1188,7 @@ async function enrichSeedRowsWithAi(input: {
   provider?: string;
   model?: string;
   apiKey?: string;
+  endpointUrl?: string;
   language?: 'ar' | 'en';
 }): Promise<{ seedRows: AiSeedRows; notes: string[]; modelUsed: string }> {
   const safeTables = input.tables.slice(0, BACKEND_MAX_TABLES).map(table => ({
@@ -1223,8 +1224,10 @@ async function enrichSeedRowsWithAi(input: {
 
   const result = await withTimeout(
     callUniversalAI({
+      // المزوّد/النموذج المختاران في الواجهة؛ الافتراضي فقط للطلبات القديمة
       provider: input.provider || 'gemini',
       model: input.model || 'gemini-2.5-flash',
+      endpointUrl: input.endpointUrl,
       apiKey: input.apiKey,
       prompt,
       systemInstruction,
@@ -1303,6 +1306,7 @@ app.post('/api/backend/enrich', aiServerKeyQuotaGuard, async (req, res) => {
       provider: req.body?.provider,
       model: req.body?.model,
       apiKey: req.body?.apiKey,
+      endpointUrl: req.body?.endpointUrl,
       language: req.body?.language,
     });
     return res.json({
@@ -1312,10 +1316,11 @@ app.post('/api/backend/enrich', aiServerKeyQuotaGuard, async (req, res) => {
       modelUsed: enriched.modelUsed,
     });
   } catch (error: any) {
+    const target = [req.body?.provider, req.body?.model].filter(Boolean).join(' · ');
     return res.json({
       available: false,
       seedRows: {},
-      notes: [`AI enrichment unavailable: ${error?.message || 'unknown error'}`],
+      notes: [`AI enrichment unavailable${target ? ` (${target})` : ''}: ${error?.message || 'unknown error'}`],
       modelUsed: '',
     });
   }

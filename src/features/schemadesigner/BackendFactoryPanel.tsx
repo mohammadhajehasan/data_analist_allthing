@@ -72,8 +72,11 @@ function formatBytes(content: string): string {
 }
 
 const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialect, fileName }) => {
-  const { language, toast } = useApp();
+  const { language, toast, aiSettings } = useApp();
   const isAr = language === 'ar';
+  // نفس المزوّد/النموذج المختارين في صفحة النماذج — لا نثبّت مزوّداً واحداً للإثراء
+  const activeAiConfig = aiSettings.providers[aiSettings.activeProvider];
+  const activeAiLabel = `${aiSettings.activeProvider} · ${aiSettings.activeModel}`;
 
   const [projectName, setProjectName] = useState<string>(() => defaultProjectName(fileName));
   const [db, setDb] = useState<BackendDb>(() => mapDialect(dialect));
@@ -154,6 +157,12 @@ const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialec
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...aiAuthHeaders() },
             body: JSON.stringify({
+              // المزوّد والنموذج والمفتاح من الإعدادات النشطة للمستخدم
+              provider: aiSettings.activeProvider,
+              model: aiSettings.activeModel,
+              apiKey: activeAiConfig?.apiKey,
+              endpointUrl: activeAiConfig?.endpointUrl,
+              language,
               tables: analysis.tables.map(table => ({
                 name: table.name,
                 columns: table.columns.map(column => ({
@@ -173,10 +182,11 @@ const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialec
             aiSeedRows = payload.seedRows as AiSeedRows;
             aiNotes = Array.isArray(payload.notes) ? payload.notes : [];
             const enrichedTables = Object.keys(aiSeedRows).length;
+            const usedModel = typeof payload.modelUsed === 'string' && payload.modelUsed ? payload.modelUsed : activeAiLabel;
             setAiNotice(
               isAr
-                ? `إثراء ذكي: بيانات بذر لـ ${enrichedTables} جدولاً (مُصفّاة على السكيما).`
-                : `AI enrichment: seed rows for ${enrichedTables} table(s), schema-filtered.`
+                ? `إثراء ذكي: بيانات بذر لـ ${enrichedTables} جدولاً عبر ${usedModel} (مُصفّاة على السكيما).`
+                : `AI enrichment: seed rows for ${enrichedTables} table(s) via ${usedModel}, schema-filtered.`
             );
           } else {
             const unavailableNotes = Array.isArray(payload?.notes) && payload.notes.length > 0
@@ -478,6 +488,9 @@ const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialec
             />
             <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
             {isAr ? 'إثراء ذكي (بيانات بذر)' : 'AI enrichment (seed data)'}
+            <span className="text-[9px] text-[var(--cds-text-03)] font-mono" title={isAr ? 'المزوّد والنموذج النشطان في صفحة النماذج' : 'Active provider and model from Model Config'}>
+              {activeAiLabel}
+            </span>
           </label>
 
           <div className="ms-auto flex flex-wrap items-center gap-2">

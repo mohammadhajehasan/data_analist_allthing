@@ -231,8 +231,8 @@ All endpoints require the platform session (Bearer/cookie), return JSON, and run
 | `/api/backend/materialize` | POST | حفظ المشروع المولَّد محلياً وإرجاع رابط فتحه في VS Code (loopback + جلسة فقط) |
 
 - رموز الخطأ ثابتة: `INVALID_SQL` (400)، `UNSUPPORTED_DIALECT` (422)، `NEEDS_DIALECT_CONFIRMATION` (422)، `SCHEMA_TOO_LARGE` (413)، `RATE_LIMITED` (429)، و`AI_UNAVAILABLE` لا يفشل العملية بل يكملها قالبياً.
-- **الإثراء الذكي اختياري**: يُرسل التمثيل الوسيط فقط (لا SQL خام) إلى `/api/backend/enrich`، ويُصفّى كل صف مقابل الأعمدة المسموحة، وتُستبعد مفاتيح auto-increment؛ وأي فشل أو انتهاء مهلة يعيد حزمة قالبية كاملة مع إشعار.
-- **Optional AI enrichment**: only the intermediate representation (never raw SQL) goes to `/api/backend/enrich`; every row is filtered against allowed columns and auto-increment keys are dropped. Any failure or timeout still returns a complete template-only package with a notice.
+- **الإثراء الذكي اختياري**: يستخدم **المزوّد والنموذج النشطين في صفحة النماذج** (لا مزوّداً مثبَّتاً)، ويُرسل التمثيل الوسيط فقط (لا SQL خام) مع مفتاح المستخدم ونقطة النهاية إن وُجدا إلى `/api/backend/enrich`، ويُصفّى كل صف مقابل الأعمدة المسموحة، وتُستبعد مفاتيح auto-increment؛ وأي فشل أو انتهاء مهلة يعيد حزمة قالبية كاملة مع إشعار يذكر المزوّد/النموذج.
+- **Optional AI enrichment**: runs on the **active provider and model chosen on the Model Config page** (never a hard-coded provider). Only the intermediate representation (never raw SQL) plus the caller's key/endpoint go to `/api/backend/enrich`; every row is filtered against allowed columns and auto-increment keys are dropped. Any failure or timeout still returns a complete template-only package with a notice naming the provider/model.
 
 ---
 
