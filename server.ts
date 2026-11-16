@@ -16,6 +16,7 @@ import { setSetting, getSetting, APP_SETTING_KEYS } from './server/appSettings';
 import {
   requestPasswordReset, verifyPasswordResetCode, confirmPasswordResetWithTicket,
 } from './server/passwordReset';
+import { requestSignupCode, verifySignupCode } from './server/signupVerification';
 import {
   consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
 } from './server/aiQuota';
@@ -122,6 +123,9 @@ function createRateLimiter(name: string, max: number, windowMs: number) {
 
 const loginRateLimiter = createRateLimiter('login', 10, 5 * 60 * 1000);       // 10 محاولات دخول / 5 دقائق لكل IP
 const registerRateLimiter = createRateLimiter('register', 5, 60 * 60 * 1000); // 5 حسابات جديدة / ساعة لكل IP
+// رمز التحقق يحتاج سقفاً أوسع من إنشاء الحساب نفسه: الإرسال الأول + إعادة الإرسال
+// + المحاولات الخاطئة، وإلا حُجب المستخدم قبل أن يُكمل التحقق.
+const signupCodeRateLimiter = createRateLimiter('signup-code', 12, 60 * 60 * 1000);
 const fetchDataRateLimiter = createRateLimiter('fetch-data', 30, 5 * 60 * 1000); // بروكسي البيانات: 30 طلب / 5 دقائق لكل IP
 const ollamaProxyRateLimiter = createRateLimiter('ollama-proxy', 120, 5 * 60 * 1000); // بروكسي Ollama: 120 طلب / 5 دقائق
 const backendGenerationRateLimiter = createRateLimiter('backend-generation', 30, 5 * 60 * 1000); // توليد المشاريع: 30 / 5 دقائق
@@ -3348,12 +3352,28 @@ app.get('/api/audit', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Authentication (SQLite-backed): register / login / logout / session
 // ---------------------------------------------------------------------------
+// خطوة 1 من التسجيل: إرسال رمز تحقق إلى البريد نفسه — لا يُنشأ الحساب بدونه.
+app.post('/api/auth/register/request-code', signupCodeRateLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  try {
+    const result = await requestSignupCode(String(email || ''));
+    res.status(result.ok ? 200 : 400).json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, message: `تعذّر إرسال الرمز: ${err.message}` });
+  }
+});
+
 app.post('/api/auth/register', registerRateLimiter, async (req, res) => {
-  const { email, name, password, phone } = req.body || {};
+  const { email, name, password, phone, code } = req.body || {};
   if (!email || !name || !password) {
     return res.status(400).json({ error: 'البريد والاسم وكلمة المرور مطلوبة' });
   }
   try {
+    // خطوة 2: التحقق من رمز البريد قبل إنشاء المستخدم (يمنع الحسابات ببريد وهمي)
+    const proof = await verifySignupCode(String(email), String(code || ''));
+    if (!proof.ok) {
+      return res.status(400).json({ error: proof.message, needsVerification: true });
+    }
     const role: Role = await roleForFirstUser(); // first account = admin
     const user = await createUser(email, name, password, role, phone);
     // Auto-join: if this email was invited to a group while unregistered,

@@ -3,7 +3,7 @@
  * Talks to /api/auth/*; stores the session token in localStorage ('carbon_auth_token').
  * The first registered account automatically becomes admin (server-side rule).
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Lock, Mail, User as UserIcon, LogIn, UserPlus, ShieldCheck, Database, BarChart3, Eye, EyeOff, Languages, KeyRound, Smartphone } from 'lucide-react';
 import { ResetPasswordPanel, PhoneWithCountryCode } from './ResetPasswordPanel';
 import { PHONE_COUNTRIES, validatePhoneNational } from '../../utils/phoneCountries';
@@ -53,6 +53,42 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
   const [showPhone, setShowPhone] = useState(false); // إظهار حقل الهاتف عند الطلب
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // تحقق البريد عند التسجيل: خطوة البيانات ← خطوة رمز التحقق المُرسل للبريد
+  const [regStep, setRegStep] = useState<'details' | 'verify'>('details');
+  const [regCode, setRegCode] = useState('');
+  const [verification, setVerification] = useState<{ email?: string; devCode?: string; message?: string } | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn(value => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  /** يطلب رمز تحقق لبريد التسجيل — مستخدم في الإرسال الأول وإعادة الإرسال. */
+  const sendRegisterCode = async (): Promise<boolean> => {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/register/request-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.message || data.error || 'فشل إرسال رمز التحقق');
+      setVerification({ email: data.email, devCode: data.devCode, message: data.message });
+      setRegStep('verify');
+      setRegCode('');
+      setResendIn(Math.ceil((data.retryAfterMs || 60_000) / 1000));
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +116,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         return;
       }
     }
+    // خطوة التسجيل الأولى: لا ننشئ الحساب هنا — نرسل رمزاً إلى البريد أولاً
+    if (mode === 'register' && regStep === 'details') {
+      await sendRegisterCode();
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await fetch(`/api/auth/${mode}`, {
@@ -87,7 +129,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'login'
           ? { email, password }
-          : { email, name, password, phone: phoneE164 }),
+          : { email, name, password, phone: phoneE164, code: regCode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل الطلب');
@@ -112,7 +154,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         phoneOptional: 'رقم الهاتف (اختياري)', addPhone: '+ إضافة رقم هاتف للاستعادة عبر SMS',
         name: 'الاسم الكامل', email: 'البريد الإلكتروني', password: 'كلمة المرور',
         showPass: 'إظهار كلمة المرور',
-        processing: 'جاري المعالجة...', enter: 'دخول', create: 'إنشاء الحساب',
+        processing: 'جاري المعالجة...', enter: 'دخول', create: 'إرسال رمز التحقق',
+        verifyTitle: 'تحقق من بريدك الإلكتروني', codeSentTo: 'أرسلنا رمزاً مكوّناً من 6 أرقام إلى',
+        codeHint: 'الرمز صالح 10 دقائق — تحقق من مجلد الرسائل غير المرغوبة إن تأخر.',
+        confirmCreate: 'تأكيد وإنشاء الحساب', resend: 'إعادة إرسال الرمز', changeEmail: 'تعديل البريد',
+        devCodeNote: 'وضع التطوير — الرمز ظاهر هنا للاختبار:',
         adminHint: <>أول حساب يُسجَّل في النظام يحصل تلقائياً على صلاحية <b className="text-[var(--cds-text-01,#f4f4f4)]">مدير (admin)</b>، والحسابات التالية تنضم كمحللين.</>,
         local: 'بياناتكم محلية 100%', bcrypt: 'كلمات المرور مشفرة bcrypt',
       }
@@ -124,7 +170,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         phoneOptional: 'Phone number (optional)', addPhone: '+ Add a phone number for SMS recovery',
         name: 'Full name', email: 'Email address', password: 'Password',
         showPass: 'Show password',
-        processing: 'Processing...', enter: 'Sign in', create: 'Create account',
+        processing: 'Processing...', enter: 'Sign in', create: 'Send verification code',
+        verifyTitle: 'Verify your email', codeSentTo: 'We sent a 6-digit code to',
+        codeHint: 'The code is valid for 10 minutes — check spam too if it is delayed.',
+        confirmCreate: 'Confirm & create account', resend: 'Resend code', changeEmail: 'Change email',
+        devCodeNote: 'Dev mode — the code is shown here for testing:',
         adminHint: <>The first registered account automatically gets <b className="text-[var(--cds-text-01,#f4f4f4)]">admin</b> rights; later accounts join as analysts.</>,
         local: 'Your data stays 100% local', bcrypt: 'Passwords hashed with bcrypt',
       };
@@ -179,7 +229,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setError(null); }}
+                onClick={() => { setMode(m); setError(null); setRegStep('details'); setRegCode(''); }}
                 className={`py-2 text-xs font-semibold rounded-md transition-all ${
                   mode === m
                     ? 'bg-[var(--cds-interactive-01)] text-white shadow-sm'
@@ -205,6 +255,67 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 setPassword('');
               }}
             />
+          ) : mode === 'register' && regStep === 'verify' ? (
+          <form onSubmit={submit} className="space-y-4">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600/15 border border-emerald-600/30 mb-1">
+                <ShieldCheck className="w-5 h-5 text-[#42be65]" />
+              </div>
+              <h2 className="text-base font-bold text-[var(--cds-text-01,#f4f4f4)]">{T.verifyTitle}</h2>
+              <p className="text-xs text-[var(--cds-text-03,#8d8d8d)]">
+                {T.codeSentTo} <b className="text-[var(--cds-text-01,#f4f4f4)]" dir="ltr">{verification?.email || email}</b>
+              </p>
+            </div>
+
+            {verification?.devCode && (
+              <div className="text-[11px] font-mono text-[#f1c21b] bg-[#f1c21b]/10 border border-[#f1c21b]/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2" dir="auto">
+                <span>{T.devCodeNote}</span>
+                <b className="text-sm tracking-widest">{verification.devCode}</b>
+              </div>
+            )}
+
+            <div className="relative">
+              <KeyRound className="w-4 h-4 absolute top-3.5 start-3 text-[var(--cds-text-03,#8d8d8d)]" />
+              <input
+                type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                value={regCode}
+                onChange={(e) => setRegCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="••••••" required dir="ltr" autoFocus
+                className={`${inputCls} text-center tracking-[0.5em] text-lg font-mono`}
+              />
+            </div>
+            <p className="text-[11px] text-[var(--cds-text-03,#8d8d8d)]" dir="auto">{T.codeHint}</p>
+
+            {error && (
+              <div className="text-xs text-[#ff8389] bg-[#da1e28]/15 border border-[#da1e28]/40 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit" disabled={busy || regCode.length !== 6}
+              className="w-full py-2.5 bg-[var(--cds-interactive-01)] hover:bg-[#0353e9] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
+            >
+              <UserPlus className="w-4 h-4" />
+              {busy ? T.processing : T.confirmCreate}
+            </button>
+
+            <div className="flex items-center justify-between text-xs">
+              <button
+                type="button" onClick={() => { void sendRegisterCode(); }} disabled={busy || resendIn > 0}
+                className="text-[#78a9ff] hover:text-[var(--cds-interactive-01)] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resendIn > 0 ? `${T.resend} (${resendIn})` : T.resend}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setRegStep('details'); setRegCode(''); setError(null); }}
+                className="text-[var(--cds-text-03,#8d8d8d)] hover:text-[var(--cds-text-01,#f4f4f4)] font-medium"
+              >
+                {T.changeEmail}
+              </button>
+            </div>
+          </form>
           ) : (
           <form onSubmit={submit} className="space-y-3.5">
             {mode === 'register' && (

@@ -326,6 +326,12 @@ export async function countUsers(): Promise<number> {
 }
 
 /** أول حساب مسجّل يصبح مديراً تلقائياً. */
+export async function findUserByEmail(email: string): Promise<AuthUser | null> {
+  await init();
+  const row = await one<any>('SELECT * FROM users WHERE email = ?', [String(email || '').trim().toLowerCase()]);
+  return row ? rowToUser(row) : null;
+}
+
 export async function roleForFirstUser(): Promise<Role> {
   return (await countUsers()) === 0 ? 'admin' : 'analyst';
 }
