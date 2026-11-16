@@ -1185,6 +1185,235 @@ export const ChartFactory: React.FC<{
         );
       }
 
+      case 'hologram':
+      case 'volume': {
+        /**
+         * خرائط هولوغرامية/فوليوم: مصفوفة (فئة × سلسلة) يرسمها Plotly في فضاء
+         * ثلاثي الأبعاد. الهولوغرام = سطح متوهّج + شبكة كنتورية، والفوليوم =
+         * أعمدة مجسّمة (mesh3d) يمثّل ارتفاعها حجم القيمة.
+         */
+        const rows3d = customData && customData.length > 0 ? customData : (dataset?.data || []);
+        const seriesField = widget.pivotColumnField || '';
+        if (!rows3d.length || !seriesField) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center px-4">
+              <BarChart3 className="w-6 h-6 text-[var(--cds-text-03)]" />
+              <p className="text-[11px] font-mono text-[var(--cds-text-03)] max-w-xs">
+                {language === 'ar'
+                  ? 'هذا الرسم يحتاج بُعداً ثانياً: اختر "عمود التقسيم (Series)" في إعدادات النافذة ليُبنى السطح/الحجوم فوق مستوى الفئات.'
+                  : 'This chart needs a second dimension: pick a Series column in the widget settings to build the 3D surface/volumes over the categories.'}
+              </p>
+            </div>
+          );
+        }
+        const pivot3d = buildPivotMatrix(rows3d, xKey, seriesField, yKey, aggFunc);
+        if (pivot3d.rowKeys.length < 2 || pivot3d.colKeys.length < 2) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center px-4">
+              <BarChart3 className="w-6 h-6 text-[var(--cds-text-03)]" />
+              <p className="text-[11px] font-mono text-[var(--cds-text-03)] max-w-xs">
+                {language === 'ar'
+                  ? 'لا توجد قيم كافية لبناء مصفوفة ثلاثية الأبعاد (نحتاج فئتين × سلسلتين على الأقل).'
+                  : 'Not enough values for a 3D matrix (need at least 2 categories × 2 series).'}
+              </p>
+            </div>
+          );
+        }
+        const zMatrix = pivot3d.values.map(row => row.map(v => (v === null ? 0 : v)));
+        const neonScale: any = [[0, '#0b1f4d'], [0.35, '#1f4fff'], [0.7, '#8a3ffc'], [1, '#33b1ff']];
+        const hologramScale: any = [[0, '#1f4fff'], [0.45, '#8a3ffc'], [1, '#33b1ff']];
+        const scene3d: any = {
+          bgcolor: 'rgba(0,0,0,0)',
+          xaxis: { title: { text: seriesField }, color: axisStroke, gridcolor: gridStroke, zeroline: false },
+          yaxis: { title: { text: xKey }, color: axisStroke, gridcolor: gridStroke, zeroline: false },
+          zaxis: { title: { text: yKey }, color: axisStroke, gridcolor: gridStroke, zeroline: false },
+          camera: { eye: { x: 1.55, y: 1.6, z: 1.15 } },
+          // مساحة مكعّبة تجعل الارتفاع (Z) مقروءاً بدل أن يُسحق السطح في زاوية منبسطة
+          aspectmode: 'cube',
+        };
+        const layout3d: any = {
+          autosize: true,
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'transparent',
+          margin: { t: 6, r: 6, b: 6, l: 6 },
+          scene: scene3d,
+          font: { family: 'IBM Plex Mono, monospace', size: 9, color: axisStroke },
+        };
+
+        if (widget.type === 'hologram') {
+          return (
+            <LazyPlot
+              data={[
+                {
+                  type: 'surface',
+                  x: pivot3d.colKeys,
+                  y: pivot3d.rowKeys,
+                  z: zMatrix,
+                  colorscale: hologramScale,
+                  opacity: 0.9,
+                  showscale: true,
+                  colorbar: { thickness: 9, len: 0.7, outlinewidth: 0, tickfont: { size: 9, color: axisStroke } },
+                  contours: { z: { show: true, usecolormap: true, highlightcolor: '#be95ff', project: { z: true } } },
+                },
+                {
+                  type: 'surface',
+                  x: pivot3d.colKeys,
+                  y: pivot3d.rowKeys,
+                  z: zMatrix,
+                  colorscale: [[0, '#33b1ff'], [1, '#be95ff']],
+                  opacity: 0.3,
+                  showscale: false,
+                  hidesurface: true,
+                  contours: {
+                    x: { show: true, color: 'rgba(120,169,255,0.75)' },
+                    y: { show: true, color: 'rgba(120,169,255,0.75)' },
+                    z: { show: true, color: 'rgba(51,177,255,0.9)' },
+                  },
+                },
+              ] as any}
+              layout={layout3d}
+              config={{ responsive: true, displayModeBar: true }}
+              style={{ width: '100%', height: '100%' }}
+            />
+          );
+        }
+
+        // Volume map: every matrix cell becomes an extruded 3D bar.
+        const xs: number[] = [];
+        const ys: number[] = [];
+        const zs: number[] = [];
+        const ti: number[] = [];
+        const tj: number[] = [];
+        const tk: number[] = [];
+        const shades: number[] = [];
+        const flatValues = zMatrix.flat().map(v => Math.abs(v));
+        const maxAbs = Math.max(1e-9, ...flatValues);
+        const faces = [
+          [0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7],
+          [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5],
+          [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7],
+        ];
+        zMatrix.forEach((rowValues, rIdx) => {
+          rowValues.forEach((value, cIdx) => {
+            if (!value) return;
+            const height = Math.max(0.02, (Math.abs(value) / maxAbs) * 1.4);
+            const x0 = cIdx - 0.34;
+            const x1 = cIdx + 0.34;
+            const y0 = rIdx - 0.34;
+            const y1 = rIdx + 0.34;
+            const base = xs.length;
+            xs.push(x0, x1, x1, x0, x0, x1, x1, x0);
+            ys.push(y0, y0, y1, y1, y0, y0, y1, y1);
+            zs.push(0, 0, 0, 0, height, height, height, height);
+            const shade = Math.abs(value) / maxAbs;
+            for (let n = 0; n < 8; n += 1) shades.push(shade);
+            faces.forEach(face => {
+              ti.push(base + face[0]);
+              tj.push(base + face[1]);
+              tk.push(base + face[2]);
+            });
+          });
+        });
+
+        return (
+          <LazyPlot
+            data={[
+              {
+                type: 'mesh3d',
+                x: xs,
+                y: ys,
+                z: zs,
+                i: ti,
+                j: tj,
+                k: tk,
+                intensity: shades,
+                cmin: 0,
+                cmax: 1,
+                colorscale: neonScale,
+                opacity: 0.95,
+                flatshading: false,
+                lighting: { ambient: 0.55, diffuse: 0.9, specular: 0.35, roughness: 0.35 },
+                lightposition: { x: 120, y: 200, z: 320 },
+                showscale: true,
+                colorbar: { thickness: 9, len: 0.7, outlinewidth: 0, tickfont: { size: 9, color: axisStroke } },
+                hovertemplate: `${language === 'ar' ? 'القيمة' : 'Value'}: %{z}<extra></extra>`,
+              },
+            ] as any}
+            layout={{
+              ...layout3d,
+              scene: {
+                ...scene3d,
+                xaxis: {
+                  ...scene3d.xaxis,
+                  tickmode: 'array',
+                  tickvals: pivot3d.colKeys.map((_, idx) => idx),
+                  ticktext: pivot3d.colKeys.map(k => String(k).slice(0, 12)),
+                },
+                yaxis: {
+                  ...scene3d.yaxis,
+                  tickmode: 'array',
+                  tickvals: pivot3d.rowKeys.map((_, idx) => idx),
+                  ticktext: pivot3d.rowKeys.map(k => String(k).slice(0, 12)),
+                },
+                zaxis: { ...scene3d.zaxis, range: [0, 1.6] },
+              },
+            }}
+            config={{ responsive: true, displayModeBar: true }}
+            style={{ width: '100%', height: '100%' }}
+          />
+        );
+      }
+
+      case 'globe': {
+        // كرة أرضية إسقاطها متعامد (orthographic) — بديل هولوغرامي لخريطة الـchoropleth المسطحة.
+        const plotted = geoRows
+          .map(r => ({ ...r, code: geoLabelToCode(r.label) }))
+          .filter((r): r is { label: string; value: number; sum: number; avg: number; count: number; code: string } => !!r.code)
+          .slice(0, 80);
+        if (plotted.length === 0) return renderGeoHint();
+        const globeValues = plotted.map(r => r.value);
+        return (
+          <LazyPlot
+            data={[
+              {
+                type: 'choropleth',
+                locations: plotted.map(r => r.code),
+                z: globeValues,
+                text: plotted.map(r => r.label),
+                colorscale: [[0, '#0b1f4d'], [0.4, '#1f4fff'], [0.72, '#8a3ffc'], [1, '#33b1ff']],
+                zmin: Math.min(...globeValues),
+                zmax: Math.max(...globeValues),
+                marker: { line: { width: 0 } },
+                colorbar: { thickness: 9, len: 0.65, outlinewidth: 0, tickfont: { size: 9, color: axisStroke } },
+                hovertemplate: '%{text}: %{z}<extra></extra>',
+              },
+            ] as any}
+            layout={{
+              autosize: true,
+              margin: { t: 4, r: 4, b: 4, l: 4 },
+              paper_bgcolor: 'transparent',
+              plot_bgcolor: 'rgba(0,0,0,0)',
+              geo: {
+                projection: { type: 'orthographic', rotation: { lon: 20, lat: 24 } },
+                showframe: false,
+                showland: true,
+                landcolor: isLight ? '#e8e8e8' : '#0b1f2e',
+                showocean: true,
+                oceancolor: isLight ? '#ffffff' : '#05080f',
+                showcountries: true,
+                countrycolor: isLight ? '#c6c6c6' : '#1e335e',
+                showcoastlines: true,
+                coastlinecolor: isLight ? '#8d8d8d' : '#2b4a7a',
+                bgcolor: 'transparent',
+              },
+              font: { family: 'IBM Plex Mono, monospace', size: 10, color: axisStroke },
+            }}
+            config={{ responsive: true, displayModeBar: true }}
+            style={{ width: '100%', height: '100%' }}
+          />
+        );
+      }
+
       case 'pivot': {
         /** جدول محوري: index (xKey) × columns (pivotColumnField) × aggfunc (yKey) — خلايا ملوّنة بالشدّة */
         const sourceRows = customData && customData.length > 0 ? customData : (dataset?.data || []);

@@ -166,7 +166,7 @@ export type AggregationFunction =
   | 'cv'
   | 'sum_squares';
 
-export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries' | 'geo' | 'donut' | 'treemap' | 'funnel' | 'pivot';
+export type WidgetType = 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'radar' | 'histogram' | 'kpi' | 'table' | 'heatmap' | 'timeseries' | 'geo' | 'donut' | 'treemap' | 'funnel' | 'pivot' | 'hologram' | 'volume' | 'globe';
 
 /** Geo/map display mode: choropleth regions (folium-style) or lat/lng markers */
 export type GeoMapMode = 'choropleth' | 'markers';

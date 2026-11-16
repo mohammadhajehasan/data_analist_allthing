@@ -31,6 +31,7 @@ export const KNOWN_TABS = ['datasets', 'datamodeling', 'profiling', 'dashboards'
 export const KNOWN_WIDGET_TYPES = [
   'bar', 'line', 'area', 'pie', 'radar', 'scatter', 'geo', 'table', 'metric',
   'kpi', 'heatmap', 'timeseries', 'histogram', 'donut', 'treemap', 'funnel', 'pivot',
+  'hologram', 'volume', 'globe',
 ];
 
 /**

@@ -202,7 +202,7 @@ export const DashboardBuilder: React.FC = () => {
 
   // Preselect the second categorical column (different from X) when opening the pivot widget or switching dataset
   useEffect(() => {
-    if (widgetType === 'pivot' && currentTargetDataset?.columns?.length) {
+    if ((widgetType === 'pivot' || widgetType === 'hologram' || widgetType === 'volume') && currentTargetDataset?.columns?.length) {
       setWidgetPivotColumn(prev => {
         if (prev && currentTargetDataset.columns.some(c => c.name === prev)) return prev;
         const guess = currentTargetDataset.columns.find(
@@ -362,7 +362,10 @@ export const DashboardBuilder: React.FC = () => {
       xAxis: widgetXAxis,
       yAxis: widgetYAxis,
       categoryField: widgetXAxis,
-      pivotColumnField: widgetType === 'pivot' ? (widgetPivotColumn || undefined) : undefined,
+      pivotColumnField:
+        widgetType === 'pivot' || widgetType === 'hologram' || widgetType === 'volume'
+          ? (widgetPivotColumn || undefined)
+          : undefined,
       aggregation: widgetAggregation,
       w: widgetType === 'kpi' ? 3 : 6,
       h: widgetType === 'kpi' ? 1 : 2,
@@ -1517,6 +1520,9 @@ export const DashboardBuilder: React.FC = () => {
                     { type: 'treemap' as WidgetType, labelAr: 'خريطة مستطيلة', labelEn: 'Treemap', icon: Boxes },
                     { type: 'pivot' as WidgetType, labelAr: 'جدول محوري', labelEn: 'Pivot Table', icon: Grid3X3 },
                     { type: 'funnel' as WidgetType, labelAr: 'مخطط قمعي', labelEn: 'Funnel', icon: Filter },
+                    { type: 'hologram' as WidgetType, labelAr: 'خريطة هولوغرامية', labelEn: 'Hologram 3D', icon: Boxes },
+                    { type: 'volume' as WidgetType, labelAr: 'خريطة الفوليوم', labelEn: 'Volume Map 3D', icon: Layers },
+                    { type: 'globe' as WidgetType, labelAr: 'كرة جغرافية', labelEn: 'Geo Globe', icon: Globe2 },
                   ].map(item => {
                     const Icon = item.icon;
                     const isSelected = widgetType === item.type;
@@ -1954,13 +1960,15 @@ export const DashboardBuilder: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Pivot widget فقط: عمود الأعمدة (columns=(rowField, colField)) */}
-                    {widgetType === 'pivot' && (
+                    {/* Pivot widget + الرسوم ثلاثية الأبعاد: عمود الأعمدة/السلسلة */}
+                    {(widgetType === 'pivot' || widgetType === 'hologram' || widgetType === 'volume') && (
                       <div className="sm:col-span-2">
                         <label className="block text-[var(--cds-text-01)] font-bold mb-1.5 flex items-center justify-between">
                           <span className="flex items-center gap-1">
                             <Grid3X3 className="w-3.5 h-3.5 text-[#33b1ff]" />
-                            {isAr ? 'عمود الأعمدة المحورية (Pivot Columns)' : 'Pivot Columns Dimension'}
+                            {widgetType === 'pivot'
+                              ? (isAr ? 'عمود الأعمدة المحورية (Pivot Columns)' : 'Pivot Columns Dimension')
+                              : (isAr ? 'عمود التقسيم/السلسلة (Series)' : 'Series / Split Dimension')}
                           </span>
                           <span className="text-[10px] text-[#33b1ff] font-normal font-mono">columns=</span>
                         </label>
