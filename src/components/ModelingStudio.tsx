@@ -58,6 +58,7 @@ import { runKFoldCrossValidation, CrossValidationResult } from '../utils/crossVa
 import { InfoTooltip } from './InfoTooltip';
 import { FeatureImportanceChart, FeatureImportanceItem } from './FeatureImportanceChart';
 import { exportSelectedModelToPdf } from '../utils/modelPdfExport';
+import { buildForecast, buildForecastTable, detectTimeColumn, SeasonalityKind } from '../utils/forecastUtils';
 
 export interface DataPoint {
   index: number;
@@ -107,6 +108,67 @@ interface ModelingResult {
   isCvPredicting?: boolean;
 }
 
+/** Human name for the detected cycle, given the series cadence. */
+const seasonalityKindText = (kind: SeasonalityKind | null, language: string): string | null => {
+  if (!kind) return null;
+  const ar: Record<SeasonalityKind, string> = {
+    weekly: 'أسبوعية',
+    quarterly: 'ربع سنوية',
+    semiannual: 'نصف سنوية',
+    monthly: 'شهرية',
+    annual: 'سنوية',
+    custom: 'دورة مخصصة',
+  };
+  const en: Record<SeasonalityKind, string> = {
+    weekly: 'weekly',
+    quarterly: 'quarterly',
+    semiannual: 'semi-annual',
+    monthly: 'monthly',
+    annual: 'annual',
+    custom: 'custom',
+  };
+  return language === 'ar' ? ar[kind] : en[kind];
+};
+
+/**
+ * رسم صغير لمؤشرات الموسمية: عمود لكل طور فوق/تحت خط الصفر، ليظهر
+ * أي الأطوار ترتفع وأيها تنخفض قبل قراءة الأرقام.
+ */
+const SeasonalIndicesSpark: React.FC<{ indices: number[]; period: number }> = ({ indices, period }) => {
+  const height = 34;
+  const baseline = 20;
+  const maxAbs = Math.max(...indices.map(value => Math.abs(value)), 1e-9);
+  const barWidth = indices.length > 16 ? 3 : indices.length > 10 ? 4 : 6;
+  const gap = indices.length > 16 ? 1 : 2;
+  const width = indices.length * (barWidth + gap) - gap;
+  const scale = (value: number) => (Math.abs(value) / maxAbs) * (baseline - 3);
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Seasonal indices">
+      <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} />
+      {indices.map((value, index) => {
+        const barHeight = Math.max(1, scale(value));
+        const x = index * (barWidth + gap);
+        const y = value >= 0 ? baseline - barHeight : baseline;
+        return (
+          <rect
+            key={index}
+            x={x}
+            y={y}
+            width={barWidth}
+            height={barHeight}
+            rx={1}
+            fill={value >= 0 ? '#10b981' : '#f43f5e'}
+            fillOpacity={0.85}
+          >
+            <title>{`${'#'}${index + 1}/${period}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}`}</title>
+          </rect>
+        );
+      })}
+    </svg>
+  );
+};
+
 export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   const { addChatMessage, activeChatSession, setModelingResult, theme, language, toast } = useApp();
   const isDark = theme === 'g90' || theme === 'g100';
@@ -118,7 +180,7 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   const [kmeansClusters, setKmeansClusters] = useState<number[] | null>(null);
 
   // Main Studio View Mode
-  const [mainViewMode, setMainViewMode] = useState<'studio' | 'correlation' | 'pipeline' | 'preprocessing' | 'inference'>('studio');
+  const [mainViewMode, setMainViewMode] = useState<'studio' | 'correlation' | 'pipeline' | 'preprocessing' | 'inference' | 'forecast'>('studio');
 
   // Saved Models with initial benchmark models for instant Radar comparison
   const [savedModels, setSavedModels] = useState<{ 
@@ -250,6 +312,15 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   // Inference & Sensitivity Analysis
   const [inferenceInputs, setInferenceInputs] = useState<Record<string, number>>({});
   const [predictionHistory, setPredictionHistory] = useState<{ id: string, inputs: Record<string, number>, prediction: number }[]>([]);
+
+  // Forward forecast (future projection of the trained model)
+  const [forecastHorizon, setForecastHorizon] = useState<number>(6);
+  const [forecastConfidence, setForecastConfidence] = useState<number>(0.95);
+  const [applySeasonality, setApplySeasonality] = useState<boolean>(true);
+  // حساسية كشف الموسمية: أدنى قوة تفسيرية يقبلها الكاشف لدورة موسمية.
+  const [seasonalityThreshold, setSeasonalityThreshold] = useState<number>(0.18);
+  // كيف تُعرض تسميات فترات التوقع: التاريخ نفسه، رقم الفترة، أو السنة فقط.
+  const [forecastLabelFormat, setForecastLabelFormat] = useState<'date' | 'period' | 'year'>('date');
 
   // Feature Engineering State
   const [featEngCol, setFeatEngCol] = useState<string>('');
@@ -812,6 +883,239 @@ print(f"Example prediction: {prediction[0]:.6f}")
       setInferenceInputs(initialInputs);
     }
   }, [mainViewMode, result, featureBounds]);
+
+  /**
+   * Future projection built from the trained model itself: every feature is
+   * extrapolated along its own time trend, then fed back through result.predict
+   * so the forecast follows the exact coefficients that were fitted.
+   */
+  const forecast = useMemo(() => {
+    if (!result || selectedType === 'kmeans' || rawJsonData.length < 3) return null;
+
+    const featureIndexes = xAxisCols.map(col => headers.indexOf(col));
+    const targetIndex = headers.indexOf(yAxisCol);
+    if (featureIndexes.some(i => i === -1) || targetIndex === -1) return null;
+
+    const timeColumn = detectTimeColumn(headers, [yAxisCol]);
+    const timeIndex = timeColumn ? headers.indexOf(timeColumn) : -1;
+
+    const rows = rawJsonData
+      .map((row, rowIndex) => {
+        const rawLabel = timeIndex >= 0 ? row[timeIndex] : rowIndex + 1;
+        const numericLabel = Number(String(rawLabel ?? '').replace(/,/g, ''));
+        const sortKey = Number.isFinite(numericLabel) ? numericLabel : Date.parse(String(rawLabel ?? ''));
+        return {
+          order: rowIndex,
+          sortKey,
+          label: timeIndex >= 0 ? String(rawLabel ?? rowIndex + 1).trim() : String(rowIndex + 1),
+          features: featureIndexes.map(i => parseFloat(row[i])),
+          actual: parseFloat(row[targetIndex]),
+        };
+      })
+      .filter(r => Number.isFinite(r.actual) && r.features.every(f => Number.isFinite(f)));
+
+    if (rows.length < 3) return null;
+
+    const canSort = rows.every(r => Number.isFinite(r.sortKey));
+    const ordered = canSort ? [...rows].sort((a, b) => (a.sortKey - b.sortKey) || (a.order - b.order)) : rows;
+    const payload = ordered.map(r => ({ label: r.label, features: r.features, actual: r.actual }));
+    const fitted = payload.map(r => result.predict(r.features));
+
+    return buildForecast({
+      rows: payload,
+      fitted,
+      predict: result.predict,
+      horizon: forecastHorizon,
+      confidence: forecastConfidence,
+      rmse: result.metrics.rmse,
+      r2: result.metrics.r2,
+      applySeasonality,
+      seasonalityThreshold,
+    });
+  }, [result, selectedType, rawJsonData, headers, xAxisCols, yAxisCol, forecastHorizon, forecastConfidence, applySeasonality, seasonalityThreshold]);
+
+  // تسميات التوقع حسب اختيار المستخدم؛ التاريخ كما هو افتراضيًا.
+  // `ordinal` ترتيب الفترة داخل التوقع (1..n) ويُستخدم في وضع «رقم الفترة».
+  const formatForecastLabel = (label: string, ordinal?: number): string => {
+    if (forecastLabelFormat === 'period') return ordinal ? `P${ordinal}` : label;
+    if (forecastLabelFormat === 'year') {
+      const year = /(\d{4})/.exec(label || '');
+      return year ? year[1] : label;
+    }
+    return label;
+  };
+
+  const forecastChart = useMemo(() => {
+    if (!forecast || forecast.points.length === 0 || forecast.history.length === 0) return null;
+
+    // On a 500-row series a 6-period forecast is about 1% of the width and is
+    // impossible to see; keep enough recent history to give it context.
+    // The yearly view only makes sense across the whole span, so it keeps all history.
+    const visibleHistory =
+      forecastLabelFormat === 'year'
+        ? forecast.history.length
+        : Math.min(forecast.history.length, Math.max(24, forecast.points.length * 4));
+    const history = forecast.history.slice(-visibleHistory);
+    const historyLabels = history.map(h => h.label);
+    const futureLabels = forecast.points.map(p => p.label);
+    const lastHistory = history[history.length - 1];
+    const bridge = (values: number[]) => new Array(historyLabels.length - 1).fill(null).concat([lastHistory.fitted], values);
+    const futureX = [...historyLabels.slice(0, -1), lastHistory.label, ...futureLabels];
+
+    // Categories must stay unique (the raw labels) or Plotly would merge points;
+    // only the tick text follows the chosen label format.
+    const axisTicks = (() => {
+      if (forecastLabelFormat === 'date') return {};
+      const allLabels = [...historyLabels, ...futureLabels];
+      const maxTicks = 12;
+      // The forecast labels are the point of this chart, so every projected
+      // period gets a tick (P1…Pn); history only fills the remaining space.
+      const forecastIndexes = futureLabels.map((_, index) => historyLabels.length + index);
+      // Short P1/P6 style ticks are drawn horizontally, so two date ticks are
+      // enough context and keep the labels from colliding with each other.
+      const historyBudget = 2;
+      const historyLimit = Math.max(1, historyLabels.length - 3);
+      const historyStep = Math.max(1, Math.floor((historyLimit - 1) / (historyBudget - 1 || 1)));
+      const indexes: number[] = [];
+      // Stop well before the last historical label: it sits next to P1 and the
+      // two would overlap.
+      for (let index = 0; index < historyLimit; index += historyStep) indexes.push(index);
+      const tickIndexes = [...new Set([...indexes, ...forecastIndexes])].sort((a, b) => a - b);
+      const ticks = tickIndexes.map(index => ({
+        index,
+        text:
+          index < historyLabels.length
+            ? formatForecastLabel(allLabels[index])
+            // Plain numbers on the axis: "P1"…"P6" over six crowded slots collide.
+            : forecastLabelFormat === 'period'
+              ? String(index - historyLabels.length + 1)
+              : formatForecastLabel(allLabels[index], index - historyLabels.length + 1),
+      }));
+      // In year mode several ticks share a year; showing it eight times is noise.
+      const visibleTicks =
+        forecastLabelFormat === 'year' ? ticks.filter((tick, position) => position === 0 || tick.text !== ticks[position - 1].text) : ticks;
+      return {
+        tickmode: 'array' as const,
+        tickvals: visibleTicks.map(tick => allLabels[tick.index]),
+        ticktext: visibleTicks.map(tick => tick.text),
+      };
+    })();
+
+    return {
+      data: [
+        {
+          x: historyLabels,
+          y: history.map(h => h.actual),
+          mode: 'lines+markers',
+          type: 'scatter',
+          name: language === 'ar' ? `القيم الفعلية (${yAxisCol || 'y'})` : `Actual (${yAxisCol || 'y'})`,
+          line: { color: '#3b82f6', width: 2 },
+          marker: { size: 4, color: '#3b82f6' },
+        },
+        {
+          x: historyLabels,
+          y: history.map(h => h.fitted),
+          mode: 'lines',
+          type: 'scatter',
+          name: language === 'ar' ? 'توافق النموذج (Fitted)' : 'Model Fit',
+          line: { color: '#8b5cf6', width: 1.6, dash: 'dot' },
+        },
+        {
+          x: futureX,
+          y: bridge(forecast.points.map(p => p.upper)),
+          mode: 'lines',
+          type: 'scatter',
+          name: 'Upper',
+          line: { width: 0 },
+          hoverinfo: 'skip',
+          showlegend: false,
+        },
+        {
+          x: futureX,
+          y: bridge(forecast.points.map(p => p.lower)),
+          mode: 'lines',
+          type: 'scatter',
+          name: `${Math.round(forecastConfidence * 100)}% CI`,
+          line: { width: 0 },
+          fill: 'tonexty',
+          fillcolor: 'rgba(245, 158, 11, 0.18)',
+          hoverinfo: 'skip',
+        },
+        {
+          x: futureX,
+          y: bridge(forecast.points.map(p => p.predicted)),
+          mode: 'lines+markers',
+          type: 'scatter',
+          name: language === 'ar' ? 'التنبؤ المستقبلي' : 'Forecast',
+          line: { color: '#f59e0b', width: 3 },
+          marker: { size: 7, color: '#f59e0b', symbol: 'diamond' },
+        },
+      ] as any,
+      visibleHistory,
+      layout: {
+        autosize: true,
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        margin: { l: 60, r: 30, t: 30, b: 60 },
+        xaxis: {
+          type: 'category',
+          title: language === 'ar' ? 'الفترة الزمنية' : 'Period',
+          ...axisTicks,
+          nticks: 12,
+          automargin: true,
+          tickangle: forecastLabelFormat === 'date' ? -35 : 0,
+          gridcolor: isDark ? '#393939' : '#e0e0e0',
+          tickfont: { color: isDark ? '#c6c6c6' : '#525252' },
+        },
+        yaxis: {
+          title: yAxisCol || 'Target',
+          gridcolor: isDark ? '#393939' : '#e0e0e0',
+          zeroline: false,
+          tickfont: { color: isDark ? '#c6c6c6' : '#525252' },
+        },
+        legend: { orientation: 'h', y: -0.25, font: { color: isDark ? '#c6c6c6' : '#525252' } },
+      },
+    };
+  }, [forecast, language, yAxisCol, forecastConfidence, isDark, forecastLabelFormat]);
+
+  const forecastHistoryWindowed = Boolean(
+    forecastChart && forecast && forecastChart.visibleHistory < forecast.history.length
+  );
+
+  const formatForecastValue = (value: number): string => {
+    if (!Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    const digits = abs >= 1000 ? 0 : abs >= 10 ? 2 : 4;
+    return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: digits });
+  };
+
+  // Isolate the signed percentage so RTL layout keeps "+1.91%" in order.
+  // Period labels can be ISO dates; isolating them keeps "2025-01-31" from
+  // being reordered inside Arabic sentences and table cells.
+  const dirLabel = (value: string): string => `\u2066${value}\u2069`;
+
+  const formatSignedPct = (value: number | null): string =>
+    value === null || !Number.isFinite(value)
+      ? '—'
+      : `\u2066${value >= 0 ? '+' : ''}${value.toFixed(2)}%\u2069`;
+
+  const exportForecastCsv = () => {
+    if (!forecast || !result) return;
+    const csv = Papa.unparse(
+      buildForecastTable(forecast, {
+        language,
+        confidence: Math.round(forecastConfidence * 100),
+      })
+    );
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `forecast_${(result.targetName || 'target').replace(/[^a-z0-9_-]/gi, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog(`Exported ${forecast.points.length} forecast points for ${result.targetName}.`);
+  };
 
   const radarData = useMemo(() => {
     if (savedModels.length === 0) return [];
@@ -1820,6 +2124,40 @@ metrics: {
           beta: item.beta || 0,
           direction: item.direction || 'positive'
         })),
+        // التوقعات المستقبلية كما هي معروضة في تبويب التنبؤ (تتطلب نموذجاً مدرّباً)
+        forecast: forecast ? {
+          horizon: forecastHorizon,
+          confidence: forecastConfidence,
+          history: forecast.history.map(point => ({ label: point.label, actual: point.actual })),
+          periods: forecast.points.map(point => ({
+            label: formatForecastLabel(point.label, point.step),
+            predicted: point.predicted,
+            lower: point.lower,
+            upper: point.upper,
+            changePct: point.changePct,
+          })),
+          nextValue: forecast.summary.nextValue,
+          nextChangePct: forecast.summary.nextChangePct,
+          horizonValue: forecast.summary.horizonValue,
+          horizonChangePct: forecast.summary.horizonChangePct,
+          avgStepChangePct: forecast.summary.avgStepChangePct,
+          direction: forecast.summary.direction,
+          reliability: forecast.summary.reliability,
+          rmse: forecast.summary.rmse,
+          mape: forecast.summary.mape,
+          r2: forecast.summary.r2,
+          peakLabel: formatForecastLabel(forecast.summary.peak.label, forecast.summary.peak.step),
+          peakValue: forecast.summary.peak.predicted,
+          lastActual: forecast.summary.lastActual,
+          lastLabel: forecast.summary.lastLabel,
+                      seasonality: {
+              applied: forecast.summary.seasonality.applied,
+              period: forecast.summary.seasonality.period,
+              strength: forecast.summary.seasonality.strength,
+              kind: forecast.summary.seasonality.kind,
+            },
+          extrapolatedPeriods: forecast.summary.extrapolatedFeatureCount,
+        } : undefined,
         language: language
       });
 
@@ -2727,7 +3065,7 @@ metrics: {
             استوديو النمذجة الإحصائية والانحدار متعدد الحدود المتعدد (Multivariate Modeling & Pipeline)
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            الانحدار الخطي والمتعدد، الانحدار متعدد الحدود، قياس مصفوفة الارتباط (Correlation Matrix)، مسار هندسة الميزات (Pipeline) وتقييم النماذج.
+            الانحدار الخطي والمتعدد، الانحدار متعدد الحدود، قياس مصفوفة الارتباط (Correlation Matrix)، مسار هندسة الميزات (Pipeline)، تقييم النماذج، والتنبؤ المستقبلي للنموذج المدرب كرسم بياني وملخص تنبؤي.
           </p>
         </div>
 
@@ -2767,6 +3105,13 @@ metrics: {
           >
             <Zap className="w-4 h-4 text-amber-500" />
             {language === 'ar' ? 'التوقعات والحساسية' : 'Inference'}
+          </button>
+          <button
+            onClick={() => setMainViewMode('forecast')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mainViewMode === 'forecast' ? 'bg-[var(--cds-layer-01)] text-rose-600 shadow-sm' : 'text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)]'}`}
+          >
+            <TrendingUp className="w-4 h-4 text-rose-500" />
+            {language === 'ar' ? 'التنبؤ والاستشراف' : 'Forecast'}
           </button>
         </div>
       </div>
@@ -5145,6 +5490,380 @@ language === 'ar'
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODE 6: FORWARD FORECAST & PREDICTIVE SUMMARY */}
+      {/* ========================================================================= */}
+      {mainViewMode === 'forecast' && (
+        <div className="space-y-6">
+          {!result || selectedType === 'kmeans' || !forecast || !forecastChart ? (
+            <div className="p-12 text-center bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
+              <TrendingUp className="w-12 h-12 text-[var(--cds-text-03)] mx-auto mb-4" />
+              <h3 className="text-base font-bold text-[var(--cds-text-01)]">
+                {language === 'ar' ? 'يتطلب تدريب نموذج انحدار أولاً' : 'Train a Regression Model First'}
+              </h3>
+              <p className="text-xs text-[var(--cds-text-02)] mt-2 max-w-xl mx-auto leading-relaxed">
+                {language === 'ar'
+                  ? 'درّب نموذجاً (خطي أو متعدد الحدود أو Ridge) في تبويب النمذجة، ثم عُد إلى هنا لعرض التوقع المستقبلي للنموذج كرسم بياني وملخص تنبؤي.'
+                  : 'Fit a Linear, Polynomial or Ridge model in the Studio tab, then return here to see the model forecast as a chart and a predictive summary.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Forecast controls */}
+              <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-[var(--cds-text-01)] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-rose-500" />
+                    {language === 'ar' ? `التنبؤ المستقبلي لـ ${result.targetName}` : `Future Forecast for ${result.targetName}`}
+                  </h3>
+                  <p className="text-[11px] text-[var(--cds-text-03)]">
+                    {language === 'ar'
+                      ? `النموذج ${result.type} مُدرَّب على ${forecast.summary.historyCount} نقطة، والتوقع يُحسب بإعادة تغذية النموذج بقيم الميزات المستقبلية المستقرأة من اتجاهها الزمني.`
+                      : `${result.type} model fitted on ${forecast.summary.historyCount} points; the projection feeds trend-extrapolated feature values back through the trained model.`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap">
+                      {language === 'ar' ? 'أفق التنبؤ' : 'Horizon'}
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={24}
+                      step={1}
+                      value={forecastHorizon}
+                      onChange={(e) => setForecastHorizon(parseInt(e.target.value, 10))}
+                      className="w-32 accent-rose-500"
+                    />
+                    <span className="text-[11px] font-mono font-bold text-rose-600 w-16">
+                      {forecastHorizon} {language === 'ar' ? 'فترة' : 'periods'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap">
+                      {language === 'ar' ? 'مستوى الثقة' : 'Confidence'}
+                    </label>
+                    <select
+                      value={forecastConfidence}
+                      onChange={(e) => setForecastConfidence(parseFloat(e.target.value))}
+                      className="text-[11px] font-mono bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] rounded-md px-2 py-1"
+                    >
+                      <option value={0.8}>80%</option>
+                      <option value={0.9}>90%</option>
+                      <option value={0.95}>95%</option>
+                      <option value={0.99}>99%</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap">
+                      {language === 'ar' ? 'صيغة التسميات' : 'Labels'}
+                    </label>
+                    <select
+                      value={forecastLabelFormat}
+                      onChange={(e) => setForecastLabelFormat(e.target.value as 'date' | 'period' | 'year')}
+                      className="text-[11px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] rounded-md px-2 py-1"
+                    >
+                      <option value="date">{language === 'ar' ? 'التاريخ كما هو' : 'Full date'}</option>
+                      <option value="period">{language === 'ar' ? 'رقم الفترة (P1)' : 'Period (P1)'}</option>
+                      <option value="year">{language === 'ar' ? 'السنة فقط' : 'Year only'}</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap"
+                      title={
+                        language === 'ar'
+                          ? 'أدنى قوة تفسيرية لقبول دورة موسمية — خفضها يكشف دورات أضعف ويكثر الإنذارات الكاذبة'
+                          : 'Minimum explanatory strength to accept a cycle — lower catches weaker cycles and more false positives'
+                      }
+                    >
+                      {language === 'ar' ? 'حساسية الموسمية' : 'Seasonality sensitivity'}
+                    </label>
+                    <select
+                      value={String(seasonalityThreshold)}
+                      onChange={(e) => setSeasonalityThreshold(parseFloat(e.target.value))}
+                      className="text-[11px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] rounded-md px-2 py-1"
+                    >
+                      <option value="0.08">{language === 'ar' ? 'عالية — عتبة 8%' : 'High — 8%'}</option>
+                      <option value="0.12">{language === 'ar' ? 'مرتفعة — عتبة 12%' : 'Elevated — 12%'}</option>
+                      <option value="0.18">{language === 'ar' ? 'متوازنة — عتبة 18%' : 'Balanced — 18%'}</option>
+                      <option value="0.3">{language === 'ar' ? 'منخفضة — عتبة 30%' : 'Low — 30%'}</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={applySeasonality}
+                      onChange={(e) => setApplySeasonality(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-rose-500"
+                    />
+                    <span className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap">
+                      {language === 'ar' ? 'دمج الموسمية' : 'Seasonality'}
+                    </span>
+                  </label>
+                  <button
+                    onClick={exportForecastCsv}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1.5 rounded-md transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {language === 'ar' ? 'تصدير التوقعات CSV' : 'Export CSV'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Seasonality detection strip */}
+              <div className="bg-[var(--cds-layer-01)] px-4 py-2.5 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--cds-text-02)]">
+                <span className="font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-rose-500" />
+                  {language === 'ar' ? 'كشف الموسمية' : 'Seasonality Detection'}
+                </span>
+                {forecast.summary.seasonality.detected ? (
+                  <>
+                    <span>
+                      {language === 'ar' ? 'الدورة' : 'Cycle'}:{' '}
+                      <strong className="font-mono text-[var(--cds-text-01)]">
+                        {forecast.summary.seasonality.period} {language === 'ar' ? 'فترة' : 'periods'}
+                      </strong>
+                      {seasonalityKindText(forecast.summary.seasonality.kind, language) && (
+                        <span className="text-[var(--cds-text-03)]">
+                          {' · '}
+                          {seasonalityKindText(forecast.summary.seasonality.kind, language)}
+                        </span>
+                      )}
+                    </span>
+                    <span>
+                      {language === 'ar' ? 'القوة' : 'Strength'}:{' '}
+                      <strong className="font-mono text-[var(--cds-text-01)]">
+                        {Math.round(forecast.summary.seasonality.strength * 100)}%
+                      </strong>
+                      <span className="text-[var(--cds-text-03)]">
+                        {' '}
+                        {language === 'ar' ? 'مقابل عتبة' : 'vs threshold'}{' '}
+                        {Math.round(forecast.summary.seasonality.threshold * 100)}%
+                      </span>
+                    </span>
+                    <span>
+                      {language === 'ar' ? 'دورات تاريخية' : 'Historical cycles'}:{' '}
+                      <strong className="font-mono text-[var(--cds-text-01)]">{forecast.summary.seasonality.cycles.toFixed(1)}</strong>
+                    </span>
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded-full border ${forecast.summary.seasonality.applied ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'}`}
+                    >
+                      {forecast.summary.seasonality.applied
+                        ? (language === 'ar' ? 'مدمجة في التوقع' : 'Applied')
+                        : applySeasonality
+                          ? (language === 'ar' ? 'ضعيفة — لم تُدمج' : 'Too weak — not applied')
+                          : (language === 'ar' ? 'معطّلة يدويًا' : 'Disabled')}
+                    </span>
+                    {forecast.summary.seasonality.indices.length > 0 &&
+                      forecast.summary.seasonality.period &&
+                      forecast.summary.seasonality.indices.some(value => Math.abs(value) > 1e-9) && (
+                        <div className="flex items-center gap-2 ms-auto text-[var(--cds-text-02)]" dir="ltr">
+                          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--cds-text-03)]">
+                            {language === 'ar' ? 'ارتفاع/انخفاض الأطوار' : 'Phase swing'}
+                          </span>
+                          <SeasonalIndicesSpark
+                            indices={forecast.summary.seasonality.indices}
+                            period={forecast.summary.seasonality.period}
+                          />
+                        </div>
+                      )}
+                  </>
+                ) : (
+                  <span>
+                    {language === 'ar'
+                      ? `لم تُكتشف دورة تتجاوز عتبة ${Math.round(forecast.summary.seasonality.threshold * 100)}% في بواقي النموذج؛ التوقع يعتمد على الاتجاه فقط.`
+                      : `No cycle above the ${Math.round(forecast.summary.seasonality.threshold * 100)}% threshold in the model residuals; the forecast relies on trend only.`}
+                  </span>
+                )}
+              </div>
+
+              {/* Predictive KPI cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-rose-600 to-amber-700 p-4 rounded-lg text-white shadow-lg">
+                  <div className="text-[10px] uppercase tracking-wider text-rose-100 font-semibold flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    {language === 'ar'
+                      ? `التوقع القادم (${dirLabel(formatForecastLabel(forecast.points[0].label, 1))})`
+                      : `Next (${dirLabel(formatForecastLabel(forecast.points[0].label, 1))})`}
+                  </div>
+                  <div className="text-2xl font-bold font-mono mt-1.5">{formatForecastValue(forecast.summary.nextValue)}</div>
+                  <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${forecast.summary.nextChangeAbs >= 0 ? 'bg-emerald-400/20 text-emerald-100' : 'bg-rose-900/40 text-rose-100'}`}>
+                    <ArrowRight className={`w-3 h-3 ${forecast.summary.nextChangeAbs >= 0 ? '-rotate-90' : 'rotate-90'}`} />
+                    {formatSignedPct(forecast.summary.nextChangePct)} {language === 'ar' ? 'مقارنةً بالفعلي' : 'vs actual'}
+                  </div>
+                </div>
+
+                <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+                    {language === 'ar'
+                      ? `نهاية الأفق (${dirLabel(formatForecastLabel(forecast.points[forecast.points.length - 1].label, forecast.points.length))})`
+                      : `Horizon End (${dirLabel(formatForecastLabel(forecast.points[forecast.points.length - 1].label, forecast.points.length))})`}
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-[var(--cds-text-01)] mt-1.5">{formatForecastValue(forecast.summary.horizonValue)}</div>
+                  <div className="text-[11px] text-[var(--cds-text-02)] mt-1">
+                    {language === 'ar' ? 'إجمالي التغير' : 'Total change'}: <span className="font-bold">{formatSignedPct(forecast.summary.horizonChangePct)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold flex items-center gap-1.5">
+                    <Gauge className="w-3.5 h-3.5 text-violet-500" />
+                    {language === 'ar' ? 'الاتجاه ومتوسط النمو' : 'Trend & Avg Growth'}
+                  </div>
+                  <div className="text-xl font-bold text-[var(--cds-text-01)] mt-1.5">
+                    {forecast.summary.direction === 'up'
+                      ? (language === 'ar' ? '↗ صاعد' : '↗ Rising')
+                      : forecast.summary.direction === 'down'
+                        ? (language === 'ar' ? '↘ هابط' : '↘ Falling')
+                        : (language === 'ar' ? '→ مستقر' : '→ Flat')}
+                  </div>
+                  <div className="text-[11px] text-[var(--cds-text-02)] mt-1">
+                    {language === 'ar' ? 'لكل فترة' : 'per period'}: <span className="font-bold">{formatSignedPct(forecast.summary.avgStepChangePct)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-emerald-500" />
+                    {language === 'ar' ? 'موثوقية التوقع' : 'Forecast Reliability'}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${forecast.summary.reliability === 'high' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : forecast.summary.reliability === 'medium' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'}`}>
+                      {forecast.summary.reliability === 'high'
+                        ? (language === 'ar' ? 'عالية' : 'High')
+                        : forecast.summary.reliability === 'medium'
+                          ? (language === 'ar' ? 'متوسطة' : 'Medium')
+                          : (language === 'ar' ? 'منخفضة' : 'Low')}
+                    </span>
+                    <span className="text-[11px] font-mono text-[var(--cds-text-02)]">R² {forecast.summary.r2.toFixed(3)}</span>
+                  </div>
+                  <div className="text-[11px] text-[var(--cds-text-02)] mt-1">
+                    MAPE: <span className="font-bold">{forecast.summary.mape === null ? '—' : `${forecast.summary.mape.toFixed(1)}%`}</span>
+                    {' · '}RMSE: <span className="font-bold">{formatForecastValue(forecast.summary.rmse)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Narrative predictive summary */}
+              <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] border-s-4 border-s-rose-500 p-4 rounded-lg shadow-sm space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--cds-text-01)]">
+                  <Sparkles className="w-4 h-4 text-rose-500" />
+                  {language === 'ar' ? 'الملخص التنبؤي' : 'Predictive Summary'}
+                </div>
+                <p className="text-[12px] leading-relaxed text-[var(--cds-text-02)]">
+                  {language === 'ar'
+                    ? `يتوقع النموذج ${result.type === 'Linear' ? 'الخطي' : result.type === 'Polynomial' ? 'متعدد الحدود' : 'Ridge'} أن يبلغ ${result.targetName} حوالي `
+                    : `The ${result.type} model projects ${result.targetName} at about `}
+                  <strong className="text-[var(--cds-text-01)] font-mono">{formatForecastValue(forecast.summary.nextValue)}</strong>
+                  {language === 'ar' ? ' في الفترة ' : ' in '}
+                  <strong className="text-[var(--cds-text-01)]">{dirLabel(formatForecastLabel(forecast.points[0].label, 1))}</strong>
+                  {language === 'ar' ? ' مقابل آخر قيمة فعلية ' : ' versus the last actual value of '}
+                  <strong className="font-mono">{formatForecastValue(forecast.summary.lastActual)}</strong>
+                  {language === 'ar' ? ' في ' : ' at '}
+                  <strong>{dirLabel(forecast.summary.lastLabel)}</strong>
+                  {language === 'ar' ? ' (تغير ' : ' ('}
+                  <strong className={forecast.summary.nextChangeAbs >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{formatSignedPct(forecast.summary.nextChangePct)}</strong>
+                  {language === 'ar' ? ')، ويصل إلى ' : '), reaching '}
+                  <strong className="text-[var(--cds-text-01)] font-mono">{formatForecastValue(forecast.summary.horizonValue)}</strong>
+                  {language === 'ar' ? ` بعد ${forecastHorizon} فترات (إجمالي ${formatSignedPct(forecast.summary.horizonChangePct)}).`
+                    : ` over ${forecastHorizon} periods (total ${formatSignedPct(forecast.summary.horizonChangePct)}).`}
+                  {language === 'ar'
+                    ? ` النطاق المتوقع بثقة ${Math.round(forecastConfidence * 100)}% للفترة القادمة بين ${formatForecastValue(forecast.points[0].lower)} و ${formatForecastValue(forecast.points[0].upper)}، وأعلى نقطة متوقعة ${formatForecastValue(forecast.summary.peak.predicted)} في ${dirLabel(formatForecastLabel(forecast.summary.peak.label, forecast.points.findIndex(point => point.label === forecast.summary.peak.label) + 1 || undefined))}.`
+                    : ` The ${Math.round(forecastConfidence * 100)}% interval for the next period spans ${formatForecastValue(forecast.points[0].lower)} to ${formatForecastValue(forecast.points[0].upper)}, with the peak at ${formatForecastValue(forecast.summary.peak.predicted)} in ${forecast.summary.peak.label}.`}
+                  {forecast.summary.seasonality.applied &&
+                    (language === 'ar'
+                      ? ` أُضيفت إليها موسمية دورتها ${forecast.summary.seasonality.period} فترة بقوة ${Math.round(forecast.summary.seasonality.strength * 100)}%.`
+                      : ` A ${forecast.summary.seasonality.period}-period seasonal component (strength ${Math.round(forecast.summary.seasonality.strength * 100)}%) was added.`)}
+                </p>
+                {forecast.summary.extrapolatedFeatureCount > 0 && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5 pt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {language === 'ar'
+                        ? `${forecast.summary.extrapolatedFeatureCount} من الفترات المتوقعة تقع خارج نطاق بيانات التدريب؛ اعتبر هذه القيم استشرافية وتحقّق منها قبل القرار.`
+                        : `${forecast.summary.extrapolatedFeatureCount} forecast periods fall outside the training range; treat those values as extrapolative and review before acting.`}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Forecast chart */}
+              <div className="bg-[var(--cds-layer-01)] p-4 rounded-lg border border-[var(--cds-border-subtle)] shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <h3 className="text-xs font-bold text-[var(--cds-text-01)] flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4 text-rose-500" />
+                    {language === 'ar' ? 'مخطط التوقع المستقبلي مع نطاق الثقة' : 'Forward Forecast with Prediction Interval'}
+                  </h3>
+                  <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                    {language === 'ar' ? 'الخط البرتقالي = التوقع · المنطقة المظللة = نطاق الثقة' : 'Orange line = forecast · shaded band = interval'}
+                    {forecastHistoryWindowed && forecastChart && (
+                      <span className="ms-2 text-[var(--cds-text-02)]">
+                        {language === 'ar'
+                          ? `· آخر ${forecastChart.visibleHistory} فترة من التاريخ`
+                          : `· last ${forecastChart.visibleHistory} periods`}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="w-full h-[420px]">
+                  <LazyPlot
+                    key={`forecast-${forecastHorizon}-${forecastConfidence}-${result.equation}-${isDark}`}
+                    data={forecastChart.data}
+                    layout={forecastChart.layout as any}
+                    config={{ responsive: true, displayModeBar: true }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+              </div>
+
+              {/* Forecast horizon table */}
+              <div className="bg-[var(--cds-layer-01)] rounded-lg border border-[var(--cds-border-subtle)] shadow-sm overflow-hidden">
+                <div className="px-4 py-2.5 bg-[var(--cds-layer-02)] border-b border-[var(--cds-border-subtle)] flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-[var(--cds-text-01)] flex items-center gap-2">
+                    <TableIcon className="w-4 h-4 text-blue-500" />
+                    {language === 'ar' ? 'جدول التوقعات لكل فترة' : 'Forecast by Period'}
+                  </h3>
+                  <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
+                    {forecast.points.length} {language === 'ar' ? 'فترة متوقعة' : 'projected periods'}
+                  </span>
+                </div>
+                <div className="max-h-[320px] overflow-y-auto">
+                  <table className="w-full text-xs text-right font-mono border-collapse">
+                    <thead className="bg-[var(--cds-layer-02)] text-[var(--cds-text-01)] font-sans sticky top-0 border-b border-[var(--cds-border-subtle)]">
+                      <tr>
+                        <th className="p-2.5 text-center">#</th>
+                        <th className="p-2.5">{language === 'ar' ? 'الفترة' : 'Period'}</th>
+                        <th className="p-2.5 text-amber-600">{language === 'ar' ? 'القيمة المتوقعة' : 'Forecast'}</th>
+                        <th className="p-2.5 text-blue-600">{language === 'ar' ? 'الحد الأدنى' : 'Lower'}</th>
+                        <th className="p-2.5 text-blue-600">{language === 'ar' ? 'الحد الأعلى' : 'Upper'}</th>
+                        <th className="p-2.5 text-purple-600">{language === 'ar' ? 'التغير %' : 'Change %'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--cds-border-subtle)]">
+                      {forecast.points.map((point) => (
+                        <tr key={`forecast-row-${point.step}`} className="hover:bg-[var(--cds-layer-02)] transition-colors">
+                          <td className="p-2 text-center text-[var(--cds-text-03)] font-sans">{point.step}</td>
+                          <td className="p-2 text-[var(--cds-text-01)] font-semibold">{dirLabel(formatForecastLabel(point.label, point.step))}</td>
+                          <td className="p-2 text-amber-700 dark:text-amber-300 font-bold">{formatForecastValue(point.predicted)}</td>
+                          <td className="p-2 text-[var(--cds-text-02)]">{formatForecastValue(point.lower)}</td>
+                          <td className="p-2 text-[var(--cds-text-02)]">{formatForecastValue(point.upper)}</td>
+                          <td className={`p-2 font-semibold ${point.changePct === null ? 'text-[var(--cds-text-03)]' : point.changePct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {formatSignedPct(point.changePct)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
