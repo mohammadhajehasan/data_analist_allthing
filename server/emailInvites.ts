@@ -350,23 +350,50 @@ export function emailProviderDiagnostics(): ProviderDiag[] {
   });
 }
 
+/** هل SMTP المُعد في البيئة يشير إلى Gmail/Google Workspace؟ */
+export function smtpPointsToGmail(): boolean {
+  const host = process.env.SMTP_HOST?.trim().toLowerCase().replace(/:\d+$/, '');
+  return !!host && /(^|\.)(gmail\.com|googlemail\.com)$/.test(host);
+}
+
+type GmailSecret =
+  | { kind: 'password'; value: string }
+  | { kind: 'oauth'; clientId: string; clientSecret: string; refreshToken: string };
+
 /**
- * هل بيانات اعتماد Google مضبوطة؟
+ * بيانات اعتماد Google كما ستُستخدم فعلًا، أو null إن لم تكن مضبوطة.
  *
- * طريقتان مدعومتان:
+ * ثلاث حالات مدعومة:
  *  - App Password: GMAIL_USER + GMAIL_APP_PASSWORD (16 حرفاً من إعدادات أمان
- *    حساب غوغل، تحتاج التحقق بخطوتين). هي الأبسط والأكثر شيوعاً.
+ *    حساب غوغل؛ تحتاج التحقق بخطوتين).
  *  - OAuth2: GMAIL_USER + GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET + GMAIL_REFRESH_TOKEN
  *    (لتطبيق Google Cloud يملك نطاق gmail.send وأُذن له مرة واحدة).
+ *  - إعداد SMTP قائم يشير إلى smtp.gmail.com: نعيد استخدام SMTP_USER/SMTP_PASS
+ *    بدل مطالبة المشغّل بتكرار السرّ في متغير ثانٍ.
  */
+export function gmailCredentials(): { user: string; secret: GmailSecret; fromSmtp: boolean } | null {
+  const explicitUser = process.env.GMAIL_USER?.trim();
+  if (explicitUser) {
+    const password = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, '');
+    if (password) return { user: explicitUser, secret: { kind: 'password', value: password }, fromSmtp: false };
+    const clientId = process.env.GMAIL_CLIENT_ID?.trim();
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET?.trim();
+    const refreshToken = process.env.GMAIL_REFRESH_TOKEN?.trim();
+    if (clientId && clientSecret && refreshToken) {
+      return { user: explicitUser, secret: { kind: 'oauth', clientId, clientSecret, refreshToken }, fromSmtp: false };
+    }
+    return null;
+  }
+  if (smtpPointsToGmail()) {
+    const user = process.env.SMTP_USER?.trim();
+    const password = process.env.SMTP_PASS?.replace(/\s+/g, '');
+    if (user && password) return { user, secret: { kind: 'password', value: password }, fromSmtp: true };
+  }
+  return null;
+}
+
 export function gmailConfigured(): boolean {
-  if (!process.env.GMAIL_USER?.trim()) return false;
-  if (process.env.GMAIL_APP_PASSWORD?.trim()) return true;
-  return Boolean(
-    process.env.GMAIL_CLIENT_ID?.trim() &&
-      process.env.GMAIL_CLIENT_SECRET?.trim() &&
-      process.env.GMAIL_REFRESH_TOKEN?.trim()
-  );
+  return gmailCredentials() !== null;
 }
 
 /**
@@ -376,23 +403,24 @@ export function gmailConfigured(): boolean {
  * هو GMAIL_USER دائمًا مهما كان SMTP_FROM — الاسم الظاهر فقط قابل للتخصيص.
  */
 async function sendViaGmail(p: MailPayload): Promise<SendResult> {
-  const user = process.env.GMAIL_USER?.trim();
-  if (!user || !gmailConfigured()) {
+  const credentials = gmailCredentials();
+  if (!credentials) {
     return { sent: false, provider: 'gmail', error: 'GMAIL_USER / GMAIL_APP_PASSWORD غير مضبوطين' };
   }
+  const { user, secret } = credentials;
   try {
     // Dynamic import so the app still boots when nodemailer isn't installed
     const nodemailer = (await import('nodemailer')).default;
-    const appPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, '');
-    const auth = appPassword
-      ? { user, pass: appPassword }
-      : {
-          type: 'OAuth2' as const,
-          user,
-          clientId: process.env.GMAIL_CLIENT_ID?.trim(),
-          clientSecret: process.env.GMAIL_CLIENT_SECRET?.trim(),
-          refreshToken: process.env.GMAIL_REFRESH_TOKEN?.trim(),
-        };
+    const auth =
+      secret.kind === 'password'
+        ? { user, pass: secret.value }
+        : {
+            type: 'OAuth2' as const,
+            user,
+            clientId: secret.clientId,
+            clientSecret: secret.clientSecret,
+            refreshToken: secret.refreshToken,
+          };
     const transporter = nodemailer.createTransport({
       host: process.env.GMAIL_SMTP_HOST?.trim() || 'smtp.gmail.com',
       port: Number(process.env.GMAIL_SMTP_PORT || 465),
@@ -417,10 +445,13 @@ async function sendViaGmail(p: MailPayload): Promise<SendResult> {
     const message = String(err?.message || err);
     // الأخطاء الشائعة عند الإعداد الأول — نترجمها إلى ما يجب فعله بدل نص SMTP الخام.
     if (/535|Invalid login|Username and Password not accepted/i.test(message)) {
+      // نُبقي رمز الرفض (535 BadCredentials) ليعرف المشغّل أن السبب اعتماد غير صالح،
+      // لا شبكة أو منفذ.
       return {
         sent: false,
         provider: 'gmail',
-        error: 'Gmail رفض تسجيل الدخول — استخدم App Password من 16 حرفاً (وليس كلمة مرور الحساب) مع تفعيل التحقق بخطوتين',
+        error:
+          'Gmail رفض تسجيل الدخول (535 BadCredentials) — الاعتماد المضبوط ليس App Password صالحاً؛ فعّل التحقق بخطوتين وأنشئ واحدة من 16 حرفاً',
       };
     }
     if (/Application-specific password required/i.test(message)) {
@@ -650,11 +681,15 @@ async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
  */
 export async function sendEmail(p: MailPayload, purpose?: string): Promise<SendResult> {
   const providers: Array<[string, () => Promise<SendResult>]> = [];
-  if (gmailConfigured()) providers.push(['gmail', () => sendViaGmail(p)]);
+  const gmail = gmailCredentials();
+  if (gmail) providers.push(['gmail', () => sendViaGmail(p)]);
   if (process.env.BREVO_API_KEY?.trim()) providers.push(['brevo', () => sendViaBrevo(p)]);
   if (process.env.RESEND_API_KEY?.trim()) providers.push(['resend', () => sendViaResend(p)]);
   if (process.env.AGENTMAIL_API_KEY?.trim()) providers.push(['agentmail', () => sendViaAgentMail(p)]);
-  if (process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim()) {
+  // لا نكرّر نفس النقل مرّتين: إن كانت بيانات SMTP هي نفسها التي يعمل بها مزوّد
+  // Gmail (مضبوط من SMTP_*)، فالمحاولة الثانية ستُكرّر الفشل نفسه بلا فائدة.
+  const smtpCoveredByGmail = !!gmail?.fromSmtp;
+  if (!smtpCoveredByGmail && process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim()) {
     providers.push(['smtp', () => sendViaSmtp(p)]);
   }
   if (providers.length === 0) {

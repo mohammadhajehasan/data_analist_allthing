@@ -55,6 +55,20 @@ describe('gmail provider', () => {
     expect(gmailConfigured()).toBe(true);
   });
 
+  it('reuses existing SMTP credentials when they already point at Gmail', async () => {
+    onlyGmail({ SMTP_HOST: 'smtp.gmail.com', SMTP_USER: 'me@gmail.com', SMTP_PASS: 'abcd efgh ijkl mnop' });
+    expect(gmailConfigured()).toBe(true);
+
+    const result = await sendEmail({ to: 'user@example.com', subject: 's', text: 't', html: '<p>t</p>' }, 'signup-verification');
+
+    expect(result.sent).toBe(true);
+    expect(result.provider).toBe('gmail');
+    // محاولة واحدة فقط: مزوّد smtp لا يعيد نفس النقل مرة ثانية.
+    expect(createTransport).toHaveBeenCalledTimes(1);
+    const options = createTransport.mock.calls[0][0] as any;
+    expect(options.auth).toEqual({ user: 'me@gmail.com', pass: 'abcdefghijklmnop' });
+  });
+
   it('sends through smtp.gmail.com:465 from the account itself, with the spaces stripped from the app password', async () => {
     onlyGmail({ GMAIL_USER: 'me@gmail.com', GMAIL_APP_PASSWORD: 'abcd efgh ijkl mnop', GMAIL_FROM_NAME: 'المنصة' });
 
