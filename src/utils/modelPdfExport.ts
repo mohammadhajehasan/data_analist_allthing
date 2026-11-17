@@ -102,22 +102,34 @@ export async function exportSelectedModelToPdf(
   const isAr = data.language === 'ar';
   if (onProgress) onProgress(isAr ? 'جاري تجهيز تقرير النموذج...' : 'Preparing model report layout...');
 
-  // Create temporary container offscreen
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.top = '-9999px';
-  container.style.left = '-9999px';
-  container.style.width = '820px';
-  container.style.background = '#ffffff';
-  container.style.color = '#1e293b';
-  container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif';
-  container.style.padding = '36px';
-  container.style.boxSizing = 'border-box';
-  container.style.direction = isAr ? 'rtl' : 'ltr';
-  // html2canvas falls back to drawing glyph-by-glyph when letter-spacing is not
-  // 'normal', which disconnects Arabic letters and reverses their order. The app
-  // sets a global letter-spacing on body, so it must be cleared here.
-  container.style.letterSpacing = 'normal';
+  // A4 is 210×297mm; at 820px wide one page is this tall in CSS pixels.
+  const PAGE_WIDTH = 820;
+  // Floor, not round: a sheet even a fraction taller than the A4 ratio spills a
+  // blank page when the image is placed at its natural height.
+  const PAGE_HEIGHT = Math.floor((PAGE_WIDTH * 297) / 210);
+  const PAGE_PADDING = 36;
+  const PAGE_FOOTER = 30;
+  // Usable body height per page: page minus padding and the footer strip.
+  const CONTENT_HEIGHT = PAGE_HEIGHT - PAGE_PADDING * 2 - PAGE_FOOTER;
+  const SECTION_GAP = 16;
+  const PAGE_FONT = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif';
+  const PAGE_STYLE = [
+    'position: fixed',
+    'top: -12000px',
+    'left: -12000px',
+    `width: ${PAGE_WIDTH}px`,
+    `height: ${PAGE_HEIGHT}px`,
+    'background: #ffffff',
+    'color: #1e293b',
+    `font-family: ${PAGE_FONT}`,
+    'box-sizing: border-box',
+    `direction: ${isAr ? 'rtl' : 'ltr'}`,
+    // html2canvas falls back to drawing glyph-by-glyph when letter-spacing is not
+    // 'normal', which disconnects Arabic letters and reverses their order. The app
+    // sets a global letter-spacing on body, so it must be cleared here.
+    'letter-spacing: normal',
+    'overflow: hidden',
+  ].join('; ');
 
   const exportDate = new Date().toLocaleString(isAr ? 'ar-SA' : 'en-US');
   const reportId = `MOD-${Date.now().toString(36).toUpperCase()}`;
@@ -509,7 +521,7 @@ export async function exportSelectedModelToPdf(
     `;
   })();
 
-  container.innerHTML = `
+  const headerHtml = `
     <!-- Header Banner -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #2563eb; padding-bottom: 16px; margin-bottom: 20px;">
       <div>
@@ -535,9 +547,11 @@ export async function exportSelectedModelToPdf(
         </div>
       </div>
     </div>
+  `;
 
+  const section1Html = `
     <!-- Section 1: Final Hyperparameters Grid -->
-    <div style="margin-bottom: 20px;">
+    <div>
       <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.04em;">
         ${isAr ? '1. إعدادات المعاملات الفائقة النهائية (Final Hyperparameters & Architecture)' : '1. Final Hyperparameters & Architecture'}
       </h3>
@@ -545,9 +559,11 @@ export async function exportSelectedModelToPdf(
         ${hpGridHtml}
       </div>
     </div>
+  `;
 
+  const section2Html = `
     <!-- Section 2: Mathematical Formulation -->
-    <div style="margin-bottom: 20px;">
+    <div>
       <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.04em;">
         ${isAr ? '2. الصيغة الرياضية التشغيلية للنموذج (Mathematical Equation)' : '2. Final Mathematical Equation'}
       </h3>
@@ -555,9 +571,11 @@ export async function exportSelectedModelToPdf(
         ${data.equation}
       </div>
     </div>
+  `;
 
+  const section3Html = `
     <!-- Section 3: Performance & Evaluation Metrics -->
-    <div style="margin-bottom: 20px;">
+    <div>
       <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.04em;">
         ${isAr ? '3. مقاييس جودة الأداء والتعميم (Performance & Diagnostic Metrics)' : '3. Model Performance & Diagnostics'}
       </h3>
@@ -565,11 +583,13 @@ export async function exportSelectedModelToPdf(
       ${validationSectionHtml}
     </div>
 
-    <!-- Section 4: Feature Importance Ranking -->
-    ${
-      data.featureImportance && data.featureImportance.length > 0
-        ? `
-      <div style="margin-bottom: 20px;">
+  `;
+
+  // Section 4: Feature Importance Ranking
+  const importanceHtml =
+    data.featureImportance && data.featureImportance.length > 0
+      ? `
+      <div>
         <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.04em;">
           ${isAr ? '4. ترتيب أهمية الميزات المستقلة (Standardized Feature Importance Ranking)' : '4. Feature Importance Rankings'}
         </h3>
@@ -589,74 +609,157 @@ export async function exportSelectedModelToPdf(
         </table>
       </div>
     `
-        : ''
+      : '';
+
+  // ---------------------------------------------------------------------------
+  // Pagination happens before any rasterisation: each A4 sheet is captured on
+  // its own, so the canvas stays small (the old single tall canvas hung the tab)
+  // and no table or chart is split across a page boundary.
+  // ---------------------------------------------------------------------------
+  const sectionList = [
+    headerHtml,
+    section1Html,
+    section2Html,
+    section3Html,
+    importanceHtml,
+    forecastHtml,
+  ].filter(html => html.trim().length > 0);
+
+  const measurer = document.createElement('div');
+  measurer.setAttribute(
+    'style',
+    [
+      'position: fixed',
+      'top: -12000px',
+      'left: -12000px',
+      `width: ${PAGE_WIDTH - PAGE_PADDING * 2}px`,
+      `font-family: ${PAGE_FONT}`,
+      'color: #1e293b',
+      'box-sizing: border-box',
+      `direction: ${isAr ? 'rtl' : 'ltr'}`,
+      'letter-spacing: normal',
+    ].join('; ')
+  );
+  document.body.appendChild(measurer);
+  let measuredSections: Array<{ html: string; height: number }> = [];
+  try {
+    measuredSections = sectionList.map(html => {
+      measurer.innerHTML = html;
+      return { html, height: measurer.scrollHeight };
+    });
+  } finally {
+    document.body.removeChild(measurer);
+  }
+
+  // Greedy packing: a section that does not fit on the current sheet starts the
+  // next one whole; a section taller than a sheet gets a sheet of its own.
+  const pages: Array<{ body: string; height: number }> = [];
+  let bucket: string[] = [];
+  let used = 0;
+  const flushPage = () => {
+    if (bucket.length === 0) return;
+    pages.push({ body: bucket.join(`<div style="height: ${SECTION_GAP}px"></div>`), height: PAGE_HEIGHT });
+    bucket = [];
+    used = 0;
+  };
+  for (const section of measuredSections) {
+    if (section.height > CONTENT_HEIGHT) {
+      flushPage();
+      pages.push({ body: section.html, height: PAGE_PADDING * 2 + PAGE_FOOTER + section.height });
+      continue;
     }
+    if (used + section.height + (bucket.length > 0 ? SECTION_GAP : 0) > CONTENT_HEIGHT) flushPage();
+    used += section.height + (bucket.length > 0 ? SECTION_GAP : 0);
+    bucket.push(section.html);
+  }
+  flushPage();
 
-    ${forecastHtml}
-
-    <!-- Footer -->
-    <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8;">
-      <div>CONFIDENTIAL & OFFICIAL MODEL SPECIFICATION • IBM CLOUD PAK DATA ENGINE</div>
-      <div>Page 1 of 1 • System Generated via AI Studio Build</div>
+  const pageMarkup = (body: string, index: number): string => `
+    <div style="padding: ${PAGE_PADDING}px ${PAGE_PADDING}px ${PAGE_FOOTER + 12}px; box-sizing: border-box;">
+      ${body}
+    </div>
+    <div style="position: absolute; left: ${PAGE_PADDING}px; right: ${PAGE_PADDING}px; bottom: 12px; border-top: 1px solid #e2e8f0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #94a3b8;">
+      <div>CONFIDENTIAL &amp; OFFICIAL MODEL SPECIFICATION • IBM CLOUD PAK DATA ENGINE</div>
+      <div>${isAr ? `صفحة ${index} من ${pages.length}` : `Page ${index} of ${pages.length}`} • AI Studio Build</div>
     </div>
   `;
 
-  document.body.appendChild(container);
-
-  // Neutralise letter-spacing on every node (inline styles included): the app
-  // applies a global -0.01em that html2canvas turns into per-glyph drawing, which
-  // breaks Arabic shaping and order.
-  container.querySelectorAll<HTMLElement>('*').forEach(node => {
-    node.style.letterSpacing = 'normal';
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
   });
 
-  try {
-    if (onProgress) onProgress(isAr ? 'جاري تحويل التقرير إلى صيغة PDF...' : 'Rendering high-resolution PDF...');
+  const pdfWidth = 210; // A4 width mm
+  const pdfPageHeight = 297; // A4 height mm
 
-    const canvas = await html2canvas(container, {
-      scale: 2.0,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      windowWidth: 820,
-    });
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const imgWidth = 210; // A4 width mm
-    const pageHeight = 297; // A4 height mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-    if (imgHeight <= pageHeight) {
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-    } else {
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+  for (let i = 0; i < pages.length; i += 1) {
+    const page = pages[i];
+    if (onProgress) {
+      onProgress(
+        isAr
+          ? `جاري تصيير الصفحة ${i + 1} من ${pages.length}...`
+          : `Rendering page ${i + 1} of ${pages.length}...`
+      );
     }
 
-    const cleanModelName = data.modelType.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `Selected_Model_${cleanModelName}_${Date.now()}.pdf`;
+    // One sheet at a time: the node is detached again before the next one is
+    // built, so the browser never holds a full-report layout or a huge canvas.
+    const pageNode = document.createElement('div');
+    pageNode.setAttribute('style', `${PAGE_STYLE}; height: ${page.height}px`);
+    pageNode.innerHTML = pageMarkup(page.body, i + 1);
 
-    if (onProgress) onProgress(isAr ? 'اكتمل إنشاء التقرير، جاري التحميل...' : 'Downloading PDF...');
-    pdf.save(fileName);
-  } finally {
-    document.body.removeChild(container);
+    // Neutralise letter-spacing on every node (inline styles included): the app
+    // applies a global -0.01em that html2canvas turns into per-glyph drawing,
+    // which breaks Arabic shaping and order.
+    pageNode.querySelectorAll<HTMLElement>('*').forEach(node => {
+      node.style.letterSpacing = 'normal';
+    });
+
+    document.body.appendChild(pageNode);
+    try {
+      // Yield so the browser can paint the progress text and lay the sheet out
+      // before the blocking rasterisation starts.
+      await new Promise(resolve => setTimeout(resolve, 24));
+
+      const canvas = await html2canvas(pageNode, {
+        scale: 2.0,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: PAGE_WIDTH,
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      if (i > 0) pdf.addPage();
+      // 0.5mm tolerance absorbs pixel rounding so a full sheet stays one page.
+      if (imgHeight <= pdfPageHeight + 0.5) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfPageHeight));
+      } else {
+        // Only for a single section taller than one sheet: slice it, because it
+        // cannot be broken at a section boundary.
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfPageHeight;
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+          heightLeft -= pdfPageHeight;
+        }
+      }
+    } finally {
+      document.body.removeChild(pageNode);
+    }
   }
+
+  const cleanModelName = data.modelType.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `Selected_Model_${cleanModelName}_${Date.now()}.pdf`;
+
+  if (onProgress) onProgress(isAr ? 'اكتمل إنشاء التقرير، جاري التحميل...' : 'Downloading PDF...');
+  pdf.save(fileName);
 }

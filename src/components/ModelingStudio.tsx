@@ -59,6 +59,10 @@ import { InfoTooltip } from './InfoTooltip';
 import { FeatureImportanceChart, FeatureImportanceItem } from './FeatureImportanceChart';
 import { exportSelectedModelToPdf } from '../utils/modelPdfExport';
 import { buildForecast, buildForecastTable, detectTimeColumn, SeasonalityKind } from '../utils/forecastUtils';
+import { buildForecastAxisTicks, PLOT_MARGINS_PX } from '../utils/forecastAxisTicks';
+import { localizePhaseLabel } from '../utils/seasonalPhaseLabels';
+import { auditFeatures, describeFinding, FeatureFinding } from '../utils/modelGuard';
+import { buildProvenanceBundle, downloadBytes } from '../utils/provenanceBundle';
 
 export interface DataPoint {
   index: number;
@@ -132,9 +136,16 @@ const seasonalityKindText = (kind: SeasonalityKind | null, language: string): st
 
 /**
  * رسم صغير لمؤشرات الموسمية: عمود لكل طور فوق/تحت خط الصفر، ليظهر
- * أي الأطوار ترتفع وأيها تنخفض قبل قراءة الأرقام.
+ * أي الأطوار ترتفع وأيها تنخفض قبل قراءة الأرقام. المرور بالفأرة (أو التركيز
+ * بلوحة المفاتيح) على عمود يعرض اسم طوره وقيمته في تلميح فوق الرسم.
  */
-const SeasonalIndicesSpark: React.FC<{ indices: number[]; period: number }> = ({ indices, period }) => {
+const SeasonalIndicesSpark: React.FC<{
+  indices: number[];
+  period: number;
+  phaseLabels?: string[];
+  language?: string;
+}> = ({ indices, period, phaseLabels, language }) => {
+  const [hovered, setHovered] = React.useState<number | null>(null);
   const height = 34;
   const baseline = 20;
   const maxAbs = Math.max(...indices.map(value => Math.abs(value)), 1e-9);
@@ -142,30 +153,73 @@ const SeasonalIndicesSpark: React.FC<{ indices: number[]; period: number }> = ({
   const gap = indices.length > 16 ? 1 : 2;
   const width = indices.length * (barWidth + gap) - gap;
   const scale = (value: number) => (Math.abs(value) / maxAbs) * (baseline - 3);
+  const isAr = language === 'ar';
+  const phaseName = (index: number) => {
+    const raw = phaseLabels?.[index];
+    return localizePhaseLabel(raw || `#${index + 1}`, language) || (isAr ? `الطور ${index + 1}` : `#${index + 1}`);
+  };
+  const centerPct = (index: number) => {
+    const center = index * (barWidth + gap) + barWidth / 2;
+    return Math.min(92, Math.max(8, (center / Math.max(1, width)) * 100));
+  };
+  const valueOf = (index: number) => (indices[index] >= 0 ? '+' : '') + indices[index].toFixed(2);
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Seasonal indices">
-      <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} />
-      {indices.map((value, index) => {
-        const barHeight = Math.max(1, scale(value));
-        const x = index * (barWidth + gap);
-        const y = value >= 0 ? baseline - barHeight : baseline;
-        return (
-          <rect
-            key={index}
-            x={x}
-            y={y}
-            width={barWidth}
-            height={barHeight}
-            rx={1}
-            fill={value >= 0 ? '#10b981' : '#f43f5e'}
-            fillOpacity={0.85}
-          >
-            <title>{`${'#'}${index + 1}/${period}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}`}</title>
-          </rect>
-        );
-      })}
-    </svg>
+    <div className="relative inline-flex" dir="ltr" onMouseLeave={() => setHovered(null)}>
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={isAr ? 'مؤشرات الموسمية لكل طور' : 'Seasonal indices by phase'}
+      >
+        <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} />
+        {indices.map((value, index) => {
+          const barHeight = Math.max(1, scale(value));
+          const x = index * (barWidth + gap);
+          const y = value >= 0 ? baseline - barHeight : baseline;
+          const active = hovered === index;
+          return (
+            <rect
+              key={index}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              rx={1}
+              fill={value >= 0 ? '#10b981' : '#f43f5e'}
+              fillOpacity={active ? 1 : 0.85}
+              // مئات الأعمدة لا تصلح لمئات محطات Tab؛ التركيز للمفاتيح يُتاح
+              // حين تكون الأطوار قليلة (شهرية/ربعية/أسبوعية).
+              tabIndex={indices.length <= 24 ? 0 : -1}
+              role="img"
+              aria-label={`${phaseName(index)}: ${valueOf(index)}`}
+              onMouseEnter={() => setHovered(index)}
+              onFocus={() => setHovered(index)}
+              onBlur={() => setHovered((current) => (current === index ? null : current))}
+              style={{ outline: active ? '1px solid #0f62fe' : 'none', cursor: 'pointer' }}
+            />
+          );
+        })}
+      </svg>
+      {hovered !== null && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full mb-1.5 z-30 whitespace-nowrap rounded border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] px-2 py-1 text-[10px] shadow-lg"
+          style={{ left: `${centerPct(hovered)}%`, transform: 'translateX(-50%)' }}
+          dir={isAr ? 'rtl' : 'ltr'}
+        >
+          <span className="font-semibold text-[var(--cds-text-01)]">{phaseName(hovered)}</span>
+          <span className="mx-1 text-[var(--cds-text-03)]">·</span>
+          <span className={`font-mono font-bold ${indices[hovered] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} dir="ltr">
+            {valueOf(hovered)}
+          </span>
+          <span className="ms-1 text-[9px] text-[var(--cds-text-03)]" dir="ltr">
+            {`#${hovered + 1}/${period}`}
+          </span>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -306,6 +360,8 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
       }
     }
   ]);
+  // Findings from the pre-training feature audit (target leak, duplicates...).
+  const [featureFindings, setFeatureFindings] = useState<FeatureFinding[]>([]);
   const [modelsSortField, setModelsSortField] = useState<'r2' | 'mse' | 'trainingTime' | 'overfittingIndex' | 'none'>('none');
   const [modelsSortOrder, setModelsSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -321,6 +377,12 @@ export const ModelingStudio = React.forwardRef<any, any>((props, ref) => {
   const [seasonalityThreshold, setSeasonalityThreshold] = useState<number>(0.18);
   // كيف تُعرض تسميات فترات التوقع: التاريخ نفسه، رقم الفترة، أو السنة فقط.
   const [forecastLabelFormat, setForecastLabelFormat] = useState<'date' | 'period' | 'year'>('date');
+  // مدى التاريخ المرسوم خلف التوقع: نافذة تلقائية حول الأفق، أو كل السلسلة.
+  const [forecastHistoryMode, setForecastHistoryMode] = useState<'window' | 'all'>('window');
+  // عرض منطقة الرسم الفعلي — تُحسب عليه ميزانية علامات المحور فلا تزدحم
+  // على الشاشات الضيقة ولا تُهدر على العريضة.
+  const forecastPlotRef = React.useRef<HTMLDivElement | null>(null);
+  const [forecastPlotWidth, setForecastPlotWidth] = useState(0);
 
   // Feature Engineering State
   const [featEngCol, setFeatEngCol] = useState<string>('');
@@ -945,14 +1007,27 @@ print(f"Example prediction: {prediction[0]:.6f}")
     return label;
   };
 
+  // قياس عرض منطقة الرسم: هو مدخل ميزانية علامات المحور، فالسلسلة الطويلة على
+  // شاشة ضيقة تحتاج تسميات أقل من نفس السلسلة على شاشة عريضة.
+  useEffect(() => {
+    const element = forecastPlotRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width || 0;
+      setForecastPlotWidth(previous => (Math.abs(previous - width) > 24 ? width : previous));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [forecast !== null]);
+
   const forecastChart = useMemo(() => {
     if (!forecast || forecast.points.length === 0 || forecast.history.length === 0) return null;
 
     // On a 500-row series a 6-period forecast is about 1% of the width and is
-    // impossible to see; keep enough recent history to give it context.
-    // The yearly view only makes sense across the whole span, so it keeps all history.
+    // impossible to see; keep enough recent history to give it context. The
+    // yearly view only makes sense across the whole span, so it keeps all history.
     const visibleHistory =
-      forecastLabelFormat === 'year'
+      forecastHistoryMode === 'all' || forecastLabelFormat === 'year'
         ? forecast.history.length
         : Math.min(forecast.history.length, Math.max(24, forecast.points.length * 4));
     const history = forecast.history.slice(-visibleHistory);
@@ -963,43 +1038,15 @@ print(f"Example prediction: {prediction[0]:.6f}")
     const futureX = [...historyLabels.slice(0, -1), lastHistory.label, ...futureLabels];
 
     // Categories must stay unique (the raw labels) or Plotly would merge points;
-    // only the tick text follows the chosen label format.
-    const axisTicks = (() => {
-      if (forecastLabelFormat === 'date') return {};
-      const allLabels = [...historyLabels, ...futureLabels];
-      const maxTicks = 12;
-      // The forecast labels are the point of this chart, so every projected
-      // period gets a tick (P1…Pn); history only fills the remaining space.
-      const forecastIndexes = futureLabels.map((_, index) => historyLabels.length + index);
-      // Short P1/P6 style ticks are drawn horizontally, so two date ticks are
-      // enough context and keep the labels from colliding with each other.
-      const historyBudget = 2;
-      const historyLimit = Math.max(1, historyLabels.length - 3);
-      const historyStep = Math.max(1, Math.floor((historyLimit - 1) / (historyBudget - 1 || 1)));
-      const indexes: number[] = [];
-      // Stop well before the last historical label: it sits next to P1 and the
-      // two would overlap.
-      for (let index = 0; index < historyLimit; index += historyStep) indexes.push(index);
-      const tickIndexes = [...new Set([...indexes, ...forecastIndexes])].sort((a, b) => a - b);
-      const ticks = tickIndexes.map(index => ({
-        index,
-        text:
-          index < historyLabels.length
-            ? formatForecastLabel(allLabels[index])
-            // Plain numbers on the axis: "P1"…"P6" over six crowded slots collide.
-            : forecastLabelFormat === 'period'
-              ? String(index - historyLabels.length + 1)
-              : formatForecastLabel(allLabels[index], index - historyLabels.length + 1),
-      }));
-      // In year mode several ticks share a year; showing it eight times is noise.
-      const visibleTicks =
-        forecastLabelFormat === 'year' ? ticks.filter((tick, position) => position === 0 || tick.text !== ticks[position - 1].text) : ticks;
-      return {
-        tickmode: 'array' as const,
-        tickvals: visibleTicks.map(tick => allLabels[tick.index]),
-        ticktext: visibleTicks.map(tick => tick.text),
-      };
-    })();
+    // only the tick text follows the chosen label format. The tick plan is
+    // width-aware: on "all history" a 500-row series must not smear its date
+    // labels across the axis, so the budget comes from the measured plot width.
+    const axisTicks = buildForecastAxisTicks({
+      historyLabels,
+      futureLabels,
+      format: forecastLabelFormat,
+      plotWidthPx: forecastPlotWidth ? Math.max(240, forecastPlotWidth - PLOT_MARGINS_PX) : undefined,
+    });
 
     return {
       data: [
@@ -1076,11 +1123,16 @@ print(f"Example prediction: {prediction[0]:.6f}")
         legend: { orientation: 'h', y: -0.25, font: { color: isDark ? '#c6c6c6' : '#525252' } },
       },
     };
-  }, [forecast, language, yAxisCol, forecastConfidence, isDark, forecastLabelFormat]);
+  }, [forecast, language, yAxisCol, forecastConfidence, isDark, forecastLabelFormat, forecastHistoryMode, forecastPlotWidth]);
 
   const forecastHistoryWindowed = Boolean(
     forecastChart && forecast && forecastChart.visibleHistory < forecast.history.length
   );
+
+  // كيف تُعرض نافذة التاريخ في القائمة: النافذة التلقائية المحسوبة من الأفق.
+  const forecastWindowSize = forecast
+    ? Math.min(forecast.history.length, Math.max(24, forecast.points.length * 4))
+    : 0;
 
   const formatForecastValue = (value: number): string => {
     if (!Number.isFinite(value)) return '—';
@@ -1115,6 +1167,77 @@ print(f"Example prediction: {prediction[0]:.6f}")
     a.click();
     URL.revokeObjectURL(url);
     addLog(`Exported ${forecast.points.length} forecast points for ${result.targetName}.`);
+  };
+
+  // حزمة الدليل: البيانات + الإعدادات + المعاملات + التوقع في أرشيف واحد، حتى
+  // يمكن إعادة التحقق من أي رقم نُشر لاحقًا دون تخمين ما استُخدم في التحليل.
+  const exportProvenanceBundle = () => {
+    if (!result) return;
+    try {
+      const confidencePercent = Math.round(forecastConfidence * 100);
+      const summaryRows: Array<[string, string | number]> = [
+        [language === 'ar' ? 'نوع النموذج' : 'Model type', result.type],
+        [language === 'ar' ? 'الهدف' : 'Target', yAxisCol || result.targetName || 'y'],
+        [language === 'ar' ? 'الميزات' : 'Features', xAxisCols.join(', ')],
+        [language === 'ar' ? 'عدد الصفوف' : 'Rows', result.metrics.n],
+        ['R²', Number(result.metrics.r2.toFixed(6))],
+        ['RMSE', Number(result.metrics.rmse.toFixed(6))],
+        ['MAE', Number(result.metrics.mae.toFixed(6))],
+      ];
+      if (forecast) {
+        summaryRows.push(
+          [language === 'ar' ? 'أفق التوقع' : 'Horizon', forecast.points.length],
+          [language === 'ar' ? 'مستوى الثقة %' : 'Confidence %', confidencePercent],
+          [language === 'ar' ? 'دورة الموسمية' : 'Seasonal period', forecast.summary.seasonality.period ?? '—'],
+          [language === 'ar' ? 'قوة الموسمية %' : 'Seasonal strength %', Number((forecast.summary.seasonality.strength * 100).toFixed(2))],
+          [language === 'ar' ? 'فجوة المستوى %' : 'Level gap %', forecast.summary.levelGapPct === null ? '—' : Number(forecast.summary.levelGapPct.toFixed(2))]
+        );
+      }
+      const bundle = buildProvenanceBundle({
+        datasetName: `${yAxisCol || result.targetName || 'target'}-model`,
+        headers,
+        rows: rawJsonData.map((row) => headers.map((header) => {
+          const value = row?.[header];
+          if (value === null || value === undefined) return null;
+          return typeof value === 'number' ? value : String(value);
+        })),
+        model: {
+          type: result.type,
+          target: yAxisCol || result.targetName || 'y',
+          features: [...xAxisCols],
+          degree: result.degree,
+          alpha: result.alpha,
+          intercept: result.intercept,
+          coefficients: [...result.coefficients],
+          metrics: result.metrics as unknown as Record<string, unknown>,
+          confidence: forecastConfidence,
+          splitRatio: enableTrainTestSplit ? trainSplitRatio : 100,
+          splitSeed: enableTrainTestSplit ? splitSeed : null,
+        },
+        forecastTable: forecast
+          ? buildForecastTable(forecast, { language, confidence: confidencePercent })
+          : undefined,
+        summaryRows,
+        seasonality: forecast
+          ? {
+              period: forecast.summary.seasonality.period,
+              kind: forecast.summary.seasonality.kind,
+              strength: forecast.summary.seasonality.strength,
+            }
+          : null,
+        language,
+      });
+      downloadBytes(bundle.bytes, bundle.fileName);
+      addLog(`Provenance bundle exported: ${bundle.manifest.dataset.fingerprint}`);
+      toast.success(
+        language === 'ar'
+          ? `تم تنزيل حزمة الدليل (بصمة ${bundle.manifest.dataset.fingerprint.slice(0, 8)}…)`
+          : `Provenance bundle downloaded (fingerprint ${bundle.manifest.dataset.fingerprint.slice(0, 8)}…)`
+      );
+    } catch (error) {
+      addLog(`Provenance export failed: ${String(error)}`);
+      toast.error(language === 'ar' ? 'تعذّر إنشاء حزمة الدليل.' : 'Could not build the provenance bundle.');
+    }
   };
 
   const radarData = useMemo(() => {
@@ -1774,6 +1897,21 @@ print(f"Example prediction: {prediction[0]:.6f}")
       addLog(errorMsg);
       return;
     }
+
+    // Audit the columns before fitting: a feature that carries the target gives
+    // a perfect-looking model with no predictive value. The rows are rebuilt
+    // from the prepared points so the audit sees the same numbers the model
+    // trains on (raw CSV cells may be strings or arrays).
+    const auditRows = validatedData.map((point) => {
+      const row: Record<string, unknown> = { [yAxisCol]: point.y };
+      xAxisCols.forEach((column, index) => {
+        row[column] = point.features[index];
+      });
+      return row;
+    });
+    setFeatureFindings(
+      selectedType === 'kmeans' ? [] : auditFeatures(auditRows, xAxisCols, yAxisCol)
+    );
 
     const isMultivariate = xAxisCols.length > 1;
 
@@ -3800,6 +3938,20 @@ language === 'ar'
                   >
                     <span>{language === 'ar' ? 'تصدير (CSV)' : 'Export CSV'}</span>
                   </button>
+
+                  <button
+                    onClick={exportProvenanceBundle}
+                    disabled={!result}
+                    title={
+                      language === 'ar'
+                        ? 'أرشيف يضم بصمة البيانات وإعدادات النموذج ومعاملاته والتوقع — دليل يمكن إعادة التحقق منه لاحقًا'
+                        : 'An archive with the data fingerprint, model settings and coefficients, and the forecast — evidence that can be re-checked later'
+                    }
+                    className="flex items-center gap-2 bg-[var(--cds-layer-01)] hover:bg-[var(--cds-layer-03)] text-[var(--cds-text-02)] hover:text-[var(--cds-text-01)] disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 rounded-lg text-xs font-semibold border border-[var(--cds-border-subtle)] transition-colors active:scale-95 cursor-pointer"
+                  >
+                    <FileJson className="w-4 h-4 text-teal-500" />
+                    <span>{language === 'ar' ? 'حزمة الدليل' : 'Provenance bundle'}</span>
+                  </button>
                 </div>
 
                 {result && (
@@ -3868,6 +4020,57 @@ language === 'ar'
                 </button>
               </div>
             </div>
+
+          {/* Pre-training feature audit: leakage, duplicates, dead columns */}
+          {featureFindings.length > 0 && (
+            <div
+              className={`rounded-xl border p-4 space-y-2.5 ${
+                featureFindings.some((finding) => finding.severity === 'high')
+                  ? 'bg-rose-500/10 border-rose-500/30'
+                  : 'bg-amber-500/10 border-amber-500/30'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--cds-text-01)]">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  {language === 'ar'
+                    ? `فحص الميزات قبل التدريب: ${featureFindings.length} ملاحظة`
+                    : `Pre-training feature audit: ${featureFindings.length} finding(s)`}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeatureFindings([])}
+                  className="text-[10px] font-semibold text-[var(--cds-text-03)] hover:text-[var(--cds-text-01)] underline decoration-dotted"
+                >
+                  {language === 'ar' ? 'إخفاء' : 'Dismiss'}
+                </button>
+              </div>
+              <ul className="space-y-2">
+                {featureFindings.map((finding, index) => {
+                  const text = describeFinding(finding, language);
+                  return (
+                    <li key={`${finding.kind}-${index}`} className="flex items-start gap-2 text-[11px] leading-relaxed text-[var(--cds-text-02)]">
+                      <span
+                        className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${
+                          finding.severity === 'high' ? 'bg-rose-500' : 'bg-amber-500'
+                        }`}
+                      />
+                      <span>
+                        <strong className="text-[var(--cds-text-01)]">{text.title}</strong>
+                        {' — '}
+                        {text.detail}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="text-[10px] text-[var(--cds-text-03)]">
+                {language === 'ar'
+                  ? 'تنبيهات لا تمنع التدريب؛ راجع الأعمدة المشار إليها قبل الاعتماد على النتائج.'
+                  : 'Warnings only — training still ran; review the flagged columns before trusting the results.'}
+              </div>
+            </div>
+          )}
 
           {statusMessage && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs rounded-lg flex items-center gap-2">
@@ -5578,22 +5781,63 @@ language === 'ar'
                       className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap"
                       title={
                         language === 'ar'
+                          ? 'كم من التاريخ يُرسم خلف التوقع: نافذة حديثة تُظهر تفاصيل التوقع، أو السلسلة كاملة للمقارنة'
+                          : 'How much history is drawn behind the forecast: a recent window for detail, or the full series for context'
+                      }
+                    >
+                      {language === 'ar' ? 'مدى التاريخ' : 'History range'}
+                    </label>
+                    <select
+                      value={forecastHistoryMode}
+                      onChange={(e) => setForecastHistoryMode(e.target.value as 'window' | 'all')}
+                      className="text-[11px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] rounded-md px-2 py-1"
+                    >
+                      <option value="window">
+                        {language === 'ar' ? `آخر ${forecastWindowSize} فترة` : `Last ${forecastWindowSize} periods`}
+                      </option>
+                      <option value="all">
+                        {language === 'ar'
+                          ? `كل التاريخ (${forecast.history.length})`
+                          : `All history (${forecast.history.length})`}
+                      </option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="seasonality-threshold-slider"
+                      className="text-[11px] font-semibold text-[var(--cds-text-02)] whitespace-nowrap"
+                      title={
+                        language === 'ar'
                           ? 'أدنى قوة تفسيرية لقبول دورة موسمية — خفضها يكشف دورات أضعف ويكثر الإنذارات الكاذبة'
                           : 'Minimum explanatory strength to accept a cycle — lower catches weaker cycles and more false positives'
                       }
                     >
                       {language === 'ar' ? 'حساسية الموسمية' : 'Seasonality sensitivity'}
                     </label>
-                    <select
-                      value={String(seasonalityThreshold)}
-                      onChange={(e) => setSeasonalityThreshold(parseFloat(e.target.value))}
-                      className="text-[11px] bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] text-[var(--cds-text-01)] rounded-md px-2 py-1"
-                    >
-                      <option value="0.08">{language === 'ar' ? 'عالية — عتبة 8%' : 'High — 8%'}</option>
-                      <option value="0.12">{language === 'ar' ? 'مرتفعة — عتبة 12%' : 'Elevated — 12%'}</option>
-                      <option value="0.18">{language === 'ar' ? 'متوازنة — عتبة 18%' : 'Balanced — 18%'}</option>
-                      <option value="0.3">{language === 'ar' ? 'منخفضة — عتبة 30%' : 'Low — 30%'}</option>
-                    </select>
+                    <input
+                      id="seasonality-threshold-slider"
+                      type="range"
+                      min={5}
+                      max={50}
+                      step={2}
+                      value={Math.round(seasonalityThreshold * 100)}
+                      onChange={(e) => setSeasonalityThreshold(Number(e.target.value) / 100)}
+                      dir="ltr"
+                      className="w-28 sm:w-36 accent-rose-500 cursor-pointer"
+                      aria-label={
+                        language === 'ar'
+                          ? `عتبة كشف الموسمية ${Math.round(seasonalityThreshold * 100)} بالمئة`
+                          : `Seasonality detection threshold ${Math.round(seasonalityThreshold * 100)} percent`
+                      }
+                      title={
+                        language === 'ar'
+                          ? `العتبة الحالية ${Math.round(seasonalityThreshold * 100)}% (5%–50%، بخطوة 2%)`
+                          : `Current threshold ${Math.round(seasonalityThreshold * 100)}% (5%–50%, step 2%)`
+                      }
+                    />
+                    <span className="font-mono text-[11px] font-bold text-[var(--cds-text-01)] tabular-nums min-w-[3ch] text-center rounded border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] px-1.5 py-0.5">
+                      {Math.round(seasonalityThreshold * 100)}%
+                    </span>
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
@@ -5651,6 +5895,14 @@ language === 'ar'
                       {language === 'ar' ? 'دورات تاريخية' : 'Historical cycles'}:{' '}
                       <strong className="font-mono text-[var(--cds-text-01)]">{forecast.summary.seasonality.cycles.toFixed(1)}</strong>
                     </span>
+                    {forecast.summary.seasonality.extraCycles.length > 0 && (
+                      <span>
+                        {language === 'ar' ? 'دورات إضافية' : 'Extra cycles'}:{' '}
+                        <strong className="font-mono text-[var(--cds-text-01)]">
+                          {forecast.summary.seasonality.extraCycles.map((cycle) => cycle.period).join(' + ')}
+                        </strong>
+                      </span>
+                    )}
                     <span
                       className={`font-bold px-2 py-0.5 rounded-full border ${forecast.summary.seasonality.applied ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'}`}
                     >
@@ -5670,6 +5922,8 @@ language === 'ar'
                           <SeasonalIndicesSpark
                             indices={forecast.summary.seasonality.indices}
                             period={forecast.summary.seasonality.period}
+                            phaseLabels={forecast.summary.seasonality.phaseLabels}
+                            language={language}
                           />
                         </div>
                       )}
@@ -5751,6 +6005,119 @@ language === 'ar'
                 </div>
               </div>
 
+              {/* Forecast decomposition + why-this-cycle diagnostics */}
+              <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg shadow-sm p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-xs font-bold text-[var(--cds-text-01)] flex items-center gap-1.5">
+                    <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
+                    {language === 'ar' ? 'تفكيك التوقع: النموذج مقابل الموسم' : 'Forecast decomposition: model vs season'}
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25">
+                    {language === 'ar' ? 'دورات مدمجة' : 'Applied cycles'}:{' '}
+                    {[
+                      forecast.summary.seasonality.applied ? forecast.summary.seasonality.period : null,
+                      ...(forecast.summary.seasonality.applied ? forecast.summary.seasonality.extraCycles.map((cycle) => cycle.period) : []),
+                    ]
+                      .filter((period): period is number => period !== null)
+                      .join(' + ') || (language === 'ar' ? 'لا شيء (اتجاه فقط)' : 'none (trend only)')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-[var(--cds-layer-02)] rounded-md p-2.5">
+                    <div className="text-[9px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold">
+                      {language === 'ar' ? 'مكوّن النموذج' : 'Model component'}
+                    </div>
+                    <div className="font-mono font-bold text-sm text-[var(--cds-text-01)] mt-0.5">
+                      {formatForecastValue(forecast.points[0].modelOutput ?? forecast.points[0].predicted)}
+                    </div>
+                  </div>
+                  <div className="bg-[var(--cds-layer-02)] rounded-md p-2.5">
+                    <div className="text-[9px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold">
+                      {language === 'ar' ? 'التعديل الموسمي' : 'Seasonal adjustment'}
+                    </div>
+                    <div className={`font-mono font-bold text-sm mt-0.5 ${forecast.points[0].seasonalAdjustment >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {`\u2066${forecast.points[0].seasonalAdjustment >= 0 ? '+' : ''}${forecast.points[0].seasonalAdjustment.toFixed(2)}\u2069`}
+                    </div>
+                  </div>
+                  <div className="bg-[var(--cds-layer-02)] rounded-md p-2.5">
+                    <div className="text-[9px] uppercase tracking-wider text-[var(--cds-text-03)] font-semibold">
+                      {language === 'ar' ? 'التوقع النهائي' : 'Final forecast'}
+                    </div>
+                    <div className="font-mono font-bold text-sm text-[var(--cds-text-01)] mt-0.5">
+                      {formatForecastValue(forecast.points[0].predicted)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-[var(--cds-text-02)] leading-relaxed">
+                  {forecast.summary.seasonalSharePct !== null && (
+                    <span className="me-3">
+                      {language === 'ar' ? 'وزن الموسمية من مستوى التوقع' : 'Season share of the forecast level'}:{' '}
+                      <strong className="font-mono">{forecast.summary.seasonalSharePct.toFixed(1)}%</strong>
+                    </span>
+                  )}
+                  <span>
+                    {language === 'ar' ? 'المستوى المُلائم عند آخر نقطة' : 'Fitted level at the last point'}:{' '}
+                    <strong className="font-mono">{formatForecastValue(forecast.summary.lastFitted)}</strong>
+                    {` (${language === 'ar' ? 'الفعلي' : 'actual'} ${formatForecastValue(forecast.summary.lastActual)})`}
+                  </span>
+                </div>
+
+                {forecast.summary.levelGapPct !== null && Math.abs(forecast.summary.levelGapPct) >= 5 && (
+                  <div className="flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-md p-2.5">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {language === 'ar'
+                        ? `مستوى النموذج يبعد ${formatSignedPct(forecast.summary.levelGapPct)} عن آخر قيمة فعلية، لذلك قد تبدو أول فترة كقفزة. جزء من التغير في البطاقات هو تصحيح هذا الفارق وليس تغيّرًا متوقعًا في الظاهرة.`
+                        : `The model's level sits ${formatSignedPct(forecast.summary.levelGapPct)} away from the last actual value, so the first period can look like a jump. Part of the change shown in the cards is that correction, not a real move in the series.`}
+                    </span>
+                  </div>
+                )}
+
+                {forecast.summary.seasonality.diagnostics.length > 0 && (
+                  <details className="group">
+                    <summary className="cursor-pointer text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 select-none">
+                      {language === 'ar'
+                        ? 'لماذا هذه الدورة؟ (الارتباط الذاتي لكل تأخير)'
+                        : 'Why this cycle? (autocorrelation by lag)'}
+                    </summary>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-[10px] font-mono" dir="ltr">
+                        <thead className="text-[var(--cds-text-03)]">
+                          <tr>
+                            <th className="text-start px-2 py-1">{language === 'ar' ? 'التأخير' : 'Lag'}</th>
+                            <th className="text-start px-2 py-1">ACF</th>
+                            <th className="text-start px-2 py-1">{language === 'ar' ? 'القوة' : 'Strength'}</th>
+                            <th className="text-start px-2 py-1">{language === 'ar' ? 'النوع' : 'Kind'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {forecast.summary.seasonality.diagnostics.map((lag) => {
+                            const accepted = lag.strength >= forecast.summary.seasonality.threshold;
+                            return (
+                              <tr key={lag.lag} className={accepted ? 'text-[var(--cds-text-01)] font-bold' : 'text-[var(--cds-text-03)]'}>
+                                <td className="px-2 py-0.5">{lag.lag}</td>
+                                <td className="px-2 py-0.5">{lag.acf.toFixed(3)}</td>
+                                <td className="px-2 py-0.5">{(lag.strength * 100).toFixed(1)}%</td>
+                                <td className="px-2 py-0.5">
+                                  {lag.named ? (language === 'ar' ? 'مسماة' : 'named') : (language === 'ar' ? 'حرة' : 'free')}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="text-[10px] text-[var(--cds-text-03)] mt-1.5">
+                      {language === 'ar'
+                        ? `العتبة ${Math.round(forecast.summary.seasonality.threshold * 100)}%؛ الصفوف الغامقة تجاوزتها.`
+                        : `Threshold ${Math.round(forecast.summary.seasonality.threshold * 100)}%; bold rows passed it.`}
+                    </div>
+                  </details>
+                )}
+              </div>
+
               {/* Narrative predictive summary */}
               <div className="bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] border-s-4 border-s-rose-500 p-4 rounded-lg shadow-sm space-y-1.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--cds-text-01)]">
@@ -5812,7 +6179,7 @@ language === 'ar'
                     )}
                   </span>
                 </div>
-                <div className="w-full h-[420px]">
+                <div className="w-full h-[420px]" ref={forecastPlotRef}>
                   <LazyPlot
                     key={`forecast-${forecastHorizon}-${forecastConfidence}-${result.equation}-${isDark}`}
                     data={forecastChart.data}

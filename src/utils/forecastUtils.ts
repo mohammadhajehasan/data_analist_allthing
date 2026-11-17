@@ -17,6 +17,8 @@ export interface ForecastPoint {
   step: number;
   label: string;
   predicted: number;
+  /** Model output before any seasonal offset was added. */
+  modelOutput?: number;
   lower: number;
   upper: number;
   changePct: number | null;
@@ -137,12 +139,22 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  */
 function buildPhaseLabels(labels: string[], period: number, cadence: SeriesCadence | null): string[] {
   const fallback = Array.from({ length: period }, (_, index) => `#${index + 1}`);
+  // Quarterly series are often labelled "2024-Q2", which is not a date, so the
+  // quarter names have to be produced before the date anchor is required.
+  if (cadence?.unit === 'quarter' && period === 4) {
+    const parsed = Date.parse((labels[0] ?? '').toString().trim());
+    if (!Number.isFinite(parsed)) return ['Q1', 'Q2', 'Q3', 'Q4'];
+  }
   const first = Date.parse((labels[0] ?? '').toString().trim());
   if (!Number.isFinite(first) || !cadence) return fallback;
   const anchor = new Date(first);
 
   if (cadence.unit === 'day' && period === 7) {
     return Array.from({ length: period }, (_, index) => WEEKDAYS[(anchor.getUTCDay() + index) % 7]);
+  }
+  // Weekly rows have no weekday to name; the phase is the nth week of the cycle.
+  if (cadence.unit === 'week') {
+    return Array.from({ length: period }, (_, index) => `W${index + 1}`);
   }
   if (cadence.unit === 'day' && (period === 30 || period === 31)) {
     return Array.from({ length: period }, (_, index) => `#${index + 1}`);
@@ -161,6 +173,145 @@ function buildPhaseLabels(labels: string[], period: number, cadence: SeriesCaden
     return Array.from({ length: period }, (_, index) => `Q${((Math.floor(anchor.getUTCMonth() / 3) + index) % 4) + 1}`);
   }
   return fallback;
+}
+
+function dayOfYear(date: Date): number {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+  const current = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  return Math.floor((current - start) / 86_400_000);
+}
+
+function isoWeekNumber(date: Date): number {
+  const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(target.getUTCFullYear(), 0, 1);
+  return Math.ceil(((target.getTime() - yearStart) / 86_400_000 + 1) / 7);
+}
+
+/**
+ * Maps a row label to its calendar phase for a given cycle.
+ *
+ * A weekly series is not 52 rows per year (52 weeks = 364 days, plus a leap
+ * year adds a row), so `index % 52` slides about 1.4 days per year and smears
+ * the yearly pattern until it looks like no pattern at all. Reading the phase
+ * from the date keeps January in January, and the same function places the
+ * future labels, so the adjustment lands on the right day.
+ */
+export function calendarPhaseOf(
+  period: number,
+  cadence: SeriesCadence | null
+): ((label: string) => number) | null {
+  if (!cadence) return null;
+  const time = (label: string): number => Date.parse((label ?? '').toString().trim());
+  if (cadence.unit === 'day') {
+    if (period === 7) return (label) => new Date(time(label)).getUTCDay();
+    // 366 buckets would leave one empty in common years; fold day 366 into 365.
+    if (period === 365 || period === 366) return (label) => Math.min(364, dayOfYear(new Date(time(label))));
+    return null;
+  }
+  if (cadence.unit === 'week') {
+    // Week 53 only exists in long years and shares the last bucket.
+    if (period === 52) return (label) => Math.min(51, isoWeekNumber(new Date(time(label))) - 1);
+    if (period === 13) return (label) => Math.min(12, Math.floor((isoWeekNumber(new Date(time(label))) - 1) / 4));
+    return null;
+  }
+  if (cadence.unit === 'month') {
+    if (period === 12) return (label) => new Date(time(label)).getUTCMonth();
+    if (period === 6) return (label) => Math.floor(new Date(time(label)).getUTCMonth() / 2);
+    if (period === 4) return (label) => Math.floor(new Date(time(label)).getUTCMonth() / 3);
+    return null;
+  }
+  if (cadence.unit === 'quarter' && period === 4) {
+    return (label) => Math.floor(new Date(time(label)).getUTCMonth() / 3);
+  }
+  return null;
+}
+
+/** Per-phase averages over calendar buckets, with the same DoF-corrected strength. */
+function cycleIndices(
+  residuals: number[],
+  labels: string[],
+  period: number,
+  phaseOf: ((label: string) => number) | null
+): { indices: number[]; strength: number; calendarAligned: boolean } {
+  const phaseAt = phaseOf
+    ? (index: number) => phaseOf(labels[index])
+    : (index: number) => index % period;
+  const sums = new Array(period).fill(0);
+  const counts = new Array(period).fill(0);
+  residuals.forEach((value, index) => {
+    const phase = phaseAt(index);
+    if (!Number.isFinite(phase) || phase < 0 || phase >= period) return;
+    sums[phase] += value;
+    counts[phase] += 1;
+  });
+  const used = counts.filter((count) => count > 0).length;
+  if (used < 2) return { indices: new Array(period).fill(0), strength: 0, calendarAligned: Boolean(phaseOf) };
+  const offset = sums.reduce((acc, sum, phase) => acc + (counts[phase] > 0 ? sum / counts[phase] : 0), 0) / used;
+  const indices = sums.map((sum, phase) => (counts[phase] > 0 ? sum / counts[phase] - offset : 0));
+  const total = variance(residuals);
+  const left = variance(residuals.map((value, index) => value - indices[phaseAt(index)]));
+  const naive = total > 0 ? 1 - left / total : 0;
+  const strength = Math.max(0, Math.min(1, 1 - (1 - naive) * ((residuals.length - 1) / Math.max(1, residuals.length - used))));
+  return { indices, strength, calendarAligned: Boolean(phaseOf) };
+}
+
+/**
+ * The lags the detector considered, strongest first, so the studio can show
+ * why a cycle won (or why nothing passed the threshold).
+ */
+export function seasonalityDiagnostics(
+  values: number[],
+  maxPeriod = 24,
+  preferred: number[] = [],
+  limit = 8
+): SeasonalityLag[] {
+  const n = values.length;
+  if (n < 6) return [];
+  const namedLimit = Math.max(2, Math.min(maxPeriod, Math.floor(n / 2)));
+  const exploreLimit = Math.max(2, Math.min(namedLimit, Math.floor(n / 4)));
+  const lags = new Set<number>();
+  preferred.filter((period) => period >= 2 && period <= namedLimit).forEach((period) => lags.add(period));
+  for (let lag = 2; lag <= Math.min(exploreLimit, 60); lag += 1) lags.add(lag);
+  return [...lags]
+    .sort((a, b) => a - b)
+    .map((lag) => {
+      const acf = autocorrelation(values, lag);
+      const previous = lag > 2 ? autocorrelation(values, lag - 1) : Number.NEGATIVE_INFINITY;
+      const next = autocorrelation(values, lag + 1);
+      return {
+        lag,
+        acf,
+        strength: correctedSeasonalStrength(values, lag),
+        named: preferred.includes(lag),
+        peak: acf >= previous && acf >= next && acf > 0,
+      };
+    })
+    .sort((a, b) => b.acf - a.acf)
+    .slice(0, limit);
+}
+
+/** One repeating cycle found in the residuals. */
+export interface SeasonalCycleInfo {
+  period: number;
+  kind: SeasonalityKind | null;
+  strength: number;
+  /** Per-phase average residual offset, aligned to the phase buckets. */
+  indices: number[];
+  phaseLabels: string[];
+  /** True when the phase of each row was read from the calendar, not from index % period. */
+  calendarAligned: boolean;
+}
+
+/** A lag the detector looked at, kept so the UI can show why a cycle won. */
+export interface SeasonalityLag {
+  lag: number;
+  acf: number;
+  strength: number;
+  named: boolean;
+  /** Local peak of the autocorrelation curve. */
+  peak: boolean;
 }
 
 export interface SeasonalityInfo {
@@ -184,6 +335,14 @@ export interface SeasonalityInfo {
   kind: SeasonalityKind | null;
   /** Sampling cadence read from the labels, if they were dates. */
   cadence: SeriesCadence['unit'] | null;
+  /**
+   * Extra cycles found on what the first one left behind (a daily series can
+   * carry both a 7-day and a yearly pattern). Each is already applied on top
+   * of the main cycle.
+   */
+  extraCycles: SeasonalCycleInfo[];
+  /** Lags the detector scored, for the "why this cycle" panel. */
+  diagnostics: SeasonalityLag[];
 }
 
 export interface ForecastSummary {
@@ -208,6 +367,12 @@ export interface ForecastSummary {
   reliability: 'high' | 'medium' | 'low';
   extrapolatedFeatureCount: number;
   historyCount: number;
+  /** Fitted value at the last observed row (the model's "level"). */
+  lastFitted: number;
+  /** (lastFitted - lastActual) / |lastActual| in %, the gap a reader sees as a jump. */
+  levelGapPct: number | null;
+  /** Mean |seasonal offset| as a share of the mean forecast level, in %. */
+  seasonalSharePct: number | null;
 }
 
 export interface ForecastHistoryPoint {
@@ -337,10 +502,16 @@ export function detectSeasonalPeriod(
   // Named cycles of the cadence win unless something else explains clearly more
   // variance: raw peaks also land on multiples (14 for a weekly cycle), and a
   // 21-day half-month hump beats 7 on some daily series by pure autocorrelation.
+  // Named cycles get a lower autocorrelation bar. On a short window a real cycle
+  // (a day-of-week effect in about three months of data) sits below the 2/sqrt(n)
+  // band while its phase averages still explain a lot of variance, and a noise
+  // lag can outscore it and take its place. The strength gate below is what
+  // keeps this from inventing cycles.
+  const namedThreshold = Math.min(threshold, Math.max(0.05, 1 / Math.sqrt(n)));
   const named = preferred
     .filter((period) => period >= 2 && period <= namedLimit)
     .map((period) => ({ period, acf: autocorrelation(values, period), strength: correctedSeasonalStrength(values, period) }))
-    .filter((candidate) => candidate.acf >= threshold);
+    .filter((candidate) => candidate.acf >= namedThreshold);
 
   if (candidates.length === 0 && named.length === 0) return null;
 
@@ -511,6 +682,56 @@ export function inferFutureLabels(labels: string[], horizon: number): string[] {
   return result;
 }
 
+/** Value of one cycle at a label, tolerating labels the mapper cannot read. */
+function cycleValueAt(
+  indices: number[],
+  period: number,
+  phaseOf: ((label: string) => number) | null,
+  label: string,
+  index: number
+): number {
+  if (indices.length === 0) return 0;
+  const phase = phaseOf ? phaseOf(label) : index % period;
+  const safe = Number.isFinite(phase) && phase >= 0 && phase < period ? Math.floor(phase) : 0;
+  return indices[safe] ?? 0;
+}
+
+/**
+ * Fits one cycle to the residuals, preferring calendar phases but keeping the
+ * row-index alignment whenever it explains more (e.g. a 30-row cycle that has
+ * no calendar meaning).
+ */
+function fitCycle(
+  residuals: number[],
+  labels: string[],
+  period: number,
+  indexStrength: number,
+  cadence: SeriesCadence | null
+): { info: SeasonalCycleInfo; phaseOf: ((label: string) => number) | null; remaining: number[] } {
+  const calendar = calendarPhaseOf(period, cadence);
+  let phaseOf = calendar;
+  let fit = cycleIndices(residuals, labels, period, phaseOf);
+  if (phaseOf && fit.strength < indexStrength) {
+    phaseOf = null;
+    fit = cycleIndices(residuals, labels, period, null);
+  }
+  const remaining = residuals.map(
+    (value, index) => value - cycleValueAt(fit.indices, period, phaseOf, labels[index], index)
+  );
+  return {
+    info: {
+      period,
+      kind: seasonalityKind(period, cadence),
+      strength: Math.max(0, fit.strength),
+      indices: fit.indices,
+      phaseLabels: buildPhaseLabels(labels, period, cadence),
+      calendarAligned: fit.calendarAligned,
+    },
+    phaseOf,
+    remaining,
+  };
+}
+
 export function buildForecast(params: {
   rows: ForecastInputRow[];
   fitted: number[];
@@ -572,39 +793,66 @@ export function buildForecast(params: {
     phaseLabels: [],
     kind: null,
     cadence: cadence?.unit ?? null,
+    extraCycles: [],
+    diagnostics: [],
   };
   let residualSigma = Math.max(0, rmse);
+  // Cycles actually added to the projection, with the rule that places each
+  // future row in a phase (calendar mapper, or row index when there is none).
+  const appliedCycles: Array<{ info: SeasonalCycleInfo; phaseOf: ((label: string) => number) | null }> = [];
+  const rowLabels = rows.map((row) => row.label);
 
   if (residualsUsable && n >= 8) {
-    const found = detectSeasonalPeriod(
-      residuals,
-      cadence?.maxPeriod ?? 24,
-      cadence?.cycles.map((cycle) => cycle.period) ?? []
-    );
+    const preferred = cadence?.cycles.map((cycle) => cycle.period) ?? [];
+    const maxPeriod = cadence?.maxPeriod ?? 24;
+    const found = detectSeasonalPeriod(residuals, maxPeriod, preferred);
+    const diagnostics = seasonalityDiagnostics(residuals, maxPeriod, preferred);
     // Below this the "cycle" is within what random residuals produce anyway.
     if (found && found.strength >= seasonalityThreshold) {
-      const indices = seasonalIndices(residuals, found.period);
-      const deseasonalised = residuals.map((value, index) => value - indices[index % found.period]);
-      const residualVariance = variance(deseasonalised);
-      const strength = found.strength;
+      const main = fitCycle(residuals, rowLabels, found.period, found.strength, cadence);
+      let remaining = main.remaining;
+      // The first cycle is whatever the residuals repeat most strongly; what is
+      // left can still hold a second one (weekly on top of yearly, for example).
+      const extraCycles: SeasonalCycleInfo[] = [];
+      const extraResolvers: Array<((label: string) => number) | null> = [];
+      let currentPeriod: number | null = found.period;
+      for (let depth = 0; depth < 2; depth += 1) {
+        const candidates = preferred.filter(
+          (period) => period !== currentPeriod && !extraCycles.some((cycle) => cycle.period === period)
+        );
+        const next = detectSeasonalPeriod(remaining, maxPeriod, candidates);
+        if (!next || next.period === currentPeriod || next.strength < seasonalityThreshold) break;
+        if (n / next.period < 2) break;
+        const extra = fitCycle(remaining, rowLabels, next.period, next.strength, cadence);
+        if (extra.info.strength < seasonalityThreshold) break;
+        extraCycles.push(extra.info);
+        extraResolvers.push(extra.phaseOf);
+        remaining = extra.remaining;
+        currentPeriod = next.period;
+      }
+
       const cycles = n / found.period;
       seasonality = {
         detected: true,
-        applied: params.applySeasonality !== false && strength >= seasonalityThreshold && cycles >= 2,
+        applied: params.applySeasonality !== false && main.info.strength >= seasonalityThreshold && cycles >= 2,
         period: found.period,
-        strength,
+        strength: main.info.strength,
         threshold: seasonalityThreshold,
-        indices,
+        indices: main.info.indices,
         cycles,
-        phaseLabels: buildPhaseLabels(
-          rows.map((row) => row.label),
-          found.period,
-          cadence
-        ),
+        phaseLabels: main.info.phaseLabels,
         kind: seasonalityKind(found.period, cadence),
         cadence: cadence?.unit ?? null,
+        extraCycles,
+        diagnostics,
       };
-      if (seasonality.applied) residualSigma = Math.sqrt(Math.max(0, residualVariance));
+      if (seasonality.applied) {
+        residualSigma = Math.sqrt(Math.max(0, variance(remaining)));
+        appliedCycles.push({ info: main.info, phaseOf: main.phaseOf });
+        extraCycles.forEach((info, index) => appliedCycles.push({ info, phaseOf: extraResolvers[index] }));
+      }
+    } else {
+      seasonality = { ...seasonality, diagnostics };
     }
   }
 
@@ -631,16 +879,18 @@ export function buildForecast(params: {
       if (value < trend.min - tolerance || value > trend.max + tolerance) outside = true;
     }
 
-    const seasonalAdjustment =
-      seasonality.applied && seasonality.period
-        ? seasonality.indices[(nextIndex + k) % seasonality.period]
-        : 0;
+    const label = futureLabels[k - 1];
+    const seasonalAdjustment = appliedCycles.reduce(
+      (total, cycle) =>
+        total + cycleValueAt(cycle.info.indices, cycle.info.period, cycle.phaseOf, label, nextIndex + k),
+      0
+    );
 
-    let predicted = predict(features);
-    if (!Number.isFinite(predicted)) {
-      predicted = actualTrend.intercept + actualTrend.slope * (nextIndex + k);
+    let modelOutput = predict(features);
+    if (!Number.isFinite(modelOutput)) {
+      modelOutput = actualTrend.intercept + actualTrend.slope * (nextIndex + k);
     }
-    predicted += seasonalAdjustment;
+    const predicted = modelOutput + seasonalAdjustment;
 
     // Prediction intervals widen with the horizon: the further out we project,
     // the less the historical residuals constrain the true value.
@@ -650,8 +900,11 @@ export function buildForecast(params: {
 
     points.push({
       step: k,
-      label: futureLabels[k - 1],
+      label,
       predicted,
+      // Kept apart so the UI can show how much of the move is the model and how
+      // much is the season.
+      modelOutput,
       lower: predicted - z * sigma,
       upper: predicted + z * sigma,
       changePct: changePct !== null && Number.isFinite(changePct) ? changePct : null,
@@ -699,6 +952,18 @@ export function buildForecast(params: {
         ? 'down'
         : 'flat';
 
+  // Decomposition: what the model says at the last observed row versus what
+  // actually happened, and how much of the projection rides on the season. A
+  // large level gap is what makes a forecast look like a shock jump next to the
+  // last actual value.
+  const lastFitted = Number.isFinite(fitted[n - 1]) ? fitted[n - 1] : lastActual;
+  const levelGapPct = lastActual !== 0 ? ((lastFitted - lastActual) / Math.abs(lastActual)) * 100 : null;
+  const meanPredictedAbs = mean(points.map((p) => Math.abs(p.predicted)));
+  const seasonalSharePct =
+    meanPredictedAbs > 0
+      ? (mean(points.map((p) => Math.abs(p.seasonalAdjustment))) / meanPredictedAbs) * 100
+      : null;
+
   const peak = points.reduce((best, p) => (p.predicted > best.predicted ? p : best), points[0]);
   const trough = points.reduce((best, p) => (p.predicted < best.predicted ? p : best), points[0]);
 
@@ -738,6 +1003,9 @@ export function buildForecast(params: {
       reliability,
       extrapolatedFeatureCount: points.filter((p) => p.outsideTrainingRange).length,
       historyCount: n,
+      lastFitted,
+      levelGapPct,
+      seasonalSharePct,
     },
   };
 }
@@ -756,6 +1024,7 @@ export function buildForecastTable(
     [
       ar ? 'الفترة' : 'Period',
       ar ? 'التوقع' : 'Forecast',
+      ar ? 'مكوّن النموذج' : 'Model output',
       `${ar ? 'الحد الأدنى' : 'Lower'} (${options.confidence}%)`,
       `${ar ? 'الحد الأعلى' : 'Upper'} (${options.confidence}%)`,
       ar ? 'التغير %' : 'Change %',
@@ -764,6 +1033,7 @@ export function buildForecastTable(
     ...forecast.points.map((point) => [
       point.label,
       Number(point.predicted.toFixed(6)),
+      point.modelOutput === undefined ? '' : Number(point.modelOutput.toFixed(6)),
       Number(point.lower.toFixed(6)),
       Number(point.upper.toFixed(6)),
       point.changePct === null ? '' : Number(point.changePct.toFixed(2)),
@@ -799,6 +1069,33 @@ export function buildForecastTable(
       Number(value.toFixed(6)),
       meanActual === 0 ? '' : Number(((value / meanActual) * 100).toFixed(2)),
       value > 0 ? (ar ? 'ارتفاع' : 'Above') : value < 0 ? (ar ? 'انخفاض' : 'Below') : ar ? 'متعادل' : 'Neutral',
+    ]),
+    ...(seasonality.extraCycles.length > 0
+      ? [
+          [],
+          [
+            ar
+              ? `دورات إضافية مدمجة: ${seasonality.extraCycles.map((cycle) => cycle.period).join(' + ')}`
+              : `Additional applied cycles: ${seasonality.extraCycles.map((cycle) => cycle.period).join(' + ')}`,
+          ],
+          ...seasonality.extraCycles.flatMap((cycle) => [
+            [ar ? 'دورة' : 'Cycle', cycle.period, cycle.kind ?? '', `${ar ? 'قوة' : 'strength'} ${(cycle.strength * 100).toFixed(2)}%`],
+            ...cycle.indices.map((value, index) => [
+              `P${index + 1}`,
+              cycle.phaseLabels[index] ?? '',
+              Number(value.toFixed(6)),
+            ]),
+          ]),
+        ]
+      : []),
+    [],
+    [ar ? 'تشخيص الارتباط الذاتي (أقوى التأخيرات)' : 'Autocorrelation diagnostics (strongest lags)'],
+    [ar ? 'التأخير' : 'Lag', 'ACF', ar ? 'القوة' : 'Strength', ar ? 'دورة مسماة' : 'Named'],
+    ...seasonality.diagnostics.map((lag) => [
+      lag.lag,
+      Number(lag.acf.toFixed(4)),
+      Number((lag.strength * 100).toFixed(2)),
+      lag.named ? (ar ? 'نعم' : 'Yes') : ar ? 'لا' : 'No',
     ]),
     [ar ? 'قوة الموسمية %' : 'Seasonal strength %', Number((seasonality.strength * 100).toFixed(2))],
     [ar ? 'عتبة الكشف %' : 'Detection threshold %', Number(seasonality.threshold * 100)],
