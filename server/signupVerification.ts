@@ -3,7 +3,7 @@
  *
  * الهدف: منع إنشاء حسابات ببريد وهمي — لا يُنشأ المستخدم إلا بعد إدخال رمز
  * تحقق من 6 أرقام أُرسل إلى البريد نفسه عبر سلسلة المزودين في emailInvites.ts
- * (Brevo → Resend → AgentMail → SMTP).
+ * (Gmail/Google → Brevo → Resend → AgentMail → SMTP).
  *
  * - الرمز يُخزَّن مُهشّراً (SHA-256) في جدول signup_verifications، صلاحيته
  *   10 دقائق، 6 محاولات كحد أقصى، وفاصل 60 ثانية بين الطلبات.
@@ -13,9 +13,45 @@
  *   التجربة عندما لا يوجد مزود بريد مُعد — لا يُعاد إطلاقاً في الإنتاج.
  */
 import crypto from 'crypto';
-import { turso, one, run, ensureSchema } from './turso';
+import { turso, one, run, ensureSchema, isTransientDbError } from './turso';
 import { sendEmail } from './emailInvites';
 import { findUserByEmail } from './auth';
+
+/**
+ * رسالة واحدة مفهومة للانقطاع المؤقت في التخزين — بدل «fetch failed» أو
+ * «502» التي لا تفيد المستخدم بشيء.
+ */
+export const TEMPORARY_OUTAGE_MESSAGE =
+  'خدمة إنشاء الحساب غير متاحة مؤقتًا ولم يُرسل أي رمز. أعد المحاولة بعد لحظات.';
+
+const RETRY_DELAY_MS = 400;
+
+/**
+ * إعادة محاولة واحدة للأخطاء العابرة (انقطاع شبكة، 502/503، مهلة).
+ * لا تُعاد المحاولة لأخطاء منطقية مثل بريد مسجّل أو فاصل إرسال.
+ */
+export async function retryOnceOnTransient<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isTransientDbError(error)) throw error;
+    console.warn(`[signup] transient failure, retrying once: ${error instanceof Error ? error.message : String(error)}`);
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return operation();
+  }
+}
+
+/**
+ * هل فشل الإرسال نهائيًا بلا أي احتمال أن يكون البريد قد خرج؟
+ * غياب المزوّد أو رفض صريح من الـ API: لا شيء أُرسل ⇒ نستطيع حذف الرمز.
+ * مهلة/انقطاع: قد يكون المزوّد قبِل الرسالة ⇒ نحتفظ بالرمز حتى لا يصبح
+ * الرمز الذي وصل المستخدم بلا قيمة.
+ */
+export function isDefinitiveSendFailure(error?: string): boolean {
+  const text = String(error || '');
+  if (!text) return false;
+  return /لا مزود بريد مُعد|no provider|not configured|missing api key|invalid api key|unauthorized|401|403/i.test(text);
+}
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS signup_verifications (
@@ -93,6 +129,11 @@ export interface SignupCodeResult {
   retryAfterMs?: number;
   /** هل أُرسل البريد فعلاً عبر مزود مُعد؟ */
   delivered?: boolean;
+  /**
+   * فشل إرسال غير قاطع (مهلة/انقطاع): الرمز قد يكون وصل بالفعل، ولذلك يُبقى
+   * صالحًا في قاعدة البيانات ويمكن للمستخدم تجربته.
+   */
+  deliveryUncertain?: boolean;
   /** في التطوير فقط — الرمز صراحةً للاختبار */
   devCode?: string;
 }
@@ -115,53 +156,115 @@ function buildCodeEmail(code: string, ttlMinutes: number): { text: string; html:
 /**
  * ينشئ رمزاً جديداً ويرسله. يرفض البريد المسجّل مسبقاً، ويحترم فاصل الإرسال.
  */
+/** رفض منطقي (بريد مسجّل، فاصل إرسال) لا يستحق إعادة محاولة. */
+class SignupRejection extends Error {
+  constructor(message: string, readonly retryAfterMs?: number) {
+    super(message);
+    this.name = 'SignupRejection';
+  }
+}
+
+function friendlySendReason(error?: string): string {
+  const text = String(error || '');
+  if (/لا مزود بريد مُعد|no provider|not configured/i.test(text)) {
+    return 'لا يوجد مزود بريد مُعد على الخادم';
+  }
+  if (/invalid api key|unauthorized|401|403/i.test(text)) {
+    return 'مزود البريد يرفض المفتاح الحالي';
+  }
+  return 'تعذّر الإرسال من مزود البريد';
+}
+
 export async function requestSignupCode(rawEmail: string): Promise<SignupCodeResult> {
-  await init();
   const validation = validateSignupEmail(rawEmail);
   if (!validation.ok) return { ok: false, message: validation.reason || 'بريد غير صالح' };
   const email = validation.normalized;
 
-  const existingUser = await findUserByEmail(email);
-  if (existingUser) {
-    return { ok: false, message: 'هذا البريد مسجّل مسبقاً — استخدم تسجيل الدخول أو استعادة كلمة المرور' };
-  }
+  // كل ما يسبق الإرسال قابل لإعادة المحاولة: لا بريد خرج بعد، فلا خطر من
+  // تكرار العمل نفسه. أي فشل عابر يُترجم إلى رسالة مفهومة بدل الخطأ الخام.
+  let prepared: { code: string; expiresAt: string };
+  try {
+    prepared = await retryOnceOnTransient(async () => {
+      await init();
+      const existingUser = await findUserByEmail(email);
+      if (existingUser) {
+        throw new SignupRejection('هذا البريد مسجّل مسبقاً — استخدم تسجيل الدخول أو استعادة كلمة المرور');
+      }
 
-  const previous = await one<any>('SELECT created_at, expires_at FROM signup_verifications WHERE email = ?', [email]);
-  if (previous) {
-    const elapsed = Date.now() - new Date(previous.created_at).getTime();
-    if (elapsed >= 0 && elapsed < RESEND_COOLDOWN_MS) {
+      const previous = await one<any>('SELECT created_at, expires_at FROM signup_verifications WHERE email = ?', [email]);
+      if (previous) {
+        const elapsed = Date.now() - new Date(previous.created_at).getTime();
+        if (elapsed >= 0 && elapsed < RESEND_COOLDOWN_MS) {
+          throw new SignupRejection(
+            `انتظر ${Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000)} ثانية قبل طلب رمز جديد`,
+            RESEND_COOLDOWN_MS - elapsed
+          );
+        }
+      }
+
+      const code = generateCode();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + CODE_TTL_MS).toISOString();
+      await run(
+        `INSERT INTO signup_verifications (email, code_hash, attempts, created_at, expires_at)
+         VALUES (?,?,?,?,?)
+         ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, created_at = excluded.created_at, expires_at = excluded.expires_at`,
+        [email, hashOf(code), 0, now.toISOString(), expiresAt]
+      );
+      return { code, expiresAt };
+    });
+  } catch (error) {
+    if (error instanceof SignupRejection) {
       return {
         ok: false,
-        message: `انتظر ${Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000)} ثانية قبل طلب رمز جديد`,
-        retryAfterMs: RESEND_COOLDOWN_MS - elapsed,
+        message: error.message,
+        retryAfterMs: error.retryAfterMs,
         email: maskEmail(email),
       };
     }
+    console.error(
+      `[signup] request-code failed before sending: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return { ok: false, message: TEMPORARY_OUTAGE_MESSAGE };
   }
 
-  const code = generateCode();
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + CODE_TTL_MS).toISOString();
-
-  await run(
-    `INSERT INTO signup_verifications (email, code_hash, attempts, created_at, expires_at)
-     VALUES (?,?,?,?,?)
-     ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, created_at = excluded.created_at, expires_at = excluded.expires_at`,
-    [email, hashOf(code), 0, now.toISOString(), expiresAt]
-  );
-
+  const { code, expiresAt } = prepared;
   const mail = buildCodeEmail(code, Math.round(CODE_TTL_MS / 60000));
-  const sent = await sendEmail({ to: email, subject: 'رمز التحقق لإنشاء حسابك', ...mail }, 'signup-verification');
+  let sent: { sent: boolean; provider: string; error?: string };
+  try {
+    sent = await sendEmail({ to: email, subject: 'رمز التحقق لإنشاء حسابك', ...mail }, 'signup-verification');
+  } catch (error) {
+    // استثناء غير متوقع من المزود: قد تكون الرسالة قُبلت قبل الانقطاع، فنتعامل
+    // معه كفشل غير قاطع بدل اعتباره رفضًا.
+    console.error(`[signup] send threw: ${error instanceof Error ? error.message : String(error)}`);
+    sent = { sent: false, provider: 'none', error: error instanceof Error ? error.message : String(error) };
+  }
   const devMode = process.env.SIGNUP_VERIFICATION_DEV_CODE === '1';
 
-  if (!sent.sent) {
-    if (!devMode) {
-      await run('DELETE FROM signup_verifications WHERE email = ?', [email]);
+  if (!sent.sent && !devMode) {
+    // لا نحذف الرمز إلا إذا كان الفشل قاطعًا (لا مزود/رفض صريح). إن كان انقطاعًا
+    // فقد وصل البريد فعلًا، وحذف الصف يجعل الرمز الذي في بريد المستخدم بلا قيمة.
+    const definitive = isDefinitiveSendFailure(sent.error);
+    if (definitive) {
+      await run('DELETE FROM signup_verifications WHERE email = ?', [email]).catch((error) =>
+        console.warn(`[signup] cleanup after failed send skipped: ${error instanceof Error ? error.message : String(error)}`)
+      );
       return {
         ok: false,
-        message: `تعذّر إرسال رمز التحقق: ${sent.error || 'لا مزود بريد مُعد'}`,
+        message: `تعذّر إرسال رمز التحقق: ${friendlySendReason(sent.error)}. لم يُحفظ أي رمز.`,
       };
     }
+    return {
+      ok: false,
+      deliveryUncertain: true,
+      email: maskEmail(email),
+      expiresAt,
+      message:
+        'تعذّر تأكيد إرسال البريد من مزودنا. قد تكون الرسالة وصلت فعلًا — إن وجدتها، فالرمز صالح. إن لم تصل، أعد طلب رمز بعد دقيقة.',
+    };
+  }
+
+  if (!sent.sent && devMode) {
     console.warn(`[signup] email delivery failed (${sent.error}) — returning dev code because SIGNUP_VERIFICATION_DEV_CODE=1`);
   }
 
@@ -184,6 +287,17 @@ export interface SignupVerifyResult {
 
 /** يتحقق من الرمز ويستهلكه (حذف الصف) عند النجاح. */
 export async function verifySignupCode(rawEmail: string, rawCode: string): Promise<SignupVerifyResult> {
+  try {
+    return await retryOnceOnTransient(() => verifySignupCodeOnce(rawEmail, rawCode));
+  } catch (error) {
+    console.error(
+      `[signup] verify failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return { ok: false, message: TEMPORARY_OUTAGE_MESSAGE };
+  }
+}
+
+async function verifySignupCodeOnce(rawEmail: string, rawCode: string): Promise<SignupVerifyResult> {
   await init();
   const validation = validateSignupEmail(rawEmail);
   if (!validation.ok) return { ok: false, message: validation.reason || 'بريد غير صالح' };

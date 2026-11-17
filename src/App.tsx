@@ -52,6 +52,7 @@ import {
   resetAnalytics,
 } from './services/analyticsService';
 import { BackgroundMonitor } from './components/common/BackgroundMonitor';
+import { SystemStatusBanner } from './components/common/SystemStatusBanner';
 import { CopilotDrawer } from './components/layout/CopilotDrawer';
 import { LiquidCopilotOrb } from './components/ai/LiquidCopilotOrb';
 import { ZenFocusMode } from './components/common/ZenFocusMode';
@@ -197,6 +198,7 @@ const MainLayout: React.FC = () => {
 
       {/* Toast Notification Container */}
       <ToastContainer />
+      <SystemStatusBanner />
       <BackgroundMonitor />
       <CopilotDrawer />
 

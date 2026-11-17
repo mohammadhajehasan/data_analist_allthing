@@ -143,7 +143,7 @@ interface ProviderAttemptDiag {
   purpose?: string;
 }
 interface EmailProviderDiag {
-  provider: 'brevo' | 'resend' | 'agentmail' | 'smtp';
+  provider: 'gmail' | 'brevo' | 'resend' | 'agentmail' | 'smtp';
   configured: boolean;
   totalAttempts: number;
   totalFailures: number;
@@ -154,6 +154,7 @@ interface EmailProviderDiag {
 }
 
 const EMAIL_PROVIDER_META: Record<EmailProviderDiag['provider'], { ar: string; en: string; hint: string }> = {
+  gmail: { ar: 'Google (Gmail)', en: 'Google (Gmail)', hint: 'GMAIL_USER · GMAIL_APP_PASSWORD' },
   brevo: { ar: 'Brevo API', en: 'Brevo API', hint: 'BREVO_API_KEY' },
   resend: { ar: 'Resend API', en: 'Resend API', hint: 'RESEND_API_KEY' },
   agentmail: { ar: 'AgentMail API', en: 'AgentMail API', hint: 'AGENTMAIL_API_KEY' },

@@ -56,7 +56,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
   // تحقق البريد عند التسجيل: خطوة البيانات ← خطوة رمز التحقق المُرسل للبريد
   const [regStep, setRegStep] = useState<'details' | 'verify'>('details');
   const [regCode, setRegCode] = useState('');
-  const [verification, setVerification] = useState<{ email?: string; devCode?: string; message?: string } | null>(null);
+  const [verification, setVerification] = useState<{ email?: string; devCode?: string; message?: string; uncertain?: boolean } | null>(null);
   const [resendIn, setResendIn] = useState(0);
 
   useEffect(() => {
@@ -76,6 +76,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
+      // لم نتأكد من الإرسال (انقطاع مؤقت عند المزوّد): ننتقل إلى خطوة الرمز
+      // مع تحذير، فالرسالة قد تكون وصلت والرمز صالح فعلاً.
+      if (data.deliveryUncertain) {
+        setVerification({ email: data.email, message: data.message, uncertain: true });
+        setRegStep('verify');
+        setRegCode('');
+        setResendIn(Math.ceil((data.retryAfterMs || 60_000) / 1000));
+        return true;
+      }
       if (!res.ok || data.ok === false) throw new Error(data.message || data.error || 'فشل إرسال رمز التحقق');
       setVerification({ email: data.email, devCode: data.devCode, message: data.message });
       setRegStep('verify');
@@ -271,6 +280,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <div className="text-[11px] font-mono text-[#f1c21b] bg-[#f1c21b]/10 border border-[#f1c21b]/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2" dir="auto">
                 <span>{T.devCodeNote}</span>
                 <b className="text-sm tracking-widest">{verification.devCode}</b>
+              </div>
+            )}
+
+            {verification?.uncertain && (
+              <div className="text-[11px] leading-relaxed text-[#f1c21b] bg-[#f1c21b]/10 border border-[#f1c21b]/40 rounded-lg px-3 py-2" dir="auto">
+                {verification.message}
               </div>
             )}
 

@@ -5,6 +5,7 @@ import { DataStory, DataStoryChapter } from '../../types';
 import { aiAuthHeaders } from '../../utils/aiAccessGuard';
 import { applyBestVoice } from '../../services/bestVoice';
 import { StoryChartRenderer } from '../../components/reports/StoryChartRenderer';
+import { AlertsPanel } from '../../components/dashboards/AlertsPanel';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
   FileText,
@@ -463,6 +464,9 @@ ${(activeStory.recommendations || []).map((rec, i) => `${i + 1}. ${rec}`).join('
 
   return (
     <div className="space-y-6">
+      {/* تنبيهات القيم على البيانات المحفوظة — تُفحص خادمياً وتصل بالبريد */}
+      <AlertsPanel />
+
       {/* Top Header Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--cds-border-subtle)] pb-4">
         <div>

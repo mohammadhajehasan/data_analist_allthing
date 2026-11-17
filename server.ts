@@ -13,10 +13,19 @@ import {
   getSessionIdleMsStored, invalidateIdleCache, type Role,
 } from './server/auth';
 import { setSetting, getSetting, APP_SETTING_KEYS } from './server/appSettings';
+import { getDbHealth, one as dbOne } from './server/turso';
+import {
+  createAlert,
+  deleteAlert,
+  listAlerts,
+  runAlertSweep,
+  setAlertEnabled,
+  startAlertScheduler,
+} from './server/alerts';
 import {
   requestPasswordReset, verifyPasswordResetCode, confirmPasswordResetWithTicket,
 } from './server/passwordReset';
-import { requestSignupCode, verifySignupCode } from './server/signupVerification';
+import { requestSignupCode, verifySignupCode, TEMPORARY_OUTAGE_MESSAGE } from './server/signupVerification';
 import {
   consumeAiQuota, getAiQuotaStatus, getUserDailyLimit, getAdminDailyLimit,
 } from './server/aiQuota';
@@ -32,6 +41,7 @@ import {
   replaceUserDashboards, getUserWorkspaceState, setUserWorkspaceState,
   getWorkspaceStateLimitBytes, getUserStateStats, type WorkspaceStateKind,
 } from './server/userStateStore';
+import { isWebSearchConfigured, searchWeb, WebSearchError } from './server/exaWebSearch';
 
 
 dotenv.config();
@@ -129,6 +139,7 @@ const signupCodeRateLimiter = createRateLimiter('signup-code', 12, 60 * 60 * 100
 const fetchDataRateLimiter = createRateLimiter('fetch-data', 30, 5 * 60 * 1000); // بروكسي البيانات: 30 طلب / 5 دقائق لكل IP
 const ollamaProxyRateLimiter = createRateLimiter('ollama-proxy', 120, 5 * 60 * 1000); // بروكسي Ollama: 120 طلب / 5 دقائق
 const backendGenerationRateLimiter = createRateLimiter('backend-generation', 30, 5 * 60 * 1000); // توليد المشاريع: 30 / 5 دقائق
+const webSearchRateLimiter = createRateLimiter('web-search', 30, 5 * 60 * 1000); // Exa web search: 30 requests / 5 min per IP
 
 // Patterns that indicate a placeholder / demo API key mistakenly left in configuration
 const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemini|placeholder|xxxx/i;
@@ -653,7 +664,7 @@ async function callUniversalAI(params: {
 const serverAuditLogs: any[] = [];
 
 // 1. Health check
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
   const envKey = process.env.GEMINI_API_KEY || '';
   const keyIsPlaceholder = Boolean(envKey) && isPlaceholderApiKey(envKey);
   // مزوّدو AI المفعّلون خادمياً (مفاتيح حقيقية في البيئة) — لعرض جاهزية AI في الواجهة
@@ -665,9 +676,29 @@ app.get('/api/health', (_req, res) => {
     envKeyIsReal(process.env.QWEN_API_KEY) ? 'qwen' : '',
     (envKeyIsReal(process.env.CUSTOM_OPENAI_API_KEY) && process.env.CUSTOM_OPENAI_ENDPOINT) ? 'custom_openai' : '',
   ].filter(Boolean);
+  // فحص حيّ للقاعدة: الحالة المخزّنة وحدها لا تعكس انقطاعاً جديداً.
+  let dbPing = getDbHealth();
+  if (dbPing.configured) {
+    const started = Date.now();
+    try {
+      await Promise.race([
+        dbOne('SELECT 1 AS ok'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
+      ]);
+      dbPing = { ...getDbHealth(), healthy: true, latencyMs: Date.now() - started };
+    } catch (error) {
+      dbPing = {
+        ...getDbHealth(),
+        healthy: false,
+        lastError: error instanceof Error ? error.message : String(error),
+        lastErrorAt: new Date().toISOString(),
+      };
+    }
+  }
   res.json({
     status: 'ok',
     version: '1.0.0',
+    db: dbPing,
     aiEnabled: Boolean(envKey) && !keyIsPlaceholder,
     aiProvidersEnabled,
     aiKeyWarning: keyIsPlaceholder
@@ -2790,6 +2821,30 @@ Respond strictly in raw valid JSON matching this exact JSON schema:
 });
 
 
+// ---------------------------------------------------------------------------
+// Exa web search — grounded results (highlights) for the assistant and agents.
+// The key stays on the server; the browser calls this route with its session.
+// ---------------------------------------------------------------------------
+app.post('/api/web-search', webSearchRateLimiter, async (req, res) => {
+  if (!(await requireSession(req, res))) return;
+  if (!isWebSearchConfigured()) {
+    return res.status(503).json({ error: 'Web search is not enabled: set EXA_API_KEY in the server environment.' });
+  }
+  try {
+    const result = await searchWeb({
+      query: typeof req.body?.query === 'string' ? req.body.query : '',
+      numResults: req.body?.numResults,
+      includeDomains: req.body?.includeDomains,
+      excludeDomains: req.body?.excludeDomains,
+    });
+    return res.json({ provider: 'exa', ...result });
+  } catch (err: any) {
+    const status = err instanceof WebSearchError ? err.httpStatus : 502;
+    console.warn('Exa web search notice:', err?.message || err);
+    return res.status(status).json({ error: err?.message || 'Web search failed' });
+  }
+});
+
 // 3. AI Assistant Chat Stream & SSE Endpoint (Multi-Provider Aware)
 app.post('/api/assistant/chat', aiServerKeyQuotaGuard, async (req, res) => {
   const { message, dataset, datasetContext, history = [], language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey, activeView, activeDashboardContext } = req.body;
@@ -3357,9 +3412,13 @@ app.post('/api/auth/register/request-code', signupCodeRateLimiter, async (req, r
   const { email } = req.body || {};
   try {
     const result = await requestSignupCode(String(email || ''));
-    res.status(result.ok ? 200 : 400).json(result);
+    // deliveryUncertain ليس رفضًا للطلب: البريد قد يكون وصل والرمز صالح.
+    const status = result.ok || result.deliveryUncertain ? 200 : 400;
+    res.status(status).json(result);
   } catch (err: any) {
-    res.status(500).json({ ok: false, message: `تعذّر إرسال الرمز: ${err.message}` });
+    // لا يُسرّب الخطأ الخام («fetch failed») إلى المستخدم.
+    console.error(`[signup] request-code route error: ${err?.stack || err?.message || err}`);
+    res.status(503).json({ ok: false, message: TEMPORARY_OUTAGE_MESSAGE });
   }
 });
 
@@ -3800,6 +3859,64 @@ app.post('/api/datasets/bulk-delete', async (req, res) => {
 });
 
 // استعادة لقطة مشروع: استبدال كل مجموعات المستخدم بمحتوى اللقطة دفعة واحدة
+// ---------------------------------------------------------------------------
+// تنبيهات القيم على البيانات المحفوظة — تُفحص دورياً خادمياً وتُرسل بالبريد
+// ---------------------------------------------------------------------------
+app.get('/api/alerts', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    res.json({ alerts: await listAlerts(user.id) });
+  } catch (error) {
+    res.status(503).json({ error: `تعذّر قراءة التنبيهات: ${error instanceof Error ? error.message : String(error)}` });
+  }
+});
+
+app.post('/api/alerts', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const alert = await createAlert(user.id, {
+      datasetId: String(req.body?.datasetId || ''),
+      datasetName: req.body?.datasetName ? String(req.body.datasetName) : undefined,
+      column: String(req.body?.column || ''),
+      condition: req.body?.condition,
+      threshold: Number(req.body?.threshold),
+      email: String(req.body?.email || user.email || ''),
+    });
+    res.status(201).json({ alert });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'تعذّر إنشاء التنبيه' });
+  }
+});
+
+app.delete('/api/alerts/:id', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const removed = await deleteAlert(user.id, req.params.id);
+  res.json({ ok: true, removed });
+});
+
+app.post('/api/alerts/:id/toggle', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  const enabled = Boolean(req.body?.enabled);
+  const ok = await setAlertEnabled(user.id, req.params.id, enabled);
+  res.json({ ok });
+});
+
+// فحص فوري — يخدم زر «افحص الآن» في الواجهة دون انتظار المجدول.
+app.post('/api/alerts/check-now', async (req, res) => {
+  const user = await authUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
+  try {
+    const result = await runAlertSweep();
+    res.json({ ok: true, result });
+  } catch (error) {
+    res.status(503).json({ error: error instanceof Error ? error.message : 'تعذّر فحص التنبيهات' });
+  }
+});
+
 app.post('/api/datasets/restore', async (req, res) => {
   const user = await authUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'جلسة غير صالحة — سجّل الدخول أولاً' });
@@ -4519,6 +4636,8 @@ async function startServer() {
     // Hourly sweeper: reminder email + owner notification for email invites
     // still pending after 3 days (runs once per invite, never repeats)
     startEmailInviteReminderScheduler();
+    // Hourly value alerts on saved datasets (no-op while none are enabled).
+    startAlertScheduler();
   });
 }
 

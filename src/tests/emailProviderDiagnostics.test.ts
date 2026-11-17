@@ -5,7 +5,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { sendEmail, emailProviderDiagnostics, resetAgentMailInboxForTests } from '../../server/emailInvites';
 
-const ENV_KEYS = ['BREVO_API_KEY', 'RESEND_API_KEY', 'AGENTMAIL_API_KEY', 'AGENTMAIL_INBOX_ID', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'] as const;
+const ENV_KEYS = [
+  'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN',
+  'BREVO_API_KEY', 'RESEND_API_KEY', 'AGENTMAIL_API_KEY', 'AGENTMAIL_INBOX_ID', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS',
+] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
 function setEnv(values: Record<string, string | undefined>): void {
@@ -50,7 +53,7 @@ describe('email provider diagnostics', () => {
     const fail = await sendEmail(payload, 'password-reset');
     expect(fail.sent).toBe(false);
 
-    let [brevo] = emailProviderDiagnostics();
+    let brevo = emailProviderDiagnostics().find((p) => p.provider === 'brevo')!;
     expect(brevo.provider).toBe('brevo');
     expect(brevo.configured).toBe(true);
     expect(brevo.totalAttempts).toBe(1);
@@ -65,7 +68,7 @@ describe('email provider diagnostics', () => {
     const ok = await sendEmail(payload, 'invite');
     expect(ok.sent).toBe(true);
 
-    [brevo] = emailProviderDiagnostics();
+    brevo = emailProviderDiagnostics().find((p) => p.provider === 'brevo')!;
     expect(brevo.totalAttempts).toBe(2);
     expect(brevo.totalFailures).toBe(1);
     expect(brevo.consecutiveFailures).toBe(0);
@@ -83,7 +86,7 @@ describe('email provider diagnostics', () => {
     for (let i = 0; i < 10; i++) {
       await sendEmail(payload, 'reminder');
     }
-    const [brevo] = emailProviderDiagnostics();
+    const brevo = emailProviderDiagnostics().find((p) => p.provider === 'brevo')!;
     expect(brevo.totalAttempts).toBeGreaterThanOrEqual(10);
     expect(brevo.recentFailures.length).toBeLessThanOrEqual(8);
     expect(brevo.recentFailures[0]?.error).toContain('network down');

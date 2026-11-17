@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { EmptyState } from '../../components/common/EmptyState';
 import { validateSqlWithNineLayers } from '../../utils/sqlValidator';
@@ -74,6 +74,13 @@ export const NL2SQLPage: React.FC = () => {
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionError, setExecutionError] = useState<string | null>(null);
+  /** استعلام عالي الخطورة ينتظر تأكيدًا صريحًا قبل التنفيذ. */
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+
+  // أي تعديل على الاستعلام يُلغي التأكيد المعلّق: التأكيد يخص نصًا واحدًا بعينه.
+  useEffect(() => {
+    setAwaitingConfirm(false);
+  }, [sqlCode]);
   const [showChart, setShowChart] = useState(false);
   /** نوع الرسم الجاهز لنتيجة الاستعلام: شريطي (افتراضي) أو جدول محوري الدور */
   const [resultChartType, setResultChartType] = useState<'bar' | 'pivot'>('bar');
@@ -250,6 +257,18 @@ export const NL2SQLPage: React.FC = () => {
 
   const handleExecuteSql = () => {
     if (!activeDataset || !validationReport.canExecute) return;
+    // استعلام ثقيل لا ينفّذ بنقرة واحدة: النقرة الأولى تعرض التقدير وتطلب تأكيدًا.
+    if (!awaitingConfirm && validationReport.estimatedCost.executionRisk === 'HIGH') {
+      setAwaitingConfirm(true);
+      toast.warning(
+        isAr ? 'استعلام عالي الخطورة' : 'High-risk query',
+        isAr
+          ? `التقدير: ~${validationReport.estimatedCost.estimatedRows} صف، تعقيد ${validationReport.estimatedCost.complexityScore}/100. اضغط «تأكيد التشغيل» للتنفيذ.`
+          : `Estimated ~${validationReport.estimatedCost.estimatedRows} rows, complexity ${validationReport.estimatedCost.complexityScore}/100. Press “Confirm run” to execute.`
+      );
+      return;
+    }
+    setAwaitingConfirm(false);
     setIsExecuting(true);
     setExecutionError(null);
     // Launch the photon through the 9-layer laser gate
@@ -754,14 +773,31 @@ addAuditLog({
                 <span>{isAr ? 'تصدير .sql' : 'Export .sql'}</span>
               </button>
 
+              {awaitingConfirm && (
+                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded border border-[#f1c21b]/50 bg-[#f1c21b]/10 text-[#8d6e00] dark:text-[#f1c21b]">
+                  ~{validationReport.estimatedCost.estimatedRows} rows · {validationReport.estimatedCost.complexityScore}/100
+                </span>
+              )}
               <button
-                onClick={handleExecuteSql}
+                onClick={awaitingConfirm ? () => { setAwaitingConfirm(false); handleExecuteSql(); } : handleExecuteSql}
+                onBlur={() => setAwaitingConfirm(false)}
                 disabled={!validationReport.canExecute || isExecuting}
-                className="carbon-btn-primary gap-2 text-xs font-mono font-bold uppercase disabled:opacity-30"
+                className={`gap-2 text-xs font-mono font-bold uppercase disabled:opacity-30 ${awaitingConfirm ? 'px-3 py-1.5 bg-[#f1c21b] text-black hover:bg-[#e0b118] flex items-center' : 'carbon-btn-primary'}`}
                 id="nl2sql-execute-btn"
+                title={
+                  awaitingConfirm
+                    ? isAr ? 'الاستعلام عالي الخطورة: اضغط للتأكيد والتنفيذ' : 'High-risk query: press to confirm and run'
+                    : undefined
+                }
               >
                 <Play className={`w-3.5 h-3.5 fill-current ${isExecuting ? 'animate-pulse' : ''}`} />
-                <span>{isExecuting ? 'Executing...' : t.nl2sql.executeBtn}</span>
+                <span>
+                  {isExecuting
+                    ? 'Executing...'
+                    : awaitingConfirm
+                      ? (isAr ? 'تأكيد التشغيل' : 'Confirm run')
+                      : t.nl2sql.executeBtn}
+                </span>
               </button>
             </div>
           </div>

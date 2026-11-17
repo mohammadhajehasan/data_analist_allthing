@@ -252,9 +252,10 @@ function parseSender(): { name: string; email: string } {
 }
 
 // ---------------------------------------------------------------------------
-// Outbound email transport: HTTP APIs first (Brevo / Resend / AgentMail — they work on
-// hosts that block outbound SMTP like Render's free tier), classic SMTP
-// (nodemailer) as fallback, in that order. Configured via .env only.
+// Outbound email transport: Google Workspace/Gmail (SMTP with an App Password or
+// OAuth2 refresh token) first, then HTTP APIs (Brevo / Resend / AgentMail — they
+// work on hosts that block outbound SMTP like Render's free tier), and classic
+// SMTP (nodemailer) as the last resort. Configured via .env only.
 // ---------------------------------------------------------------------------
 
 interface MailPayload { to: string; subject: string; text: string; html: string }
@@ -276,7 +277,7 @@ export interface ProviderAttemptDiag {
 }
 
 export interface ProviderDiag {
-  provider: 'brevo' | 'resend' | 'agentmail' | 'smtp';
+  provider: 'gmail' | 'brevo' | 'resend' | 'agentmail' | 'smtp';
   configured: boolean;   // env vars present RIGHT NOW
   totalAttempts: number; // since process start
   totalFailures: number;
@@ -286,7 +287,7 @@ export interface ProviderDiag {
   recentFailures: ProviderAttemptDiag[]; // newest first, capped at 8
 }
 
-const PROVIDER_NAMES = ['brevo', 'resend', 'agentmail', 'smtp'] as const;
+const PROVIDER_NAMES = ['gmail', 'brevo', 'resend', 'agentmail', 'smtp'] as const;
 const RECENT_FAILURES_MAX = 8;
 
 interface ProviderState {
@@ -327,7 +328,9 @@ export function emailProviderDiagnostics(): ProviderDiag[] {
   return PROVIDER_NAMES.map(provider => {
     const st = providerStates.get(provider);
     const configured =
-      provider === 'brevo'
+      provider === 'gmail'
+        ? gmailConfigured()
+        : provider === 'brevo'
         ? !!process.env.BREVO_API_KEY?.trim()
         : provider === 'resend'
           ? !!process.env.RESEND_API_KEY?.trim()
@@ -345,6 +348,86 @@ export function emailProviderDiagnostics(): ProviderDiag[] {
       recentFailures: st?.recentFailures ?? [],
     };
   });
+}
+
+/**
+ * هل بيانات اعتماد Google مضبوطة؟
+ *
+ * طريقتان مدعومتان:
+ *  - App Password: GMAIL_USER + GMAIL_APP_PASSWORD (16 حرفاً من إعدادات أمان
+ *    حساب غوغل، تحتاج التحقق بخطوتين). هي الأبسط والأكثر شيوعاً.
+ *  - OAuth2: GMAIL_USER + GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET + GMAIL_REFRESH_TOKEN
+ *    (لتطبيق Google Cloud يملك نطاق gmail.send وأُذن له مرة واحدة).
+ */
+export function gmailConfigured(): boolean {
+  if (!process.env.GMAIL_USER?.trim()) return false;
+  if (process.env.GMAIL_APP_PASSWORD?.trim()) return true;
+  return Boolean(
+    process.env.GMAIL_CLIENT_ID?.trim() &&
+      process.env.GMAIL_CLIENT_SECRET?.trim() &&
+      process.env.GMAIL_REFRESH_TOKEN?.trim()
+  );
+}
+
+/**
+ * Google (Gmail / Workspace) عبر SMTP: smtp.gmail.com:465 مع App Password أو OAuth2.
+ *
+ * ملاحظة مهمة: غوغل ترفض إرسالاً من عنوان ليس الحساب نفسه (550)، لذا المُرسِل هنا
+ * هو GMAIL_USER دائمًا مهما كان SMTP_FROM — الاسم الظاهر فقط قابل للتخصيص.
+ */
+async function sendViaGmail(p: MailPayload): Promise<SendResult> {
+  const user = process.env.GMAIL_USER?.trim();
+  if (!user || !gmailConfigured()) {
+    return { sent: false, provider: 'gmail', error: 'GMAIL_USER / GMAIL_APP_PASSWORD غير مضبوطين' };
+  }
+  try {
+    // Dynamic import so the app still boots when nodemailer isn't installed
+    const nodemailer = (await import('nodemailer')).default;
+    const appPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, '');
+    const auth = appPassword
+      ? { user, pass: appPassword }
+      : {
+          type: 'OAuth2' as const,
+          user,
+          clientId: process.env.GMAIL_CLIENT_ID?.trim(),
+          clientSecret: process.env.GMAIL_CLIENT_SECRET?.trim(),
+          refreshToken: process.env.GMAIL_REFRESH_TOKEN?.trim(),
+        };
+    const transporter = nodemailer.createTransport({
+      host: process.env.GMAIL_SMTP_HOST?.trim() || 'smtp.gmail.com',
+      port: Number(process.env.GMAIL_SMTP_PORT || 465),
+      secure: process.env.GMAIL_SMTP_PORT ? process.env.GMAIL_SMTP_PORT === '465' : true,
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 30_000,
+      auth,
+    });
+    const name = (process.env.GMAIL_FROM_NAME || DEFAULT_FROM_NAME).trim();
+    const replyTo = process.env.GMAIL_REPLY_TO?.trim();
+    await transporter.sendMail({
+      from: name ? `${name} <${user}>` : user,
+      to: p.to,
+      subject: p.subject,
+      text: p.text,
+      html: p.html,
+      ...(replyTo ? { replyTo } : {}),
+    });
+    return { sent: true, provider: 'gmail' };
+  } catch (err: any) {
+    const message = String(err?.message || err);
+    // الأخطاء الشائعة عند الإعداد الأول — نترجمها إلى ما يجب فعله بدل نص SMTP الخام.
+    if (/535|Invalid login|Username and Password not accepted/i.test(message)) {
+      return {
+        sent: false,
+        provider: 'gmail',
+        error: 'Gmail رفض تسجيل الدخول — استخدم App Password من 16 حرفاً (وليس كلمة مرور الحساب) مع تفعيل التحقق بخطوتين',
+      };
+    }
+    if (/Application-specific password required/i.test(message)) {
+      return { sent: false, provider: 'gmail', error: 'يتطلب Gmail كلمة مرور تطبيق (App Password) لا كلمة المرور العادية' };
+    }
+    return { sent: false, provider: 'gmail', error: `فشل إرسال Gmail: ${message.slice(0, 300)}` };
+  }
 }
 
 /** Brevo transactional email API (free tier: 300 emails/day). */
@@ -561,10 +644,13 @@ async function sendViaSmtp(p: MailPayload): Promise<SendResult> {
 
 /**
  * Send one email through the first configured provider, falling back down the
- * chain (Brevo → Resend → AgentMail → SMTP) if a provider errors. Returns the final status.
+ * chain (Gmail → Brevo → Resend → AgentMail → SMTP) if a provider errors.
+ * Returns the final status. Signup codes and password-reset links both come
+ * through here, so configuring Gmail covers both flows.
  */
 export async function sendEmail(p: MailPayload, purpose?: string): Promise<SendResult> {
   const providers: Array<[string, () => Promise<SendResult>]> = [];
+  if (gmailConfigured()) providers.push(['gmail', () => sendViaGmail(p)]);
   if (process.env.BREVO_API_KEY?.trim()) providers.push(['brevo', () => sendViaBrevo(p)]);
   if (process.env.RESEND_API_KEY?.trim()) providers.push(['resend', () => sendViaResend(p)]);
   if (process.env.AGENTMAIL_API_KEY?.trim()) providers.push(['agentmail', () => sendViaAgentMail(p)]);
@@ -572,7 +658,7 @@ export async function sendEmail(p: MailPayload, purpose?: string): Promise<SendR
     providers.push(['smtp', () => sendViaSmtp(p)]);
   }
   if (providers.length === 0) {
-    return { sent: false, provider: 'none', error: 'لا مزود بريد مُعد (BREVO_API_KEY أو RESEND_API_KEY أو SMTP_*) — شارك الرابط مع المدعو يدوياً' };
+    return { sent: false, provider: 'none', error: 'لا مزود بريد مُعد (GMAIL_USER+GMAIL_APP_PASSWORD أو BREVO_API_KEY أو RESEND_API_KEY أو SMTP_*) — شارك الرابط مع المدعو يدوياً' };
   }
   const errors: string[] = [];
   for (const [name, fn] of providers) {
@@ -682,7 +768,7 @@ export async function revokeEmailInvite(discussionId: string, code: string, byUs
 const REMINDER_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
 const REMINDER_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // hourly sweep
 
-/** Reminder send goes through the same provider chain (Brevo → Resend → AgentMail → SMTP). */
+/** Reminder send goes through the same provider chain (Gmail → Brevo → Resend → AgentMail → SMTP). */
 async function trySendReminderEmail(to: string, groupName: string, inviterName: string, inviteUrl: string): Promise<{ sent: boolean; error?: string }> {
   const r = await sendEmail({
     to,

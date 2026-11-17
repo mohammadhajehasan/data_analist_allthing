@@ -47,9 +47,65 @@ export function useTursoClient(c: Client): void {
 // مساعدات عملية — كلها async (الأصلي كان better-sqlite3 متزامن)
 // ---------------------------------------------------------------------------
 
+/**
+ * حالة الاتصال بقاعدة البيانات — تُقرأ من /api/health ومن الواجهة.
+ * Turso يُرجع 502/503 عابرةً أثناء إعادة تشغيل الخادم البعيد أو عند نفاد
+ * اتصالات الحوض؛ إعادة محاولة قصيرة تُنقذ الطلب بدل إسقاط الخادم كله.
+ */
+export interface DbHealth {
+  configured: boolean;
+  healthy: boolean;
+  lastError: string | null;
+  lastErrorAt: string | null;
+  lastOkAt: string | null;
+  retries: number;
+  /** Round-trip of the health ping, when one was just made. */
+  latencyMs?: number;
+}
+
+const dbHealth: DbHealth = {
+  configured: hasTursoConfig(),
+  healthy: hasTursoConfig(),
+  lastError: null,
+  lastErrorAt: null,
+  lastOkAt: null,
+  retries: 0,
+};
+
+export function getDbHealth(): DbHealth {
+  return { ...dbHealth, configured: hasTursoConfig() };
+}
+
+/** أخطاء تستحق إعادة المحاولة؛ خطأ SQL حقيقي لا يستحقها. */
+export function isTransientDbError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /(502|503|504|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|fetch failed|network|socket hang up|LibsqlError: SERVER_ERROR)/i.test(
+    message
+  );
+}
+
+const RETRY_DELAYS_MS = [150, 450, 1200];
+
 /** تنفيذ عبارة وإرجاع صفوفها (SELECT) أو التأثير (بقية العبارات). */
 export async function q<T = any>(sql: string, args: InValue[] = []): Promise<ResultSet> {
-  return turso().execute({ sql, args });
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      const result = await turso().execute({ sql, args });
+      dbHealth.healthy = true;
+      dbHealth.lastOkAt = new Date().toISOString();
+      return result;
+    } catch (error) {
+      lastError = error;
+      dbHealth.healthy = false;
+      dbHealth.lastError = error instanceof Error ? error.message : String(error);
+      dbHealth.lastErrorAt = new Date().toISOString();
+      if (attempt === RETRY_DELAYS_MS.length || !isTransientDbError(error)) break;
+      dbHealth.retries += 1;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw lastError;
 }
 
 /** إرجاع كل صفوف SELECT كـ objects جاهزة. */
