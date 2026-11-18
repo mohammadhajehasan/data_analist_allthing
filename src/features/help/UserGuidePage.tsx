@@ -18,7 +18,10 @@ import {
   Sliders,
   BarChart3,
   Layers,
-  Filter
+  Filter,
+  Activity,
+  History,
+  FolderOpen
 } from 'lucide-react';
 
 export const UserGuidePage: React.FC = () => {
@@ -26,6 +29,160 @@ export const UserGuidePage: React.FC = () => {
   const isAr = language === 'ar';
 
   const sections = [
+    {
+      id: 'intelligence_lab',
+      title: isAr ? 'مختبر الذكاء التحليلي — 20 قدرة على بياناتك' : 'Analyst Intelligence Lab — 20 capabilities on your data',
+      icon: Sparkles,
+      badge: isAr ? 'جديد' : 'New',
+      fullWidth: true,
+      content: isAr ? (
+        <div className="space-y-4 text-sm text-[var(--cds-text-02)]">
+          <p className="leading-relaxed">
+            صفحة واحدة تجمع عشرين قدرة تحليلية تعمل على مجموعات بياناتك المحفوظة لا على أرقام منسوخة:
+            طبقة مقاييس معتمدة (بحالة اعتماد وإصدار)، تدقيق جودة البيانات، ذاكرة تحليلات تُكتب تلقائيًا،
+            كشف شذوذ بعد فصل الاتجاه والموسمية مع إسناد السبب، صرامة إحصائية وقراءة تجارب A/B متسلسلة،
+            سؤال توضيحي واحد عند الغموض، سلسلة إثبات قابلة للحفظ والمشاركة، نقد التمثيل البياني،
+            سيناريوهات بافتراضات معلنة، أثر تغيير المخطط، موثوقية الأتمتة، تقييم مقابل مجموعة ذهبية،
+            حاجز خصوصية وتصدير آمن، انطباع أول عشر دقائق، محكّم بين تحليلين، تقرير أسبوعي، وتفسير النموذج.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <FolderOpen className="w-4 h-4 text-[#42be65]" />
+                <span>بياناتي والمراقبات</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                اختر مجموعة بيانات، فيقرأ الخادم صفوفها وأعمدتها ويشغّل التدقيق والشذوذ عليها مباشرة.
+                وأنشئ مراقبًا (مجموعة + عمود + دورة) يفحصه الخادم كل نصف ساعة ويُنبّهك داخل المنصة عند نقطة شاذة جديدة.
+              </p>
+            </div>
+
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <History className="w-4 h-4 text-[#78a9ff]" />
+                <span>السجل والإثبات</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                كل تشغيل يُسجَّل (الأداة، الحالة، الزمن، الخلاصة)، وكل بطاقة إثبات تُحفظ لتبقى قابلة للمشاركة
+                بعد أسبوع بدل أن تذوب في الواجهة.
+              </p>
+            </div>
+
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <ShieldCheck className="w-4 h-4 text-[#be95ff]" />
+                <span>خصوصية مُنفَّذة لا موعودة</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                قبل أي إرسال لنموذج خارجي يمرّ السياق على حاجز PII: تُستبعد أعمدة الأسماء/العناوين ويُقنَّع البريد
+                والهاتف والمعرّفات. التصدير يمرّ بالحاجز نفسه على الخادم، وطلب الخام مع وجود PII يُرفض صراحةً.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+            <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+              <Activity className="w-4 h-4 text-[#ff832b]" />
+              <span>المساعد الذكي صار مسنَدًا</span>
+            </div>
+            <p className="text-[11px] text-[var(--cds-text-03)]">
+              المساعد يكتشف نيّة السؤال، يشغّل الأدوات المناسبة قبل الإجابة، ويعرض «أدلة محسوبة» أسفل الرد.
+              وإن طلب أداة بنفسه، تُنفَّذ ويُعاد ناتجها إليه في جولة ثانية فيكتب جوابه وهو يرى الرقم —
+              لا يخمّنه. وكل سؤال يُسجَّل في ذاكرة المحلل تلقائيًا، والإجابة تُملأ في المجموعة الذهبية إن طابقت سؤالاً معتمدًا.
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center justify-between">
+            <span className="text-xs font-mono text-[var(--cds-interactive-01)]">
+              12 تبويبًا • 20 محرّكًا • مراقبة مستمرة • تصدير آمن
+            </span>
+            <button
+              onClick={() => setActiveTab('intelligence')}
+              className="px-3.5 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01-hover)] text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>افتح مختبر الذكاء التحليلي</span>
+              <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4 text-sm text-[var(--cds-text-02)]">
+          <p className="leading-relaxed">
+            One page, twenty analytical capabilities running on your saved datasets rather than pasted numbers:
+            governed metric definitions with approval status and versioning, data-quality audits, auto-captured
+            analyst memory, anomaly detection with attribution and continuous monitors, statistical rigor and
+            sequential A/B reads, one clarifying question, saved proof chains, chart critique, declared-assumption
+            scenarios, schema-change impact, workflow reliability, golden-set evaluation, a PII gate with safe
+            export, first-ten-minutes onboarding, arbitration between conflicting analyses, a weekly narrative,
+            and model explanations.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <FolderOpen className="w-4 h-4 text-[#42be65]" />
+                <span>My data & monitors</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                Pick a dataset and the server reads its rows and columns, then runs audits and anomaly detection
+                on it directly. Create a monitor (dataset + column + seasonality) that the server checks every 30
+                minutes and turns into an in-app alert when a new outlier appears.
+              </p>
+            </div>
+
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <History className="w-4 h-4 text-[#78a9ff]" />
+                <span>Run log & proofs</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                Every run is recorded (tool, status, latency, summary) and every proof card can be saved so it is
+                still shareable a week later instead of disappearing with the UI state.
+              </p>
+            </div>
+
+            <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+              <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+                <ShieldCheck className="w-4 h-4 text-[#be95ff]" />
+                <span>Enforced privacy</span>
+              </div>
+              <p className="text-[11px] text-[var(--cds-text-03)]">
+                Before any external model call the context passes the PII gate: name/address columns are dropped
+                and emails, phones and identifiers are masked. Export passes the same server-side gate, and
+                requesting raw rows with PII present is refused explicitly.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] rounded-lg space-y-1">
+            <div className="flex items-center gap-2 font-bold text-[var(--cds-text-01)] text-xs">
+              <Activity className="w-4 h-4 text-[#ff832b]" />
+              <span>A grounded copilot</span>
+            </div>
+            <p className="text-[11px] text-[var(--cds-text-03)]">
+              The assistant detects intent, runs the relevant engines before answering, and shows computed
+              evidence under each reply. When it requests a tool itself, the tool runs and the result is fed back
+              in a second pass, so it writes the answer while seeing the number — not guessing it. Each question
+              is auto-captured into analyst memory, and matching golden-set answers are filled automatically.
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center justify-between">
+            <span className="text-xs font-mono text-[var(--cds-interactive-01)]">
+              12 tabs • 20 engines • continuous monitoring • safe export
+            </span>
+            <button
+              onClick={() => setActiveTab('intelligence')}
+              className="px-3.5 py-1.5 bg-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01-hover)] text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>Open Analyst Intelligence Lab</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ),
+    },
     {
       id: 'workflow_studio',
       title: isAr ? 'استوديو أتمتة سير العمل بالذكاء الاصطناعي (AI Workflow Studio)' : 'AI Workflow Automation Studio',

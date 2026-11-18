@@ -32,6 +32,7 @@ const DiscussionsPage = lazy(() => import('./features/discussions/DiscussionsPag
 const JoinGroupPage = lazy(() => import('./features/discussions/JoinGroupPage').then(m => ({ default: m.JoinGroupPage })));
 const ContactDeveloperPage = lazy(() => import('./features/developer/ContactDeveloperPage').then(m => ({ default: m.ContactDeveloperPage })));
 const SuggestionsAdminPage = lazy(() => import('./features/developer/SuggestionsAdminPage').then(m => ({ default: m.SuggestionsAdminPage })));
+const AnalystIntelligencePage = lazy(() => import('./features/intelligence/AnalystIntelligencePage').then(m => ({ default: m.AnalystIntelligencePage })));
 
 const ViewFallback: React.FC = () => (
   <div className="flex items-center justify-center py-24" dir="rtl">
@@ -142,6 +143,8 @@ const MainLayout: React.FC = () => {
         return <DiscussionsPage />;
       case 'reports':
         return <ReportsPage />;
+      case 'intelligence':
+        return <AnalystIntelligencePage />;
       case 'audit':
         return <AuditPage />;
       case 'admin':

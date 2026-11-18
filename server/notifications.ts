@@ -46,7 +46,7 @@ function init(): Promise<void> {
 
 export interface Notification {
   id: string;
-  type: 'discussion_invite' | 'invite_accepted' | 'invite_rejected' | 'info';
+  type: 'discussion_invite' | 'invite_accepted' | 'invite_rejected' | 'analyst_anomaly' | 'analyst_eval' | 'info';
   title: string;
   body: string | null;
   payload: any;

@@ -14,6 +14,29 @@ import {
 } from './server/auth';
 import { setSetting, getSetting, APP_SETTING_KEYS } from './server/appSettings';
 import { getDbHealth, one as dbOne } from './server/turso';
+import { registerAnalystRoutes } from './server/analystRoutes';
+import {
+  detectAnalystTools,
+  runAnalystTools,
+  copilotAnalystInstructions,
+  formatEvidenceForPrompt,
+  extractToolRequests,
+  stripToolRequests,
+  evidenceSuggestions,
+  evidenceBadges,
+  type CopilotContext,
+} from './server/analyst/copilotTools';
+import {
+  addMemory,
+  fillGoldenActual,
+  listArtifacts,
+  listGolden,
+  listMemory,
+  listMetrics,
+} from './server/analyst/store';
+import { evaluateGate } from './server/analyst/piiGate';
+import { startAnalystMonitorScheduler } from './server/analyst/monitors';
+import { loadDatasetSource } from './server/analyst/sources';
 import {
   createAlert,
   deleteAlert,
@@ -2850,6 +2873,8 @@ app.post('/api/assistant/chat', aiServerKeyQuotaGuard, async (req, res) => {
   const { message, dataset, datasetContext, history = [], language = 'ar', provider = 'gemini', model = 'gemini-3.8-flash', endpointUrl, apiKey, activeView, activeDashboardContext } = req.body;
   const targetDataset = dataset || datasetContext;
   const startTime = Date.now();
+  // أدلة طبقة المحلل تُحسب داخل try لكن يجب أن تبقى متاحة في catch
+  let proactiveEvidenceFallback: ReturnType<typeof runAnalystTools> = [];
 
   try {
     const systemInstruction = `You are the Autonomous AI Agent of the Analytics platform.
@@ -2905,6 +2930,73 @@ Whenever the user asks you to DO something (e.g. generate a report, make a dashb
 If you are just answering a question, no JSON block is needed. Always respond with a conversational message explaining what you did, followed by the JSON block if an action is required.
 If you output SQL, also output a NAVIGATE action to "nl2sql".`;
 
+    // طبقة أدوات المحلل: نكشف نيّة السؤال، نشغّل المحرّكات الحقيقية، ونحقن
+    // نتائجها في تعليمات النظام قبل استدعاء النموذج — فيصبح الجواب مسنَدًا.
+    // نُعلن المتغيّر خارج try حتى تبقى الأدلة متاحة في مسار فشل النموذج.
+    const copilotUser = await authUserFromReq(req).catch(() => null);
+    // بيانات المصدر: عيّنة الواجهة إن وُجدت، وإلا نقرأ المجموعة من الخادم
+    // بالمعرّف. هذا ما يجعل أدوات المساعد تعمل على بيانات حقيقية لا على وصفها.
+    let sourceRows: Array<Record<string, unknown>> | undefined = Array.isArray(targetDataset?.sampleData)
+      ? (targetDataset.sampleData as Array<Record<string, unknown>>)
+      : undefined;
+    let sourceName: string | undefined = targetDataset?.name;
+    let sourceRowCount: number | undefined = targetDataset?.rowCount;
+    if (!sourceRows?.length && copilotUser) {
+      const stored = await loadDatasetSource(copilotUser.id, targetDataset?.id ? String(targetDataset.id) : undefined).catch(() => null);
+      if (stored) {
+        sourceRows = stored.rows.slice(0, 500);
+        sourceName = sourceName || stored.name;
+        sourceRowCount = sourceRowCount || stored.rowCount;
+      }
+    }
+    let copilotCtx: CopilotContext = {
+      message: String(message || ''),
+      language: language === 'ar' ? 'ar' : 'en',
+      rows: sourceRows,
+      datasetName: sourceName,
+      datasetRowCount: sourceRowCount,
+      targetColumn: targetDataset?.targetColumn,
+    };
+    // حاجز الخصوصية إلزامي قبل أي حساب أو إرسال: النموذج والأدوات يرون النسخة
+    // المقنّعة فقط. الحساب المحلي للشذوذ/الجودة كان يتمّ على الصفوف الخام سابقًا.
+    let privacyNote = '';
+    if (copilotCtx.rows?.length) {
+      const gate = evaluateGate(copilotCtx.rows, { allowExternalWithPii: false, maxRows: 200 });
+      copilotCtx = { ...copilotCtx, rows: gate.sanitizedRows };
+      if (gate.findings.length) {
+        privacyNote =
+          `حاجز الخصوصية: عُثر على ${gate.findings.length} عمودًا شخصيًّا ` +
+          `(${gate.findings.slice(0, 4).map((f) => f.column).join('، ')}). ` +
+          `استُبعدت: ${gate.droppedColumns.join('، ') || 'لا شيء'}، والباقي مُقنَّع. ` +
+          'لا تطلب القيم الخام ولا تخمّنها.';
+      }
+    }
+    let proactiveEvidence: ReturnType<typeof runAnalystTools> = [];
+    try {
+      if (copilotUser) {
+        const [metrics, memory, artifacts, golden] = await Promise.all([
+          listMetrics(copilotUser.id).catch(() => []),
+          listMemory(copilotUser.id).catch(() => []),
+          listArtifacts(copilotUser.id).catch(() => []),
+          listGolden(copilotUser.id).catch(() => []),
+        ]);
+        copilotCtx = { ...copilotCtx, metrics, memory, artifacts, golden };
+      }
+      const plannedTools = detectAnalystTools(copilotCtx.message, copilotCtx, 3);
+      proactiveEvidence = runAnalystTools(plannedTools, copilotCtx);
+      proactiveEvidenceFallback = proactiveEvidence;
+    } catch (toolError: any) {
+      console.warn('[copilot] analyst tools skipped:', toolError?.message || toolError);
+    }
+
+    const enrichedInstruction = `${systemInstruction}
+
+${copilotAnalystInstructions(language === 'ar' ? 'ar' : 'en')}
+${privacyNote ? `
+${privacyNote}
+` : ''}
+${formatEvidenceForPrompt(proactiveEvidence)}`;
+
     const fullPrompt = `${history.length > 0 ? history.map((h: any) => `${h.sender || h.role}: ${h.content || ''}`).join('\n') + '\n' : ''}User: ${message}`;
 
     const aiResult = await callUniversalAI({
@@ -2913,12 +3005,52 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
       endpointUrl,
       apiKey,
       prompt: fullPrompt,
-      systemInstruction,
+      systemInstruction: enrichedInstruction,
       disableFallback: true,
     });
 
     if (aiResult && aiResult.text) {
-      const replyText = aiResult.text;
+      // أدوات طلبها النموذج بنفسه: ننفّذها، ثم **نعيد نتيجتها إليه** في جولة
+      // ثانية. بلا هذه الجولة كان النموذج يطلب حسابًا ولا يراه أبدًا، فيبقى
+      // جوابه تخمينًا مؤدَّبًا — وهذا ينسف وعد «مسنَد لا متخيَّل».
+      let finalText = aiResult.text;
+      let modelUsed = aiResult.modelUsed;
+      let isLocal = aiResult.isLocal;
+      const requestedTools = extractToolRequests(finalText).map((r) => r.tool);
+      const requestedEvidence = requestedTools.length ? runAnalystTools(requestedTools, copilotCtx) : [];
+      let toolRounds = 0;
+      if (requestedEvidence.length) {
+        toolRounds = 1;
+        try {
+          const followUp = await callUniversalAI({
+            provider,
+            model,
+            endpointUrl,
+            apiKey,
+            systemInstruction: enrichedInstruction,
+            prompt:
+              `${fullPrompt}\n\n` +
+              `مسودّتك الأولى (كتبتها قبل أن ترى نتائج الأدوات):\n${stripToolRequests(finalText).slice(0, 4000)}\n\n` +
+              `${formatEvidenceForPrompt([...proactiveEvidence, ...requestedEvidence])}\n\n` +
+              'أعد كتابة الإجابة النهائية معتمدًا على هذه الأدلة حصريًّا. أبقِ أي كتلة JSON للإجراء ' +
+              '(CREATE_REPORT / CREATE_DASHBOARD / NAVIGATE) إن كانت ما تزال مطلوبة، ولا تُظهر كتل ANALYST_TOOL.',
+            disableFallback: true,
+          });
+          if (followUp?.text) {
+            finalText = followUp.text;
+            modelUsed = followUp.modelUsed;
+            isLocal = followUp.isLocal;
+          }
+        } catch (followUpError: any) {
+          // فشل الجولة الثانية لا يُسقط الجواب الأول: نُبقي المسودة ونُعلن الأدلة.
+          console.warn('[copilot] tool follow-up failed:', followUpError?.message || followUpError);
+        }
+      }
+      const evidence = [...proactiveEvidence];
+      for (const item of requestedEvidence) {
+        if (!evidence.some((e) => e.tool === item.tool)) evidence.push(item);
+      }
+      const replyText = stripToolRequests(finalText);
       const sqlMatch = replyText.match(/```sql\s*([\s\S]+?)\s*```/i);
 
       serverAuditLogs.unshift({
@@ -2931,6 +3063,32 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
         payloadSummary: `Copilot [${aiResult.modelUsed}] response to: "${(message || '').substring(0, 30)}..."`,
       });
 
+      // ذاكرة تلقائية: تُكتب بعد كل تحليل ناجح (بلا تكرار للسؤال نفسه)، فيصير
+      // للتحليلات تاريخ يُستشهد به بدل صفر تراكمي.
+      if (copilotUser && String(message || '').trim().length >= 8 && replyText.trim().length >= 40) {
+        try {
+          const normalized = String(message).trim().toLowerCase().replace(/\s+/g, ' ');
+          const duplicate = (copilotCtx.memory || []).some(
+            (m) => String(m.question || '').trim().toLowerCase().replace(/\s+/g, ' ') === normalized
+          );
+          if (!duplicate) {
+            await addMemory(copilotUser.id, {
+              question: String(message).trim().slice(0, 300),
+              answer: replyText.trim().slice(0, 600),
+              datasetId: targetDataset?.id ? String(targetDataset.id) : undefined,
+              datasetName: sourceName,
+              outcome: 'inconclusive',
+              tags: ['auto', ...evidence.map((e) => e.tool)].slice(0, 8),
+            });
+          }
+          // إن كان السؤال موجودًا في المجموعة الذهبية، تُكتب الإجابة الفعلية
+          // تلقائيًّا — فيصير التقييم يقيس ردود المساعد لا ما نكتبه يدويًا.
+          await fillGoldenActual(copilotUser.id, String(message || ''), replyText);
+        } catch (memoryError: any) {
+          console.warn('[copilot] memory capture skipped:', memoryError?.message || memoryError);
+        }
+      }
+
       return res.json({
         reply: replyText,
         content: replyText,
@@ -2939,11 +3097,17 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
         insights: language === 'ar'
           ? ['توزيع البيانات سليم ولا توجد فجوات رئيسية', 'تمركز عالي في أعلى 3 قطاعات إنتاجية']
           : ['Distribution is statistically robust with no critical anomalies', 'Concentration identified in top 3 sectors'],
-        suggestions: language === 'ar'
-          ? ['ما هي أعلى فئة مبيعاً؟', 'هل توجد أي قيم شاذة ملحوظة؟', 'أنشئ مخططاً لمعدل النمو']
-          : ['Show highest revenue segment', 'Identify significant anomalies', 'Build comparison chart'],
-        model: aiResult.modelUsed,
-        isLocal: aiResult.isLocal,
+        suggestions: evidenceSuggestions(evidence, language === 'ar' ? 'ar' : 'en'),
+        analyst: {
+          evidence,
+          badges: evidenceBadges(evidence),
+          toolsRun: evidence.map((e) => e.tool),
+          // 0 = الأداة شُغّلت مسبقًا قبل السؤال، 1 = النموذج طلبها فرأى نتيجتها.
+          toolRounds,
+          privacy: privacyNote || undefined,
+        },
+        model: modelUsed,
+        isLocal,
       });
     }
    } catch (err: any) {
@@ -2959,6 +3123,14 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
       message: msg,
       model: null,
       isLocal: false,
+      // الأدلة حُسبت قبل استدعاء النموذج؛ لا نرميها فقط لأن المزوّد تعطّل.
+      analyst: {
+        degraded: true,
+        evidence: proactiveEvidenceFallback,
+        badges: evidenceBadges(proactiveEvidenceFallback),
+        toolsRun: proactiveEvidenceFallback.map((e) => e.tool),
+        suggestions: evidenceSuggestions(proactiveEvidenceFallback, language === 'ar' ? 'ar' : 'en'),
+      },
     });
   }
 });
@@ -3773,6 +3945,9 @@ function authUserFromReq(req: express.Request) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   return getUserByToken(token);
 }
+
+// مسارات «الذكاء التحليلي» (المقاييس، الذاكرة، التدقيق، الإحصاء، الأتمتة…).
+registerAnalystRoutes(app, { authUserFromReq });
 
 /**
  * يرفض الطلب بلا جلسة صالحة قبل أي عمل على موارد الخادم.
@@ -4638,6 +4813,8 @@ async function startServer() {
     startEmailInviteReminderScheduler();
     // Hourly value alerts on saved datasets (no-op while none are enabled).
     startAlertScheduler();
+    // رقيب الشذوذ: يفحص المراقبات كل نصف ساعة ويُنبّه داخل المنصة عند نقطة جديدة.
+    startAnalystMonitorScheduler();
   });
 }
 

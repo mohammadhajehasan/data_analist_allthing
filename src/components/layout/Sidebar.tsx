@@ -62,6 +62,7 @@ const SidebarNavList: React.FC<{ isCollapsed?: boolean; isMobile?: boolean; onNa
     { id: 'discussions', label: t.nav.discussions, icon: MessagesSquare, badge: 'Groups' },
     { id: 'workflow', label: t.nav.workflow, icon: Workflow, badge: 'Agent' },
     { id: 'reports', label: t.nav.reports, icon: FileText },
+    { id: 'intelligence', label: t.nav.intelligence, icon: Sparkles, badge: '20×' },
     { id: 'audit', label: t.nav.audit, icon: ShieldAlert },
     { id: 'admin', label: t.nav.admin, icon: Settings },
     { id: 'developer', label: t.nav.developer, icon: Contact },

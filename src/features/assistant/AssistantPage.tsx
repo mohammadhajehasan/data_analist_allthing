@@ -120,6 +120,21 @@ export const AssistantPage: React.FC = () => {
         const errJson = await res.json().catch(() => null) as any;
         // الخادم يعيد { error: { message } } أو { error: 'نص' } أو { message } — استخرج السبب الحقيقي
         const realMsg = errJson?.error?.message || (typeof errJson?.error === 'string' ? errJson.error : null) || errJson?.message || `HTTP ${res.status}`;
+        // أدلة المحلل تُحسب قبل النموذج: إن فشل المزوّد نعرضها مع سبب التوقف
+        // بدل أن نُضيّع عملًا صحيحًا. الصدق: تُعلن أنها أدلة بلا صياغة.
+        if (Array.isArray(errJson?.analyst?.evidence) && errJson.analyst.evidence.length) {
+          addChatMessage(activeChatSession.id, {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'assistant',
+            content: language === 'ar'
+              ? `تعذّر توليد الصياغة من النموذج (${realMsg}). لكن هذه الأدلة حُسبت من بياناتك فعليًا: أرقام وتعريفات وتحذيرات يمكن الاعتماد عليها الآن.`
+              : `The model could not generate wording (${realMsg}). These figures were still computed from your data — definitions, caveats and evidence you can rely on.`,
+            timestamp: new Date().toISOString(),
+            analystEvidence: errJson.analyst.evidence,
+            suggestions: errJson?.analyst?.suggestions,
+          });
+          return;
+        }
         throw new Error(realMsg);
       }
 
@@ -143,6 +158,8 @@ export const AssistantPage: React.FC = () => {
         sqlSnippet: data.sqlQuery,
         insights: data.insights,
         suggestedChart: data.suggestedChart,
+        analystEvidence: Array.isArray(data.analyst?.evidence) ? data.analyst.evidence : undefined,
+        suggestions: Array.isArray(data.analyst?.suggestions) ? data.analyst.suggestions : data.suggestions,
       };
 
       addChatMessage(activeChatSession.id, assistantMsg);
@@ -289,6 +306,15 @@ export const AssistantPage: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('intelligence')}
+            className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
+            title={language === 'ar' ? 'كل أدوات المحلل العشرين في مكان واحد' : 'All 20 analyst tools in one lab'}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[var(--cds-interactive-01)]" />
+            <span>{language === 'ar' ? '20 أداة' : '20 tools'}</span>
+          </button>
+
+          <button
             onClick={createNewChatSession}
             className="carbon-btn-secondary text-xs font-mono font-bold uppercase tracking-wider gap-2 shrink-0"
           >
@@ -345,6 +371,63 @@ export const AssistantPage: React.FC = () => {
                           <span>Generated SQL Execution</span>
                         </div>
                         <code className="text-[#33b1ff]">{msg.sqlSnippet}</code>
+                      </div>
+                    )}
+
+                    {/* أدلة المحلل: أُنتجت من محرّكات حقيقية قبل الإجابة */}
+                    {msg.analystEvidence && msg.analystEvidence.length > 0 && (
+                      <div className="mt-3 space-y-1.5 pt-2 border-t border-[var(--cds-border-subtle)]">
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
+                          <Sparkles className="w-3 h-3 text-[var(--cds-interactive-01)]" />
+                          <span>{language === 'ar' ? 'أدلة محسوبة' : 'Computed evidence'}</span>
+                        </div>
+                        {msg.analystEvidence.map((ev, i) => (
+                          <details
+                            key={`${ev.tool}-${i}`}
+                            className="border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] px-2.5 py-2"
+                            open={i === 0}
+                          >
+                            <summary className="cursor-pointer flex items-center justify-between gap-2 text-[11px]">
+                              <span className="font-bold text-[var(--cds-text-01)]">{ev.title}</span>
+                              <span
+                                className={`shrink-0 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase ${
+                                  ev.tone === 'bad'
+                                    ? 'bg-red-500/15 text-red-500'
+                                    : ev.tone === 'warn'
+                                      ? 'bg-amber-500/15 text-amber-500'
+                                      : ev.tone === 'ok'
+                                        ? 'bg-emerald-500/15 text-emerald-500'
+                                        : 'bg-sky-500/15 text-sky-500'
+                                }`}
+                              >
+                                {ev.tool}
+                              </span>
+                            </summary>
+                            <p className="mt-1.5 text-[11px] text-[var(--cds-text-02)]">{ev.summary}</p>
+                            {ev.details?.length > 0 && (
+                              <ul className="mt-1 space-y-0.5">
+                                {ev.details.slice(0, 4).map((d, j) => (
+                                  <li key={j} className="text-[10px] text-[var(--cds-text-03)] leading-relaxed">· {d}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </details>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* اقتراحات مبنية على الأدلة الفعلية */}
+                    {msg.suggestions && msg.suggestions.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        {msg.suggestions.slice(0, 3).map((sg, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSendMessage(sg)}
+                            className="text-[10px] font-mono px-2 py-1 border border-[var(--cds-interactive-01)]/40 text-[var(--cds-interactive-01)] hover:bg-[var(--cds-interactive-01)]/10 transition-colors"
+                          >
+                            {sg}
+                          </button>
+                        ))}
                       </div>
                     )}
 

@@ -316,6 +316,14 @@ export interface ChatMessage {
   suggestions?: string[];
   insights?: string[];
   suggestedChart?: any;
+  /** بطاقات أدلة المحلل التي شغّلها المساعد قبل الإجابة (مقاييس/شذوذ/إثبات…). */
+  analystEvidence?: Array<{
+    tool: string;
+    title: string;
+    summary: string;
+    tone: 'ok' | 'warn' | 'bad' | 'info';
+    details: string[];
+  }>;
 }
 
 export interface ChatSession {

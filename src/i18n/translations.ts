@@ -24,6 +24,7 @@ export const translations = {
       admin: 'لوحة الإدارة والإعدادات',
       developer: 'تواصل مع المطور',
       suggestions: 'طلبات الاقتراحات',
+      intelligence: 'مختبر الذكاء التحليلي',
     },
     header: {
       brandTitle: 'منصة تحليلات المؤسسة',
@@ -312,6 +313,7 @@ nl2sql: {
       admin: 'Admin Console',
       developer: 'Contact the Developer',
       suggestions: 'Suggestions Inbox',
+      intelligence: 'Analyst Intelligence Lab',
     },
     header: {
       brandTitle: 'Enterprise Analytics Hub',
