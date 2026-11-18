@@ -35,6 +35,58 @@ export interface DatasetSource {
   rowCount: number;
   /** هل قُصّت الصفوف عند السقف؟ يُعلَن للمستخدم ولا يُخفى. */
   truncated: boolean;
+  /** آخر تحديث للمجموعة — أساس حكم الطزاجة. */
+  updatedAt: string | null;
+}
+
+export type FreshnessLevel = 'fresh' | 'aging' | 'stale' | 'unknown';
+
+export interface Freshness {
+  ageHours: number | null;
+  level: FreshnessLevel;
+  labelAr: string;
+  labelEn: string;
+  /** هل تستحق تنبيهًا عند الاستخدام؟ (aging أو stale) */
+  warn: boolean;
+}
+
+/**
+ * طزاجة البيانات: تحليل على مجموعة عمرها شهر يُقرأ كأنه اليوم — أخطر من
+ * خطأ حسابي لأنه لا يبدو خطأً. الحدود: أقل من يوم طازج، أقل من أسبوع يقدم،
+ * وما بعده قديم.
+ */
+export function describeFreshness(updatedAt?: string | null, now: Date = new Date()): Freshness {
+  const parsed = updatedAt ? Date.parse(updatedAt) : NaN;
+  if (!Number.isFinite(parsed)) {
+    return { ageHours: null, level: 'unknown', labelAr: 'طزاجة غير معروفة', labelEn: 'Freshness unknown', warn: false };
+  }
+  const ageHours = Math.max(0, (now.getTime() - parsed) / 3_600_000);
+  if (ageHours < 24) {
+    return {
+      ageHours,
+      level: 'fresh',
+      labelAr: `حُدّثت قبل ${Math.max(1, Math.round(ageHours))} ساعة`,
+      labelEn: `Updated ${Math.max(1, Math.round(ageHours))}h ago`,
+      warn: false,
+    };
+  }
+  const days = Math.floor(ageHours / 24);
+  if (ageHours < 24 * 7) {
+    return {
+      ageHours,
+      level: 'aging',
+      labelAr: `حُدّثت قبل ${days} يوم`,
+      labelEn: `Updated ${days}d ago`,
+      warn: true,
+    };
+  }
+  return {
+    ageHours,
+    level: 'stale',
+    labelAr: `قديمة — آخر تحديث قبل ${days} يوم`,
+    labelEn: `Stale — last updated ${days}d ago`,
+    warn: true,
+  };
 }
 
 interface ParsedPayload {
@@ -122,6 +174,7 @@ export async function loadDatasetSource(userId: string, datasetId?: string): Pro
     columns,
     rowCount: Number(stored.row_count) || parsed.data.length,
     truncated,
+    updatedAt: stored.updated_at || null,
   };
 }
 

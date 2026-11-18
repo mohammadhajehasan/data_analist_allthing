@@ -34,6 +34,7 @@ import {
 import {
   MAX_ANALYST_ROWS,
   capRows,
+  describeFreshness,
   labelColumns,
   listDatasetSummaries,
   loadDatasetSource,
@@ -538,8 +539,10 @@ export function registerAnalystRoutes(app: Express, deps: Deps): void {
         rowCount: source.rowCount,
         analyzedRows: source.rows.length,
         truncated: source.truncated,
+        updatedAt: source.updatedAt,
         columns: source.columns,
       },
+      freshness: describeFreshness(source.updatedAt),
       numericColumns: numericColumns(source).map((c) => c.name),
       labelColumns: labelColumns(source).map((c) => c.name),
       sampleRows: source.rows.slice(0, 50),

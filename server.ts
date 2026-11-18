@@ -38,7 +38,8 @@ import {
 } from './server/analyst/store';
 import { evaluateGate } from './server/analyst/piiGate';
 import { startAnalystMonitorScheduler } from './server/analyst/monitors';
-import { loadDatasetSource } from './server/analyst/sources';
+import { describeFreshness, loadDatasetSource } from './server/analyst/sources';
+import { shouldCaptureMemory } from './server/analyst/memoryCapture';
 import {
   createAlert,
   deleteAlert,
@@ -2943,14 +2944,21 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
       : undefined;
     let sourceName: string | undefined = targetDataset?.name;
     let sourceRowCount: number | undefined = targetDataset?.rowCount;
+    let sourceUpdatedAt: string | null = targetDataset?.updatedAt ? String(targetDataset.updatedAt) : null;
     if (!sourceRows?.length && copilotUser) {
       const stored = await loadDatasetSource(copilotUser.id, targetDataset?.id ? String(targetDataset.id) : undefined).catch(() => null);
       if (stored) {
         sourceRows = stored.rows.slice(0, 500);
         sourceName = sourceName || stored.name;
         sourceRowCount = sourceRowCount || stored.rowCount;
+        sourceUpdatedAt = stored.updatedAt || sourceUpdatedAt;
       }
     }
+    // طزاجة البيانات: تحليل على بيانات قديمة يبدو صحيحًا وهو ليس كذلك.
+    const freshness = describeFreshness(sourceUpdatedAt);
+    const freshnessNote = freshness.warn
+      ? `طزاجة البيانات: ${freshness.labelAr}. اذكر العمر صريحًا في الجواب، واقترح تحديث المجموعة قبل أي قرار.`
+      : '';
     let copilotCtx: CopilotContext = {
       message: String(message || ''),
       language: language === 'ar' ? 'ar' : 'en',
@@ -2996,6 +3004,8 @@ If you output SQL, also output a NAVIGATE action to "nl2sql".`;
 ${copilotAnalystInstructions(language === 'ar' ? 'ar' : 'en')}
 ${privacyNote ? `
 ${privacyNote}
+` : ''}${freshnessNote ? `
+${freshnessNote}
 ` : ''}
 ${formatEvidenceForPrompt(proactiveEvidence)}`;
 
@@ -3064,13 +3074,17 @@ ${formatEvidenceForPrompt(proactiveEvidence)}`;
 
       // ذاكرة تلقائية: تُكتب بعد كل تحليل ناجح (بلا تكرار للسؤال نفسه)، فيصير
       // للتحليلات تاريخ يُستشهد به بدل صفر تراكمي.
-      if (copilotUser && String(message || '').trim().length >= 8 && replyText.trim().length >= 40) {
+      if (copilotUser) {
         try {
-          const normalized = String(message).trim().toLowerCase().replace(/\s+/g, ' ');
-          const duplicate = (copilotCtx.memory || []).some(
-            (m) => String(m.question || '').trim().toLowerCase().replace(/\s+/g, ' ') === normalized
-          );
-          if (!duplicate) {
+          // يُحفظ التحليل المسنَد فقط، لا كل محادثة — وإلا امتلأت الذاكرة
+          // بمجاملات وأسئلة مكرّرة وأفسدت الاسترجاع.
+          const decision = shouldCaptureMemory({
+            message: String(message || ''),
+            reply: replyText,
+            evidenceCount: evidence.length,
+            existing: copilotCtx.memory || [],
+          });
+          if (decision.capture) {
             await addMemory(copilotUser.id, {
               question: String(message).trim().slice(0, 300),
               answer: replyText.trim().slice(0, 600),
@@ -3079,6 +3093,8 @@ ${formatEvidenceForPrompt(proactiveEvidence)}`;
               outcome: 'inconclusive',
               tags: ['auto', ...evidence.map((e) => e.tool)].slice(0, 8),
             });
+          } else {
+            console.log(`[copilot] memory not captured: ${decision.reason}`);
           }
           // إن كان السؤال موجودًا في المجموعة الذهبية، تُكتب الإجابة الفعلية
           // تلقائيًّا — فيصير التقييم يقيس ردود المساعد لا ما نكتبه يدويًا.
@@ -3125,13 +3141,13 @@ ${formatEvidenceForPrompt(proactiveEvidence)}`;
       isLocal: false,
       // الأدلة حُسبت قبل استدعاء النموذج؛ لا نرميها فقط لأن المزوّد تعطّل.
       analyst: {
-                degraded: true,
-        evidence: proactiveEvidenceFallback,
-        badges: evidenceBadges(proactiveEvidenceFallback),
-        toolsRun: proactiveEvidenceFallback.map((e) => e.tool),
-        // المزوّد تعطّل قبل أي جولة: الصفر صريح حتى لا تُقرأ الاستجابة كأنها استُنفدت.
-        toolRounds: 0,
-        requestedTools: [],
+                degraded: true,
+        evidence: proactiveEvidenceFallback,
+        badges: evidenceBadges(proactiveEvidenceFallback),
+        toolsRun: proactiveEvidenceFallback.map((e) => e.tool),
+        // المزوّد تعطّل قبل أي جولة: الصفر صريح حتى لا تُقرأ الاستجابة كأنها استُنفدت.
+        toolRounds: 0,
+        requestedTools: [],
         suggestions: evidenceSuggestions(proactiveEvidenceFallback, language === 'ar' ? 'ar' : 'en'),
       },
     });

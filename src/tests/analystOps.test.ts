@@ -2,10 +2,12 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import {
   MAX_ANALYST_ROWS,
   capRows,
+  describeFreshness,
   inferColumns,
   seriesFromSource,
   type DatasetSource,
 } from '../../server/analyst/sources';
+import { shouldCaptureMemory } from '../../server/analyst/memoryCapture';
 import { consumeAnalystBudget, resetAnalystBudgets } from '../../server/analyst/guard';
 import { rankMemory } from '../../server/analyst/analystMemory';
 import { normalizeMetric } from '../../server/analyst/metricSemantics';
@@ -19,6 +21,7 @@ const source = (data: Array<Record<string, unknown>>): DatasetSource => ({
   columns: inferColumns(data),
   rowCount: data.length,
   truncated: false,
+  updatedAt: null,
 });
 
 describe('sources — محوّلات البيانات الحقيقية', () => {
@@ -171,5 +174,102 @@ describe('eval gate — عتبة دقة تحمي من الانحدار', () => {
   it('يسقط عند إجابات خاطئة — هذا ما يمنع تدهورًا صامتًا', () => {
     const broken = runEvaluation(cases.map((c) => ({ ...c, actual: 'غير معروف' })));
     expect(broken.accuracy).toBeLessThan(50);
+  });
+});
+
+describe('pii gate — الأرقام تُقرأ بالسياق ولا تُقنَّع عبثًا', () => {
+  const gate = (rows: Array<Record<string, unknown>>) =>
+    evaluateGate(rows, { allowExternalWithPii: false, maxRows: 10 });
+
+  it('لا يلمس الإيراد ولا رقم الطلب الطويل', () => {
+    const decision = gate([
+      { revenue: 1234567890, order_id: 123456789012 },
+      { revenue: 9876543210, order_id: 987654321098 },
+    ]);
+    expect(decision.findings).toHaveLength(0);
+    expect(decision.sanitizedRows[0].revenue).toBe(1234567890);
+    expect(decision.sanitizedRows[0].order_id).toBe(123456789012);
+  });
+
+  it('يقنّع الرقم الدولي حتى بلا دلالة في اسم العمود', () => {
+    const decision = gate([
+      { contact: '+963991234567' },
+      { contact: '+963998765432' },
+    ]);
+    expect(decision.findings[0]?.kind).toBe('phone');
+    expect(String(decision.sanitizedRows[0].contact)).toContain('***');
+  });
+
+  it('يقرأ الرقم المحلي هاتفًا فقط حين يدلّ اسم العمود', () => {
+    const hinted = gate([{ phone: '0991234567' }, { phone: '0998765432' }]);
+    expect(hinted.findings[0]?.kind).toBe('phone');
+    const unhinted = gate([{ amount: '0991234567' }, { amount: '0998765432' }]);
+    expect(unhinted.findings).toHaveLength(0);
+  });
+
+  it('يقرأ الرقم الوطني فقط حين يدلّ اسم العمود', () => {
+    const decision = gate([{ national_id: '12345678901' }, { national_id: '10987654321' }]);
+    expect(decision.findings[0]?.kind).toBe('national_id');
+    expect(String(decision.sanitizedRows[0].national_id)).toContain('***');
+  });
+
+  it('يقبل البطاقة الصحيحة بـLuhn ويرفض رقمًا طويلًا عابرًا', () => {
+    const valid = gate([{ card: '4111 1111 1111 1111' }]);
+    expect(valid.findings[0]?.kind).toBe('credit_card');
+    const invalid = gate([{ reference: '1234567890123456' }]);
+    expect(invalid.findings).toHaveLength(0);
+  });
+});
+
+describe('memory capture — يحفظ التحليل لا المحادثة', () => {
+  const base = {
+    message: 'كم إيراد فرع حلب في آخر 30 يومًا؟',
+    reply: 'الإيراد 128,400 بعد استبعاد المرتجعات، والفترة من 2026-10-19 إلى 2026-11-18.',
+    evidenceCount: 2,
+    existing: [],
+  };
+
+  it('يحفظ ردًّا مسنَدًا بدليل جديد', () => {
+    expect(shouldCaptureMemory(base).capture).toBe(true);
+  });
+
+  it('يرفض المحادثة بلا دليل محسوب', () => {
+    expect(shouldCaptureMemory({ ...base, evidenceCount: 0 }).capture).toBe(false);
+  });
+
+  it('يرفض السؤال القصير والردّ القصير والاعتذار', () => {
+    expect(shouldCaptureMemory({ ...base, message: 'مرحبا' }).capture).toBe(false);
+    expect(shouldCaptureMemory({ ...base, reply: 'تمام' }).capture).toBe(false);
+    expect(shouldCaptureMemory({ ...base, reply: 'عذرًا، تعذّر الوصول إلى النموذج الآن، حاول لاحقًا بعد قليل.' }).capture).toBe(false);
+  });
+
+  it('يرفض التكرار شبه الحرفي لذكرى موجودة', () => {
+    const existing = [
+      {
+        id: 'm1',
+        question: 'كم إيراد فرع حلب في آخر 30 يوما؟',
+        answer: 'الإيراد 128,400 بعد استبعاد المرتجعات.',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    const decision = shouldCaptureMemory({ ...base, existing });
+    expect(decision.capture).toBe(false);
+    expect(decision.similarity).toBeGreaterThanOrEqual(0.68);
+  });
+});
+
+describe('freshness — عمر البيانات يُقاس قبل الاستنتاج', () => {
+  const now = new Date('2026-11-18T12:00:00Z');
+
+  it('طازج خلال اليوم، ويقدم قبل الأسبوع، ويصير قديمًا بعده', () => {
+    expect(describeFreshness('2026-11-18T06:00:00Z', now).level).toBe('fresh');
+    expect(describeFreshness('2026-11-15T12:00:00Z', now).level).toBe('aging');
+    expect(describeFreshness('2026-11-01T12:00:00Z', now).level).toBe('stale');
+  });
+
+  it('يُنبّه فقط حين تستحق البيانات تنبيهًا', () => {
+    expect(describeFreshness('2026-11-18T06:00:00Z', now).warn).toBe(false);
+    expect(describeFreshness('2026-11-15T12:00:00Z', now).warn).toBe(true);
+    expect(describeFreshness(null, now).level).toBe('unknown');
   });
 });
