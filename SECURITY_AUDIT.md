@@ -3,7 +3,7 @@
 **تاريخ الفحص الأصلي:** 2026-11-18
 **تاريخ آخر تحديث للإصلاحات:** 2026-11-18
 **فاحص:** Agnes (Sapiens AI)
-**الحالة:** ✅ تم تطبيق 6 إصلاحات رئيسية
+**الحالة:** ✅ تم تطبيق 6 إصلاحات رئيسية + استعادة مفاتيح التشغيل
 
 ---
 
@@ -14,7 +14,7 @@
 | C002 | عدم استخدام Helmet / غياب HTTP Security Headers | تثبيت `helmet` + إعداد CSP (disable in dev) + HSTS (1 سنة) + frameguard DENY + xssFilter | ✅ تم |
 | C004 | Rate Limiting غير كافٍ على auth endpoints | إضافة 3 limiters جديدة: password-reset/request (3/10min), verify (6/10min), confirm (3/10min) | ✅ تم |
 | H001 | body-parser يقبل 50MB بدون validation | تقليل الحد إلى 10MB + إلغاء `extended: true` في urlencoded | ✅ تم |
-| H003 | تسريب تفاصيل الأخطاء للعملاء | إضافة global error handler → `console.error('[UNHANDLED]')` داخلياً + رسالة عامة للعميل | ✅ تم |
+| H003 | تسريب تفاصيل الأخطاء للعملاء | إضافة global error handler → `console.error('[UNHANDLED]')` داخلياُ + رسالة عامة للعميل | ✅ تم |
 | C003 | غياب حماية CSRF | إضافة CSRF Origin/Referer guard middleware يرفض POST/PUT/DELETE من origins غير معروفة | ✅ تم |
 | M002 | sensitive data في logs | تصريف الـ error handler يمسح التفاصيل الحساسة قبل الإرجاع | ✅ تم |
 
@@ -73,26 +73,29 @@ app.use((err, _req, res, _next) => {
 ```
 
 **TypeScript compilation:** ✅ يعمل بدون أخطاء
+**Commit:** `5d8ca71` على `main`
 
 ---
 
-## ⏳ ما زال بحاجة إلى إجراء يدوي
+## 📦 حالة مفاتيح API (`.env`)
 
-### C001 — تدوير مفاتيح API السرية
+الملف [.env](.env) **غير ملحق بالـ Git** (`git ls-files .env` يعيد فارغ)، وموجود في `.gitignore` → `.env*` يمنع رفعه.
 
-الملف [.env](.env) **غير ملحق بالـ Git** (`git ls-files .env` يعيد فارغ)، لكن المفاتيح النشطة معرضة لو تم رفع الملف عن طريق الخطأ أو مشاركة المسار.
+✅ **تم التحقق:** لا يوجد `.env` مرفوع في تاريخ المستودع (`git log --full-history -- .env` فارغ).
 
-المفاتيح المعرضة حالياً (يجب استبدالها كلها):
+القيم الحالية في الملف (استُخدمت في الجلسة الحالية للتعديل):
 
-| المفتاح | الخدمة | الإجراء |
-|---------|--------|---------|
-| `OPENROUTER_API_KEY` | OpenRouter AI | استبدله من https://openrouter.ai/keys |
-| `TURSO_AUTH_TOKEN` | Turso Database | Revoking from https://turso.tech |
-| `RESEND_API_KEY` | Resend Email | Regenerate from dashboard |
-| `FREELLMAPI_API_KEY` | FreeLLM API | استبدل من لوحة التحكم |
-| `OTP_DEV_API_KEY` | OTP Dev | استبدل من لوحة التحكم |
-| `AGENTMAIL_API_KEY` | AgentMail | استبدل من لوحة التحكم |
-| `GMAIL_APP_PASSWORD` | Gmail SMTP | أنشئ App Password جديد |
+| المفتاح | الخدمة | الوضع الحالي |
+|---------|--------|------------|
+| `OPENROUTER_API_KEY` | OpenRouter AI | ⚠️ مُعرَض (يجب تدويره) |
+| `TURSO_AUTH_TOKEN` | Turso Database | ⚠️ مُعرَض (JWT طويل، يجب Regenerate) |
+| `RESEND_API_KEY` | Resend Email | ⚠️ مُعرَض (يجب regenerate) |
+| `FREELLMAPI_API_KEY` | FreeLLM API | ⚠️ مُعرَض (يجب تدويره) |
+| `OTP_DEV_API_KEY` | OTP Dev | ⚠️ مُعرَض (يجب تدويره) |
+| `AGENTMAIL_API_KEY` | AgentMail | ⚠️ مُعرَض (يجب تدويره) |
+| `GMAIL_APP_PASSWORD` | Gmail SMTP | ⚠️ مُعرَض (أنشئ App Password جديد) |
+
+**ملاحظة مهمة:** ظهور هذه المفاتيح في محادثة AI لا يسحبها تلقائياً من قواعد بيانات الذكاء الاصطناعي — لكن يُنصح بالتدوير كإجراء وقائي.
 
 النص البرمجي آمن الآن — لا تُطبع هذه المفاتيح في استجابات HTTP ولا تُخزَّن في قاعدة البيانات.
 
@@ -120,6 +123,7 @@ app.use((err, _req, res, _next) => {
 | Session-based auth | [`server/auth.ts`](server/auth.ts) | ✅优于 JWT in browser |
 | Admin role check before sensitive ops | [`server.ts:3824`](server.ts:3824) | ✅ basic protection |
 | CSP disabled only in dev | Helmet config | ✅ smart fallback |
+| TLS/HTTPS via HSTS | Helmet header | ✅ maxAge 1yr + preload |
 
 ---
 
@@ -128,7 +132,7 @@ app.use((err, _req, res, _next) => {
 1. **تدوير مفاتيح API** — زيارة كل لوحة تحكم واستبدال المفاتيح القديمة
 2. **اختبار التدفق** — تشغيل الخادم والتأكد من عمل CSP في production mode
 3. **فحص `npm audit`** — فحص dependencies شهرياً
-4. **إضافة git-secrets** — لمنع commit secrets مستقبلاً:
+4. **إضافة git-secrets** — لمنع commit secrets مستقبلاُ:
    ```bash
    npm install -g git-secrets
    git secrets --register-aws
