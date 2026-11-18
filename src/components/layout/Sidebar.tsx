@@ -24,6 +24,7 @@ import {
   Contact,
   Inbox,
   Server,
+  BookOpen,
 } from 'lucide-react';
 import { DiscussionsBadge } from './DiscussionsBadge';
 import { SnapshotBadge } from './SnapshotBadge';
@@ -58,6 +59,7 @@ const SidebarNavList: React.FC<{ isCollapsed?: boolean; isMobile?: boolean; onNa
     { id: 'backend', label: t.nav.backend, icon: Server, badge: 'SQL→API' },
     { id: 'models', label: t.nav.models, icon: Cpu, badge: 'Ollama' },
     { id: 'guide', label: t.nav.guide, icon: HelpCircle, badge: 'New' },
+    { id: 'platform-info', label: t.nav.platformInfo, icon: BookOpen, badge: 'Docs' },
     { id: 'assistant', label: t.nav.assistant, icon: Bot, badge: 'AI' },
     { id: 'discussions', label: t.nav.discussions, icon: MessagesSquare, badge: 'Groups' },
     { id: 'workflow', label: t.nav.workflow, icon: Workflow, badge: 'Agent' },

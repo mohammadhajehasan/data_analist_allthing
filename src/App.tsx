@@ -25,6 +25,7 @@ const AdminPage = lazy(() => import('./features/admin/AdminPage').then(m => ({ d
 const ModelConfigPage = lazy(() => import('./features/models/ModelConfigPage').then(m => ({ default: m.ModelConfigPage })));
 const AdvancedModelingPage = lazy(() => import('./features/datamodeling/AdvancedModelingPage').then(m => ({ default: m.AdvancedModelingPage })));
 const UserGuidePage = lazy(() => import('./features/help/UserGuidePage').then(m => ({ default: m.UserGuidePage })));
+const PlatformInfoPage = lazy(() => import('./features/help/PlatformInfoPage').then(m => ({ default: m.PlatformInfoPage })));
 const WorkflowStudio = lazy(() => import('./features/workflow/WorkflowStudio').then(m => ({ default: m.WorkflowStudio })));
 const SchemaDesignerPage = lazy(() => import('./features/schemadesigner/SchemaDesignerPage').then(m => ({ default: m.SchemaDesignerPage })));
 const BackendFactoryPage = lazy(() => import('./features/schemadesigner/BackendFactoryPage'));
@@ -153,6 +154,8 @@ const MainLayout: React.FC = () => {
         return <ModelConfigPage />;
       case 'guide':
         return <UserGuidePage />;
+      case 'platform-info':
+        return <PlatformInfoPage />;
       case 'workflow':
         return <WorkflowStudio />;
       case 'schemadesigner':

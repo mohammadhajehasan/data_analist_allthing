@@ -403,6 +403,13 @@ export const UserGuidePage: React.FC = () => {
               ? 'اكتشف الميزات القوية وكيفية تحقيق أقصى استفادة من استوديو أتمتة سير العمل بالذكاء الاصطناعي وأدوات تحليل البيانات وتوليد الاستعلامات في بيئتك المحلية بالكامل.'
               : 'Discover powerful features and learn how to get the most out of AI Workflow Studio, local data analysis, query generation, and dashboarding tools.'}
           </p>
+          <button
+            onClick={() => setActiveTab('platform-info')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--cds-border-subtle)] px-3 py-1.5 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]"
+          >
+            <span>{isAr ? 'معلومات المنصة — شرح كل صفحة' : 'Platform information — every page explained'}</span>
+            <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
+          </button>
         </div>
       </div>
 
