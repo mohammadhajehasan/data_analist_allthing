@@ -62,3 +62,33 @@ services:
       # dashboard/state blob — keep within the free 512MB disk.
       - key: WORKSPACE_STATE_LIMIT_MB
         value: "5"
+      # ---- AI model fallbacks (all server-keyed; users with local Ollama bypass these) ----
+      - key: GEMINI_API_KEY
+        sync: false         # Google AI Studio — required for core AI features
+      - key: OPENROUTER_API_KEY
+        sync: false         # OpenRouter gateway — primary LLM provider
+      - key: CUSTOM_OPENAI_API_KEY
+        sync: false         # Optional: vLLM / LM Studio / LocalAI compatibility layer
+      - key: CUSTOM_OPENAI_ENDPOINT
+        sync: false         # Optional: defaults to http://localhost:8000/v1
+      - key: DEEPSEEK_API_KEY
+        sync: false         # Optional: DeepSeek models
+      - key: QWEN_API_KEY
+        sync: false         # Optional: Alibaba DashScope / Qwen models
+      # ---- Third-party email & auth helpers ----
+      - key: BREVO_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: AGENTMAIL_API_KEY
+        sync: false         # AgentMail transactional mail relay
+      - key: OTP_DEV_API_KEY
+        sync: false         # OTP Dev one-time-password verification
+      - key: FREELLMAPI_API_KEY
+        sync: false         # FreeLLM local proxy API key
+      - key: FREELLMAPI_ENDPOINT
+        value: "http://127.0.0.1:31415/v1"
+      - key: GMAIL_APP_PASSWORD
+        sync: false         # Gmail App Password (alternative to SMTP_PASS)
+      - key: APP_URL
+        sync: false         # Public-facing app URL (used for OAuth callbacks)
