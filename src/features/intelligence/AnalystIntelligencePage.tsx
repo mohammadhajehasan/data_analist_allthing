@@ -45,7 +45,7 @@ const numbers = (text: string) => text.split(/[,\n\s]+/).map((v) => Number(v)).f
 // ---------------------------------------------------------------------------
 
 const Card: React.FC<{ title: string; hint?: string; icon?: React.ElementType; children: React.ReactNode }> = ({ title, hint, icon: Icon, children }) => (
-  <section className="rounded-xl border border-[var(--cds-ui-03,#e0e0e0)] bg-[var(--cds-layer-01,#fff)] p-4 space-y-3">
+  <section className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-4 space-y-3">
     <header className="flex items-start gap-2">
       {Icon && <Icon size={16} className="mt-0.5 text-[var(--cds-interactive-01)] shrink-0" />}
       <div className="min-w-0">
@@ -64,8 +64,11 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
   </label>
 );
 
+// السابق: متغيّر حقل (‎--cds-field-01‎) غير معرَّف في أي ثيم، مع سقوط إلى
+// #f4f4f4 — رمادي فاتح تحته نص `text-01` الأبيض في الثيمات الداكنة، أي حقل
+// غير مقروء. الآن تُستخدم متغيّرات الحقول الفعلية في المشروع.
 const inputClass =
-  'w-full rounded-lg border border-[var(--cds-ui-03)] bg-[var(--cds-field-01,#f4f4f4)] px-3 py-2 text-xs text-[var(--cds-text-01)] outline-none focus:border-[var(--cds-interactive-01)]';
+  'w-full rounded-lg border border-[var(--cds-border-strong)] bg-[var(--cds-input-bg)] px-3 py-2 text-xs text-[var(--cds-text-01)] placeholder:text-[var(--cds-text-03)] outline-none transition focus:border-[var(--cds-interactive-01)] focus:ring-1 focus:ring-[var(--cds-interactive-01)] disabled:opacity-60 disabled:cursor-not-allowed';
 
 const Btn: React.FC<{ onClick: () => void; busy?: boolean; children: React.ReactNode; tone?: 'primary' | 'ghost' }> = ({ onClick, busy, children, tone = 'primary' }) => (
   <button
@@ -75,7 +78,7 @@ const Btn: React.FC<{ onClick: () => void; busy?: boolean; children: React.React
     className={`px-3 py-2 rounded-lg text-xs font-bold transition disabled:opacity-50 ${
       tone === 'primary'
         ? 'bg-[var(--cds-interactive-01)] text-white hover:opacity-90'
-        : 'border border-[var(--cds-ui-03)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
+        : 'border border-[var(--cds-border-subtle)] text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]'
     }`}
   >
     {busy ? '…' : children}
@@ -84,7 +87,7 @@ const Btn: React.FC<{ onClick: () => void; busy?: boolean; children: React.React
 
 const Err: React.FC<{ message: string | null }> = ({ message }) =>
   message ? (
-    <p className="text-[11px] text-[var(--cds-support-01,#da1e28)] flex items-center gap-1">
+    <p className="text-[11px] text-[var(--cds-danger)] flex items-center gap-1">
       <AlertTriangle size={12} /> {message}
     </p>
   ) : null;
@@ -317,7 +320,7 @@ const DossierPanel: React.FC = () => {
             )}
             <ul className="space-y-2">
               {dossier.issues.slice(0, 8).map((issue: any) => (
-                <li key={issue.id} className="rounded-lg border border-[var(--cds-ui-03)] p-2">
+                <li key={issue.id} className="rounded-lg border border-[var(--cds-border-subtle)] p-2">
                   <div className="flex items-center gap-2">
                     <Badge tone={issue.severity === 'critical' ? 'bad' : issue.severity === 'high' ? 'warn' : 'info'}>{issue.severity}</Badge>
                     <span className="font-bold">{issue.title}</span>
@@ -466,7 +469,7 @@ const AnomalyPanel: React.FC = () => {
         <div className="space-y-2 text-[11px]">
           <p className="font-bold">{result.report.summary}</p>
           {result.report.points.map((p: any) => (
-            <div key={p.index} className="rounded-lg border border-[var(--cds-ui-03)] p-2">
+            <div key={p.index} className="rounded-lg border border-[var(--cds-border-subtle)] p-2">
               <Badge tone={p.severity === 'high' ? 'bad' : 'warn'}>{p.direction === 'spike' ? 'ارتفاع' : 'انخفاض'} • z={p.score}</Badge>
               <p className="mt-1">{p.explanation}</p>
             </div>
@@ -678,7 +681,7 @@ const ChartCriticPanel: React.FC = () => {
               <span>{verdict.verdict.summary}</span>
             </div>
             {verdict.verdict.findings.map((f: any) => (
-              <div key={f.id} className="rounded-lg border border-[var(--cds-ui-03)] p-2">
+              <div key={f.id} className="rounded-lg border border-[var(--cds-border-subtle)] p-2">
                 <p className="font-bold">{f.issue}</p>
                 <p className="text-[var(--cds-text-02)]">{f.why}</p>
                 <p className="text-[10px] text-[var(--cds-text-03)]">الإصلاح: {f.fix}</p>
@@ -831,7 +834,7 @@ const WorkflowPanel: React.FC = () => {
           <p>{result.plan.summary}</p>
           <p className="text-[10px] text-[var(--cds-text-03)]">تكلفة {result.plan.estimatedCostUsd}$ • زمن {result.plan.estimatedMinutes} دقيقة • مفتاح التكرار {result.idempotencyKey}</p>
           {result.plan.issues.map((i: any) => (
-            <div key={i.id} className="rounded-lg border border-[var(--cds-ui-03)] p-2">
+            <div key={i.id} className="rounded-lg border border-[var(--cds-border-subtle)] p-2">
               <p className="font-bold">{i.severity} — {i.message}</p>
               <p className="text-[10px] text-[var(--cds-text-02)]">{i.fix}</p>
             </div>
@@ -1102,8 +1105,16 @@ const SourcesPanel: React.FC = () => {
   useEffect(() => {
     void api<any>('/api/analyst/datasets')
       .then((d) => {
-        setDatasets(d.datasets || []);
-        if (d.datasets?.[0]) setSelected(d.datasets[0].id);
+        const list = d.datasets || [];
+        setDatasets(list);
+        // إشعار الشذوذ يفتح الصفحة على مجموعته تحديدًا (اكتبها NotificationBell).
+        let focus: string | null = null;
+        try {
+          focus = localStorage.getItem('analyst_focus_dataset');
+          if (focus) localStorage.removeItem('analyst_focus_dataset');
+        } catch { /* التخزين غير متاح */ }
+        const preferred = focus && list.some((x: any) => x.id === focus) ? focus : list[0]?.id;
+        if (preferred) setSelected(preferred);
       })
       .catch((e) => setError((e as Error).message));
     void loadMonitors();
@@ -1156,6 +1167,11 @@ const SourcesPanel: React.FC = () => {
         </Field>
         {detail && (
           <div className="space-y-2 text-[11px]">
+            {detail.freshness && (
+              <Badge tone={detail.freshness.level === 'fresh' ? 'ok' : detail.freshness.level === 'aging' ? 'warn' : detail.freshness.level === 'stale' ? 'bad' : 'info'}>
+                {detail.freshness.labelAr}
+              </Badge>
+            )}
             <div className="flex flex-wrap gap-1">
               {detail.dataset.columns.slice(0, 14).map((c: any) => (
                 <span key={c.name} className="rounded-md bg-[var(--cds-layer-02)] px-2 py-0.5 text-[10px] font-mono">{c.name}<span className="text-[var(--cds-text-03)]"> · {c.type}</span></span>
@@ -1285,7 +1301,7 @@ const RunsPanel: React.FC = () => {
         {proofs.length === 0 ? <p className="text-[11px] text-[var(--cds-text-03)]">لا بطاقات محفوظة — ابنِ واحدة من تبويب «الغموض والإثبات» ثم احفظها.</p> : (
           <ul className="space-y-2 text-[11px]">
             {proofs.map((p) => (
-              <li key={p.id} className="rounded-lg border border-[var(--cds-ui-03)] p-2 space-y-1">
+              <li key={p.id} className="rounded-lg border border-[var(--cds-border-subtle)] p-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold">{p.metricName}</span>
                   <span className="text-[10px] text-[var(--cds-text-03)]">{new Date(p.createdAt).toLocaleDateString('ar')}</span>
@@ -1352,7 +1368,7 @@ export const AnalystIntelligencePage: React.FC = () => {
 
   return (
     <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
-      <header className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+      <header className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold text-[var(--cds-text-01)] flex items-center gap-2">

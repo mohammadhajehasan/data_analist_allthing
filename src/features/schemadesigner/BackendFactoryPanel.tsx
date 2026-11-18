@@ -373,7 +373,7 @@ const BackendFactoryPanel: React.FC<BackendFactoryPanelProps> = ({ model, dialec
             maxLength={64}
             spellCheck={false}
             placeholder="my-shop-api"
-            className="w-full max-w-md bg-[var(--cds-field-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none px-2.5 py-1.5 text-[11px] font-mono text-[var(--cds-text-01)]"
+            className="w-full max-w-md bg-[var(--cds-input-bg)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none px-2.5 py-1.5 text-[11px] font-mono text-[var(--cds-text-01)]"
           />
           <span className="text-[10px] font-mono text-[var(--cds-text-03)]">
             {isAr ? 'يُستخدم في README والملفات' : 'Used in README and files'}

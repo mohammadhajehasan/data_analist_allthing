@@ -21,7 +21,9 @@ import {
   Filter,
   Activity,
   History,
-  FolderOpen
+  FolderOpen,
+  BookOpen,
+  Info
 } from 'lucide-react';
 
 export const UserGuidePage: React.FC = () => {
@@ -416,6 +418,60 @@ export const UserGuidePage: React.FC = () => {
       {/* Guide Content */}
       <div className="flex-1 p-6 md:p-10">
         <div className="max-w-5xl mx-auto space-y-6">
+          {/* أي الصفحتين أفتح؟ صفحتان متجاورتان تحت اسم واحد تقريبًا، فالتفريق
+              بينهما أوضح من تركه للمستخدم يجرّب. */}
+          <div className="bg-[var(--cds-layer-01)] border border-[var(--cds-border-subtle)] rounded-lg p-5 sm:p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+              <h3 className="text-sm font-bold text-[var(--cds-text-01)]">
+                {isAr ? 'دليل الاستخدام أم معلومات المنصة؟' : 'User guide or platform information?'}
+              </h3>
+            </div>
+            <p className="text-xs text-[var(--cds-text-02)] leading-relaxed">
+              {isAr
+                ? 'الصفحتان مكمّلتان لا متكررتان: هنا تتعلّم كيف تعمل، وهناك تعرف ماذا تفعل كل شاشة.'
+                : 'The two pages complement each other: here you learn how to work, there you learn what each screen does.'}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-interactive-01)]/30 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--cds-text-01)]">
+                  <BookOpen className="w-4 h-4 text-[var(--cds-interactive-01)]" />
+                  <span>{isAr ? 'دليل الاستخدام — هذه الصفحة' : 'User guide — this page'}</span>
+                </div>
+                <p className="text-[11px] text-[var(--cds-text-03)] leading-relaxed">
+                  {isAr
+                    ? 'الغرض: التعلّم والتدريب. مسار مرتّب يشرح المفهوم ثم خطوات العمل: كيف تستورد بيانات، تبني مخططًا، تكتب استعلامًا، تُشغّل سير عمل، وتقرأ النتيجة.'
+                    : 'Purpose: learning and onboarding. An ordered path explaining the concept then the steps: import data, model it, write a query, run a workflow, read the result.'}
+                </p>
+                <p className="text-[11px] text-[var(--cds-text-04)]">{isAr ? 'افتحه حين: «كيف أفعل كذا؟»' : 'Open it when: “how do I do this?”'}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-[var(--cds-layer-02)] border border-[var(--cds-border-subtle)] space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--cds-text-01)]">
+                  <Info className="w-4 h-4 text-[#be95ff]" />
+                  <span>{isAr ? 'معلومات المنصة' : 'Platform information'}</span>
+                </div>
+                <p className="text-[11px] text-[var(--cds-text-03)] leading-relaxed">
+                  {isAr
+                    ? 'الغرض: المرجع والخريطة. بطاقة لكل صفحة: ماذا تفعل، وماذا تحتاج قبلها، وأين تذهب بعدها — مع بحث وتصفية.'
+                    : 'Purpose: reference and map. A card per page: what it does, what it needs first, and where to go next — with search and filters.'}
+                </p>
+                <p className="text-[11px] text-[var(--cds-text-04)]">{isAr ? 'افتحه حين: «ما هذه الصفحة؟ ومن أين أبدأ؟»' : 'Open it when: “what is this page, and where do I start?”'}</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-[var(--cds-text-03)]">
+              {isAr
+                ? 'قاعدة سريعة: إن كنت تعرف الهدف ولا تعرف الشاشة، ابدأ بمعلومات المنصة لتصل إليها في خطوتين؛ وإن كنت تعرف الشاشة ولا تعرف الخطوات، اقرأ القسم المقابل هنا.'
+                : 'Rule of thumb: know the goal but not the screen? Start with platform information and get there in two steps. Know the screen but not the steps? Read the matching section here.'}
+            </p>
+            <button
+              onClick={() => setActiveTab('platform-info')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--cds-border-subtle)] px-3 py-1.5 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)] cursor-pointer"
+            >
+              <span>{isAr ? 'افتح معلومات المنصة' : 'Open platform information'}</span>
+              <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
           {sections.map(section => {
             const Icon = section.icon;
             if (section.fullWidth) {

@@ -210,7 +210,7 @@ const BackendFactoryPage: React.FC = () => {
               dir="ltr"
               spellCheck={false}
               placeholder={SAMPLE_SQL}
-              className="w-full h-[300px] resize-y bg-[var(--cds-field-01)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none p-3 text-[11px] leading-relaxed font-mono text-[var(--cds-text-01)]"
+              className="w-full h-[300px] resize-y bg-[var(--cds-input-bg)] border border-[var(--cds-border-subtle)] focus:border-[var(--cds-interactive-01)] outline-none p-3 text-[11px] leading-relaxed font-mono text-[var(--cds-text-01)]"
             />
 
             <div className="flex flex-wrap items-center gap-2">

@@ -59,6 +59,10 @@
     --cds-modal-header-bg: #182030;
     --cds-table-header-bg: #182030;
     --cds-table-row-hover: #1c2436;
+    /* كانت مُستخدمة في الكود وغير معرَّفة هنا، فلم يظهر أي تأثير للتحويم.
+       قيمة واحدة للاسمين لأن الكود استخدم الاسمين بالمعنى نفسه. */
+    --cds-hover-ui: #273349;
+    --cds-layer-hover-01: #273349;
   }
 
   /* Carbon Gray 90 Dark Charcoal */
@@ -84,6 +88,8 @@
     --cds-modal-header-bg: #2b303a;
     --cds-table-header-bg: #2b303a;
     --cds-table-row-hover: #323844;
+    --cds-hover-ui: #373d49;
+    --cds-layer-hover-01: #373d49;
   }
 
   /* Carbon Midnight Cyber Blue */
@@ -109,6 +115,8 @@
     --cds-modal-header-bg: #13223f;
     --cds-table-header-bg: #13223f;
     --cds-table-row-hover: #182a4d;
+    --cds-hover-ui: #1c315a;
+    --cds-layer-hover-01: #1c315a;
   }
 
   /* Carbon Gray 10 Modern Light */
@@ -134,6 +142,8 @@
     --cds-modal-header-bg: #f8fafc;
     --cds-table-header-bg: #f1f5f9;
     --cds-table-row-hover: #f1f5f9;
+    --cds-hover-ui: #e2e8f0;
+    --cds-layer-hover-01: #e2e8f0;
   }
 
   /* Carbon Pure White Light */
@@ -159,6 +169,8 @@
     --cds-modal-header-bg: #f1f5f9;
     --cds-table-header-bg: #e2e8f0;
     --cds-table-row-hover: #f1f5f9;
+    --cds-hover-ui: #e2e8f0;
+    --cds-layer-hover-01: #e2e8f0;
   }
 
   html, body {
@@ -402,6 +414,45 @@
 .carbon-select:focus, select:focus {
   border-color: var(--cds-interactive-01);
   box-shadow: 0 0 0 1px var(--cds-interactive-01);
+}
+
+/* نص الإدخال والنص التوضيحي: بلا هذين السطرين يرث الـplaceholder لون المتصفح
+   الرمادي الفاتح، ويصير النص غير المقروء على خلفية الحقل الداكنة. */
+.carbon-input::placeholder,
+.carbon-select::placeholder,
+.carbon-textarea::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--cds-text-03);
+  opacity: 1;
+}
+
+.carbon-textarea, textarea {
+  background-color: var(--cds-input-bg);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-01);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.carbon-textarea:focus, textarea:focus {
+  border-color: var(--cds-interactive-01);
+  box-shadow: 0 0 0 1px var(--cds-interactive-01);
+}
+
+/* قائمة الـselect تُرسم من المتصفح لا من الـCSS: بلا تحديد ألوانها تظهر
+   بيضاء بنص أبيض في الثيمات الداكنة. */
+select option {
+  background-color: var(--cds-input-bg);
+  color: var(--cds-text-01);
+}
+
+/* الحقول المعطّلة تبقى مقروءة، لا باهتة حتى الاختفاء. */
+input:disabled, textarea:disabled, select:disabled {
+  color: var(--cds-text-02);
+  cursor: not-allowed;
 }
 
 /* Unified Semantic Tags */

@@ -5,7 +5,7 @@
  * - Accepting joins the group (server adds membership only on accept)
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, Users, Check, X, UserPlus } from 'lucide-react';
+import { Bell, Users, Check, X, UserPlus, Activity } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getStoredToken } from '../../features/auth/LoginPage';
 import { DISCUSSIONS_BADGE_EVENT } from './DiscussionsBadge';
@@ -20,7 +20,7 @@ interface PendingInvite {
 }
 
 export const NotificationBell: React.FC = () => {
-  const { language, toast } = useApp();
+  const { language, toast, setActiveTab } = useApp();
   const isAr = language === 'ar';
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notif[]>([]);
@@ -141,15 +141,28 @@ export const NotificationBell: React.FC = () => {
     }
   };
 
-  /** Notifications with a discussionId navigate straight to that group. */
+  /**
+   * كل إشعار يقود إلى مكانه: نقاش ← المجموعة، شذوذ/تقييم ← مختبر الذكاء مع
+   * المجموعة المعنية محدّدة. تنبيه لا يقود إلى سياقه يتحول إلى ضجيج.
+   */
   const openNotification = async (n: Notif) => {
     const gid = n.payload?.discussionId;
+    const analyst = n.type === 'analyst_anomaly' || n.type === 'analyst_eval';
     // Mark read in the background (badge drops even without navigation)
     if (!n.read) {
       fetch(`/api/notifications/${n.id}/read`, {
         method: 'POST', headers: { Authorization: `Bearer ${getStoredToken()}` },
       }).then(() => load()).catch(() => {});
       setItems(prev => prev.map(x => (x.id === n.id ? { ...x, read: true } : x)));
+    }
+    if (analyst) {
+      // نُسلّم المجموعة المعنية إلى مختبر الذكاء قبل فتح التبويب.
+      try {
+        if (n.payload?.datasetId) localStorage.setItem('analyst_focus_dataset', String(n.payload.datasetId));
+      } catch { /* التخزين قد يكون معطّلًا — التنقل يبقى صالحًا */ }
+      setActiveTab('intelligence');
+      setOpen(false);
+      return;
     }
     if (!gid) return;
     // Switch to the discussions tab, then open the specific group
@@ -217,7 +230,8 @@ export const NotificationBell: React.FC = () => {
 
             {items.map(n => {
               const isInvite = n.type === 'discussion_invite' && n.payload?.inviteId && pendingIds.has(n.payload.inviteId);
-              const clickable = !!n.payload?.discussionId;
+              const isAnalyst = n.type === 'analyst_anomaly' || n.type === 'analyst_eval';
+              const clickable = !!n.payload?.discussionId || isAnalyst;
               return (
                 <div
                   key={n.id}
@@ -225,7 +239,7 @@ export const NotificationBell: React.FC = () => {
                   role={clickable ? 'button' : undefined}
                   tabIndex={clickable ? 0 : undefined}
                   onKeyDown={clickable ? (e => { if (e.key === 'Enter') openNotification(n); }) : undefined}
-                  title={clickable ? (isAr ? 'انقر لفتح المجموعة' : 'Click to open the group') : undefined}
+                  title={clickable ? (isAr ? (isAnalyst ? 'انقر لفتح المختبر على هذه المجموعة' : 'انقر لفتح المجموعة') : (isAnalyst ? 'Click to open the lab on this dataset' : 'Click to open the group')) : undefined}
                   className={`rounded-lg p-2.5 border transition-colors ${
                     clickable ? 'cursor-pointer hover:border-blue-600/60' : ''
                   } ${!n.read ? 'bg-blue-600/10 border-blue-600/30' : 'bg-[var(--cds-layer-02)] border-[var(--cds-border-subtle)]'}`}
@@ -237,6 +251,8 @@ export const NotificationBell: React.FC = () => {
                       <Check className="w-4 h-4 text-[#42be65] shrink-0 mt-0.5" />
                     ) : n.type === 'invite_rejected' ? (
                       <X className="w-4 h-4 text-[#ff8389] shrink-0 mt-0.5" />
+                    ) : n.type === 'analyst_anomaly' || n.type === 'analyst_eval' ? (
+                      <Activity className="w-4 h-4 text-[#ff832b] shrink-0 mt-0.5" />
                     ) : (
                       <Bell className="w-4 h-4 text-[var(--cds-text-03)] shrink-0 mt-0.5" />
                     )}

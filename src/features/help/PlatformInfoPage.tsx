@@ -25,14 +25,12 @@ interface PageDoc {
   category: Category;
   summaryAr: string;
   summaryEn: string;
-  howAr: string;
-  howEn: string;
+  howAr?: string;
+  howEn?: string;
   stepsAr: string[];
   stepsEn: string[];
-  useAr: string[];
-  useEn: string[];
-  tipAr?: string;
-  tipEn?: string;
+  useAr?: string[];
+  useEn?: string[];
 }
 
 const PAGES: PageDoc[] = [
@@ -73,8 +71,7 @@ const PAGES: PageDoc[] = [
     ],
     useAr: ['بداية أي تحليل', 'بيانات تتغيّر يوميًا (مبيعات، مخزون، دعم)'],
     useEn: ['Starting any analysis', 'Data that changes daily (sales, inventory, support)'],
-    tipAr: 'المجموعة المحفوظة هي ما تقرأه أدوات المحلل بعد ذلك — لا تلصق الأرقام يدويًا.',
-    tipEn: 'The saved dataset is what the analyst tools read later — no manual pasting.',
+    // لا تلميح عن «قراءة المحلل للمجموعة»: يقوله تبويب «بياناتي والمراقبات» وقسم الدليل.
   },
   {
     id: 'datamodeling',
@@ -150,8 +147,6 @@ const PAGES: PageDoc[] = [
     stepsEn: ['Pick a dataset', 'Ask in plain language', 'Review the SQL and explanation', 'Run or fix it, then copy the result'],
     useAr: ['أسئلة لا تعرف لها صيغة SQL', 'تدقيق استعلام كتبه زميل'],
     useEn: ['Questions you cannot phrase in SQL', 'Auditing a colleague’s query'],
-    tipAr: 'الطبقات ليست زينة: استعلام يقرأ كل الصفوف أو يستخدم دالة خطرة يُوقف قبل التنفيذ.',
-    tipEn: 'The layers matter: a full-table scan or a dangerous function is stopped before execution.',
   },
   {
     id: 'schemadesigner',
@@ -197,8 +192,7 @@ const PAGES: PageDoc[] = [
     stepsEn: ['Pick a provider', 'Enter the key (or Ollama URL)', 'Test the connection', 'Set the default model'],
     useAr: ['تشغيل كل ميزات الذكاء', 'التبديل إلى نموذج محلي للبيانات الحساسة'],
     useEn: ['Enabling every AI feature', 'Switching to a local model for sensitive data'],
-    tipAr: 'بلا مفتاح صالح تعمل الصفحات التحليلية، لكن صياغة النموذج في المساعد تفشل — وتُعاد الأدلة المحسوبة وحدها.',
-    tipEn: 'Without a valid key the analytics still work, but copilot phrasing fails — only computed evidence is returned.',
+    // التلميح نفسه مكرّر حرفيًّا في سؤال «ماذا يحدث إن لم يكن هناك مفتاح؟» — أحدهما يكفي.
   },
   {
     id: 'assistant',
@@ -208,8 +202,8 @@ const PAGES: PageDoc[] = [
     category: 'analyze',
     summaryAr: 'محادثة تحليلية مُسنَدة: يكتشف النيّة، يشغّل أدوات المحلل، ويعرض «أدلة محسوبة» تحت كل رد.',
     summaryEn: 'A grounded analytical chat: detects intent, runs analyst tools, and shows computed evidence under each reply.',
-    howAr: 'قبل الإجابة تُحقن تعريفات المقاييس والذاكرة والأدلة في تعليمات النظام. وإن طلب النموذج أداة، تُنفَّذ ويُعاد ناتجها إليه في جولة ثانية (حد أقصى دورتين) قبل أن يصوغ جوابه. وبياناتك تمرّ على حاجز الخصوصية أولًا.',
-    howEn: 'Before answering, metric definitions, memory and evidence are injected into the system instructions. If the model requests a tool, it runs and the result is fed back in a second round (max two) before it writes. Your data passes the privacy gate first.',
+    howAr: 'قبل الإجابة تُحقن تعريفات المقاييس والذاكرة والأدلة في تعليمات النظام. وإن طلب النموذج أداة، تُنفَّذ ويُعاد ناتجها إليه في جولة ثانية (حد أقصى دورتين) قبل أن يصوغ جوابه.',
+    howEn: 'Before answering, metric definitions, memory and evidence are injected into the system instructions. If the model requests a tool, it runs and the result is fed back in a second round (max two) before it writes.',
     stepsAr: ['اختر مجموعة نشطة', 'اسأل سؤالك', 'اقرأ الخلاصة ثم الأدلة', 'اطلب تقريرًا أو لوحة من الاقتراحات'],
     stepsEn: ['Select an active dataset', 'Ask your question', 'Read the answer, then the evidence', 'Turn a suggestion into a report or dashboard'],
     useAr: ['سؤال متكرر عن رقم أو اتجاه', 'توليد تقرير أو لوحة بأمر واحد'],
@@ -239,8 +233,7 @@ const PAGES: PageDoc[] = [
     ],
     useAr: ['قبل اجتماع: إثبات رقم', 'مراقبة يومية لشذوذ بلا فتح الصفحة', 'حسم تعارض بين تحليلين'],
     useEn: ['Before a meeting: prove a number', 'Daily anomaly watch without opening the page', 'Settling two conflicting analyses'],
-    tipAr: 'ادرس تبويب «السجل والإثبات»: يخبرك ما شُغّل على بياناتك ومتى، ويحفظ أدلتك بعد أسبوع.',
-    tipEn: 'Check “Run log & proofs”: it shows what ran on your data and keeps evidence shareable later.',
+    // بلا تلميح: الخطوة الرابعة أعلاه تقول «راجع السجل واحفظ الإثبات»، وقسم الدليل يشرحه.
   },
   {
     id: 'workflow',
@@ -327,10 +320,9 @@ const PAGES: PageDoc[] = [
     summaryEn: 'Focused walkthroughs: automation studio, intelligence lab, SQL, themes, ERD, and outage resilience.',
     howAr: 'صفحة قراءة فقط، لكنها تحتوي أزرار انتقال مباشرة إلى الصفحة المشروحة.',
     howEn: 'A read-only page, but each section links straight to the page it explains.',
-    stepsAr: ['افتح القسم الذي يهمك', 'اقرأ البطاقات الثلاث', 'اضغط زر الانتقال للتجربة'],
-    stepsEn: ['Open the section you need', 'Read its three cards', 'Use the jump button to try it'],
-    useAr: ['تعلم ميزة قبل استخدامها', 'تدريب عضو جديد'],
-    useEn: ['Learning a feature before using it', 'Training a new member'],
+    // «البطاقات الثلاث» كان عددًا قديمًا: الأقسام الآن أربعة (منها التفريق بين الدليل وهذه الصفحة).
+    stepsAr: ['افتح القسم الذي يهمك', 'اتبع خطوات القسم بالترتيب', 'اضغط زر الانتقال للتجربة'],
+    stepsEn: ['Open the section you need', 'Follow that section’s steps in order', 'Use the jump button to try it'],
   },
   {
     id: 'developer',
@@ -355,12 +347,9 @@ const PAGES: PageDoc[] = [
     category: 'govern',
     summaryAr: 'صندوق الإدارة لمراجعة اقتراحات المستخدمين وتصنيفها والرد عليها.',
     summaryEn: 'The admin inbox for reviewing, classifying and answering user suggestions.',
-    howAr: 'يقرأ الطلبات الواردة ويحدّث حالتها؛ متاح لدور admin فقط.',
-    howEn: 'It reads incoming requests and updates their status; admin-only.',
+    // بلا حقل «كيف تعمل»: كان يعيد الملخص نفسه (قراءة الطلبات وتحديثها، admin فقط).
     stepsAr: ['افتح الطلب', 'صنّفه', 'حدّث الحالة أو ارد'],
     stepsEn: ['Open a request', 'Classify it', 'Update status or reply'],
-    useAr: ['تخطيط الأولويات', 'إغلاق حلقة الملاحظات'],
-    useEn: ['Planning priorities', 'Closing the feedback loop'],
   },
 ];
 
@@ -385,8 +374,8 @@ const FLOW = [
 const GENERAL_TOOLS = [
   { ar: 'مساعد عائم (Copilot Orb)', en: 'Floating copilot orb', detailAr: 'اسأل من أي صفحة دون مغادرتها؛ الأدلة تظهر أسفل الرد.', detailEn: 'Ask from any page without leaving it; evidence appears under the reply.' },
   { ar: 'لقطة المشروع (Snapshot)', en: 'Project snapshot', detailAr: 'تصدير/استيراد حالة مساحة العمل كملف JSON للنسخ الاحتياطي أو النقل.', detailEn: 'Export/import workspace state as JSON for backup or transfer.' },
-  { ar: 'جدولة تحديث البيانات', en: 'Scheduled refresh', detailAr: 'تحديث مصدر متصل كل فترة محدّدة مع حالة اتصال ظاهرة.', detailEn: 'Refresh a connected source on an interval with a visible connection state.' },
-  { ar: 'تفسير النموذج', en: 'Explain model', detailAr: 'يحوّل أهمية الميزات إلى جملة يفهمها صاحب القرار.', detailEn: 'Turns feature importance into a sentence a decision-maker can use.' },
+  // حُذف عنصران: «جدولة تحديث البيانات» صفة في بطاقة مجموعات البيانات لا أداة عامة،
+  // و«تفسير النموذج» تبويب داخل المختبر لا يعمل من أي صفحة. كلاهما مذكور في مكانه.
   { ar: 'وضع التركيز (Zen)', en: 'Zen focus mode', detailAr: 'إخفاء كل ما ليس تحليلًا حين تحتاج انتباهًا كاملًا.', detailEn: 'Hides everything but the analysis when you need full attention.' },
   { ar: 'أعلام الميزات (Flags)', en: 'Feature flags', detailAr: 'تشغيل/إيقاف أجزاء من الواجهة أثناء التجربة أو الصيانة.', detailEn: 'Turn parts of the UI on/off during experiments or maintenance.' },
 ];
@@ -445,7 +434,7 @@ export const PlatformInfoPage: React.FC = () => {
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Hero */}
-      <header className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-6">
+      <header className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-6">
         <div className="flex items-start gap-3">
           <div className="rounded-lg bg-[var(--cds-interactive-01)]/10 p-2.5 text-[var(--cds-interactive-01)]">
             <BookOpen size={22} />
@@ -461,12 +450,12 @@ export const PlatformInfoPage: React.FC = () => {
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono">
               {[
-                { ar: '20 صفحة', en: '20 pages' },
+                // عدد الصفحات يُعرض حيًّا في عنوان الكتالوج، فلا يُكرَّر هنا كرقم ثابت.
                 { ar: '20 محرّكًا تحليليًا', en: '20 analyst engines' },
                 { ar: '9 طبقات فحص SQL', en: '9 SQL safety layers' },
                 { ar: 'دورتان أدوات للمساعد', en: '2 copilot tool rounds' },
               ].map((s) => (
-                <span key={s.en} className="rounded-md border border-[var(--cds-ui-03)] bg-[var(--cds-layer-02)] px-2 py-1 text-[var(--cds-text-02)]">
+                <span key={s.en} className="rounded-md border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] px-2 py-1 text-[var(--cds-text-02)]">
                   {isAr ? s.ar : s.en}
                 </span>
               ))}
@@ -476,13 +465,13 @@ export const PlatformInfoPage: React.FC = () => {
       </header>
 
       {/* Flow */}
-      <section className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+      <section className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
         <h2 className="text-sm font-bold text-[var(--cds-text-01)]">
           {isAr ? 'كيف تعمل المنصة — من ملف خام إلى قرار' : 'How the platform works — from raw file to decision'}
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {FLOW.map((step, index) => (
-            <div key={step.en} className="rounded-lg border border-[var(--cds-ui-03)] bg-[var(--cds-layer-02)] p-3">
+            <div key={step.en} className="rounded-lg border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-02)] p-3">
               <p className="text-[10px] font-mono text-[var(--cds-interactive-01)]">0{index + 1}</p>
               <p className="text-xs font-bold text-[var(--cds-text-01)] mt-1">{isAr ? step.ar : step.en}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-[var(--cds-text-03)]">{isAr ? step.detailAr : step.detailEn}</p>
@@ -503,7 +492,8 @@ export const PlatformInfoPage: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={isAr ? 'ابحث باسم الصفحة أو بما تفعله…' : 'Search a page or what it does…'}
-              className="w-64 rounded-lg border border-[var(--cds-ui-03)] bg-[var(--cds-field-01,#f4f4f4)] py-2 ps-8 pe-3 text-[11px] text-[var(--cds-text-01)] outline-none focus:border-[var(--cds-interactive-01)]"
+              aria-label={isAr ? 'ابحث في صفحات المنصة' : 'Search platform pages'}
+              className="w-full rounded-lg border border-[var(--cds-border-subtle)] bg-[var(--cds-input-bg)] py-2 ps-8 pe-3 text-[11px] text-[var(--cds-text-01)] placeholder:text-[var(--cds-text-03)] outline-none focus:border-[var(--cds-interactive-01)] sm:w-64"
             />
           </div>
         </div>
@@ -512,6 +502,8 @@ export const PlatformInfoPage: React.FC = () => {
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
+              type="button"
+              aria-pressed={category === c.id}
               onClick={() => setCategory(c.id)}
               className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
                 category === c.id
@@ -525,7 +517,7 @@ export const PlatformInfoPage: React.FC = () => {
         </div>
 
         {filtered.length === 0 && (
-          <p className="rounded-lg border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-4 text-[11px] text-[var(--cds-text-03)]">
+          <p className="rounded-lg border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-4 text-[11px] text-[var(--cds-text-03)]">
             {isAr ? 'لا صفحة تطابق بحثك — جرّب كلمة أعمّ مثل «تحليل» أو «بيانات».' : 'No page matches — try a broader word like “data” or “analysis”.'}
           </p>
         )}
@@ -539,11 +531,13 @@ export const PlatformInfoPage: React.FC = () => {
               <article
                 key={page.id}
                 className={`rounded-xl border bg-[var(--cds-layer-01)] transition ${
-                  open ? 'border-[var(--cds-interactive-01)]/60' : 'border-[var(--cds-ui-03)]'
+                  open ? 'border-[var(--cds-interactive-01)]/60' : 'border-[var(--cds-border-subtle)]'
                 }`}
               >
                 <button
+                  type="button"
                   onClick={() => setOpenId(open ? null : page.id)}
+                  aria-expanded={open}
                   className="flex w-full items-start justify-between gap-3 p-4 text-start"
                 >
                   <div className="flex min-w-0 items-start gap-2.5">
@@ -558,7 +552,7 @@ export const PlatformInfoPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-md border border-[var(--cds-ui-03)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--cds-text-03)]">
+                    <span className="rounded-md border border-[var(--cds-border-subtle)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--cds-text-03)]">
                       {isAr ? categoryLabel?.ar : categoryLabel?.en}
                     </span>
                     <ChevronDown size={14} className={`text-[var(--cds-text-03)] transition ${open ? 'rotate-180' : ''}`} />
@@ -566,13 +560,15 @@ export const PlatformInfoPage: React.FC = () => {
                 </button>
 
                 {open && (
-                  <div className="space-y-3 border-t border-[var(--cds-ui-03)] p-4 text-[11px]">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
-                        {isAr ? 'كيف تعمل' : 'How it works'}
-                      </p>
-                      <p className="mt-1 leading-relaxed text-[var(--cds-text-02)]">{isAr ? page.howAr : page.howEn}</p>
-                    </div>
+                  <div className="space-y-3 border-t border-[var(--cds-border-subtle)] p-4 text-[11px]">
+                    {(page.howAr || page.howEn) && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
+                          {isAr ? 'كيف تعمل' : 'How it works'}
+                        </p>
+                        <p className="mt-1 leading-relaxed text-[var(--cds-text-02)]">{isAr ? page.howAr : page.howEn}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
                         {isAr ? 'كيف تستخدمها' : 'How to use it'}
@@ -586,24 +582,22 @@ export const PlatformInfoPage: React.FC = () => {
                         ))}
                       </ol>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
-                        {isAr ? 'أين تُستخدم' : 'Where it fits'}
-                      </p>
-                      <ul className="mt-1 flex flex-wrap gap-1">
-                        {(isAr ? page.useAr : page.useEn).map((use) => (
-                          <li key={use} className="rounded-md bg-[var(--cds-layer-02)] px-2 py-0.5 text-[10px] text-[var(--cds-text-02)]">
-                            {use}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {(page.tipAr || page.tipEn) && (
-                      <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] leading-relaxed text-amber-700">
-                        {isAr ? page.tipAr : page.tipEn}
-                      </p>
+                    {((isAr ? page.useAr : page.useEn)?.length ?? 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--cds-text-03)]">
+                          {isAr ? 'أين تُستخدم' : 'Where it fits'}
+                        </p>
+                        <ul className="mt-1 flex flex-wrap gap-1">
+                          {(isAr ? page.useAr : page.useEn)!.map((use) => (
+                            <li key={use} className="rounded-md bg-[var(--cds-layer-02)] px-2 py-0.5 text-[10px] text-[var(--cds-text-02)]">
+                              {use}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                     <button
+                      type="button"
                       onClick={() => setActiveTab(page.id)}
                       className="rounded-lg bg-[var(--cds-interactive-01)] px-3 py-1.5 text-[11px] font-bold text-white hover:opacity-90"
                     >
@@ -618,7 +612,7 @@ export const PlatformInfoPage: React.FC = () => {
       </section>
 
       {/* General tools */}
-      <section className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+      <section className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
         <h2 className="text-sm font-bold text-[var(--cds-text-01)]">
           {isAr ? 'أدوات تعمل من أي صفحة' : 'Tools that work from any page'}
         </h2>
@@ -634,7 +628,7 @@ export const PlatformInfoPage: React.FC = () => {
 
       {/* Trust */}
       <section className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+        <div className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
           <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--cds-text-01)]">
             <ShieldCheck size={15} className="text-emerald-600" />
             {isAr ? 'الخصوصية والأمان' : 'Privacy & security'}
@@ -642,14 +636,13 @@ export const PlatformInfoPage: React.FC = () => {
           <ul className="mt-2 space-y-2 text-[11px] leading-relaxed text-[var(--cds-text-02)]">
             {(isAr
               ? [
-                  'حاجز PII قبل أي إرسال لنموذج: استبعاد أسماء/عناوين وتقنيع بريد/هاتف/معرّفات.',
+                  // حاجز PII مشروح في السؤال الأول أدناه بتفصيل أكبر — لا يُعاد هنا.
                   'تصدير آمن عبر الخادم: نفس الحاجز يُطبَّق، وطلب الخام مع وجود PII يُرفض صراحةً.',
                   'المفاتيح على الخادم فقط، ولا تصل المتصفح ولا تُسجَّل في السجلات.',
                   'كل عملية تُسجَّل في سجل العمليات، وسجل تشغيل المحلل يبيّن ما حُسب على بياناتك.',
                   'الأدوار: admin لإدارة المستخدمين والحصص، وعضو عادي لبقية المساحة.',
                 ]
               : [
-                  'A PII gate before any model call: names/addresses dropped, emails/phones/identifiers masked.',
                   'Safe export runs through the server with the same gate; raw rows with PII are refused explicitly.',
                   'Keys live server-side only; they never reach the browser or the logs.',
                   'Every action lands in the audit log, and the analyst run log shows what was computed on your data.',
@@ -664,7 +657,7 @@ export const PlatformInfoPage: React.FC = () => {
           </ul>
         </div>
 
-        <div className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+        <div className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
           <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--cds-text-01)]">
             <Gauge size={15} className="text-[var(--cds-interactive-01)]" />
             {isAr ? 'ما الذي يُميّز المنصة' : 'What sets it apart'}
@@ -676,14 +669,13 @@ export const PlatformInfoPage: React.FC = () => {
                   'الأدلة لا تذوب: سجل تشغيل وبطاقات إثبات محفوظة تُشارك بعد أسبوع.',
                   'المراقبة مستمرة: الشذوذ يُفحص دوريًا ويصل كتنبيه، لا كأداة تُفتح.',
                   'التقييم آلي: كل تشغيل يقارن بالمجموعة الذهبية ويُنبّه عند الانحدار.',
-                  'الحساب يفصل عن الصياغة: تعطّل النموذج لا يُلغي الأرقام المحسوبة.',
+                  // «الحساب يفصل عن الصياغة» مكرّر في السؤال الثالث بنفس التفصيل.
                 ]
               : [
                   'Grounded answers: no number without evidence, and the model sees its requested tool result.',
                   'Evidence persists: a run log and saved proof cards still shareable a week later.',
                   'Continuous watching: anomalies are swept on a schedule and arrive as alerts, not a tab you must open.',
                   'Automated evaluation: every run compares against a golden set and flags regressions.',
-                  'Computation is separate from phrasing: a model outage does not discard computed numbers.',
                 ]
             ).map((item) => (
               <li key={item} className="flex gap-2">
@@ -696,15 +688,17 @@ export const PlatformInfoPage: React.FC = () => {
       </section>
 
       {/* FAQ */}
-      <section className="rounded-xl border border-[var(--cds-ui-03)] bg-[var(--cds-layer-01)] p-5">
+      <section className="rounded-xl border border-[var(--cds-border-subtle)] bg-[var(--cds-layer-01)] p-5">
         <h2 className="text-sm font-bold text-[var(--cds-text-01)]">{isAr ? 'أسئلة متكررة' : 'Frequently asked'}</h2>
-        <div className="mt-2 divide-y divide-[var(--cds-ui-03)]">
+        <div className="mt-2 divide-y divide-[var(--cds-border-subtle)]">
           {FAQ.map((item, index) => {
             const open = openFaq === index;
             return (
               <div key={item.qEn}>
                 <button
+                  type="button"
                   onClick={() => setOpenFaq(open ? null : index)}
+                  aria-expanded={open}
                   className="flex w-full items-center justify-between gap-3 py-2.5 text-start text-[11px] font-bold text-[var(--cds-text-01)]"
                 >
                   <span>{isAr ? item.qAr : item.qEn}</span>
@@ -733,20 +727,23 @@ export const PlatformInfoPage: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => setActiveTab('datasets')}
             className="rounded-lg bg-[var(--cds-interactive-01)] px-3.5 py-2 text-xs font-bold text-white hover:opacity-90"
           >
             {isAr ? 'مجموعات البيانات' : 'Datasets'}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('intelligence')}
-            className="rounded-lg border border-[var(--cds-ui-03)] px-3.5 py-2 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]"
+            className="rounded-lg border border-[var(--cds-border-subtle)] px-3.5 py-2 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]"
           >
             {isAr ? 'مختبر الذكاء' : 'Intelligence lab'}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('guide')}
-            className="rounded-lg border border-[var(--cds-ui-03)] px-3.5 py-2 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]"
+            className="rounded-lg border border-[var(--cds-border-subtle)] px-3.5 py-2 text-xs font-bold text-[var(--cds-text-02)] hover:bg-[var(--cds-layer-02)]"
           >
             {isAr ? 'دليل الاستخدام' : 'User guide'}
           </button>
