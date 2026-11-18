@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -99,27 +100,61 @@ const PORT = Number(process.env.PORT) || 3000; // cloud platforms inject PORT
 
 app.set('trust proxy', 1); // وراء وكيل Render/proxy: req.ip = IP العميل الحقيقي وليس الـ proxy
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // ---------------------------------------------------------------------------
 // رؤوس أمان أساسية على كل استجابة. لا نضع CSP هنا لأن Vite في وضع التطوير
 // يحتاج inline scripts؛ الباقي رخيص ولا يكسر أي واجهة.
 // ---------------------------------------------------------------------------
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
-  if (req.secure || forwardedProto === 'https') {
-    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-  }
-  next();
-});
+// ── Helmet: HTTP security headers on every response.
+//    CSP disabled in dev so Vite's inline scripts / HMR still work.
+const isInDevMode = process.env.NODE_ENV !== 'production';
+app.use(helmet({
+  contentSecurityPolicy: isInDevMode ? false : {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://*.openrouter.ai', 'https://*.googleapis.com'],
+      fontSrc:    ["'self'"],
+      objectSrc:  ["'none'"],
+      mediaSrc:   ["'self'"],
+      frameSrc:   ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy:  true,
+  crossOriginOpenerPolicy:    { policy: 'same-origin' },
+  crossOriginResourcePolicy:  { policy: 'same-origin' },
+  dnsPrefetchControl:         { allow: false },
+  frameguard:                 { action: 'deny' },
+  hsts:                       { maxAge: 31536000, includeSubDomains: true, preload: true },
+  ieNoOpen:                   true,
+  noSniff:                    true,
+  originAgentCluster:         true,
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+  referrerPolicy:             { policy: 'strict-origin-when-cross-origin' },
+  xssFilter:                  true,
+}));
 
 // ---------------------------------------------------------------------------
+
+// ── CSRF mitigation: reject POST/PUT/DELETE whose Origin doesn't match us.
+//    This blocks cross-site request forgery without per-endpoint tokens.
+app.use((req, res, next) => {
+  const method = req.method.toUpperCase();
+  const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);
+  if (safeMethods.has(method)) return next();
+  const origin    = String(req.headers.origin || '');
+  const referer   = String(req.headers.referer || '');
+  const ownHost   = process.env.APP_HOST || '';
+  const isSameOrigin = !origin || !ownHost || origin.endsWith('.' + ownHost) || origin.includes('localhost');
+  const isSafeReferer = !referer || !ownHost || referer.endsWith('.' + ownHost) || referer.includes('localhost');
+  if (isSameOrigin || isSafeReferer) return next();
+  return res.status(403).json({ error: 'FORBIDDEN', message: 'رابط مرجعي غير صالح — تأكد من عدم استخدام وسيط خارجي' });
+});
+
 // Rate limiting على طبقة HTTP للمسارات المعرّضة للأسيء (حماية brute-force
 // على /api/auth/login، إنشاء الحسابات بالجملة على /api/auth/register،
 // واستنزاف الشبكة عبر بروكسي جلب البيانات). خزّان في الذاكرة يكفي هنا:
@@ -165,7 +200,12 @@ const signupCodeRateLimiter = createRateLimiter('signup-code', 12, 60 * 60 * 100
 const fetchDataRateLimiter = createRateLimiter('fetch-data', 30, 5 * 60 * 1000); // بروكسي البيانات: 30 طلب / 5 دقائق لكل IP
 const ollamaProxyRateLimiter = createRateLimiter('ollama-proxy', 120, 5 * 60 * 1000); // بروكسي Ollama: 120 طلب / 5 دقائق
 const backendGenerationRateLimiter = createRateLimiter('backend-generation', 30, 5 * 60 * 1000); // توليد المشاريع: 30 / 5 دقائق
-const webSearchRateLimiter = createRateLimiter('web-search', 30, 5 * 60 * 1000); // Exa web search: 30 requests / 5 min per IP
+const webSearchRateLimiter = createRateLimiter('web-search', 30, 5 * 60 * 1000);
+// Password reset needs its own limiter — separate from signup (different attack surface).
+const pwdResetRequestRateLimiter  = createRateLimiter('pwd-reset-request',  3, 10 * 60 * 1000);  // 3 requests / 10 min per IP
+const pwdResetVerifyRateLimiter   = createRateLimiter('pwd-reset-verify',    6, 10 * 60 * 1000);  // 6 code attempts / 10 min
+const pwdResetConfirmRateLimiter  = createRateLimiter('pwd-reset-confirm',   3, 10 * 60 * 1000);  // 3 ticket attempts / 10 min
+ // Exa web search: 30 requests / 5 min per IP
 
 // Patterns that indicate a placeholder / demo API key mistakenly left in configuration
 const PLACEHOLDER_KEY_PATTERNS = /demo|replace|your[_-]?api[_-]?key|my[_-]?gemini|placeholder|xxxx/i;
@@ -3723,7 +3763,7 @@ app.put('/api/admin/settings/idle', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Password reset (code via email or SMS phone, per-country phone validation)
 // ---------------------------------------------------------------------------
-app.post('/api/auth/password-reset/request', async (req, res) => {
+app.post('/api/auth/password-reset/request', pwdResetRequestRateLimiter, async (req, res) => {
   const { channel, target } = req.body || {};
   if (channel !== 'email' && channel !== 'sms' && channel !== 'telegram') {
     return res.status(400).json({ error: 'channel يجب أن يكون email أو sms أو telegram' });
@@ -3742,7 +3782,7 @@ app.post('/api/auth/password-reset/request', async (req, res) => {
   }
 });
 
-app.post('/api/auth/password-reset/verify', async (req, res) => {
+app.post('/api/auth/password-reset/verify', pwdResetVerifyRateLimiter, async (req, res) => {
   const { channel, target, code } = req.body || {};
   if (channel !== 'email' && channel !== 'sms' && channel !== 'telegram') {
     return res.status(400).json({ error: 'channel يجب أن يكون email أو sms أو telegram' });
@@ -3757,7 +3797,7 @@ app.post('/api/auth/password-reset/verify', async (req, res) => {
   }
 });
 
-app.post('/api/auth/password-reset/confirm', async (req, res) => {
+app.post('/api/auth/password-reset/confirm', pwdResetConfirmRateLimiter, async (req, res) => {
   const { ticket, password } = req.body || {};
   try {
     const result = await confirmPasswordResetWithTicket(String(ticket || ''), String(password || ''));
@@ -4825,7 +4865,20 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  // ── Global error handler: never leak internal error details to clients.
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Log full error internally (stack, cause) for debugging
+  console.error('[UNHANDLED]', err?.stack || err?.message || String(err));
+  // Return a generic safe message — never expose err.message verbatim
+  const status = typeof err?.status === 'number' ? err.status : 500;
+  res.status(status).json({
+    error: status === 401 ? 'جلسة غير صالحة — سجّل الدخول أولاَ'
+          : status === 403 ? 'ممنوع — ليس لديك صلاحية لهذه العملية'
+          : 'حدث خطأ داخلي — حاول مجدداً لاحقاً',
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`AI Analytics Platform server running on http://0.0.0.0:${PORT}`);
     // Hourly sweeper: reminder email + owner notification for email invites
     // still pending after 3 days (runs once per invite, never repeats)
