@@ -457,6 +457,99 @@ export function runAnalystTools(tools: AnalystToolId[], ctx: CopilotContext): Co
   return out;
 }
 
+/**
+ * أقصى عدد جولات أدوات بعد الردّ الأول.
+ *
+ * لماذا اثنتان لا أكثر: كل جولة استدعاء نموذج كامل (زمن + كلفة)، والجولة
+ * الثالثة نادرًا ما تضيف رقمًا جديدًا — غالبًا تعيد صياغة. سقف صريح يمنع
+ * الحلقات التي تستنزف الحصة بلا فائدة.
+ */
+export const MAX_ANALYST_TOOL_ROUNDS = 2;
+
+/** دمج الأدلة بلا تكرار: الأداة الأولى تفوز، فلا تُستبدل نتيجة محسوبة بأخرى. */
+export function mergeEvidence(base: CopilotEvidence[], extra: CopilotEvidence[]): CopilotEvidence[] {
+  const merged = [...base];
+  for (const item of extra) {
+    if (!merged.some((e) => e.tool === item.tool)) merged.push(item);
+  }
+  return merged;
+}
+
+export interface ToolLoopResult {
+  /** النص النهائي بعد آخر جولة (أو المسودة إن لم تُطلب أدوات). */
+  text: string;
+  /** كل الأدلة: الاستباقية + ما طلبه النموذج. */
+  evidence: CopilotEvidence[];
+  /** عدد جولات الأدوات التي نُفّذت فعلًا (0..maxRounds). */
+  rounds: number;
+  /** الأدوات التي طلبها النموذج بالترتيب (بعد إزالة المكرر). */
+  requested: AnalystToolId[];
+}
+
+/**
+ * حلقة الأدوات: النموذج يطلب أداة ← تُنفّذ ← يرى نتيجتها ← قد يطلب أخرى.
+ *
+ * لماذا حلقة لا استدعاءً واحدًا: الطلب الأول قد يكشف نقصًا («أحتاج الشذوذ»)
+ * ثم يكشف نتيجته حاجةً ثانية («أي بُعد سببه؟»). الاستدعاء الواحد يعطي النموذج
+ * نتيجة واحدة فقط ثم يطلب منه أن يختم — فتنتهي الحلقة قبل الجواب الحقيقي.
+ *
+ * الضمانات: لا أداة تُنفَّذ مرتين، ولا جولة بلا دليل جديد، وسقف صريح للجولات.
+ */
+export async function runToolLoop(input: {
+  draft: string;
+  ctx: CopilotContext;
+  /** أدلة حُسبت قبل السؤال (تُمرَّر للنموذج ولا تُنفَّذ مرة أخرى). */
+  proactive?: CopilotEvidence[];
+  maxRounds?: number;
+  /** إعادة السؤال بالنص الحالي + الأدلة؛ null يعني تعذّر الاستدعاء. */
+  reask: (draft: string, evidence: CopilotEvidence[], round: number) => Promise<string | null>;
+}): Promise<ToolLoopResult> {
+  const maxRounds = Math.max(0, Math.min(input.maxRounds ?? MAX_ANALYST_TOOL_ROUNDS, MAX_ANALYST_TOOL_ROUNDS));
+  let text = String(input.draft || '');
+  let evidence = [...(input.proactive || [])];
+  let rounds = 0;
+  const requested: AnalystToolId[] = [];
+
+  while (rounds < maxRounds) {
+    const pending = extractToolRequests(text)
+      .map((r) => r.tool)
+      .filter((tool) => !evidence.some((e) => e.tool === tool));
+    if (!pending.length) break;
+
+    requested.push(...pending);
+    const fresh = runAnalystTools(pending, input.ctx);
+    if (!fresh.length) break;
+    evidence = mergeEvidence(evidence, fresh);
+    rounds += 1;
+
+    const next = await input.reask(stripToolRequests(text), evidence, rounds).catch(() => null);
+    if (!next || !String(next).trim()) break;
+    text = next;
+  }
+
+  return { text, evidence, rounds, requested };
+}
+
+/** prompt جولة المتابعة: المسودة + الأدلة + القاعدة الحاكمة. */
+export function formatToolFollowUpPrompt(input: {
+  originalPrompt: string;
+  draft: string;
+  evidence: CopilotEvidence[];
+  round: number;
+  maxRounds?: number;
+}): string {
+  const maxRounds = input.maxRounds ?? MAX_ANALYST_TOOL_ROUNDS;
+  return (
+    `${input.originalPrompt}\n\n` +
+    `مسودّتك السابقة (كتبتها قبل أن ترى نتائج الأدوات):\n${String(input.draft).slice(0, 4000)}\n\n` +
+    `${formatEvidenceForPrompt(input.evidence)}\n\n` +
+    `هذه جولة الأدوات ${input.round} من ${maxRounds}. أعد كتابة الإجابة النهائية معتمدًا على هذه الأدلة حصريًّا. ` +
+    'إن احتجت حسابًا آخر غير موجود أعلاه، أخرج كتلة ANALYST_TOOL واحدة في النهاية وسأنفّذها لك؛ ' +
+    'ولا تُظهر أي كتلة ANALYST_TOOL في نصّك إن لم تكن تحتاج أداة. ' +
+    'أبقِ كتل JSON للإجراء (CREATE_REPORT / CREATE_DASHBOARD / NAVIGATE) إن كانت ما تزال مطلوبة.'
+  );
+}
+
 /** متوسط أول عمود رقمي — يُستخدم لسلسلة الإثبات التلقائية فقط. */
 function meanOfNumeric(rows: Array<Record<string, unknown>>): number {
   const first = rows[0] ? Object.keys(rows[0]) : [];
@@ -567,7 +660,7 @@ ${list}
 \`\`\`json
 {"action":"ANALYST_TOOL","tool":"anomaly","args":{"series":[{"label":"d1","value":100}]}}
 \`\`\`
-وسأتولّى تنفيذها وإعادة النتيجة.
+وسأتولّى تنفيذها وإعادة النتيجة إليك، ثم يمكنك طلب أداة أخرى إن بقيت حاجة — بحدّ أقصى دورتين. لا تكرّر طلب أداة حصلت على نتيجتها.
 9) اربط الإجابة بذاكرة التحليلات حين تظهر، ولا تُقدّم قديمًا كأنه جديد.
 10) اجعل الخلاصة أولًا، ثم الأدلة، ثم الخطوة التالية.`;
   if (language === 'ar') return ar;

@@ -4,14 +4,18 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_ANALYST_TOOL_ROUNDS,
   copilotAnalystInstructions,
   detectAnalystTools,
   evidenceBadges,
   evidenceSuggestions,
   extractToolRequests,
   formatEvidenceForPrompt,
+  formatToolFollowUpPrompt,
+  mergeEvidence,
   runAnalystTool,
   runAnalystTools,
+  runToolLoop,
   stripToolRequests,
   toolLabel,
   type CopilotContext,
@@ -141,5 +145,127 @@ describe('copilotTools — الحقن والاقتراحات', () => {
     expect(instructions).toContain('سببية');
     expect(instructions).toContain('سؤالًا واحدًا');
     expect(copilotAnalystInstructions('en')).toContain('ANALYST_TOOL');
+  });
+
+  it('تعليمات الطلب تذكر سقف الدورتين كي لا يكرّر النموذج', () => {
+    expect(copilotAnalystInstructions('ar')).toContain('دورتين');
+  });
+});
+
+describe('runToolLoop — النموذج يرى نتيجة أداته (حد أقصى دورتان)', () => {
+  const fence = '`'.repeat(3);
+  const request = (tool: string) =>
+    `${fence}json\n${JSON.stringify({ action: 'ANALYST_TOOL', tool })}\n${fence}`;
+
+  const loopCtx: CopilotContext = {
+    message: 'هل يوجد شذوذ في الإيراد؟',
+    rows: [
+      { city: 'دمشق', sales: 1200 },
+      { city: 'دمشق', sales: 1200 },
+      { city: 'حلب', sales: -999 },
+    ],
+    series: Array.from({ length: 10 }, (_, i) => ({ label: `d${i + 1}`, value: 100 + (i === 9 ? 300 : 0) })),
+    datasetName: 'sales',
+    datasetRowCount: 10,
+  };
+
+  it('ينفّذ الأداة المطلوبة ويرسل نتيجتها في جولة واحدة', async () => {
+    const calls: Array<{ round: number; tools: string[] }> = [];
+    const result = await runToolLoop({
+      draft: `سأفحص الجودة.\n${request('dossier')}`,
+      ctx: loopCtx,
+      reask: async (_draft, evidence, round) => {
+        calls.push({ round, tools: evidence.map((e) => e.tool) });
+        return 'الإجابة النهائية بعد رؤية التدقيق.';
+      },
+    });
+
+    expect(result.rounds).toBe(1);
+    expect(result.requested).toEqual(['dossier']);
+    expect(result.text).toBe('الإجابة النهائية بعد رؤية التدقيق.');
+    expect(result.text).not.toContain('ANALYST_TOOL');
+    expect(result.evidence.map((e) => e.tool)).toContain('dossier');
+    // الجولة الثانية من الاستدعاء رأت الدليل فعلًا، لا مجرد اسم الأداة.
+    expect(calls[0].tools).toContain('dossier');
+  });
+
+  it('يسمح بجولة ثانية حين يطلب النموذج أداة أخرى بعد رؤية النتيجة', async () => {
+    const prompts: string[] = [];
+    const result = await runToolLoop({
+      draft: request('dossier'),
+      ctx: loopCtx,
+      reask: async (draft, _evidence, round) => {
+        prompts.push(draft);
+        if (round === 1) return `وجدت مشكلة، أحتاج الشذوذ.\n${request('anomaly')}`;
+        return 'الخلاصة النهائية: نقطة شاذة واحدة. ';
+      },
+    });
+
+    expect(result.rounds).toBe(2);
+    expect(result.requested).toEqual(['dossier', 'anomaly']);
+    expect(result.evidence.map((e) => e.tool)).toEqual(expect.arrayContaining(['dossier', 'anomaly']));
+    expect(result.text.trim()).toBe('الخلاصة النهائية: نقطة شاذة واحدة.');
+    expect(prompts).toHaveLength(2);
+  });
+
+  it('يتوقف عند السقف ولا ينفّذ طلبًا ثالثًا', async () => {
+    const result = await runToolLoop({
+      draft: request('dossier'),
+      ctx: loopCtx,
+      reask: async (_draft, _evidence, round) =>
+        round === 1 ? request('anomaly') : request('proof'),
+    });
+
+    expect(MAX_ANALYST_TOOL_ROUNDS).toBe(2);
+    expect(result.rounds).toBe(2);
+    expect(result.requested).toEqual(['dossier', 'anomaly']);
+  });
+
+  it('لا يعيد تنفيذ أداة حُسبت قبل السؤال', async () => {
+    let calls = 0;
+    const result = await runToolLoop({
+      draft: request('dossier'),
+      ctx: loopCtx,
+      proactive: [{ tool: 'dossier', title: 'جودة', summary: 'محسوبة مسبقًا', tone: 'ok', details: [] }],
+      reask: async () => { calls += 1; return 'نهائي'; },
+    });
+
+    expect(calls).toBe(0);
+    expect(result.rounds).toBe(0);
+    expect(result.evidence).toHaveLength(1);
+  });
+
+  it('يبقي المسودة إن تعذّر استدعاء النموذج في المتابعة', async () => {
+    const result = await runToolLoop({
+      draft: `مسودة.\n${request('dossier')}`,
+      ctx: loopCtx,
+      reask: async () => null,
+    });
+
+    expect(result.rounds).toBe(1);
+    expect(result.text).toContain('مسودة.');
+    expect(result.evidence.map((e) => e.tool)).toContain('dossier');
+  });
+
+  it('يدمج الأدلة بلا تكرار ويحفظ الأولى', () => {
+    const base = [{ tool: 'dossier' as const, title: 'أ', summary: 'أولى', tone: 'ok' as const, details: [] }];
+    const merged = mergeEvidence(base, [
+      { tool: 'dossier' as const, title: 'ب', summary: 'ثانية', tone: 'bad' as const, details: [] },
+      { tool: 'anomaly' as const, title: 'ج', summary: 'ثالثة', tone: 'info' as const, details: [] },
+    ]);
+    expect(merged.map((e) => e.tool)).toEqual(['dossier', 'anomaly']);
+    expect(merged[0].summary).toBe('أولى');
+  });
+
+  it('prompt المتابعة يحمل الأدلة ورقم الجولة والسقف', () => {
+    const prompt = formatToolFollowUpPrompt({
+      originalPrompt: 'User: كم الإيراد؟',
+      draft: 'مسودة أولى',
+      evidence: [{ tool: 'dossier', title: 'جودة', summary: '63/100', tone: 'warn', details: [] }],
+      round: 1,
+    });
+    expect(prompt).toContain('63/100');
+    expect(prompt).toContain('جولة الأدوات 1 من 2');
+    expect(prompt).toContain('ANALYST_TOOL');
   });
 });
